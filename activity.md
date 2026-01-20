@@ -3,8 +3,8 @@
 ## Current Status
 
 **Last Updated:** 2026-01-20
-**Tasks Completed:** 10/35
-**Current Task:** data-repo-01
+**Tasks Completed:** 11/35
+**Current Task:** data-repo-02
 **Build Status:** Debug APK builds successfully
 
 ---
@@ -15,7 +15,7 @@
 |----------|-------|-----------|-----------|
 | Setup | 2 | 2 | 0 |
 | Domain | 3 | 2 | 1 |
-| Data | 7 | 6 | 1 |
+| Data | 7 | 7 | 0 |
 | DI | 1 | 0 | 1 |
 | UI | 12 | 0 | 12 |
 | Integration | 2 | 0 | 2 |
@@ -264,6 +264,26 @@
 - `fetchOllamaModels()` - GET /api/tags for Ollama servers
 - Returns domain `AiModel` objects
 - Includes `ApiException` class with recoverable/auth error detection
+
+**Commands Run:**
+- `./gradlew assembleDebug` - BUILD SUCCESSFUL
+
+**Status:** All steps completed, compilation verified
+
+---
+
+### 2026-01-20: Task data-repo-01 Completed
+
+**Task:** Create entity mappers
+
+**Files Created:**
+- `app/src/main/java/com/materialchat/data/mapper/EntityMappers.kt` - Bidirectional mappers between domain models and Room entities
+
+**Key Features:**
+- `Provider.toEntity()` / `ProviderEntity.toDomain()` - Maps between Provider domain model and ProviderEntity, handling ProviderType enum ↔ String conversion
+- `Conversation.toEntity()` / `ConversationEntity.toDomain()` - Maps between Conversation domain model and ConversationEntity, handles nullable providerId (empty string if provider deleted)
+- `Message.toEntity()` / `MessageEntity.toDomain()` - Maps between Message domain model and MessageEntity, handling MessageRole enum ↔ String conversion
+- List extension functions for batch conversions: `toProviderDomainList()`, `toConversationDomainList()`, `toMessageDomainList()`, etc.
 
 **Commands Run:**
 - `./gradlew assembleDebug` - BUILD SUCCESSFUL

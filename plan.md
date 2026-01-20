@@ -141,7 +141,7 @@ Building a native Android AI chat application with Material 3 Expressive design.
       "Implement Conversation entity/domain mappers",
       "Implement Message entity/domain mappers"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "data-repo-02",
