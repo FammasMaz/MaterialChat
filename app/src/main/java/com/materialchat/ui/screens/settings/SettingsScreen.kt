@@ -1,14 +1,8 @@
 package com.materialchat.ui.screens.settings
 
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -27,13 +21,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.outlined.Cloud
-import androidx.compose.material.icons.outlined.Computer
 import androidx.compose.material.icons.outlined.DarkMode
 import androidx.compose.material.icons.outlined.LightMode
 import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.SettingsSystemDaydream
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -46,7 +38,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Snackbar
 import androidx.compose.material3.SnackbarDuration
@@ -62,7 +53,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -70,7 +60,9 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.materialchat.data.local.preferences.AppPreferences
 import com.materialchat.domain.model.Provider
-import com.materialchat.domain.model.ProviderType
+import com.materialchat.ui.screens.settings.components.AddProviderSheet
+import com.materialchat.ui.screens.settings.components.ProviderCard
+import com.materialchat.ui.screens.settings.components.SystemPromptField
 import com.materialchat.ui.theme.CustomShapes
 
 /**
@@ -92,6 +84,7 @@ fun SettingsScreen(
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val formState by viewModel.formState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
 
     // Handle events
@@ -202,6 +195,38 @@ fun SettingsScreen(
             onRetry = { viewModel.retry() }
         )
     }
+
+    // Add Provider Bottom Sheet
+    val successState = uiState as? SettingsUiState.Success
+    if (successState != null) {
+        AddProviderSheet(
+            isVisible = successState.showAddProviderSheet,
+            isEditing = successState.editingProvider != null,
+            editingProvider = successState.editingProvider,
+            formState = formState,
+            isSaving = successState.isSaving,
+            onDismiss = { viewModel.hideProviderSheet() },
+            onFieldChange = { name, type, baseUrl, defaultModel, apiKey ->
+                viewModel.updateFormField(
+                    name = name,
+                    type = type,
+                    baseUrl = baseUrl,
+                    defaultModel = defaultModel,
+                    apiKey = apiKey
+                )
+            },
+            onSave = { viewModel.saveProvider() }
+        )
+
+        // Delete Confirmation Dialog
+        successState.showDeleteConfirmation?.let { provider ->
+            DeleteProviderDialog(
+                providerName = provider.name,
+                onConfirm = { viewModel.deleteProvider(provider) },
+                onDismiss = { viewModel.hideDeleteConfirmation() }
+            )
+        }
+    }
 }
 
 @Composable
@@ -295,7 +320,7 @@ private fun SuccessContent(
             items = uiState.providers,
             key = { it.provider.id }
         ) { providerItem ->
-            ProviderListItem(
+            ProviderCard(
                 providerItem = providerItem,
                 onActivate = { onSetActiveProvider(providerItem.provider.id) },
                 onEdit = { onEditProvider(providerItem.provider) },
@@ -344,7 +369,10 @@ private fun SuccessContent(
         }
 
         item {
-            SystemPromptInfo(currentPrompt = uiState.systemPrompt)
+            SystemPromptField(
+                currentPrompt = uiState.systemPrompt,
+                onPromptChange = onSystemPromptChange
+            )
         }
 
         // Bottom padding for navigation bar
@@ -362,114 +390,6 @@ private fun SectionHeader(title: String) {
         color = MaterialTheme.colorScheme.primary,
         modifier = Modifier.padding(vertical = 8.dp)
     )
-}
-
-@Composable
-private fun ProviderListItem(
-    providerItem: ProviderUiItem,
-    onActivate: () -> Unit,
-    onEdit: () -> Unit,
-    onDelete: () -> Unit,
-    onTestConnection: () -> Unit
-) {
-    val provider = providerItem.provider
-
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .clickable { onEdit() },
-        colors = CardDefaults.cardColors(
-            containerColor = if (provider.isActive) {
-                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
-            } else {
-                MaterialTheme.colorScheme.surfaceContainerLow
-            }
-        ),
-        shape = RoundedCornerShape(16.dp)
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        imageVector = when (provider.type) {
-                            ProviderType.OPENAI_COMPATIBLE -> Icons.Outlined.Cloud
-                            ProviderType.OLLAMA_NATIVE -> Icons.Outlined.Computer
-                        },
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(24.dp)
-                    )
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Column {
-                        Text(
-                            text = provider.name,
-                            style = MaterialTheme.typography.titleMedium,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                        Text(
-                            text = provider.defaultModel,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-
-                if (provider.isActive) {
-                    Icon(
-                        imageVector = Icons.Default.Check,
-                        contentDescription = "Active",
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Text(
-                text = provider.baseUrl,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1
-            )
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                if (!provider.isActive) {
-                    TextButton(onClick = onActivate) {
-                        Text("Set Active")
-                    }
-                }
-                TextButton(onClick = onTestConnection) {
-                    Text("Test")
-                }
-                Spacer(modifier = Modifier.weight(1f))
-                TextButton(
-                    onClick = onDelete
-                ) {
-                    Text(
-                        text = "Delete",
-                        color = MaterialTheme.colorScheme.error
-                    )
-                }
-            }
-        }
-    }
 }
 
 @Composable
@@ -598,42 +518,45 @@ private fun DynamicColorToggle(
 }
 
 @Composable
-private fun SystemPromptInfo(currentPrompt: String) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-        ),
-        shape = RoundedCornerShape(16.dp)
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
-        ) {
+private fun DeleteProviderDialog(
+    providerName: String,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
             Text(
-                text = "Default system prompt for new conversations:",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                text = "Delete Provider",
+                style = MaterialTheme.typography.headlineSmall
             )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
+        },
+        text = {
             Text(
-                text = currentPrompt.ifEmpty { "No system prompt configured" },
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurface
+                text = "Are you sure you want to delete \"$providerName\"? This action cannot be undone. Existing conversations will remain but will show \"Provider deleted\".",
+                style = MaterialTheme.typography.bodyMedium
             )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Text(
-                text = "Tap to edit the system prompt (coming in next update)",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
-            )
-        }
-    }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = onConfirm
+            ) {
+                Text(
+                    text = "Delete",
+                    color = MaterialTheme.colorScheme.error
+                )
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        },
+        shape = MaterialTheme.shapes.large,
+        containerColor = MaterialTheme.colorScheme.surface,
+        titleContentColor = MaterialTheme.colorScheme.onSurface,
+        textContentColor = MaterialTheme.colorScheme.onSurfaceVariant
+    )
 }
 
 @Composable

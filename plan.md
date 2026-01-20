@@ -337,7 +337,7 @@ Building a native Android AI chat application with Material 3 Expressive design.
       "Create ui/screens/settings/components/AddProviderSheet.kt",
       "Create ui/screens/settings/components/SystemPromptField.kt"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "ui-settings-03",

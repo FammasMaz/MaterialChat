@@ -3,8 +3,8 @@
 ## Current Status
 
 **Last Updated:** 2026-01-21
-**Tasks Completed:** 26/35
-**Current Task:** ui-settings-02
+**Tasks Completed:** 27/35
+**Current Task:** ui-settings-03
 **Build Status:** Debug APK builds successfully
 
 ---
@@ -17,7 +17,7 @@
 | Domain | 3 | 3 | 0 |
 | Data | 7 | 7 | 0 |
 | DI | 1 | 1 | 0 |
-| UI | 12 | 11 | 1 |
+| UI | 12 | 12 | 0 |
 | Integration | 2 | 0 | 2 |
 | Polish | 1 | 0 | 1 |
 | Testing | 1 | 0 | 1 |
@@ -722,6 +722,58 @@
 
 **Commands Run:**
 - `./gradlew assembleDebug` - BUILD SUCCESSFUL
+
+**Status:** All steps completed, compilation verified
+
+---
+
+### 2026-01-21: Task ui-settings-02 Completed
+
+**Task:** Create settings components
+
+**Files Created:**
+- `app/src/main/java/com/materialchat/ui/screens/settings/components/ProviderCard.kt` - Material 3 Expressive provider card component with spring-physics press animations, provider type icon, active indicator, API key status indicator, and action buttons (Set Active, Test, Delete)
+- `app/src/main/java/com/materialchat/ui/screens/settings/components/AddProviderSheet.kt` - Modal bottom sheet for adding/editing providers with form fields (name, type, base URL, default model, API key), real-time validation with error messages, animated API key field visibility, and loading state during save
+- `app/src/main/java/com/materialchat/ui/screens/settings/components/SystemPromptField.kt` - Editable system prompt component with read-only display mode, expandable edit mode with multi-line text field, save/cancel buttons with spring animations
+
+**Files Modified:**
+- `app/src/main/java/com/materialchat/ui/screens/settings/SettingsScreen.kt` - Refactored to use new ProviderCard, AddProviderSheet, and SystemPromptField components; added DeleteProviderDialog for confirmation; removed inline ProviderListItem and SystemPromptInfo functions; added formState observation from ViewModel
+
+**Key Features Implemented:**
+
+**ProviderCard Component:**
+- Spring-physics scale animation (0.97x) on press
+- Animated background color for active state
+- Provider type icon in circular container (cloud for OpenAI, computer for Ollama)
+- Active indicator with checkmark badge
+- API key status indicator (key icon with configured/missing label)
+- Action buttons: Set Active (when inactive), Test, Delete
+
+**AddProviderSheet Component:**
+- ModalBottomSheet with custom shape and drag handle
+- Form fields: Name, Type (filter chips), Base URL, Default Model, API Key
+- Provider type selector using FilterChip components
+- Animated API key field visibility (only shown for OpenAI-compatible)
+- Form validation with inline error messages
+- Auto-focus name field on open
+- Loading state with CircularProgressIndicator during save
+- Keyboard actions for form navigation
+
+**SystemPromptField Component:**
+- Read-only display mode with truncated text (3 lines max)
+- Edit button with scale animation
+- Expandable edit mode with multi-line OutlinedTextField
+- Save and cancel buttons with IconButtonDefaults styling
+- Auto-focus text field when entering edit mode
+- Keyboard done action support
+
+**DeleteProviderDialog:**
+- AlertDialog with confirmation message
+- Red Delete button color for danger indication
+- Cancel button to dismiss
+
+**Commands Run:**
+- `./gradlew assembleDebug` - BUILD SUCCESSFUL (no warnings)
 
 **Status:** All steps completed, compilation verified
 
