@@ -290,7 +290,7 @@ Building a native Android AI chat application with Material 3 Expressive design.
       "Implement regenerate button on last assistant message",
       "Add snackbar feedback for copy action"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "ui-chat-05",

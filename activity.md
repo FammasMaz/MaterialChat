@@ -3,8 +3,8 @@
 ## Current Status
 
 **Last Updated:** 2026-01-20
-**Tasks Completed:** 22/35
-**Current Task:** ui-chat-04
+**Tasks Completed:** 23/35
+**Current Task:** ui-chat-05
 **Build Status:** Debug APK builds successfully
 
 ---
@@ -17,7 +17,7 @@
 | Domain | 3 | 3 | 0 |
 | Data | 7 | 7 | 0 |
 | DI | 1 | 1 | 0 |
-| UI | 12 | 7 | 5 |
+| UI | 12 | 8 | 4 |
 | Integration | 2 | 0 | 2 |
 | Polish | 1 | 0 | 1 |
 | Testing | 1 | 0 | 1 |
@@ -616,4 +616,46 @@
 **Status:** All steps completed, compilation verified
 
 ---
+
+### 2026-01-20: Task ui-chat-04 Completed
+
+**Task:** Implement chat actions
+
+**Files Created:**
+- `app/src/main/java/com/materialchat/ui/screens/chat/components/MessageActions.kt` - Standalone message actions component with copy and regenerate buttons, Material 3 Expressive spring-physics animations, animated visibility with scale/fade transitions
+
+**Files Modified:**
+- `app/src/main/java/com/materialchat/ui/screens/chat/components/MessageBubble.kt` - Updated to use extracted MessageActions component, cleaned up unused imports
+
+**Key Features Implemented:**
+
+**MessageActions Component:**
+- Copy button with ContentCopy icon for all messages
+- Regenerate button with Refresh icon (only visible for last assistant message)
+- AnimatedVisibility with spring-physics scale and fade transitions
+- ActionButton helper with press animation using animateFloatAsState
+- 32dp button size with 16dp icons as per design spec
+- onSurfaceVariant color at 70% alpha for subtle appearance
+
+**Clipboard Integration (already in ChatScreen):**
+- Copy button triggers `onCopyMessage` callback
+- Clipboard manager integration using `LocalClipboardManager`
+- Content copied as `AnnotatedString`
+
+**Snackbar Feedback (already in ChatScreen):**
+- `ChatEvent.MessageCopied` event triggers "Message copied" snackbar
+- Material 3 styled snackbar with inverseSurface container
+
+**Regenerate Integration (already in ChatViewModel):**
+- `regenerateResponse()` method calls `RegenerateResponseUseCase`
+- Button only shown for last assistant message when not streaming
+- StreamingState management for response regeneration
+
+**Commands Run:**
+- `./gradlew assembleDebug` - BUILD SUCCESSFUL
+
+**Status:** All steps completed, compilation verified
+
+---
+
 

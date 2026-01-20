@@ -5,19 +5,11 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ContentCopy
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -114,7 +106,7 @@ fun MessageBubble(
             if (messageItem.showActions && message.content.isNotEmpty() && !message.isStreaming) {
                 Spacer(modifier = Modifier.height(4.dp))
                 MessageActions(
-                    isUser = isUser,
+                    showCopy = true,
                     showRegenerate = messageItem.isLastAssistantMessage && onRegenerate != null,
                     onCopy = onCopy,
                     onRegenerate = onRegenerate
@@ -155,55 +147,6 @@ private fun MessageContent(
             color = textColor,
             overflow = TextOverflow.Clip
         )
-    }
-}
-
-/**
- * Action buttons for a message (copy, regenerate).
- */
-@Composable
-private fun MessageActions(
-    isUser: Boolean,
-    showRegenerate: Boolean,
-    onCopy: () -> Unit,
-    onRegenerate: (() -> Unit)?
-) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        // Copy button
-        IconButton(
-            onClick = onCopy,
-            modifier = Modifier.size(32.dp),
-            colors = IconButtonDefaults.iconButtonColors(
-                containerColor = Color.Transparent,
-                contentColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
-            )
-        ) {
-            Icon(
-                imageVector = Icons.Default.ContentCopy,
-                contentDescription = "Copy message",
-                modifier = Modifier.size(16.dp)
-            )
-        }
-
-        // Regenerate button (only for last assistant message)
-        if (showRegenerate && onRegenerate != null) {
-            IconButton(
-                onClick = onRegenerate,
-                modifier = Modifier.size(32.dp),
-                colors = IconButtonDefaults.iconButtonColors(
-                    containerColor = Color.Transparent,
-                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
-                )
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Refresh,
-                    contentDescription = "Regenerate response",
-                    modifier = Modifier.size(16.dp)
-                )
-            }
-        }
     }
 }
 
