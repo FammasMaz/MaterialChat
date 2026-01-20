@@ -265,7 +265,7 @@ Building a native Android AI chat application with Material 3 Expressive design.
       "Implement auto-scroll to bottom on new message",
       "Implement input field disabled during streaming"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "ui-markdown-01",
