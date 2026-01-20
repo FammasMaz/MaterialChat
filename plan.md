@@ -203,7 +203,7 @@ Building a native Android AI chat application with Material 3 Expressive design.
       "Create ui/navigation/MaterialChatNavHost.kt",
       "Update MainActivity to use MaterialChatTheme and NavHost"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "ui-conversations-01",

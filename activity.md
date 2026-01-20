@@ -3,8 +3,8 @@
 ## Current Status
 
 **Last Updated:** 2026-01-20
-**Tasks Completed:** 15/35
-**Current Task:** ui-nav-01
+**Tasks Completed:** 16/35
+**Current Task:** ui-conversations-01
 **Build Status:** Debug APK builds successfully
 
 ---
@@ -17,11 +17,12 @@
 | Domain | 3 | 3 | 0 |
 | Data | 7 | 7 | 0 |
 | DI | 1 | 1 | 0 |
-| UI | 12 | 1 | 11 |
+| UI | 12 | 2 | 10 |
 | Integration | 2 | 0 | 2 |
 | Polish | 1 | 0 | 1 |
 | Testing | 1 | 0 | 1 |
 | Build | 1 | 0 | 1 |
+
 
 ---
 
@@ -403,6 +404,31 @@
 
 **Commands Run:**
 - `./gradlew assembleDebug` - BUILD SUCCESSFUL (with minor deprecation warnings for statusBarColor/navigationBarColor which are acceptable for backwards compatibility)
+
+**Status:** All steps completed, compilation verified
+
+---
+
+### 2026-01-20: Task ui-nav-01 Completed
+
+**Task:** Create navigation structure
+
+**Files Created:**
+- `app/src/main/java/com/materialchat/ui/navigation/Screen.kt` - Sealed class defining navigation routes for Conversations, Chat (with conversationId argument), and Settings screens
+- `app/src/main/java/com/materialchat/ui/navigation/MaterialChatNavHost.kt` - NavHost composable with Material 3 Expressive spring-physics transition animations and placeholder screens
+
+**Files Modified:**
+- `app/src/main/java/com/materialchat/MainActivity.kt` - Updated MaterialChatApp composable to use MaterialChatNavHost with NavController
+
+**Key Features:**
+- Type-safe navigation using sealed class routes
+- Spring-physics animations for screen transitions (slide + fade)
+- Support for navigation arguments (conversationId for Chat screen)
+- Placeholder composables for all screens (to be replaced in later tasks)
+- Material 3 Expressive motion with DampingRatioLowBouncy and StiffnessMediumLow
+
+**Commands Run:**
+- `./gradlew assembleDebug` - BUILD SUCCESSFUL
 
 **Status:** All steps completed, compilation verified
 

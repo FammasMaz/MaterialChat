@@ -4,20 +4,17 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.navigation.compose.rememberNavController
 import com.materialchat.data.local.preferences.AppPreferences
+import com.materialchat.ui.navigation.MaterialChatNavHost
 import com.materialchat.ui.theme.MaterialChatTheme
 import com.materialchat.ui.theme.isDynamicColorSupported
 import dagger.hilt.android.AndroidEntryPoint
@@ -59,30 +56,20 @@ class MainActivity : ComponentActivity() {
 
 /**
  * Root composable for the MaterialChat application.
- * Navigation will be added in later tasks.
+ * Sets up navigation with Material 3 Expressive transitions.
  */
 @Composable
 fun MaterialChatApp() {
+    val navController = rememberNavController()
+
     Surface(
         modifier = Modifier.fillMaxSize(),
         color = MaterialTheme.colorScheme.background
     ) {
-        Scaffold(
+        MaterialChatNavHost(
+            navController = navController,
             modifier = Modifier.fillMaxSize()
-        ) { innerPadding ->
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = "MaterialChat",
-                    style = MaterialTheme.typography.headlineLarge,
-                    color = MaterialTheme.colorScheme.primary
-                )
-            }
-        }
+        )
     }
 }
 
