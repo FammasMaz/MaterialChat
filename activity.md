@@ -2,9 +2,9 @@
 
 ## Current Status
 
-**Last Updated:** 2026-01-20
-**Tasks Completed:** 23/35
-**Current Task:** ui-chat-05
+**Last Updated:** 2026-01-21
+**Tasks Completed:** 24/35
+**Current Task:** ui-chat-06
 **Build Status:** Debug APK builds successfully
 
 ---
@@ -17,7 +17,7 @@
 | Domain | 3 | 3 | 0 |
 | Data | 7 | 7 | 0 |
 | DI | 1 | 1 | 0 |
-| UI | 12 | 8 | 4 |
+| UI | 12 | 9 | 3 |
 | Integration | 2 | 0 | 2 |
 | Polish | 1 | 0 | 1 |
 | Testing | 1 | 0 | 1 |
@@ -658,4 +658,36 @@
 
 ---
 
+### 2026-01-21: Task ui-chat-05 Completed
+
+**Task:** Implement model picker
+
+**Files Created:**
+- `app/src/main/java/com/materialchat/ui/screens/chat/components/ModelPickerDropdown.kt` - New dropdown component for selecting AI models with Material 3 Expressive styling, spring-physics animations, loading state, selection indicators, and proper integration with ChatTopBar
+
+**Files Modified:**
+- `app/src/main/java/com/materialchat/ui/screens/chat/components/ChatTopBar.kt` - Updated to include model picker parameters (availableModels, isLoadingModels, onModelSelected, onLoadModels), replaced static model name text with tappable ModelPickerDropdown component, removed old unused ModelPickerButton composable
+- `app/src/main/java/com/materialchat/ui/screens/chat/ChatScreen.kt` - Updated to pass model picker callbacks to ChatTopBar (onModelSelected -> viewModel.changeModel, onLoadModels -> viewModel.loadModels)
+
+**Key Features Implemented:**
+- **ModelPickerDropdown Component:** Displays current model name as clickable button with arrow indicator, opens dropdown menu showing available models from provider
+- **Fetch models on dropdown open:** Uses LaunchedEffect to trigger onLoadModels when dropdown expands and models aren't loaded
+- **Model switching in ChatViewModel:** Already implemented - changeModel() updates conversation model and emits ModelChanged event
+- **Confirmation snackbar on model change:** Already implemented - ChatEvent.ModelChanged shows "Switched to {modelName}" snackbar
+
+**Component Features:**
+- Spring-physics press animation on model button (0.95x scale)
+- Loading state with CircularProgressIndicator while fetching models
+- Empty state when no models available
+- Selection indicator (checkmark icon) for current model
+- Highlighted background for selected model item
+- Maximum dropdown height of 300dp with vertical scroll
+- Disabled during streaming to prevent model switching mid-response
+
+**Commands Run:**
+- `./gradlew assembleDebug` - BUILD SUCCESSFUL
+
+**Status:** All steps completed, compilation verified
+
+---
 

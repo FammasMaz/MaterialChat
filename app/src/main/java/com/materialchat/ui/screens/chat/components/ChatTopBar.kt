@@ -33,13 +33,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.materialchat.domain.model.AiModel
+import com.materialchat.ui.screens.chat.components.ModelPickerDropdown
 
 /**
  * Top app bar for the Chat screen.
  *
  * Features:
  * - Back navigation button
- * - Conversation title with model name subtitle
+ * - Conversation title with tappable model picker subtitle
  * - Overflow menu with export option
  * - Collapsing behavior on scroll
  *
@@ -47,8 +48,12 @@ import com.materialchat.domain.model.AiModel
  * @param modelName The current model name
  * @param providerName The provider name
  * @param isStreaming Whether a message is currently streaming
+ * @param availableModels List of available models from the provider
+ * @param isLoadingModels Whether models are being loaded
  * @param onNavigateBack Callback for back navigation
  * @param onExportClick Callback when export is clicked
+ * @param onModelSelected Callback when a model is selected from the picker
+ * @param onLoadModels Callback to trigger model loading
  * @param scrollBehavior Optional scroll behavior for collapsing
  */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -58,8 +63,12 @@ fun ChatTopBar(
     modelName: String,
     providerName: String,
     isStreaming: Boolean,
+    availableModels: List<AiModel>,
+    isLoadingModels: Boolean,
     onNavigateBack: () -> Unit,
     onExportClick: () -> Unit,
+    onModelSelected: (AiModel) -> Unit,
+    onLoadModels: () -> Unit,
     scrollBehavior: TopAppBarScrollBehavior? = null
 ) {
     var showMenu by remember { mutableStateOf(false) }
@@ -83,12 +92,14 @@ fun ChatTopBar(
                 Row(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        text = modelName,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                    // Model picker dropdown - tappable model name
+                    ModelPickerDropdown(
+                        currentModel = modelName,
+                        availableModels = availableModels,
+                        isLoadingModels = isLoadingModels,
+                        isStreaming = isStreaming,
+                        onModelSelected = onModelSelected,
+                        onLoadModels = onLoadModels
                     )
                     if (isStreaming) {
                         Spacer(modifier = Modifier.width(8.dp))
@@ -144,75 +155,4 @@ fun ChatTopBar(
         ),
         scrollBehavior = scrollBehavior
     )
-}
-
-/**
- * Model picker dropdown for selecting a different AI model.
- *
- * @param currentModel The currently selected model name
- * @param availableModels The list of available models
- * @param isLoading Whether models are being loaded
- * @param onModelSelected Callback when a model is selected
- * @param onLoadModels Callback to trigger model loading
- */
-@Composable
-fun ModelPickerButton(
-    currentModel: String,
-    availableModels: List<AiModel>,
-    isLoading: Boolean,
-    onModelSelected: (AiModel) -> Unit,
-    onLoadModels: () -> Unit
-) {
-    var expanded by remember { mutableStateOf(false) }
-
-    // Load models when dropdown is about to expand
-    if (expanded && availableModels.isEmpty() && !isLoading) {
-        onLoadModels()
-    }
-
-    DropdownMenu(
-        expanded = expanded,
-        onDismissRequest = { expanded = false }
-    ) {
-        if (isLoading) {
-            DropdownMenuItem(
-                text = {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(16.dp),
-                            strokeWidth = 2.dp
-                        )
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Text("Loading models...")
-                    }
-                },
-                onClick = { }
-            )
-        } else if (availableModels.isEmpty()) {
-            DropdownMenuItem(
-                text = { Text("No models available") },
-                onClick = { }
-            )
-        } else {
-            availableModels.forEach { model ->
-                val isSelected = model.id == currentModel || model.name == currentModel
-                DropdownMenuItem(
-                    text = {
-                        Text(
-                            text = model.name,
-                            color = if (isSelected) {
-                                MaterialTheme.colorScheme.primary
-                            } else {
-                                MaterialTheme.colorScheme.onSurface
-                            }
-                        )
-                    },
-                    onClick = {
-                        expanded = false
-                        onModelSelected(model)
-                    }
-                )
-            }
-        }
-    }
 }

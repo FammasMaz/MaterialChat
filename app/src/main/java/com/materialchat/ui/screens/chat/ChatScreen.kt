@@ -128,8 +128,12 @@ fun ChatScreen(
                         modelName = state.modelName,
                         providerName = state.providerName,
                         isStreaming = state.isStreaming,
+                        availableModels = state.availableModels,
+                        isLoadingModels = state.isLoadingModels,
                         onNavigateBack = { viewModel.navigateBack() },
                         onExportClick = { viewModel.showExportOptions() },
+                        onModelSelected = { model -> viewModel.changeModel(model) },
+                        onLoadModels = { viewModel.loadModels() },
                         scrollBehavior = scrollBehavior
                     )
                 }
@@ -139,8 +143,12 @@ fun ChatScreen(
                         modelName = "",
                         providerName = "",
                         isStreaming = false,
+                        availableModels = emptyList(),
+                        isLoadingModels = false,
                         onNavigateBack = { viewModel.navigateBack() },
                         onExportClick = { },
+                        onModelSelected = { },
+                        onLoadModels = { },
                         scrollBehavior = scrollBehavior
                     )
                 }

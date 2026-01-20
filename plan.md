@@ -302,7 +302,7 @@ Building a native Android AI chat application with Material 3 Expressive design.
       "Implement model switching in ChatViewModel",
       "Show confirmation snackbar on model change"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "ui-chat-06",
