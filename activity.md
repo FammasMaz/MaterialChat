@@ -3,8 +3,8 @@
 ## Current Status
 
 **Last Updated:** 2026-01-21
-**Tasks Completed:** 28/35
-**Current Task:** ui-shared-01
+**Tasks Completed:** 29/35
+**Current Task:** integration-01
 **Build Status:** Debug APK builds successfully
 
 ---
@@ -17,7 +17,7 @@
 | Domain | 3 | 3 | 0 |
 | Data | 7 | 7 | 0 |
 | DI | 1 | 1 | 0 |
-| UI | 12 | 12 | 0 |
+| UI | 13 | 13 | 0 |
 | Integration | 2 | 0 | 2 |
 | Polish | 1 | 0 | 1 |
 | Testing | 1 | 0 | 1 |
@@ -842,6 +842,44 @@
 - **System prompt text field:** SystemPromptField with read-only display and expandable edit mode
 - **Theme selector (System/Light/Dark):** ThemeModeSelector with FilterChips, icons, immediate application
 - **Dynamic color toggle:** DynamicColorToggle with Switch, only shown on Android 12+
+
+**Commands Run:**
+- `./gradlew assembleDebug` - BUILD SUCCESSFUL
+
+**Status:** All steps completed, compilation verified
+
+---
+
+### 2026-01-21: Task ui-shared-01 Completed
+
+**Task:** Create shared expressive components
+
+**Files Created:**
+- `app/src/main/java/com/materialchat/ui/components/ExpressiveButton.kt` - Material 3 Expressive button components with shape morph animations
+- `app/src/main/java/com/materialchat/ui/components/ExpressiveLoadingIndicator.kt` - Wavy loading indicator components with spring-physics animations
+
+**Key Features Implemented:**
+
+**ExpressiveButton.kt:**
+- `ExpressiveButton` - Main button component with shape morph animation (corner radius changes from 16dp to 8dp on press)
+- `ExpressiveIconButton` - Icon button with scale and shape morph animations
+- `ExpressiveActionButton` - Small action button for use in message bubbles
+- `ExpressiveFab` - Floating action button with spring-physics animations
+- Multiple button styles: Filled, FilledTonal, Outlined, Text
+- Spring-physics scale animation using MaterialChatMotion.Springs.ScalePress
+- Animated corner radius change for shape morph effect
+
+**ExpressiveLoadingIndicator.kt:**
+- `ExpressiveLoadingIndicator` - Main wavy loading indicator with three bouncing dots (8dp diameter per PRD)
+- `ExpressivePulsingIndicator` - Scale and alpha pulsing animation variant
+- `ExpressiveTypingIndicator` - Sequential dot appearance for typing effect
+- `ExpressiveCircularProgress` - Styled circular progress indicator
+- `ExpressiveSpinningArc` - Animated arc with variable sweep angle
+- `ExpressiveLoadingWithText` - Loading indicator with accompanying text
+- `ExpressiveInlineLoading` - Small inline loading indicator (4dp dots)
+- `ExpressiveFullscreenLoading` - Large fullscreen loading overlay
+- Wave animation using sine function with 100ms phase offset between dots (per PRD spec)
+- Uses MaterialChatMotion.Durations.StreamingIndicator (1200ms) for animation cycle
 
 **Commands Run:**
 - `./gradlew assembleDebug` - BUILD SUCCESSFUL

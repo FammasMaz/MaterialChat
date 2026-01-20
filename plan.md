@@ -362,7 +362,7 @@ Building a native Android AI chat application with Material 3 Expressive design.
       "Create ui/components/ExpressiveButton.kt with shape morph",
       "Create ui/components/ExpressiveLoadingIndicator.kt with wavy animation"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "integration-01",
