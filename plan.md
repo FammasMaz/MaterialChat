@@ -315,7 +315,7 @@ Building a native Android AI chat application with Material 3 Expressive design.
       "Implement Markdown export format",
       "Implement share intent for exported file"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "ui-settings-01",

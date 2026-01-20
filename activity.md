@@ -3,8 +3,8 @@
 ## Current Status
 
 **Last Updated:** 2026-01-21
-**Tasks Completed:** 24/35
-**Current Task:** ui-chat-06
+**Tasks Completed:** 25/35
+**Current Task:** ui-settings-01
 **Build Status:** Debug APK builds successfully
 
 ---
@@ -17,7 +17,7 @@
 | Domain | 3 | 3 | 0 |
 | Data | 7 | 7 | 0 |
 | DI | 1 | 1 | 0 |
-| UI | 12 | 9 | 3 |
+| UI | 12 | 10 | 2 |
 | Integration | 2 | 0 | 2 |
 | Polish | 1 | 0 | 1 |
 | Testing | 1 | 0 | 1 |
@@ -691,3 +691,38 @@
 
 ---
 
+### 2026-01-21: Task ui-chat-06 Completed
+
+**Task:** Implement export functionality
+
+**Files Created:**
+- `app/src/main/java/com/materialchat/ui/screens/chat/components/ExportBottomSheet.kt` - New Material 3 Expressive bottom sheet component for selecting export format (JSON or Markdown), with spring-physics animations, loading state, and format option cards
+- `app/src/main/res/xml/file_paths.xml` - FileProvider configuration for sharing exported files from cache directory
+
+**Files Modified:**
+- `app/src/main/java/com/materialchat/ui/screens/chat/ChatUiState.kt` - Added `showExportSheet` and `isExporting` properties to Success state; added `HideExportOptions` and `ShareContent` events
+- `app/src/main/java/com/materialchat/ui/screens/chat/ChatViewModel.kt` - Injected `ExportConversationUseCase`; added `showExportOptions()`, `hideExportOptions()`, and `exportConversation()` methods
+- `app/src/main/java/com/materialchat/ui/screens/chat/ChatScreen.kt` - Added `ExportBottomSheet` composable to Success state; implemented `ShareContent` event handler with FileProvider-based sharing using Intent.ACTION_SEND
+- `app/src/main/AndroidManifest.xml` - Added FileProvider configuration for sharing exported files
+
+**Key Features Implemented:**
+- **Export menu item in ChatTopBar:** Already existed, now functional
+- **Export format selection bottom sheet:** `ExportBottomSheet` component with two options (JSON and Markdown), Material 3 Expressive styling, spring-physics press animations
+- **JSON export format:** Uses `ExportConversationUseCase` with `ExportFormat.JSON` - generates structured JSON with conversation metadata and messages
+- **Markdown export format:** Uses `ExportConversationUseCase` with `ExportFormat.MARKDOWN` - generates human-readable Markdown format
+- **Share intent for exported file:** Creates temporary file in cache directory, uses `FileProvider` to get content URI, launches system share sheet with `Intent.ACTION_SEND`
+
+**Component Features:**
+- ExportBottomSheet with drag handle and Material 3 styling
+- Two format options with icon, title, and description
+- Loading state with spinner during export operation
+- Spring-physics press animations on format cards
+- Automatic bottom sheet dismissal after successful export
+- Error handling with snackbar feedback
+
+**Commands Run:**
+- `./gradlew assembleDebug` - BUILD SUCCESSFUL
+
+**Status:** All steps completed, compilation verified
+
+---

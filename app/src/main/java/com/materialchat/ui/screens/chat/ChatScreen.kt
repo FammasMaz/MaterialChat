@@ -1,5 +1,6 @@
 package com.materialchat.ui.screens.chat
 
+import android.content.Intent
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -35,16 +36,20 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.core.content.FileProvider
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.materialchat.ui.screens.chat.components.ChatTopBar
+import com.materialchat.ui.screens.chat.components.ExportBottomSheet
 import com.materialchat.ui.screens.chat.components.MessageBubble
 import com.materialchat.ui.screens.chat.components.MessageInput
 import com.materialchat.ui.theme.CustomShapes
 import kotlinx.coroutines.launch
+import java.io.File
 
 /**
  * Main chat screen showing the conversation with the AI.
@@ -70,6 +75,7 @@ fun ChatScreen(
     val clipboardManager = LocalClipboardManager.current
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
+    val context = LocalContext.current
 
     // Handle events
     LaunchedEffect(Unit) {
@@ -99,8 +105,38 @@ fun ChatScreen(
                     snackbarHostState.showSnackbar("Switched to ${event.modelName}")
                 }
                 is ChatEvent.ShowExportOptions -> {
-                    // Export functionality will be implemented in ui-chat-06
-                    snackbarHostState.showSnackbar("Export coming soon")
+                    // Now handled via UI state
+                    viewModel.showExportOptions()
+                }
+                is ChatEvent.HideExportOptions -> {
+                    viewModel.hideExportOptions()
+                }
+                is ChatEvent.ShareContent -> {
+                    // Create a temporary file and share it
+                    try {
+                        val cacheDir = File(context.cacheDir, "exports")
+                        cacheDir.mkdirs()
+                        val file = File(cacheDir, event.filename)
+                        file.writeText(event.content)
+
+                        val uri = FileProvider.getUriForFile(
+                            context,
+                            "${context.packageName}.fileprovider",
+                            file
+                        )
+
+                        val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                            type = event.mimeType
+                            putExtra(Intent.EXTRA_STREAM, uri)
+                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                        }
+
+                        context.startActivity(
+                            Intent.createChooser(shareIntent, "Export Conversation")
+                        )
+                    } catch (e: Exception) {
+                        snackbarHostState.showSnackbar("Failed to share: ${e.message}")
+                    }
                 }
                 is ChatEvent.ScrollToBottom -> {
                     val currentState = uiState
@@ -191,6 +227,14 @@ fun ChatScreen(
                         viewModel.copyMessage(content)
                     },
                     onRegenerateResponse = { viewModel.regenerateResponse() }
+                )
+
+                // Export bottom sheet
+                ExportBottomSheet(
+                    isVisible = state.showExportSheet,
+                    isExporting = state.isExporting,
+                    onDismiss = { viewModel.hideExportOptions() },
+                    onExportFormat = { format -> viewModel.exportConversation(format) }
                 )
             }
         }

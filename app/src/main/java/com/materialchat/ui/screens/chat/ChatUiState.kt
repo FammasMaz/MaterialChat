@@ -28,6 +28,8 @@ sealed interface ChatUiState {
      * @property streamingState The current state of streaming response
      * @property availableModels The list of available models from the provider
      * @property isLoadingModels Whether models are currently being loaded
+     * @property showExportSheet Whether to show the export bottom sheet
+     * @property isExporting Whether an export operation is in progress
      */
     data class Success(
         val conversationId: String,
@@ -38,7 +40,9 @@ sealed interface ChatUiState {
         val inputText: String = "",
         val streamingState: StreamingState = StreamingState.Idle,
         val availableModels: List<AiModel> = emptyList(),
-        val isLoadingModels: Boolean = false
+        val isLoadingModels: Boolean = false,
+        val showExportSheet: Boolean = false,
+        val isExporting: Boolean = false
     ) : ChatUiState {
         /**
          * Whether a message is currently streaming.
@@ -116,6 +120,24 @@ sealed interface ChatEvent {
      * Show export options for the conversation.
      */
     data object ShowExportOptions : ChatEvent
+
+    /**
+     * Hide export options bottom sheet.
+     */
+    data object HideExportOptions : ChatEvent
+
+    /**
+     * Share exported content via system share sheet.
+     *
+     * @property content The exported content string
+     * @property filename The suggested filename for the export
+     * @property mimeType The MIME type of the content
+     */
+    data class ShareContent(
+        val content: String,
+        val filename: String,
+        val mimeType: String
+    ) : ChatEvent
 
     /**
      * Scroll to the bottom of the message list.

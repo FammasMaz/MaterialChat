@@ -7,6 +7,7 @@ import com.materialchat.data.local.preferences.AppPreferences
 import com.materialchat.domain.model.AiModel
 import com.materialchat.domain.model.MessageRole
 import com.materialchat.domain.model.StreamingState
+import com.materialchat.domain.usecase.ExportConversationUseCase
 import com.materialchat.domain.usecase.GetConversationsUseCase
 import com.materialchat.domain.usecase.ManageProvidersUseCase
 import com.materialchat.domain.usecase.RegenerateResponseUseCase
@@ -36,6 +37,7 @@ class ChatViewModel @Inject constructor(
     private val getConversationsUseCase: GetConversationsUseCase,
     private val sendMessageUseCase: SendMessageUseCase,
     private val regenerateResponseUseCase: RegenerateResponseUseCase,
+    private val exportConversationUseCase: ExportConversationUseCase,
     private val manageProvidersUseCase: ManageProvidersUseCase,
     private val appPreferences: AppPreferences
 ) : ViewModel() {
@@ -368,8 +370,79 @@ class ChatViewModel @Inject constructor(
      * Shows export options for the conversation.
      */
     fun showExportOptions() {
+        val currentState = _uiState.value
+        if (currentState is ChatUiState.Success) {
+            _uiState.value = currentState.copy(showExportSheet = true)
+        }
+    }
+
+    /**
+     * Hides the export options bottom sheet.
+     */
+    fun hideExportOptions() {
+        val currentState = _uiState.value
+        if (currentState is ChatUiState.Success) {
+            _uiState.value = currentState.copy(showExportSheet = false, isExporting = false)
+        }
+    }
+
+    /**
+     * Exports the conversation in the specified format.
+     *
+     * @param format The export format to use
+     */
+    fun exportConversation(format: ExportConversationUseCase.ExportFormat) {
+        val currentState = _uiState.value
+        if (currentState !is ChatUiState.Success) return
+        if (currentState.isExporting) return
+
+        _uiState.value = currentState.copy(isExporting = true)
+
         viewModelScope.launch {
-            _events.emit(ChatEvent.ShowExportOptions)
+            try {
+                val result = exportConversationUseCase(conversationId, format)
+                result.fold(
+                    onSuccess = { exportResult ->
+                        // Hide the export sheet first
+                        val updatedState = _uiState.value
+                        if (updatedState is ChatUiState.Success) {
+                            _uiState.value = updatedState.copy(
+                                showExportSheet = false,
+                                isExporting = false
+                            )
+                        }
+                        // Emit share event
+                        _events.emit(
+                            ChatEvent.ShareContent(
+                                content = exportResult.content,
+                                filename = exportResult.filename,
+                                mimeType = exportResult.mimeType
+                            )
+                        )
+                    },
+                    onFailure = { error ->
+                        val updatedState = _uiState.value
+                        if (updatedState is ChatUiState.Success) {
+                            _uiState.value = updatedState.copy(isExporting = false)
+                        }
+                        _events.emit(
+                            ChatEvent.ShowSnackbar(
+                                message = "Export failed: ${error.message}"
+                            )
+                        )
+                    }
+                )
+            } catch (e: Exception) {
+                val updatedState = _uiState.value
+                if (updatedState is ChatUiState.Success) {
+                    _uiState.value = updatedState.copy(isExporting = false)
+                }
+                _events.emit(
+                    ChatEvent.ShowSnackbar(
+                        message = "Export failed: ${e.message}"
+                    )
+                )
+            }
         }
     }
 
