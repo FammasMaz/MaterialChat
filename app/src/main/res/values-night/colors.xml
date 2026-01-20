@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Dark mode brand colors for MaterialChat -->
+    <color name="splash_background_dark">#381E72</color>
+    <color name="splash_icon_background_dark">#D0BCFF</color>
+
+    <!-- Primary brand colors (dark mode) -->
+    <color name="primary">#4FDBD0</color>
+    <color name="primary_container">#005048</color>
+    <color name="on_primary">#003731</color>
+    <color name="on_primary_container">#74F8E3</color>
+
+    <!-- Secondary brand colors (dark mode) -->
+    <color name="secondary">#FFB59E</color>
+    <color name="secondary_container">#8A2D06</color>
+
+    <!-- Surface colors (dark mode) -->
+    <color name="surface">#1C1B1F</color>
+    <color name="surface_variant">#49454F</color>
+
+    <!-- Tertiary colors (dark mode) -->
+    <color name="tertiary">#EFB8C8</color>
+    <color name="tertiary_container">#633B48</color>
+</resources>

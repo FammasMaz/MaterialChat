@@ -3,8 +3,8 @@
 ## Current Status
 
 **Last Updated:** 2026-01-21
-**Tasks Completed:** 31/35
-**Current Task:** polish-01
+**Tasks Completed:** 32/35
+**Current Task:** testing-01
 **Build Status:** Debug APK builds successfully
 
 ---
@@ -19,7 +19,7 @@
 | DI | 1 | 1 | 0 |
 | UI | 13 | 13 | 0 |
 | Integration | 2 | 2 | 0 |
-| Polish | 1 | 0 | 1 |
+| Polish | 1 | 1 | 0 |
 | Testing | 1 | 0 | 1 |
 | Build | 1 | 0 | 1 |
 
@@ -981,5 +981,58 @@
 - `./gradlew assembleDebug` - BUILD SUCCESSFUL
 
 **Status:** All steps completed, provider management integration verified, compilation successful
+
+---
+
+### 2026-01-21: Task polish-01 Completed
+
+**Task:** Seed default data and polish
+
+**Files Created:**
+- `app/src/main/java/com/materialchat/di/AppInitializer.kt` - Singleton class for first-launch initialization (seeds providers, sets default system prompt, marks first launch complete)
+- `app/src/main/res/values/colors.xml` - Brand colors including splash background and primary colors
+- `app/src/main/res/values-night/colors.xml` - Dark mode brand colors
+
+**Files Modified:**
+- `gradle/libs.versions.toml` - Added splashscreen library version (1.0.1) and dependency declaration
+- `app/build.gradle.kts` - Added androidx.core.splashscreen dependency
+- `app/src/main/java/com/materialchat/MainActivity.kt` - Integrated AppInitializer injection, added splash screen installation with `installSplashScreen()`, added `setKeepOnScreenCondition` for initialization, added `LaunchedEffect` for async initialization
+- `app/src/main/res/values/themes.xml` - Added splash screen theme `Theme.MaterialChat.Splash` with icon and background
+- `app/src/main/res/values-night/themes.xml` - Added dark mode splash screen theme
+- `app/src/main/AndroidManifest.xml` - Changed activity theme to `@style/Theme.MaterialChat.Splash`
+- `app/src/main/res/drawable/ic_launcher_foreground.xml` - Enhanced app icon with polished Material 3 Expressive design (wave pattern dots, highlight effect)
+
+**Key Features Implemented:**
+
+**1. First Launch Initialization:**
+- AppInitializer class injected via Hilt handles initialization
+- Seeds OpenAI and Ollama provider templates on first launch
+- Sets default system prompt ("You are a helpful assistant.")
+- Uses `firstLaunchComplete` flag to ensure idempotency
+- Called via `LaunchedEffect` in MainActivity
+
+**2. Splash Screen:**
+- AndroidX SplashScreen API (core-splashscreen:1.0.1) integrated
+- `installSplashScreen()` called before `super.onCreate()`
+- `setKeepOnScreenCondition` keeps splash visible during initialization
+- Splash theme configured with app icon and brand colors
+- Separate light and dark mode splash themes
+
+**3. App Icon Polish:**
+- Enhanced chat bubble icon with highlight effect for depth
+- Wave pattern on dots (center dot raised) for Material 3 Expressive style
+- Larger dots (5dp vs 4dp) for better visibility
+- Subtle semi-transparent highlight on bubble top
+
+**4. Animation Review:**
+- Verified spring physics animations in Motion.kt (DampingRatio, Stiffness values)
+- StreamingIndicator uses `rememberInfiniteTransition` for 60fps animation
+- All animation durations and easing curves optimized for smooth performance
+- Scale press animations use appropriate damping (0.6f) and stiffness (500f)
+
+**Commands Run:**
+- `./gradlew assembleDebug` - BUILD SUCCESSFUL (44s)
+
+**Status:** All steps completed, compilation verified
 
 ---

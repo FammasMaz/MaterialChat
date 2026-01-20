@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Brand colors for MaterialChat -->
+    <color name="splash_background">#EADDFF</color>
+    <color name="splash_icon_background">#6750A4</color>
+
+    <!-- Primary brand colors -->
+    <color name="primary">#006B5F</color>
+    <color name="primary_container">#74F8E3</color>
+    <color name="on_primary">#FFFFFF</color>
+    <color name="on_primary_container">#00201C</color>
+
+    <!-- Secondary brand colors -->
+    <color name="secondary">#D4410C</color>
+    <color name="secondary_container">#FFDBCF</color>
+
+    <!-- Surface colors -->
+    <color name="surface">#FFFBFE</color>
+    <color name="surface_variant">#F3F3F3</color>
+
+    <!-- Tertiary colors -->
+    <color name="tertiary">#7D5260</color>
+    <color name="tertiary_container">#FFD8E4</color>
+</resources>

@@ -4,17 +4,32 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <!-- Chat bubble icon for MaterialChat -->
+
+    <!-- Chat bubble icon for MaterialChat - Material 3 Expressive design -->
+    <!-- Main chat bubble with gradient-like effect -->
     <path
         android:fillColor="#6750A4"
-        android:pathData="M54,24C35.2,24 20,37.4 20,54C20,62.8 24.4,70.6 31.2,76L28,88L43.6,80.8C46.8,81.6 50.4,82 54,82C72.8,82 88,68.6 88,52C88,37.4 72.8,24 54,24Z" />
+        android:pathData="M54,26C36.3,26 22,38.7 22,54C22,62.2 26.2,69.5 32.6,74.6L29.8,85L44.2,78.4C47.3,79.1 50.6,79.5 54,79.5C71.7,79.5 86,66.8 86,51.5C86,38.7 71.7,26 54,26Z" />
+
+    <!-- Subtle highlight on top of bubble -->
+    <path
+        android:fillColor="#8F7CCD"
+        android:fillAlpha="0.4"
+        android:pathData="M54,26C36.3,26 22,38.7 22,54C22,48 26,38 34,32C42,26 50,26 54,26C58,26 66,26 74,32C72,29 64,26 54,26Z" />
+
+    <!-- Three expressive dots with wave pattern -->
+    <!-- Left dot -->
     <path
         android:fillColor="#FFFFFF"
-        android:pathData="M40,48m-4,0a4,4 0,1 1,8 0a4,4 0,1 1,-8 0" />
+        android:pathData="M40,52m-5,0a5,5 0,1 1,10 0a5,5 0,1 1,-10 0" />
+
+    <!-- Center dot (slightly raised for wave effect) -->
     <path
         android:fillColor="#FFFFFF"
-        android:pathData="M54,48m-4,0a4,4 0,1 1,8 0a4,4 0,1 1,-8 0" />
+        android:pathData="M54,48m-5,0a5,5 0,1 1,10 0a5,5 0,1 1,-10 0" />
+
+    <!-- Right dot -->
     <path
         android:fillColor="#FFFFFF"
-        android:pathData="M68,48m-4,0a4,4 0,1 1,8 0a4,4 0,1 1,-8 0" />
+        android:pathData="M68,52m-5,0a5,5 0,1 1,10 0a5,5 0,1 1,-10 0" />
 </vector>

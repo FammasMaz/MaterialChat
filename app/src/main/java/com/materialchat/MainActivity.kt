@@ -8,12 +8,18 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.navigation.compose.rememberNavController
 import com.materialchat.data.local.preferences.AppPreferences
+import com.materialchat.di.AppInitializer
 import com.materialchat.ui.navigation.MaterialChatNavHost
 import com.materialchat.ui.theme.MaterialChatTheme
 import com.materialchat.ui.theme.isDynamicColorSupported
@@ -30,13 +36,33 @@ class MainActivity : ComponentActivity() {
     @Inject
     lateinit var appPreferences: AppPreferences
 
+    @Inject
+    lateinit var appInitializer: AppInitializer
+
     override fun onCreate(savedInstanceState: Bundle?) {
+        // Install splash screen before calling super.onCreate()
+        val splashScreen = installSplashScreen()
+
         super.onCreate(savedInstanceState)
+
+        // Keep splash screen visible while initializing
+        var isInitialized = false
+        splashScreen.setKeepOnScreenCondition { !isInitialized }
 
         // Enable edge-to-edge display
         enableEdgeToEdge()
 
         setContent {
+            // Track initialization state
+            var initComplete by remember { mutableStateOf(false) }
+
+            // Perform first-launch initialization
+            LaunchedEffect(Unit) {
+                appInitializer.initializeIfNeeded()
+                initComplete = true
+                isInitialized = true
+            }
+
             val themeMode by appPreferences.themeMode.collectAsState(
                 initial = AppPreferences.ThemeMode.SYSTEM
             )
@@ -48,7 +74,10 @@ class MainActivity : ComponentActivity() {
                 themeMode = themeMode,
                 dynamicColor = dynamicColorEnabled && isDynamicColorSupported()
             ) {
-                MaterialChatApp()
+                // Only show the app after initialization is complete
+                if (initComplete) {
+                    MaterialChatApp()
+                }
             }
         }
     }
