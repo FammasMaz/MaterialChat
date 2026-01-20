@@ -164,7 +164,7 @@ Building a native Android AI chat application with Material 3 Expressive design.
       "Create di/NetworkModule.kt for OkHttpClient and API clients",
       "Create di/RepositoryModule.kt for repository bindings"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "domain-usecase-01",

@@ -3,8 +3,8 @@
 ## Current Status
 
 **Last Updated:** 2026-01-20
-**Tasks Completed:** 12/35
-**Current Task:** di-01
+**Tasks Completed:** 13/35
+**Current Task:** domain-usecase-01
 **Build Status:** Debug APK builds successfully
 
 ---
@@ -16,7 +16,7 @@
 | Setup | 2 | 2 | 0 |
 | Domain | 3 | 2 | 1 |
 | Data | 7 | 7 | 0 |
-| DI | 1 | 0 | 1 |
+| DI | 1 | 1 | 0 |
 | UI | 12 | 0 | 12 |
 | Integration | 2 | 0 | 2 |
 | Polish | 1 | 0 | 1 |
@@ -321,6 +321,29 @@
 - Automatic API key retrieval from EncryptedPreferences
 - StreamingState emission for UI consumption (Starting, Streaming, Completed, Error, Cancelled)
 - Stream cancellation support
+
+**Commands Run:**
+- `./gradlew assembleDebug` - BUILD SUCCESSFUL
+
+**Status:** All steps completed, compilation verified
+
+---
+
+### 2026-01-20: Task di-01 Completed
+
+**Task:** Create Hilt dependency injection modules
+
+**Files Created:**
+- `app/src/main/java/com/materialchat/di/AppModule.kt` - App-wide dependencies module providing JSON serializer, coroutine dispatchers (IO/Default/Main), AppPreferences, and EncryptedPreferences
+- `app/src/main/java/com/materialchat/di/DatabaseModule.kt` - Database module providing Room database instance and DAOs (ProviderDao, ConversationDao, MessageDao)
+- `app/src/main/java/com/materialchat/di/NetworkModule.kt` - Network module providing OkHttpClient instances (standard and streaming), ChatApiClient, ModelListApiClient, and SseEventParser
+- `app/src/main/java/com/materialchat/di/RepositoryModule.kt` - Repository bindings module binding implementations to interfaces (ProviderRepository, ConversationRepository, ChatRepository)
+
+**Key Features:**
+- **AppModule:** Singleton Json configuration, qualifier annotations for dispatchers (@IoDispatcher, @DefaultDispatcher, @MainDispatcher)
+- **DatabaseModule:** Room database with fallback to destructive migration, singleton DAOs
+- **NetworkModule:** Two OkHttpClient variants - standard (30s timeouts) and streaming (120s read timeout), qualifier annotations (@StandardClient, @StreamingClient)
+- **RepositoryModule:** Uses @Binds for efficient interface-to-implementation bindings, all singletons
 
 **Commands Run:**
 - `./gradlew assembleDebug` - BUILD SUCCESSFUL
