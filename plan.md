@@ -352,7 +352,7 @@ Building a native Android AI chat application with Material 3 Expressive design.
       "Implement theme selector (System/Light/Dark)",
       "Implement dynamic color toggle"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "ui-shared-01",
