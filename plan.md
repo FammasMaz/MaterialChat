@@ -95,7 +95,7 @@ Building a native Android AI chat application with Material 3 Expressive design.
       "Create data/local/preferences/AppPreferences.kt for non-sensitive data",
       "Create data/local/preferences/EncryptedPreferences.kt with Tink encryption"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "data-remote-01",
