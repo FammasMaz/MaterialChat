@@ -117,7 +117,7 @@ Building a native Android AI chat application with Material 3 Expressive design.
       "Implement parseOpenAiEvent() for OpenAI SSE format",
       "Implement parseOllamaEvent() for Ollama NDJSON format"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "data-remote-03",
