@@ -3,8 +3,8 @@
 ## Current Status
 
 **Last Updated:** 2026-01-20
-**Tasks Completed:** 13/35
-**Current Task:** domain-usecase-01
+**Tasks Completed:** 14/35
+**Current Task:** ui-theme-01
 **Build Status:** Debug APK builds successfully
 
 ---
@@ -14,7 +14,7 @@
 | Category | Total | Completed | Remaining |
 |----------|-------|-----------|-----------|
 | Setup | 2 | 2 | 0 |
-| Domain | 3 | 2 | 1 |
+| Domain | 3 | 3 | 0 |
 | Data | 7 | 7 | 0 |
 | DI | 1 | 1 | 0 |
 | UI | 12 | 0 | 12 |
@@ -344,6 +344,33 @@
 - **DatabaseModule:** Room database with fallback to destructive migration, singleton DAOs
 - **NetworkModule:** Two OkHttpClient variants - standard (30s timeouts) and streaming (120s read timeout), qualifier annotations (@StandardClient, @StreamingClient)
 - **RepositoryModule:** Uses @Binds for efficient interface-to-implementation bindings, all singletons
+
+**Commands Run:**
+- `./gradlew assembleDebug` - BUILD SUCCESSFUL
+
+**Status:** All steps completed, compilation verified
+
+---
+
+### 2026-01-20: Task domain-usecase-01 Completed
+
+**Task:** Create use cases
+
+**Files Created:**
+- `app/src/main/java/com/materialchat/domain/usecase/SendMessageUseCase.kt` - Use case for sending messages and receiving streaming AI responses, orchestrates user message persistence, assistant message creation, streaming content updates, and conversation title generation
+- `app/src/main/java/com/materialchat/domain/usecase/RegenerateResponseUseCase.kt` - Use case for regenerating the last AI response by deleting and re-streaming
+- `app/src/main/java/com/materialchat/domain/usecase/GetConversationsUseCase.kt` - Use case for observing and retrieving conversations and messages
+- `app/src/main/java/com/materialchat/domain/usecase/CreateConversationUseCase.kt` - Use case for creating new conversations with active or specific providers
+- `app/src/main/java/com/materialchat/domain/usecase/ExportConversationUseCase.kt` - Use case for exporting conversations to JSON or Markdown formats with sanitized filenames
+- `app/src/main/java/com/materialchat/domain/usecase/ManageProvidersUseCase.kt` - Use case for provider CRUD operations, model fetching, connection testing, and default seeding
+
+**Key Features:**
+- **SendMessageUseCase:** Orchestrates full message flow - saves user message, creates streaming assistant placeholder, collects streaming content, updates database incrementally, auto-generates conversation titles
+- **RegenerateResponseUseCase:** Removes last assistant message and re-requests response with same context
+- **GetConversationsUseCase:** Provides Flow-based observation of conversations and messages for reactive UI
+- **CreateConversationUseCase:** Creates conversations with active provider's default model or custom provider/model
+- **ExportConversationUseCase:** Returns ExportResult with content, filename, and MIME type for sharing
+- **ManageProvidersUseCase:** Full provider management including connection testing, model fetching, API key status
 
 **Commands Run:**
 - `./gradlew assembleDebug` - BUILD SUCCESSFUL

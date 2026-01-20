@@ -178,7 +178,7 @@ Building a native Android AI chat application with Material 3 Expressive design.
       "Create domain/usecase/ExportConversationUseCase.kt",
       "Create domain/usecase/ManageProvidersUseCase.kt"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "ui-theme-01",
