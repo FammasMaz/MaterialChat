@@ -3,8 +3,8 @@
 ## Current Status
 
 **Last Updated:** 2026-01-20
-**Tasks Completed:** 17/35
-**Current Task:** ui-conversations-02
+**Tasks Completed:** 18/35
+**Current Task:** ui-chat-01
 **Build Status:** Debug APK builds successfully
 
 ---
@@ -17,7 +17,7 @@
 | Domain | 3 | 3 | 0 |
 | Data | 7 | 7 | 0 |
 | DI | 1 | 1 | 0 |
-| UI | 12 | 3 | 9 |
+| UI | 12 | 4 | 8 |
 | Integration | 2 | 0 | 2 |
 | Polish | 1 | 0 | 1 |
 | Testing | 1 | 0 | 1 |
@@ -458,6 +458,33 @@
 - Spring-physics animations throughout
 - Provider name badges and model display per conversation
 - Relative time display for conversation updates
+
+**Commands Run:**
+- `./gradlew assembleDebug` - BUILD SUCCESSFUL
+
+**Status:** All steps completed, compilation verified
+
+---
+
+### 2026-01-20: Task ui-conversations-02 Completed
+
+**Task:** Implement conversations screen features
+
+**Files Verified (already implemented in ui-conversations-01):**
+- `app/src/main/java/com/materialchat/ui/screens/conversations/ConversationsScreen.kt` - Main screen with LazyColumn, empty state, Extended FAB, and settings navigation
+- `app/src/main/java/com/materialchat/ui/screens/conversations/ConversationsViewModel.kt` - ViewModel with delete/undo functionality (5-second delay)
+- `app/src/main/java/com/materialchat/ui/screens/conversations/components/SwipeToDeleteBox.kt` - Swipe-to-delete with spring physics animations
+- `app/src/main/java/com/materialchat/ui/screens/conversations/components/ConversationItem.kt` - List item with press animations
+- `app/src/main/java/com/materialchat/ui/navigation/MaterialChatNavHost.kt` - Navigation handling for settings
+
+**Features Implemented:**
+- **Conversation list with LazyColumn:** ConversationList function uses LazyColumn with items() and proper content padding for FAB
+- **Empty state UI with illustration:** EmptyContent shows ChatBubbleOutline icon (120dp) with guidance text, differentiates between no-provider and no-conversations states
+- **Swipe-to-delete with undo snackbar:** SwipeToDeleteBox with spring animations, 5-second undo delay, animated delete icon with scale and color transitions
+- **Extended FAB for new chat:** NewChatFab with AnimatedVisibility, spring-physics scale animation, and ExtendedFloatingActionButton with "New Chat" label
+- **Navigation to settings:** Settings IconButton in LargeTopAppBar, navigateToSettings() in ViewModel, onNavigateToSettings callback in Screen, NavHost routes to Settings screen
+
+**Note:** All steps were already implemented as part of ui-conversations-01. This task verifies completion and marks the features as passed.
 
 **Commands Run:**
 - `./gradlew assembleDebug` - BUILD SUCCESSFUL

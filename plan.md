@@ -229,7 +229,7 @@ Building a native Android AI chat application with Material 3 Expressive design.
       "Implement Extended FAB for new chat",
       "Implement navigation to settings"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "ui-chat-01",
