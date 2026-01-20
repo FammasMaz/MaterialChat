@@ -5,12 +5,7 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
@@ -20,6 +15,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.materialchat.ui.screens.chat.ChatScreen
 import com.materialchat.ui.screens.conversations.ConversationsScreen
+import com.materialchat.ui.screens.settings.SettingsScreen
 
 /**
  * Main navigation host for MaterialChat app.
@@ -109,30 +105,9 @@ fun MaterialChatNavHost(
 
         // Settings screen
         composable(route = Screen.Settings.route) {
-            // Placeholder - will be replaced by SettingsScreen in ui-settings-01
-            SettingsPlaceholder(
+            SettingsScreen(
                 onNavigateBack = { navController.popBackStack() }
             )
         }
-    }
-}
-
-/**
- * Temporary placeholder for Settings screen.
- * Will be replaced by actual SettingsScreen in task ui-settings-01.
- */
-@Composable
-private fun SettingsPlaceholder(
-    onNavigateBack: () -> Unit
-) {
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = "Settings",
-            style = MaterialTheme.typography.headlineLarge,
-            color = MaterialTheme.colorScheme.primary
-        )
     }
 }
