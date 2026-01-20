@@ -3,8 +3,8 @@
 ## Current Status
 
 **Last Updated:** 2026-01-20
-**Tasks Completed:** 11/35
-**Current Task:** data-repo-02
+**Tasks Completed:** 12/35
+**Current Task:** di-01
 **Build Status:** Debug APK builds successfully
 
 ---
@@ -284,6 +284,43 @@
 - `Conversation.toEntity()` / `ConversationEntity.toDomain()` - Maps between Conversation domain model and ConversationEntity, handles nullable providerId (empty string if provider deleted)
 - `Message.toEntity()` / `MessageEntity.toDomain()` - Maps between Message domain model and MessageEntity, handling MessageRole enum ↔ String conversion
 - List extension functions for batch conversions: `toProviderDomainList()`, `toConversationDomainList()`, `toMessageDomainList()`, etc.
+
+**Commands Run:**
+- `./gradlew assembleDebug` - BUILD SUCCESSFUL
+
+**Status:** All steps completed, compilation verified
+
+---
+
+### 2026-01-20: Task data-repo-02 Completed
+
+**Task:** Create repository implementations
+
+**Files Created:**
+- `app/src/main/java/com/materialchat/data/repository/ProviderRepositoryImpl.kt` - Implementation of ProviderRepository with Room DAO and encrypted API key storage
+- `app/src/main/java/com/materialchat/data/repository/ConversationRepositoryImpl.kt` - Implementation of ConversationRepository with Room DAOs and JSON/Markdown export
+- `app/src/main/java/com/materialchat/data/repository/ChatRepositoryImpl.kt` - Implementation of ChatRepository with streaming chat and model fetching
+
+**Key Features:**
+
+**ProviderRepositoryImpl:**
+- CRUD operations for providers using ProviderDao
+- API key encryption/decryption via EncryptedPreferences
+- Active provider management (deactivate all, then activate selected)
+- Default provider seeding (OpenAI and Ollama templates)
+
+**ConversationRepositoryImpl:**
+- CRUD operations for conversations and messages using ConversationDao and MessageDao
+- Automatic conversation timestamp updates when messages are added
+- Streaming message state management (content updates, streaming status)
+- Export to JSON and Markdown formats with proper formatting
+
+**ChatRepositoryImpl:**
+- Streaming chat completions via ChatApiClient
+- Model list fetching via ModelListApiClient
+- Automatic API key retrieval from EncryptedPreferences
+- StreamingState emission for UI consumption (Starting, Streaming, Completed, Error, Cancelled)
+- Stream cancellation support
 
 **Commands Run:**
 - `./gradlew assembleDebug` - BUILD SUCCESSFUL

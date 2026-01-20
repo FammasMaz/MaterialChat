@@ -152,7 +152,7 @@ Building a native Android AI chat application with Material 3 Expressive design.
       "Create data/repository/ConversationRepositoryImpl.kt",
       "Create data/repository/ChatRepositoryImpl.kt"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "di-01",
