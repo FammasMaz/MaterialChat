@@ -3,8 +3,8 @@
 ## Current Status
 
 **Last Updated:** 2026-01-20
-**Tasks Completed:** 14/35
-**Current Task:** ui-theme-01
+**Tasks Completed:** 15/35
+**Current Task:** ui-nav-01
 **Build Status:** Debug APK builds successfully
 
 ---
@@ -17,7 +17,7 @@
 | Domain | 3 | 3 | 0 |
 | Data | 7 | 7 | 0 |
 | DI | 1 | 1 | 0 |
-| UI | 12 | 0 | 12 |
+| UI | 12 | 1 | 11 |
 | Integration | 2 | 0 | 2 |
 | Polish | 1 | 0 | 1 |
 | Testing | 1 | 0 | 1 |
@@ -374,6 +374,35 @@
 
 **Commands Run:**
 - `./gradlew assembleDebug` - BUILD SUCCESSFUL
+
+**Status:** All steps completed, compilation verified
+
+---
+
+### 2026-01-20: Task ui-theme-01 Completed
+
+**Task:** Create Material 3 Expressive theme
+
+**Files Created:**
+- `app/src/main/java/com/materialchat/ui/theme/Color.kt` - Light and dark color schemes with primary (teal/cyan), secondary (coral/orange), and tertiary (purple) colors; includes semantic colors for chat bubbles and code blocks
+- `app/src/main/java/com/materialchat/ui/theme/Typography.kt` - Expressive typography scale using Roboto with all Material 3 text styles (display, headline, title, body, label); includes special typography for code blocks and timestamps
+- `app/src/main/java/com/materialchat/ui/theme/Shapes.kt` - Material 3 shape system with standard shapes (extraSmall through extraLarge); custom shapes for message bubbles (user/assistant with directional corners), FAB, bottom sheets, code blocks, and other UI components
+- `app/src/main/java/com/materialchat/ui/theme/Motion.kt` - Spring-physics animation specs for Material 3 Expressive; includes springs for various interaction types (default, snappy, bouncy, gentle), tween animations for transitions, duration constants, scale/alpha values, and easing curves
+- `app/src/main/java/com/materialchat/ui/theme/Theme.kt` - MaterialChatTheme composable with dynamic color support for Android 12+; selects color scheme based on theme mode (SYSTEM/LIGHT/DARK) and dynamic color preference; updates status bar and navigation bar colors; applies custom typography and shapes
+
+**Files Modified:**
+- `app/src/main/java/com/materialchat/MainActivity.kt` - Updated to use MaterialChatTheme with preferences-based theming; injects AppPreferences for reactive theme mode and dynamic color settings; added light and dark preview functions
+
+**Key Features:**
+- Full Material 3 Expressive color palette with light/dark variants
+- Dynamic color support using `dynamicLightColorScheme` / `dynamicDarkColorScheme` on Android 12+
+- Theme mode selection (SYSTEM, LIGHT, DARK) using AppPreferences
+- Spring-based motion system for expressive animations
+- Custom message bubble shapes with directional corners
+- Reactive theming that updates immediately when preferences change
+
+**Commands Run:**
+- `./gradlew assembleDebug` - BUILD SUCCESSFUL (with minor deprecation warnings for statusBarColor/navigationBarColor which are acceptable for backwards compatibility)
 
 **Status:** All steps completed, compilation verified
 
