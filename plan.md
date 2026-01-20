@@ -51,7 +51,7 @@ Building a native Android AI chat application with Material 3 Expressive design.
       "Create domain/model/AiModel.kt data class",
       "Create domain/model/StreamingState.kt sealed class"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "domain-02",

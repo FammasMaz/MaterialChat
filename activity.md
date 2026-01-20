@@ -3,8 +3,8 @@
 ## Current Status
 
 **Last Updated:** 2026-01-20
-**Tasks Completed:** 2/35
-**Current Task:** domain-01
+**Tasks Completed:** 3/35
+**Current Task:** domain-02
 **Build Status:** Debug APK builds successfully
 
 ---
@@ -14,7 +14,7 @@
 | Category | Total | Completed | Remaining |
 |----------|-------|-----------|-----------|
 | Setup | 2 | 2 | 0 |
-| Domain | 3 | 0 | 3 |
+| Domain | 3 | 1 | 2 |
 | Data | 7 | 0 | 7 |
 | DI | 1 | 0 | 1 |
 | UI | 12 | 0 | 12 |
@@ -93,6 +93,26 @@
 **APK Location:** `app/build/outputs/apk/debug/app-debug.apk`
 
 **Status:** All steps completed, app compiles and builds successfully
+
+---
+
+### 2026-01-20: Task domain-01 Completed
+
+**Task:** Create domain layer models
+
+**Files Created:**
+- `app/src/main/java/com/materialchat/domain/model/ProviderType.kt` - Enum for OPENAI_COMPATIBLE and OLLAMA_NATIVE provider types
+- `app/src/main/java/com/materialchat/domain/model/Provider.kt` - Data class for AI provider configuration with factory methods
+- `app/src/main/java/com/materialchat/domain/model/MessageRole.kt` - Enum for USER, ASSISTANT, and SYSTEM roles
+- `app/src/main/java/com/materialchat/domain/model/Message.kt` - Data class for chat messages
+- `app/src/main/java/com/materialchat/domain/model/Conversation.kt` - Data class for conversations
+- `app/src/main/java/com/materialchat/domain/model/AiModel.kt` - Data class for AI models from providers
+- `app/src/main/java/com/materialchat/domain/model/StreamingState.kt` - Sealed class for streaming response states
+
+**Commands Run:**
+- `./gradlew assembleDebug` - BUILD SUCCESSFUL
+
+**Status:** All domain models created, compilation verified
 
 ---
 
