@@ -3,8 +3,8 @@
 ## Current Status
 
 **Last Updated:** 2026-01-21
-**Tasks Completed:** 30/35
-**Current Task:** integration-02
+**Tasks Completed:** 31/35
+**Current Task:** polish-01
 **Build Status:** Debug APK builds successfully
 
 ---
@@ -18,7 +18,7 @@
 | Data | 7 | 7 | 0 |
 | DI | 1 | 1 | 0 |
 | UI | 13 | 13 | 0 |
-| Integration | 2 | 1 | 1 |
+| Integration | 2 | 2 | 0 |
 | Polish | 1 | 0 | 1 |
 | Testing | 1 | 0 | 1 |
 | Build | 1 | 0 | 1 |
@@ -929,5 +929,57 @@
 - `./gradlew assembleDebug` - BUILD SUCCESSFUL
 
 **Status:** All steps completed, integration verified, compilation successful
+
+---
+
+### 2026-01-21: Task integration-02 Completed
+
+**Task:** Wire up provider management
+
+**Integration Verified:**
+
+**1. SettingsViewModel → ProviderRepository Connection:**
+- `SettingsViewModel` uses `ManageProvidersUseCase` (clean architecture pattern)
+- `ManageProvidersUseCase` injects `ProviderRepository` interface
+- `ProviderRepositoryImpl` is bound via Hilt's `@Binds` in `RepositoryModule`
+- Full chain: SettingsViewModel → ManageProvidersUseCase → ProviderRepository → ProviderRepositoryImpl
+
+**2. Adding New Provider with API Key:**
+- `SettingsViewModel.saveProvider()` validates form and calls `manageProvidersUseCase.addProvider()`
+- `ManageProvidersUseCase.addProvider()` creates Provider domain model and calls `providerRepository.addProvider(provider, apiKey)`
+- `ProviderRepositoryImpl.addProvider()`:
+  - Inserts provider entity via `providerDao.insert()`
+  - Stores API key via `encryptedPreferences.setApiKey(providerId, apiKey)`
+- `AddProviderSheet` component captures provider details including API key field
+
+**3. API Key Encryption Verified:**
+- `EncryptedPreferences` uses Google Tink with AES-256-GCM encryption
+- Master key stored in Android Keystore (`android-keystore://materialchat_master_key`)
+- `setApiKey()` encrypts plaintext with AEAD primitive, encodes as Base64, stores in SharedPreferences
+- `getApiKey()` retrieves, decodes, decrypts using associated data for authenticated encryption
+- Hardware-backed security on supported devices
+
+**4. Switching Active Provider:**
+- `SettingsViewModel.setActiveProvider(providerId)` calls `manageProvidersUseCase.setActiveProvider()`
+- `ManageProvidersUseCase.setActiveProvider()` delegates to `providerRepository.setActiveProvider()`
+- `ProviderRepositoryImpl.setActiveProvider()`:
+  - Calls `providerDao.deactivateAllProviders()` to clear `is_active` flag on all providers
+  - Calls `providerDao.activateProvider(providerId)` to set `is_active = 1` on selected provider
+- UI updates reactively via `observeProviders()` Flow
+
+**Files Reviewed:**
+- `app/src/main/java/com/materialchat/ui/screens/settings/SettingsViewModel.kt` - ViewModel managing provider state
+- `app/src/main/java/com/materialchat/ui/screens/settings/SettingsScreen.kt` - UI with provider list and actions
+- `app/src/main/java/com/materialchat/domain/usecase/ManageProvidersUseCase.kt` - Use case for provider operations
+- `app/src/main/java/com/materialchat/domain/repository/ProviderRepository.kt` - Repository interface
+- `app/src/main/java/com/materialchat/data/repository/ProviderRepositoryImpl.kt` - Repository implementation
+- `app/src/main/java/com/materialchat/data/local/preferences/EncryptedPreferences.kt` - Tink encryption
+- `app/src/main/java/com/materialchat/di/RepositoryModule.kt` - Hilt bindings
+- `app/src/main/java/com/materialchat/di/AppModule.kt` - EncryptedPreferences provision
+
+**Commands Run:**
+- `./gradlew assembleDebug` - BUILD SUCCESSFUL
+
+**Status:** All steps completed, provider management integration verified, compilation successful
 
 ---

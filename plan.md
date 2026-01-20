@@ -386,7 +386,7 @@ Building a native Android AI chat application with Material 3 Expressive design.
       "Verify API key is encrypted in DataStore",
       "Test switching active provider"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "polish-01",
