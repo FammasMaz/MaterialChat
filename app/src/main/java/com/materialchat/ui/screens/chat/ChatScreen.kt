@@ -1,14 +1,5 @@
 package com.materialchat.ui.screens.chat
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.spring
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,32 +11,18 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Send
-import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Snackbar
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
@@ -59,15 +36,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.materialchat.domain.model.MessageRole
 import com.materialchat.ui.screens.chat.components.ChatTopBar
+import com.materialchat.ui.screens.chat.components.MessageBubble
+import com.materialchat.ui.screens.chat.components.MessageInput
 import com.materialchat.ui.theme.CustomShapes
-import com.materialchat.ui.theme.MessageBubbleShapes
 import kotlinx.coroutines.launch
 
 /**
@@ -205,13 +181,17 @@ fun ChatScreen(
                     onCopyMessage = { content ->
                         clipboardManager.setText(AnnotatedString(content))
                         viewModel.copyMessage(content)
-                    }
+                    },
+                    onRegenerateResponse = { viewModel.regenerateResponse() }
                 )
             }
         }
     }
 }
 
+/**
+ * Loading state content with centered progress indicator.
+ */
 @Composable
 private fun LoadingContent(paddingValues: PaddingValues) {
     Box(
@@ -226,6 +206,9 @@ private fun LoadingContent(paddingValues: PaddingValues) {
     }
 }
 
+/**
+ * Error state content with retry and back options.
+ */
 @Composable
 private fun ErrorContent(
     message: String,
@@ -270,6 +253,9 @@ private fun ErrorContent(
     }
 }
 
+/**
+ * Main chat content with message list and input bar.
+ */
 @Composable
 private fun ChatContent(
     state: ChatUiState.Success,
@@ -278,7 +264,8 @@ private fun ChatContent(
     onInputChange: (String) -> Unit,
     onSendMessage: () -> Unit,
     onCancelStreaming: () -> Unit,
-    onCopyMessage: (String) -> Unit
+    onCopyMessage: (String) -> Unit,
+    onRegenerateResponse: () -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -286,32 +273,18 @@ private fun ChatContent(
             .padding(paddingValues)
     ) {
         // Message list
-        LazyColumn(
+        MessageList(
+            messages = state.messages,
+            listState = listState,
+            onCopyMessage = onCopyMessage,
+            onRegenerateResponse = onRegenerateResponse,
             modifier = Modifier
                 .weight(1f)
-                .fillMaxWidth(),
-            state = listState,
-            contentPadding = PaddingValues(
-                start = 16.dp,
-                end = 16.dp,
-                top = 8.dp,
-                bottom = 8.dp
-            ),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            items(
-                items = state.messages,
-                key = { it.message.id }
-            ) { messageItem ->
-                MessageBubble(
-                    messageItem = messageItem,
-                    onCopy = { onCopyMessage(messageItem.message.content) }
-                )
-            }
-        }
+                .fillMaxWidth()
+        )
 
         // Input area
-        MessageInputBar(
+        MessageInput(
             inputText = state.inputText,
             isStreaming = state.isStreaming,
             canSend = state.canSend,
@@ -322,209 +295,41 @@ private fun ChatContent(
     }
 }
 
+/**
+ * Scrollable message list with proper styling.
+ */
 @Composable
-private fun MessageBubble(
-    messageItem: MessageUiItem,
-    onCopy: () -> Unit
+private fun MessageList(
+    messages: List<MessageUiItem>,
+    listState: androidx.compose.foundation.lazy.LazyListState,
+    onCopyMessage: (String) -> Unit,
+    onRegenerateResponse: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
-    val message = messageItem.message
-    val isUser = message.role == MessageRole.USER
-    val isAssistant = message.role == MessageRole.ASSISTANT
-    val isSystem = message.role == MessageRole.SYSTEM
-
-    val bubbleShape = when {
-        isUser -> MessageBubbleShapes.UserBubble
-        isAssistant -> MessageBubbleShapes.AssistantBubble
-        else -> MessageBubbleShapes.SystemBubble
-    }
-
-    val bubbleColor = when {
-        isUser -> MaterialTheme.colorScheme.primaryContainer
-        isAssistant -> MaterialTheme.colorScheme.surfaceVariant
-        else -> MaterialTheme.colorScheme.tertiaryContainer
-    }
-
-    val textColor = when {
-        isUser -> MaterialTheme.colorScheme.onPrimaryContainer
-        isAssistant -> MaterialTheme.colorScheme.onSurfaceVariant
-        else -> MaterialTheme.colorScheme.onTertiaryContainer
-    }
-
-    val alignment = when {
-        isUser -> Alignment.CenterEnd
-        isAssistant -> Alignment.CenterStart
-        else -> Alignment.Center
-    }
-
-    Box(
-        modifier = Modifier.fillMaxWidth(),
-        contentAlignment = alignment
+    LazyColumn(
+        modifier = modifier,
+        state = listState,
+        contentPadding = PaddingValues(
+            start = 16.dp,
+            end = 16.dp,
+            top = 8.dp,
+            bottom = 8.dp
+        ),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        Surface(
-            shape = bubbleShape,
-            color = bubbleColor,
-            modifier = Modifier
-                .widthIn(max = 340.dp)
-                .animateContentSize(
-                    animationSpec = spring(
-                        dampingRatio = Spring.DampingRatioMediumBouncy,
-                        stiffness = Spring.StiffnessMediumLow
-                    )
-                )
-        ) {
-            Column(
-                modifier = Modifier.padding(12.dp)
-            ) {
-                Text(
-                    text = message.content.ifEmpty {
-                        if (message.isStreaming) "..." else ""
-                    },
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = textColor
-                )
-
-                // Streaming indicator
-                if (message.isStreaming) {
-                    Spacer(modifier = Modifier.height(4.dp))
-                    StreamingIndicator()
+        items(
+            items = messages,
+            key = { it.message.id }
+        ) { messageItem ->
+            MessageBubble(
+                messageItem = messageItem,
+                onCopy = { onCopyMessage(messageItem.message.content) },
+                onRegenerate = if (messageItem.isLastAssistantMessage && !messageItem.message.isStreaming) {
+                    { onRegenerateResponse() }
+                } else {
+                    null
                 }
-            }
-        }
-    }
-}
-
-@Composable
-private fun StreamingIndicator() {
-    Row(
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        repeat(3) { index ->
-            Box(
-                modifier = Modifier
-                    .size(6.dp)
-                    .background(
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-                        shape = CircleShape
-                    )
             )
-        }
-    }
-}
-
-@Composable
-private fun MessageInputBar(
-    inputText: String,
-    isStreaming: Boolean,
-    canSend: Boolean,
-    onInputChange: (String) -> Unit,
-    onSend: () -> Unit,
-    onCancel: () -> Unit
-) {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        color = MaterialTheme.colorScheme.surface,
-        tonalElevation = 2.dp
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.Bottom,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            OutlinedTextField(
-                value = inputText,
-                onValueChange = onInputChange,
-                modifier = Modifier.weight(1f),
-                placeholder = {
-                    Text(
-                        text = "Type a message...",
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                    )
-                },
-                enabled = !isStreaming,
-                maxLines = 4,
-                shape = CustomShapes.MessageInputContainer,
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                    disabledContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.6f),
-                    focusedBorderColor = MaterialTheme.colorScheme.primary,
-                    unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
-                ),
-                keyboardOptions = KeyboardOptions(
-                    imeAction = ImeAction.Send
-                ),
-                keyboardActions = KeyboardActions(
-                    onSend = {
-                        if (canSend) {
-                            onSend()
-                        }
-                    }
-                )
-            )
-
-            AnimatedVisibility(
-                visible = isStreaming,
-                enter = scaleIn(
-                    animationSpec = spring(
-                        dampingRatio = Spring.DampingRatioMediumBouncy,
-                        stiffness = Spring.StiffnessMedium
-                    )
-                ) + fadeIn(),
-                exit = scaleOut() + fadeOut()
-            ) {
-                IconButton(
-                    onClick = onCancel,
-                    colors = IconButtonDefaults.iconButtonColors(
-                        containerColor = MaterialTheme.colorScheme.errorContainer,
-                        contentColor = MaterialTheme.colorScheme.onErrorContainer
-                    ),
-                    modifier = Modifier.size(48.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Stop,
-                        contentDescription = "Stop generating"
-                    )
-                }
-            }
-
-            AnimatedVisibility(
-                visible = !isStreaming,
-                enter = scaleIn(
-                    animationSpec = spring(
-                        dampingRatio = Spring.DampingRatioMediumBouncy,
-                        stiffness = Spring.StiffnessMedium
-                    )
-                ) + fadeIn(),
-                exit = scaleOut() + fadeOut()
-            ) {
-                IconButton(
-                    onClick = onSend,
-                    enabled = canSend,
-                    colors = IconButtonDefaults.iconButtonColors(
-                        containerColor = if (canSend) {
-                            MaterialTheme.colorScheme.primary
-                        } else {
-                            MaterialTheme.colorScheme.surfaceContainerHigh
-                        },
-                        contentColor = if (canSend) {
-                            MaterialTheme.colorScheme.onPrimary
-                        } else {
-                            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
-                        },
-                        disabledContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                        disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
-                    ),
-                    modifier = Modifier.size(48.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.Send,
-                        contentDescription = "Send message"
-                    )
-                }
-            }
         }
     }
 }

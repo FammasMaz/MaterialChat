@@ -9,6 +9,7 @@ import com.materialchat.domain.model.MessageRole
 import com.materialchat.domain.model.StreamingState
 import com.materialchat.domain.usecase.GetConversationsUseCase
 import com.materialchat.domain.usecase.ManageProvidersUseCase
+import com.materialchat.domain.usecase.RegenerateResponseUseCase
 import com.materialchat.domain.usecase.SendMessageUseCase
 import com.materialchat.ui.navigation.Screen
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -34,6 +35,7 @@ class ChatViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val getConversationsUseCase: GetConversationsUseCase,
     private val sendMessageUseCase: SendMessageUseCase,
+    private val regenerateResponseUseCase: RegenerateResponseUseCase,
     private val manageProvidersUseCase: ManageProvidersUseCase,
     private val appPreferences: AppPreferences
 ) : ViewModel() {
@@ -321,6 +323,41 @@ class ChatViewModel @Inject constructor(
                 _events.emit(
                     ChatEvent.ShowSnackbar(
                         message = "Failed to change model: ${e.message}"
+                    )
+                )
+            }
+        }
+    }
+
+    /**
+     * Regenerates the last AI response.
+     */
+    fun regenerateResponse() {
+        val currentState = _uiState.value
+        if (currentState !is ChatUiState.Success) return
+        if (currentState.isStreaming) return
+
+        _uiState.value = currentState.copy(streamingState = StreamingState.Starting)
+
+        streamingJob = viewModelScope.launch {
+            try {
+                regenerateResponseUseCase(
+                    conversationId = conversationId,
+                    systemPrompt = currentSystemPrompt
+                ).collect { state ->
+                    updateStreamingState(state)
+                }
+            } catch (e: Exception) {
+                updateStreamingState(
+                    StreamingState.Error(
+                        error = e,
+                        partialContent = null,
+                        messageId = null
+                    )
+                )
+                _events.emit(
+                    ChatEvent.ShowSnackbar(
+                        message = e.message ?: "Failed to regenerate response"
                     )
                 )
             }

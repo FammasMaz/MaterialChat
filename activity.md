@@ -3,8 +3,8 @@
 ## Current Status
 
 **Last Updated:** 2026-01-20
-**Tasks Completed:** 19/35
-**Current Task:** ui-chat-02
+**Tasks Completed:** 20/35
+**Current Task:** ui-chat-03
 **Build Status:** Debug APK builds successfully
 
 ---
@@ -17,7 +17,7 @@
 | Domain | 3 | 3 | 0 |
 | Data | 7 | 7 | 0 |
 | DI | 1 | 1 | 0 |
-| UI | 12 | 5 | 7 |
+| UI | 12 | 6 | 6 |
 | Integration | 2 | 0 | 2 |
 | Polish | 1 | 0 | 1 |
 | Testing | 1 | 0 | 1 |
@@ -513,6 +513,32 @@
 - **ChatTopBar:** Title with model name subtitle, streaming progress indicator, overflow menu for export
 - **MessageBubble:** Proper alignment (user right, assistant left), Material 3 shapes (UserBubble/AssistantBubble), animateContentSize for streaming growth
 - **MessageInputBar:** OutlinedTextField with rounded shape, send button that animates between send/stop icons based on streaming state
+
+**Commands Run:**
+- `./gradlew assembleDebug` - BUILD SUCCESSFUL
+
+**Status:** All steps completed, compilation verified
+
+---
+
+### 2026-01-20: Task ui-chat-02 Completed
+
+**Task:** Create chat message components
+
+**Files Created:**
+- `app/src/main/java/com/materialchat/ui/screens/chat/components/MessageBubble.kt` - Extracted and enhanced message bubble component with directional styling for user/assistant/system roles, copy and regenerate action buttons, animated content size, and Material 3 Expressive design
+- `app/src/main/java/com/materialchat/ui/screens/chat/components/MessageInput.kt` - Message input bar with multi-line text field, animated send/stop button transitions using spring physics, keyboard action support, and disabled state during streaming
+- `app/src/main/java/com/materialchat/ui/screens/chat/components/StreamingIndicator.kt` - Animated streaming indicator with three bouncing dots in wave pattern (8dp diameter, 100ms offset between dots), smooth 60fps animation using infinite transition, plus alternative PulsingStreamingIndicator and TypingIndicator variants
+
+**Files Modified:**
+- `app/src/main/java/com/materialchat/ui/screens/chat/ChatScreen.kt` - Refactored to use extracted MessageBubble and MessageInput components, added MessageList composable function with proper styling, added onRegenerateResponse callback
+- `app/src/main/java/com/materialchat/ui/screens/chat/ChatViewModel.kt` - Added RegenerateResponseUseCase injection and regenerateResponse() method for regenerating the last AI response
+
+**Key Features:**
+- **MessageBubble:** Proper alignment (user right, assistant left, system center), directional corner styling, copy button for all messages, regenerate button for last assistant message, streaming indicator integration, animateContentSize for smooth growth
+- **MessageInput:** OutlinedTextField with rounded MessageInputContainer shape, max 4 lines, animated scale on send button enabled state, spring-physics transitions between send/stop icons
+- **StreamingIndicator:** Three dots with wave animation using sine function, 8dp size per PRD specification, 100ms phase offset between dots, smooth 60fps using rememberInfiniteTransition
+- **MessageList:** LazyColumn with proper content padding, 8dp vertical spacing, key-based item identification for efficient recomposition
 
 **Commands Run:**
 - `./gradlew assembleDebug` - BUILD SUCCESSFUL
