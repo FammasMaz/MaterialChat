@@ -18,6 +18,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.materialchat.ui.screens.chat.ChatScreen
 import com.materialchat.ui.screens.conversations.ConversationsScreen
 
 /**
@@ -101,9 +102,7 @@ fun MaterialChatNavHost(
             val conversationId = backStackEntry.arguments?.getString(Screen.Chat.ARG_CONVERSATION_ID)
                 ?: return@composable
 
-            // Placeholder - will be replaced by ChatScreen in ui-chat-01
-            ChatPlaceholder(
-                conversationId = conversationId,
+            ChatScreen(
                 onNavigateBack = { navController.popBackStack() }
             )
         }
@@ -115,27 +114,6 @@ fun MaterialChatNavHost(
                 onNavigateBack = { navController.popBackStack() }
             )
         }
-    }
-}
-
-/**
- * Temporary placeholder for Chat screen.
- * Will be replaced by actual ChatScreen in task ui-chat-01.
- */
-@Composable
-private fun ChatPlaceholder(
-    conversationId: String,
-    onNavigateBack: () -> Unit
-) {
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = "Chat: $conversationId",
-            style = MaterialTheme.typography.headlineMedium,
-            color = MaterialTheme.colorScheme.primary
-        )
     }
 }
 
