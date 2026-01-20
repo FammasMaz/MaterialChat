@@ -374,7 +374,7 @@ Building a native Android AI chat application with Material 3 Expressive design.
       "Verify messages persist in Room database",
       "Verify conversation list updates after new message"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "integration-02",

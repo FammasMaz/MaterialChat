@@ -3,8 +3,8 @@
 ## Current Status
 
 **Last Updated:** 2026-01-21
-**Tasks Completed:** 29/35
-**Current Task:** integration-01
+**Tasks Completed:** 30/35
+**Current Task:** integration-02
 **Build Status:** Debug APK builds successfully
 
 ---
@@ -18,7 +18,7 @@
 | Data | 7 | 7 | 0 |
 | DI | 1 | 1 | 0 |
 | UI | 13 | 13 | 0 |
-| Integration | 2 | 0 | 2 |
+| Integration | 2 | 1 | 1 |
 | Polish | 1 | 0 | 1 |
 | Testing | 1 | 0 | 1 |
 | Build | 1 | 0 | 1 |
@@ -885,5 +885,49 @@
 - `./gradlew assembleDebug` - BUILD SUCCESSFUL
 
 **Status:** All steps completed, compilation verified
+
+---
+
+### 2026-01-21: Task integration-01 Completed
+
+**Task:** Wire up complete chat flow
+
+**Integration Verified:**
+
+**1. ChatViewModel → SendMessageUseCase Connection:**
+- `ChatViewModel.sendMessage()` (line 175-212) calls `sendMessageUseCase()` with conversationId, userContent, and systemPrompt
+- Collects streaming state Flow and updates UI via `updateStreamingState()`
+- Cancel support via `cancelStreaming()` method
+
+**2. Streaming Response Handling:**
+- `ChatViewModel.updateStreamingState()` updates the `ChatUiState.Success.streamingState` property
+- UI observes state changes and renders streaming content with `animateContentSize`
+- StreamingIndicator component displays during response generation
+
+**3. Room Database Persistence:**
+- `SendMessageUseCase` persists user message via `conversationRepository.addMessage()`
+- Creates assistant placeholder message with `isStreaming = true`
+- Updates assistant message content incrementally via `conversationRepository.updateMessageContent()`
+- Finalizes with `conversationRepository.setMessageStreaming(messageId, false)`
+- All operations use Room DAOs which persist to SQLite
+
+**4. Conversation List Updates:**
+- `ConversationsViewModel.observeConversations()` uses Room's reactive `Flow`
+- `ConversationRepositoryImpl.addMessage()` updates conversation's `updatedAt` timestamp
+- Room's Flow automatically emits new list when database changes
+- Conversation list UI updates reactively without manual refresh
+
+**Files Reviewed:**
+- `app/src/main/java/com/materialchat/ui/screens/chat/ChatViewModel.kt` - ViewModel with SendMessageUseCase integration
+- `app/src/main/java/com/materialchat/domain/usecase/SendMessageUseCase.kt` - Use case orchestrating message flow
+- `app/src/main/java/com/materialchat/data/repository/ChatRepositoryImpl.kt` - Repository calling API client
+- `app/src/main/java/com/materialchat/data/repository/ConversationRepositoryImpl.kt` - Repository with Room persistence
+- `app/src/main/java/com/materialchat/ui/screens/conversations/ConversationsViewModel.kt` - ViewModel observing conversations
+- `app/src/main/java/com/materialchat/domain/usecase/GetConversationsUseCase.kt` - Use case for conversation retrieval
+
+**Commands Run:**
+- `./gradlew assembleDebug` - BUILD SUCCESSFUL
+
+**Status:** All steps completed, integration verified, compilation successful
 
 ---
