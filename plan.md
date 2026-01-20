@@ -84,7 +84,7 @@ Building a native Android AI chat application with Material 3 Expressive design.
       "Create data/local/database/dao/ConversationDao.kt with CRUD operations",
       "Create data/local/database/dao/MessageDao.kt with CRUD operations"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "data-local-03",
