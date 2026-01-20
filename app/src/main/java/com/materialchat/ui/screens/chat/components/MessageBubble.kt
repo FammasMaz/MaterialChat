@@ -30,8 +30,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.materialchat.domain.model.MessageRole
+import com.materialchat.ui.components.MarkdownText
 import com.materialchat.ui.screens.chat.MessageUiItem
-import com.materialchat.ui.theme.CustomShapes
 import com.materialchat.ui.theme.MessageBubbleShapes
 
 /**
@@ -98,7 +98,8 @@ fun MessageBubble(
                     MessageContent(
                         content = message.content,
                         isStreaming = message.isStreaming,
-                        textColor = bubbleStyle.textColor
+                        textColor = bubbleStyle.textColor,
+                        isAssistant = isAssistant
                     )
 
                     // Streaming indicator
@@ -125,23 +126,36 @@ fun MessageBubble(
 
 /**
  * Message content text component.
+ * Uses MarkdownText for assistant messages to render formatting,
+ * and plain Text for user messages.
  */
 @Composable
 private fun MessageContent(
     content: String,
     isStreaming: Boolean,
-    textColor: Color
+    textColor: Color,
+    isAssistant: Boolean
 ) {
     val displayContent = content.ifEmpty {
         if (isStreaming) "..." else ""
     }
 
-    Text(
-        text = displayContent,
-        style = MaterialTheme.typography.bodyLarge,
-        color = textColor,
-        overflow = TextOverflow.Clip
-    )
+    if (isAssistant && displayContent.isNotEmpty()) {
+        // Render assistant messages with Markdown
+        MarkdownText(
+            markdown = displayContent,
+            textColor = textColor,
+            style = MaterialTheme.typography.bodyLarge
+        )
+    } else {
+        // Render user messages as plain text
+        Text(
+            text = displayContent,
+            style = MaterialTheme.typography.bodyLarge,
+            color = textColor,
+            overflow = TextOverflow.Clip
+        )
+    }
 }
 
 /**

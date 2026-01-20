@@ -278,7 +278,7 @@ Building a native Android AI chat application with Material 3 Expressive design.
       "Implement bold, italic, links, lists support",
       "Apply markdown rendering to assistant message bubbles"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "ui-chat-04",

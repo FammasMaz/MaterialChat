@@ -3,8 +3,8 @@
 ## Current Status
 
 **Last Updated:** 2026-01-20
-**Tasks Completed:** 21/35
-**Current Task:** ui-markdown-01
+**Tasks Completed:** 22/35
+**Current Task:** ui-chat-04
 **Build Status:** Debug APK builds successfully
 
 ---
@@ -17,7 +17,7 @@
 | Domain | 3 | 3 | 0 |
 | Data | 7 | 7 | 0 |
 | DI | 1 | 1 | 0 |
-| UI | 12 | 6 | 6 |
+| UI | 12 | 7 | 5 |
 | Integration | 2 | 0 | 2 |
 | Polish | 1 | 0 | 1 |
 | Testing | 1 | 0 | 1 |
@@ -564,6 +564,51 @@
 - **Input field disabled during streaming:** MessageTextField has `enabled = !isStreaming`, canSend computed property checks `!isStreaming`
 
 **Note:** All steps were already implemented as part of ui-chat-01 and ui-chat-02. This task verifies completion and marks the chat functionality as fully operational.
+
+**Commands Run:**
+- `./gradlew assembleDebug` - BUILD SUCCESSFUL
+
+**Status:** All steps completed, compilation verified
+
+---
+
+### 2026-01-20: Task ui-markdown-01 Completed
+
+**Task:** Implement Markdown rendering
+
+**Files Created:**
+- `app/src/main/java/com/materialchat/ui/components/MarkdownText.kt` - Custom markdown rendering composable with full CommonMark support
+
+**Files Modified:**
+- `app/src/main/java/com/materialchat/ui/screens/chat/components/MessageBubble.kt` - Updated to use MarkdownText for assistant messages
+
+**Key Features Implemented:**
+
+**MarkdownText Composable:**
+- Custom markdown parser using AnnotatedString for inline formatting
+- Code block extraction and separate rendering with proper styling
+- Syntax highlighting for multiple languages (Kotlin, Java, Python, JavaScript/TypeScript, Rust, Go, Swift, Bash)
+- SelectionContainer wrapper for text selection support
+
+**Code Block Rendering:**
+- Horizontal scroll for long code lines
+- Dark/light theme support with appropriate background colors
+- Syntax highlighting for keywords, strings, comments, and numbers
+- Monospace font with proper line height (13sp, lineHeight 20sp)
+
+**Inline Formatting Support:**
+- Bold text (`**text**` or `__text__`)
+- Italic text (`*text*` or `_text_`)
+- Inline code with background styling (`` `code` ``)
+- Links with underline and primary color (`[text](url)`)
+- Headers (# through ####) with appropriate font sizes
+- Bullet lists (- or *)
+- Numbered lists (1. 2. 3.)
+
+**MessageBubble Integration:**
+- Assistant messages now render with full Markdown formatting
+- User messages remain plain text as per PRD specification
+- Streaming messages show "..." placeholder during loading
 
 **Commands Run:**
 - `./gradlew assembleDebug` - BUILD SUCCESSFUL
