@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Chat bubble icon for MaterialChat -->
+    <path
+        android:fillColor="#6750A4"
+        android:pathData="M54,24C35.2,24 20,37.4 20,54C20,62.8 24.4,70.6 31.2,76L28,88L43.6,80.8C46.8,81.6 50.4,82 54,82C72.8,82 88,68.6 88,52C88,37.4 72.8,24 54,24Z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M40,48m-4,0a4,4 0,1 1,8 0a4,4 0,1 1,-8 0" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M54,48m-4,0a4,4 0,1 1,8 0a4,4 0,1 1,-8 0" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M68,48m-4,0a4,4 0,1 1,8 0a4,4 0,1 1,-8 0" />
+</vector>

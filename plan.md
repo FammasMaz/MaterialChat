@@ -36,7 +36,7 @@ Building a native Android AI chat application with Material 3 Expressive design.
       "Create MainActivity.kt with basic Compose setup",
       "Verify app compiles with ./gradlew assembleDebug"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "domain-01",

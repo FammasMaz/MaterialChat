@@ -3,9 +3,9 @@
 ## Current Status
 
 **Last Updated:** 2026-01-20
-**Tasks Completed:** 1/35
-**Current Task:** setup-02
-**Build Status:** Gradle sync successful
+**Tasks Completed:** 2/35
+**Current Task:** domain-01
+**Build Status:** Debug APK builds successfully
 
 ---
 
@@ -13,7 +13,7 @@
 
 | Category | Total | Completed | Remaining |
 |----------|-------|-----------|-----------|
-| Setup | 2 | 1 | 1 |
+| Setup | 2 | 2 | 0 |
 | Domain | 3 | 0 | 3 |
 | Data | 7 | 0 | 7 |
 | DI | 1 | 0 | 1 |
@@ -66,6 +66,33 @@
 - `./gradlew tasks` - Successfully verified Gradle sync (BUILD SUCCESSFUL)
 
 **Status:** All steps completed, Gradle sync successful
+
+---
+
+### 2026-01-20: Task setup-02 Completed
+
+**Task:** Create Android manifest and application entry points
+
+**Files Created:**
+- `app/src/main/AndroidManifest.xml` - Main manifest with INTERNET permission, network security config
+- `app/src/main/java/com/materialchat/MaterialChatApplication.kt` - Application class with @HiltAndroidApp
+- `app/src/main/java/com/materialchat/MainActivity.kt` - Main activity with Compose setup and @AndroidEntryPoint
+- `app/src/main/res/values/strings.xml` - String resources (app_name)
+- `app/src/main/res/values/themes.xml` - Light theme for app launch
+- `app/src/main/res/values-night/themes.xml` - Dark theme variant
+- `app/src/main/res/xml/network_security_config.xml` - Allow HTTP for localhost/Ollama
+- `app/src/main/res/drawable/ic_launcher_foreground.xml` - Adaptive icon foreground (chat bubble)
+- `app/src/main/res/drawable/ic_launcher_background.xml` - Adaptive icon background
+- `app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml` - Adaptive icon declaration
+- `app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml` - Round adaptive icon
+- `local.properties` - SDK location for Gradle
+
+**Commands Run:**
+- `./gradlew assembleDebug` - BUILD SUCCESSFUL, APK generated (23.5 MB)
+
+**APK Location:** `app/build/outputs/apk/debug/app-debug.apk`
+
+**Status:** All steps completed, app compiles and builds successfully
 
 ---
 
