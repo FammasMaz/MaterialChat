@@ -3,8 +3,8 @@
 ## Current Status
 
 **Last Updated:** 2026-01-20
-**Tasks Completed:** 9/35
-**Current Task:** data-remote-03
+**Tasks Completed:** 10/35
+**Current Task:** data-repo-01
 **Build Status:** Debug APK builds successfully
 
 ---
@@ -15,7 +15,7 @@
 |----------|-------|-----------|-----------|
 | Setup | 2 | 2 | 0 |
 | Domain | 3 | 2 | 1 |
-| Data | 7 | 5 | 2 |
+| Data | 7 | 6 | 1 |
 | DI | 1 | 0 | 1 |
 | UI | 12 | 0 | 12 |
 | Integration | 2 | 0 | 2 |
@@ -229,6 +229,41 @@
 - Batch parsing methods (`parseOpenAiEvents`, `parseOllamaEvents`) for buffered content
 - Uses kotlinx.serialization with lenient JSON configuration
 - Internal wrapper classes for error parsing
+
+**Commands Run:**
+- `./gradlew assembleDebug` - BUILD SUCCESSFUL
+
+**Status:** All steps completed, compilation verified
+
+---
+
+### 2026-01-20: Task data-remote-03 Completed
+
+**Task:** Create API clients
+
+**Files Created:**
+- `app/src/main/java/com/materialchat/data/remote/api/ChatApiClient.kt` - Streaming chat client with OkHttp
+- `app/src/main/java/com/materialchat/data/remote/api/ModelListApiClient.kt` - Model fetching client
+
+**Key Features:**
+
+**ChatApiClient:**
+- `streamChat()` - Unified entry point that routes to provider-specific implementations
+- `streamOpenAiChat()` - Streams chat completions using SSE format with callbackFlow
+- `streamOllamaChat()` - Streams chat completions using NDJSON format with callbackFlow
+- `cancelStreaming()` - Cancels active streaming request
+- `testConnection()` - Tests connectivity to a provider
+- Proper error handling with HTTP status codes and exception mapping
+- Atomic cancellation support for clean stream termination
+- Builds OpenAI and Ollama message formats from domain models
+- Supports system prompts and temperature configuration
+
+**ModelListApiClient:**
+- `fetchModels()` - Fetches available models from any provider type
+- `fetchOpenAiModels()` - GET /v1/models for OpenAI-compatible APIs
+- `fetchOllamaModels()` - GET /api/tags for Ollama servers
+- Returns domain `AiModel` objects
+- Includes `ApiException` class with recoverable/auth error detection
 
 **Commands Run:**
 - `./gradlew assembleDebug` - BUILD SUCCESSFUL

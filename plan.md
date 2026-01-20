@@ -129,7 +129,7 @@ Building a native Android AI chat application with Material 3 Expressive design.
       "Implement streamOllamaChat() with callbackFlow",
       "Create data/remote/api/ModelListApiClient.kt for fetching models"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "data-repo-01",
