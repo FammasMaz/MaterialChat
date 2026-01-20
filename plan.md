@@ -216,7 +216,7 @@ Building a native Android AI chat application with Material 3 Expressive design.
       "Create ui/screens/conversations/components/ConversationItem.kt",
       "Create ui/screens/conversations/components/SwipeToDeleteBox.kt"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "ui-conversations-02",

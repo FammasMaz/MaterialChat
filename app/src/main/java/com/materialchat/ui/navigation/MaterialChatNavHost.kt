@@ -18,6 +18,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.materialchat.ui.screens.conversations.ConversationsScreen
 
 /**
  * Main navigation host for MaterialChat app.
@@ -78,8 +79,7 @@ fun MaterialChatNavHost(
     ) {
         // Conversations list screen (home)
         composable(route = Screen.Conversations.route) {
-            // Placeholder - will be replaced by ConversationsScreen in ui-conversations-01
-            ConversationsPlaceholder(
+            ConversationsScreen(
                 onNavigateToChat = { conversationId ->
                     navController.navigate(Screen.Chat.createRoute(conversationId))
                 },
@@ -115,27 +115,6 @@ fun MaterialChatNavHost(
                 onNavigateBack = { navController.popBackStack() }
             )
         }
-    }
-}
-
-/**
- * Temporary placeholder for Conversations screen.
- * Will be replaced by actual ConversationsScreen in task ui-conversations-01.
- */
-@Composable
-private fun ConversationsPlaceholder(
-    onNavigateToChat: (String) -> Unit,
-    onNavigateToSettings: () -> Unit
-) {
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = "Conversations",
-            style = MaterialTheme.typography.headlineLarge,
-            color = MaterialTheme.colorScheme.primary
-        )
     }
 }
 

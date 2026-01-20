@@ -1,0 +1,193 @@
+package com.materialchat.ui.screens.conversations.components
+
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.dp
+import com.materialchat.ui.theme.MaterialChatMotion
+import kotlin.math.absoluteValue
+import kotlin.math.roundToInt
+
+/**
+ * A swipe-to-delete container that wraps content and handles swipe gestures.
+ *
+ * When the user swipes left beyond the threshold, the onDelete callback is triggered.
+ * The background reveals a delete icon as the content is swiped.
+ *
+ * @param onDelete Callback when the item should be deleted
+ * @param modifier Modifier for the container
+ * @param enabled Whether swipe-to-delete is enabled
+ * @param content The content to display
+ */
+@Composable
+fun SwipeToDeleteBox(
+    onDelete: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    content: @Composable () -> Unit
+) {
+    val density = LocalDensity.current
+
+    // Track the horizontal offset of the content
+    var offsetX by remember { mutableFloatStateOf(0f) }
+    var isDragging by remember { mutableStateOf(false) }
+    var shouldDelete by remember { mutableStateOf(false) }
+
+    // Threshold for triggering delete (in dp)
+    val deleteThresholdDp = 100.dp
+    val deleteThresholdPx = with(density) { deleteThresholdDp.toPx() }
+
+    // Maximum swipe distance
+    val maxSwipeDp = 150.dp
+    val maxSwipePx = with(density) { maxSwipeDp.toPx() }
+
+    // Animated offset for smooth transitions
+    val animatedOffsetX by animateFloatAsState(
+        targetValue = if (isDragging) offsetX else 0f,
+        animationSpec = spring(
+            dampingRatio = MaterialChatMotion.Springs.Default.dampingRatio,
+            stiffness = MaterialChatMotion.Springs.Default.stiffness
+        ),
+        label = "offsetX"
+    )
+
+    // Calculate delete progress (0 to 1)
+    val deleteProgress = (animatedOffsetX.absoluteValue / deleteThresholdPx).coerceIn(0f, 1f)
+
+    // Background color animates based on delete progress
+    val backgroundColor by animateColorAsState(
+        targetValue = if (deleteProgress > 0.9f) {
+            MaterialTheme.colorScheme.error
+        } else {
+            MaterialTheme.colorScheme.errorContainer
+        },
+        animationSpec = spring(),
+        label = "backgroundColor"
+    )
+
+    // Icon scale based on progress
+    val iconScale by animateFloatAsState(
+        targetValue = if (deleteProgress > 0.5f) 1.2f else 0.8f + (deleteProgress * 0.4f),
+        animationSpec = spring(
+            dampingRatio = MaterialChatMotion.Springs.Bouncy.dampingRatio,
+            stiffness = MaterialChatMotion.Springs.Bouncy.stiffness
+        ),
+        label = "iconScale"
+    )
+
+    // Icon color
+    val iconColor by animateColorAsState(
+        targetValue = if (deleteProgress > 0.9f) {
+            MaterialTheme.colorScheme.onError
+        } else {
+            MaterialTheme.colorScheme.onErrorContainer
+        },
+        animationSpec = spring(),
+        label = "iconColor"
+    )
+
+    // Padding for the icon
+    val iconPadding by animateDpAsState(
+        targetValue = if (deleteProgress > 0.5f) 24.dp else 16.dp,
+        animationSpec = spring(),
+        label = "iconPadding"
+    )
+
+    // Trigger delete when swipe is complete
+    LaunchedEffect(shouldDelete) {
+        if (shouldDelete) {
+            onDelete()
+            shouldDelete = false
+            offsetX = 0f
+        }
+    }
+
+    Box(
+        modifier = modifier
+    ) {
+        // Background with delete icon
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .clip(RoundedCornerShape(12.dp))
+                .background(backgroundColor),
+            contentAlignment = Alignment.CenterEnd
+        ) {
+            if (deleteProgress > 0.1f) {
+                Icon(
+                    imageVector = Icons.Outlined.Delete,
+                    contentDescription = "Delete",
+                    tint = iconColor,
+                    modifier = Modifier
+                        .padding(end = iconPadding)
+                        .scale(iconScale)
+                )
+            }
+        }
+
+        // Foreground content
+        Box(
+            modifier = Modifier
+                .offset { IntOffset(animatedOffsetX.roundToInt(), 0) }
+                .fillMaxSize()
+                .pointerInput(enabled) {
+                    if (!enabled) return@pointerInput
+
+                    detectHorizontalDragGestures(
+                        onDragStart = {
+                            isDragging = true
+                        },
+                        onDragEnd = {
+                            isDragging = false
+                            if (offsetX.absoluteValue > deleteThresholdPx) {
+                                shouldDelete = true
+                            } else {
+                                offsetX = 0f
+                            }
+                        },
+                        onDragCancel = {
+                            isDragging = false
+                            offsetX = 0f
+                        },
+                        onHorizontalDrag = { change, dragAmount ->
+                            change.consume()
+                            // Only allow left swipe (negative offset)
+                            val newOffset = offsetX + dragAmount
+                            if (newOffset <= 0) {
+                                offsetX = newOffset.coerceIn(-maxSwipePx, 0f)
+                            }
+                        }
+                    )
+                }
+        ) {
+            content()
+        }
+    }
+}

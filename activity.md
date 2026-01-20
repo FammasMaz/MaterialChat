@@ -3,8 +3,8 @@
 ## Current Status
 
 **Last Updated:** 2026-01-20
-**Tasks Completed:** 16/35
-**Current Task:** ui-conversations-01
+**Tasks Completed:** 17/35
+**Current Task:** ui-conversations-02
 **Build Status:** Debug APK builds successfully
 
 ---
@@ -17,7 +17,7 @@
 | Domain | 3 | 3 | 0 |
 | Data | 7 | 7 | 0 |
 | DI | 1 | 1 | 0 |
-| UI | 12 | 2 | 10 |
+| UI | 12 | 3 | 9 |
 | Integration | 2 | 0 | 2 |
 | Polish | 1 | 0 | 1 |
 | Testing | 1 | 0 | 1 |
@@ -426,6 +426,38 @@
 - Support for navigation arguments (conversationId for Chat screen)
 - Placeholder composables for all screens (to be replaced in later tasks)
 - Material 3 Expressive motion with DampingRatioLowBouncy and StiffnessMediumLow
+
+**Commands Run:**
+- `./gradlew assembleDebug` - BUILD SUCCESSFUL
+
+**Status:** All steps completed, compilation verified
+
+---
+
+### 2026-01-20: Task ui-conversations-01 Completed
+
+**Task:** Create conversations screen
+
+**Files Created:**
+- `app/src/main/java/com/materialchat/ui/screens/conversations/ConversationsUiState.kt` - Sealed interface for UI states (Loading, Empty, Success, Error), ConversationUiItem data class for list items, and ConversationsEvent sealed interface for one-time events
+- `app/src/main/java/com/materialchat/ui/screens/conversations/ConversationsViewModel.kt` - HiltViewModel with conversation list observation, create/delete/open operations, undo-able deletion with 5-second delay, and relative time formatting
+- `app/src/main/java/com/materialchat/ui/screens/conversations/ConversationsScreen.kt` - Main screen composable with LargeTopAppBar, LazyColumn, Extended FAB, empty state, loading state, error state, and snackbar support
+- `app/src/main/java/com/materialchat/ui/screens/conversations/components/ConversationItem.kt` - Individual conversation list item with chat icon, title, provider badge, model name, and relative time display; Material 3 Expressive press animations
+- `app/src/main/java/com/materialchat/ui/screens/conversations/components/SwipeToDeleteBox.kt` - Swipe-to-delete container with animated background, delete icon with scale animation, and spring physics
+
+**Files Modified:**
+- `app/src/main/java/com/materialchat/ui/navigation/MaterialChatNavHost.kt` - Updated to use ConversationsScreen instead of placeholder, removed unused ConversationsPlaceholder function
+
+**Key Features:**
+- Full conversations list screen with Material 3 Expressive styling
+- Large collapsing top app bar with exit until collapsed behavior
+- Swipe-to-delete with 5-second undo window via snackbar
+- Extended FAB for creating new conversations
+- Empty state with illustration and guidance
+- Loading and error states with retry functionality
+- Spring-physics animations throughout
+- Provider name badges and model display per conversation
+- Relative time display for conversation updates
 
 **Commands Run:**
 - `./gradlew assembleDebug` - BUILD SUCCESSFUL
