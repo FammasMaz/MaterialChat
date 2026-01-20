@@ -3,8 +3,8 @@
 ## Current Status
 
 **Last Updated:** 2026-01-20
-**Tasks Completed:** 7/35
-**Current Task:** data-remote-01
+**Tasks Completed:** 8/35
+**Current Task:** data-remote-02
 **Build Status:** Debug APK builds successfully
 
 ---
@@ -15,7 +15,7 @@
 |----------|-------|-----------|-----------|
 | Setup | 2 | 2 | 0 |
 | Domain | 3 | 2 | 1 |
-| Data | 7 | 3 | 4 |
+| Data | 7 | 4 | 3 |
 | DI | 1 | 0 | 1 |
 | UI | 12 | 0 | 12 |
 | Integration | 2 | 0 | 2 |
@@ -188,6 +188,27 @@
 
 **Commands Run:**
 - `./gradlew assembleDebug` - BUILD SUCCESSFUL (warning about Room schema export location - non-blocking)
+
+**Status:** All steps completed, compilation verified
+
+---
+
+### 2026-01-20: Task data-remote-01 Completed
+
+**Task:** Create API DTOs
+
+**Files Created:**
+- `app/src/main/java/com/materialchat/data/remote/dto/OpenAiModels.kt` - Request/response DTOs for OpenAI-compatible API including ChatRequest, ChatResponse, StreamChunk, ModelsResponse, and error types
+- `app/src/main/java/com/materialchat/data/remote/dto/OllamaModels.kt` - Request/response DTOs for Ollama API including ChatRequest, ChatResponse, GenerateRequest, ModelsResponse, and error types
+- `app/src/main/java/com/materialchat/data/remote/api/StreamingEvent.kt` - Sealed class for unified streaming events (Content, Done, Error, Connected, KeepAlive) with helper factory methods
+
+**Key Features:**
+- OpenAiModels: Full support for chat completions, streaming chunks, model listing, and error responses with @Serializable annotations
+- OllamaModels: Support for chat and generate endpoints, NDJSON streaming format, model listing with details
+- StreamingEvent: Unified event type for both OpenAI SSE and Ollama NDJSON formats, includes error handling helpers
+
+**Commands Run:**
+- `./gradlew assembleDebug` - BUILD SUCCESSFUL
 
 **Status:** All steps completed, compilation verified
 

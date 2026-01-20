@@ -106,7 +106,7 @@ Building a native Android AI chat application with Material 3 Expressive design.
       "Create data/remote/dto/OllamaModels.kt with request/response classes",
       "Create data/remote/api/StreamingEvent.kt sealed class"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "data-remote-02",
