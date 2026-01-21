@@ -14,6 +14,7 @@
     - Content bounds: 21dp to 87dp
     
     Design: Chat bubble with three dots, Google Messages inspired
+    Bubble made larger and centered accounting for tail visual weight
     -->
     
     <!-- Outer ring - centered at 54,54, radius 30 (within safe zone) -->
@@ -26,32 +27,32 @@
         android:fillColor="#FFF3E0"
         android:pathData="M54,54m-25,0a25,25 0,1 1,50 0a25,25 0,1 1,-50 0" />
     
-    <!-- Chat bubble - centered, organic shape with tail pointing bottom-left -->
+    <!-- Chat bubble - larger size, shifted right slightly to account for tail -->
     <path
         android:fillColor="#5D4037"
-        android:pathData="M54,40
-                         C44,40 36,46.5 36,54.5
-                         C36,58.5 38,62 41,64.5
-                         L38,72
-                         L47,68
-                         C49,68.5 51.5,69 54,69
-                         C64,69 72,62.5 72,54.5
-                         C72,46.5 64,40 54,40
+        android:pathData="M56,36
+                         C44,36 32,44 32,53
+                         C32,58 34.5,62.5 38.5,66
+                         L35,75
+                         L46,70
+                         C49,71 52.5,71.5 56,71.5
+                         C68,71.5 78,63 78,53
+                         C78,44 68,36 56,36
                          Z" />
 
-    <!-- Three dots - horizontally centered in bubble -->
+    <!-- Three dots - horizontally centered in bubble, slightly larger -->
     <!-- Left dot -->
     <path
         android:fillColor="#FFF3E0"
-        android:pathData="M46,54.5m-3,0a3,3 0,1 1,6 0a3,3 0,1 1,-6 0" />
+        android:pathData="M46,53m-3.5,0a3.5,3.5 0,1 1,7 0a3.5,3.5 0,1 1,-7 0" />
     
     <!-- Center dot -->
     <path
         android:fillColor="#FFF3E0"
-        android:pathData="M54,54.5m-3,0a3,3 0,1 1,6 0a3,3 0,1 1,-6 0" />
+        android:pathData="M56,53m-3.5,0a3.5,3.5 0,1 1,7 0a3.5,3.5 0,1 1,-7 0" />
     
     <!-- Right dot -->
     <path
         android:fillColor="#FFF3E0"
-        android:pathData="M62,54.5m-3,0a3,3 0,1 1,6 0a3,3 0,1 1,-6 0" />
+        android:pathData="M66,53m-3.5,0a3.5,3.5 0,1 1,7 0a3.5,3.5 0,1 1,-7 0" />
 </vector>
