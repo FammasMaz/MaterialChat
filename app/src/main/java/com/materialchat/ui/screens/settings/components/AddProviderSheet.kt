@@ -17,11 +17,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -55,6 +54,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
@@ -145,6 +145,10 @@ private fun AddProviderSheetContent(
 ) {
     val scrollState = rememberScrollState()
     val focusRequester = remember { FocusRequester() }
+    val density = LocalDensity.current
+    val imeBottom = WindowInsets.ime.getBottom(density)
+    val navBottom = WindowInsets.navigationBars.getBottom(density)
+    val imePadding = with(density) { (imeBottom - navBottom).coerceAtLeast(0).toDp() }
 
     // Auto-focus name field when sheet opens
     LaunchedEffect(Unit) {
@@ -158,9 +162,8 @@ private fun AddProviderSheetContent(
             .fillMaxWidth()
             .verticalScroll(scrollState)
             .padding(horizontal = 24.dp)
-            .windowInsetsPadding(
-                WindowInsets.navigationBars.union(WindowInsets.ime)
-            )
+            .navigationBarsPadding()
+            .padding(bottom = imePadding)
             .animateContentSize(
                 animationSpec = spring(
                     dampingRatio = Spring.DampingRatioMediumBouncy,

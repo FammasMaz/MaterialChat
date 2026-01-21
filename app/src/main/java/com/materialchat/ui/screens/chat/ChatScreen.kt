@@ -7,9 +7,12 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.ime
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -40,6 +43,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -327,6 +331,10 @@ private fun ChatContent(
     onRegenerateResponse: () -> Unit
 ) {
     val haptics = rememberHapticFeedback()
+    val density = LocalDensity.current
+    val imeBottom = WindowInsets.ime.getBottom(density)
+    val navBottom = WindowInsets.navigationBars.getBottom(density)
+    val imePadding = with(density) { (imeBottom - navBottom).coerceAtLeast(0).toDp() }
 
     // Track content lengths for haptic feedback during streaming
     var lastContentLength by remember { mutableIntStateOf(0) }
@@ -373,7 +381,9 @@ private fun ChatContent(
         tonalElevation = 1.dp
     ) {
         Column(
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(bottom = imePadding)
         ) {
             // Message list
             MessageList(
