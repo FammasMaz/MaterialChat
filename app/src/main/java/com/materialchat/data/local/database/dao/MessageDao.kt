@@ -85,6 +85,12 @@ interface MessageDao {
     suspend fun updateContent(messageId: String, content: String)
 
     /**
+     * Update message content and thinking content (used during streaming with thinking models).
+     */
+    @Query("UPDATE messages SET content = :content, thinking_content = :thinkingContent WHERE id = :messageId")
+    suspend fun updateContentWithThinking(messageId: String, content: String, thinkingContent: String?)
+
+    /**
      * Update streaming status of a message.
      */
     @Query("UPDATE messages SET is_streaming = :isStreaming WHERE id = :messageId")

@@ -9,6 +9,7 @@ import java.util.UUID
  * @property conversationId The ID of the conversation this message belongs to
  * @property role The role of the message sender (USER, ASSISTANT, or SYSTEM)
  * @property content The text content of the message
+ * @property thinkingContent The thinking/reasoning content (for models that support it)
  * @property isStreaming Whether the message is currently being streamed
  * @property createdAt Timestamp when the message was created (epoch milliseconds)
  */
@@ -17,6 +18,7 @@ data class Message(
     val conversationId: String,
     val role: MessageRole,
     val content: String,
+    val thinkingContent: String? = null,
     val isStreaming: Boolean = false,
     val createdAt: Long = System.currentTimeMillis()
 )

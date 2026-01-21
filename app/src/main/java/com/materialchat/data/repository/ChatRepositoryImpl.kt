@@ -34,6 +34,7 @@ class ChatRepositoryImpl @Inject constructor(
     // Track the current streaming message for state management
     private var currentMessageId: String? = null
     private var accumulatedContent = StringBuilder()
+    private var accumulatedThinking = StringBuilder()
 
     override fun sendMessage(
         provider: Provider,
@@ -44,6 +45,7 @@ class ChatRepositoryImpl @Inject constructor(
         // Reset state for new message
         currentMessageId = null
         accumulatedContent.clear()
+        accumulatedThinking.clear()
 
         // Get API key if required
         val apiKey = if (provider.requiresApiKey) {
@@ -74,8 +76,10 @@ class ChatRepositoryImpl @Inject constructor(
 
                 is StreamingEvent.Content -> {
                     accumulatedContent.append(event.content)
+                    event.thinking?.let { accumulatedThinking.append(it) }
                     emit(StreamingState.Streaming(
                         content = accumulatedContent.toString(),
+                        thinkingContent = accumulatedThinking.toString().takeIf { it.isNotEmpty() },
                         messageId = messageId
                     ))
                 }
@@ -83,6 +87,7 @@ class ChatRepositoryImpl @Inject constructor(
                 is StreamingEvent.Done -> {
                     emit(StreamingState.Completed(
                         finalContent = accumulatedContent.toString(),
+                        finalThinkingContent = accumulatedThinking.toString().takeIf { it.isNotEmpty() },
                         messageId = messageId
                     ))
                 }

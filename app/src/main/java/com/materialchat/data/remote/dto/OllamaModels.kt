@@ -20,6 +20,7 @@ data class OllamaChatRequest(
     val model: String,
     val messages: List<OllamaMessage>,
     val stream: Boolean = true,
+    val think: Boolean = false,
     val options: OllamaOptions? = null
 )
 
@@ -77,11 +78,13 @@ data class OllamaChatResponse(
 
 /**
  * Message in Ollama response.
+ * Supports thinking content for reasoning models.
  */
 @Serializable
 data class OllamaResponseMessage(
     val role: String? = null,
-    val content: String? = null
+    val content: String? = null,
+    val thinking: String? = null
 )
 
 // ============================================================================

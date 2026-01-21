@@ -18,10 +18,12 @@ sealed class StreamingState {
      * Actively receiving streamed content.
      *
      * @property content The accumulated content received so far
+     * @property thinkingContent The accumulated thinking/reasoning content (for models that support it)
      * @property messageId The ID of the message being streamed
      */
     data class Streaming(
         val content: String,
+        val thinkingContent: String? = null,
         val messageId: String
     ) : StreamingState()
 
@@ -29,10 +31,12 @@ sealed class StreamingState {
      * Streaming completed successfully.
      *
      * @property finalContent The complete content of the response
+     * @property finalThinkingContent The complete thinking/reasoning content (for models that support it)
      * @property messageId The ID of the completed message
      */
     data class Completed(
         val finalContent: String,
+        val finalThinkingContent: String? = null,
         val messageId: String
     ) : StreamingState()
 

@@ -106,6 +106,14 @@ class ConversationRepositoryImpl @Inject constructor(
         messageDao.updateContent(messageId, content)
     }
 
+    override suspend fun updateMessageContentWithThinking(
+        messageId: String,
+        content: String,
+        thinkingContent: String?
+    ) {
+        messageDao.updateContentWithThinking(messageId, content, thinkingContent)
+    }
+
     override suspend fun setMessageStreaming(messageId: String, isStreaming: Boolean) {
         messageDao.updateStreamingStatus(messageId, isStreaming)
     }

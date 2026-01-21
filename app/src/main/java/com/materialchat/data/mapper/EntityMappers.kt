@@ -101,6 +101,7 @@ fun Message.toEntity(): MessageEntity = MessageEntity(
     conversationId = conversationId,
     role = role.name,
     content = content,
+    thinkingContent = thinkingContent,
     isStreaming = isStreaming,
     createdAt = createdAt
 )
@@ -113,6 +114,7 @@ fun MessageEntity.toDomain(): Message = Message(
     conversationId = conversationId,
     role = MessageRole.valueOf(role),
     content = content,
+    thinkingContent = thinkingContent,
     isStreaming = isStreaming,
     createdAt = createdAt
 )

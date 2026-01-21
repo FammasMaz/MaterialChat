@@ -106,6 +106,15 @@ interface ConversationRepository {
     suspend fun updateMessageContent(messageId: String, content: String)
 
     /**
+     * Updates both content and thinking content of a message (used during streaming).
+     *
+     * @param messageId The ID of the message
+     * @param content The new content
+     * @param thinkingContent The new thinking content (can be null)
+     */
+    suspend fun updateMessageContentWithThinking(messageId: String, content: String, thinkingContent: String?)
+
+    /**
      * Sets the streaming state of a message.
      *
      * @param messageId The ID of the message

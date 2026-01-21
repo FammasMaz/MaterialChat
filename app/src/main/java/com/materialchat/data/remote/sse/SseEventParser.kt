@@ -152,6 +152,7 @@ class SseEventParser(
 
     /**
      * Parses an Ollama response into a StreamingEvent.
+     * Handles both content and thinking (reasoning) fields.
      */
     private fun parseOllamaResponse(response: OllamaChatResponse): StreamingEvent {
         // Check if stream is done
@@ -162,17 +163,19 @@ class SseEventParser(
             )
         }
 
-        // Extract content from message
+        // Extract content and thinking from message
         val content = response.message?.content
+        val thinking = response.message?.thinking
 
-        // No content in this chunk
-        if (content == null || content.isEmpty()) {
+        // No content or thinking in this chunk
+        if ((content == null || content.isEmpty()) && (thinking == null || thinking.isEmpty())) {
             return StreamingEvent.KeepAlive
         }
 
-        // Return content chunk
+        // Return content chunk with optional thinking
         return StreamingEvent.Content(
-            content = content,
+            content = content ?: "",
+            thinking = thinking,
             isFirst = false
         )
     }

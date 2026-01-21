@@ -73,6 +73,7 @@ class SendMessageUseCase @Inject constructor(
         emit(StreamingState.Starting)
 
         var accumulatedContent = ""
+        var accumulatedThinking: String? = null
         var hasError = false
 
         // Stream the response from the chat repository
@@ -85,8 +86,17 @@ class SendMessageUseCase @Inject constructor(
             when (state) {
                 is StreamingState.Streaming -> {
                     accumulatedContent = state.content
-                    // Update the message content in the database
-                    conversationRepository.updateMessageContent(assistantMessageId, accumulatedContent)
+                    accumulatedThinking = state.thinkingContent
+                    // Update the message content in the database (with thinking if available)
+                    if (accumulatedThinking != null) {
+                        conversationRepository.updateMessageContentWithThinking(
+                            assistantMessageId,
+                            accumulatedContent,
+                            accumulatedThinking
+                        )
+                    } else {
+                        conversationRepository.updateMessageContent(assistantMessageId, accumulatedContent)
+                    }
                 }
                 is StreamingState.Error -> {
                     hasError = true
@@ -104,7 +114,15 @@ class SendMessageUseCase @Inject constructor(
                     conversationRepository.setMessageStreaming(assistantMessageId, false)
                 }
                 is StreamingState.Completed -> {
-                    conversationRepository.updateMessageContent(assistantMessageId, state.finalContent)
+                    if (state.finalThinkingContent != null) {
+                        conversationRepository.updateMessageContentWithThinking(
+                            assistantMessageId,
+                            state.finalContent,
+                            state.finalThinkingContent
+                        )
+                    } else {
+                        conversationRepository.updateMessageContent(assistantMessageId, state.finalContent)
+                    }
                     conversationRepository.setMessageStreaming(assistantMessageId, false)
                 }
                 else -> { /* Ignore other states */ }
@@ -119,10 +137,12 @@ class SendMessageUseCase @Inject constructor(
             val mappedState = when (state) {
                 is StreamingState.Streaming -> StreamingState.Streaming(
                     content = state.content,
+                    thinkingContent = state.thinkingContent,
                     messageId = assistantMessageId
                 )
                 is StreamingState.Completed -> StreamingState.Completed(
                     finalContent = state.finalContent,
+                    finalThinkingContent = state.finalThinkingContent,
                     messageId = assistantMessageId
                 )
                 is StreamingState.Error -> StreamingState.Error(

@@ -12,10 +12,13 @@ sealed class StreamingEvent {
      * @param content The partial text content from this chunk.
      *                For OpenAI: from choices[0].delta.content
      *                For Ollama: from message.content
+     * @param thinking The partial thinking/reasoning content from this chunk (Ollama only).
+     *                 For Ollama: from message.thinking
      * @param isFirst Whether this is the first content chunk (may include role info).
      */
     data class Content(
         val content: String,
+        val thinking: String? = null,
         val isFirst: Boolean = false
     ) : StreamingEvent()
 

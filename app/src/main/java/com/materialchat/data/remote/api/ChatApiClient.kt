@@ -216,11 +216,12 @@ class ChatApiClient(
         // Build the message list with optional system prompt
         val ollamaMessages = buildOllamaMessages(messages, systemPrompt)
 
-        // Create request body
+        // Create request body with thinking enabled
         val request = OllamaChatRequest(
             model = model,
             messages = ollamaMessages,
             stream = true,
+            think = true,
             options = com.materialchat.data.remote.dto.OllamaOptions(
                 temperature = temperature
             )

@@ -28,7 +28,7 @@ import com.materialchat.data.local.database.entity.ProviderEntity
         ConversationEntity::class,
         MessageEntity::class
     ],
-    version = 1,
+    version = 2,
     exportSchema = true
 )
 abstract class MaterialChatDatabase : RoomDatabase() {
