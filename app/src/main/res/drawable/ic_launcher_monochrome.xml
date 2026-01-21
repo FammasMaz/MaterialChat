@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    
+    <!-- 
+    MaterialChat Monochrome Icon for Themed Icons (Android 13+)
+    Single color version - system will tint this based on wallpaper
+    -->
+    
+    <!-- Chat bubble outline with tail -->
+    <path
+        android:fillColor="#000000"
+        android:pathData="M54,40
+                         C44,40 36,46.5 36,54.5
+                         C36,58.5 38,62 41,64.5
+                         L38,72
+                         L47,68
+                         C49,68.5 51.5,69 54,69
+                         C64,69 72,62.5 72,54.5
+                         C72,46.5 64,40 54,40
+                         Z" />
+
+    <!-- Three dots - cut out from bubble (negative space) -->
+    <!-- Using white/transparent for the dots creates the cutout effect -->
+</vector>
