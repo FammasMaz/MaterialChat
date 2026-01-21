@@ -56,14 +56,16 @@ class SettingsViewModel @Inject constructor(
                 appPreferences.systemPrompt,
                 appPreferences.themeMode,
                 appPreferences.dynamicColorEnabled,
-                appPreferences.hapticsEnabled
-            ) { providers, systemPrompt, themeMode, dynamicColorEnabled, hapticsEnabled ->
+                appPreferences.hapticsEnabled,
+                appPreferences.aiGeneratedTitlesEnabled
+            ) { providers, systemPrompt, themeMode, dynamicColorEnabled, hapticsEnabled, aiGeneratedTitlesEnabled ->
                 SettingsData(
                     providers = providers,
                     systemPrompt = systemPrompt,
                     themeMode = themeMode,
                     dynamicColorEnabled = dynamicColorEnabled,
-                    hapticsEnabled = hapticsEnabled
+                    hapticsEnabled = hapticsEnabled,
+                    aiGeneratedTitlesEnabled = aiGeneratedTitlesEnabled
                 )
             }
                 .catch { e ->
@@ -95,6 +97,7 @@ class SettingsViewModel @Inject constructor(
                         dynamicColorEnabled = data.dynamicColorEnabled,
                         isDynamicColorSupported = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S,
                         hapticsEnabled = data.hapticsEnabled,
+                        aiGeneratedTitlesEnabled = data.aiGeneratedTitlesEnabled,
                         showAddProviderSheet = if (currentState is SettingsUiState.Success) {
                             currentState.showAddProviderSheet
                         } else false,
@@ -448,6 +451,21 @@ class SettingsViewModel @Inject constructor(
     }
 
     /**
+     * Updates the AI-generated titles setting.
+     */
+    fun updateAiGeneratedTitlesEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            try {
+                appPreferences.setAiGeneratedTitlesEnabled(enabled)
+            } catch (e: Exception) {
+                _events.emit(SettingsEvent.ShowSnackbar(
+                    message = "Failed to save AI titles setting"
+                ))
+            }
+        }
+    }
+
+    /**
      * Retries loading settings after an error.
      */
     fun retry() {
@@ -478,6 +496,7 @@ class SettingsViewModel @Inject constructor(
         val systemPrompt: String,
         val themeMode: AppPreferences.ThemeMode,
         val dynamicColorEnabled: Boolean,
-        val hapticsEnabled: Boolean
+        val hapticsEnabled: Boolean,
+        val aiGeneratedTitlesEnabled: Boolean
     )
 }

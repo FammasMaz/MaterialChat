@@ -1,8 +1,10 @@
 package com.materialchat.ui.screens.chat.components
 
 import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -24,12 +26,14 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.materialchat.domain.model.AiModel
@@ -72,6 +76,40 @@ fun ChatTopBar(
     scrollBehavior: TopAppBarScrollBehavior? = null
 ) {
     var showMenu by remember { mutableStateOf(false) }
+    
+    // Track title changes for reveal animation
+    var previousTitle by remember { mutableStateOf(title) }
+    var displayedTitle by remember { mutableStateOf(title) }
+    val revealProgress = remember { Animatable(1f) }
+    
+    // Animate title reveal when title changes (excluding initial "New Chat")
+    LaunchedEffect(title) {
+        if (title != previousTitle && previousTitle == "New Chat" && title != "New Chat") {
+            // New AI-generated title - animate reveal
+            displayedTitle = title
+            revealProgress.snapTo(0f)
+            revealProgress.animateTo(
+                targetValue = 1f,
+                animationSpec = tween(
+                    durationMillis = title.length * 30 + 200, // Dynamic duration based on title length
+                    easing = androidx.compose.animation.core.FastOutSlowInEasing
+                )
+            )
+        } else {
+            // Direct update without animation
+            displayedTitle = title
+            revealProgress.snapTo(1f)
+        }
+        previousTitle = title
+    }
+    
+    // Calculate visible characters based on reveal progress
+    val visibleCharCount = (displayedTitle.length * revealProgress.value).toInt()
+    val animatedTitle = if (revealProgress.value < 1f) {
+        displayedTitle.take(visibleCharCount)
+    } else {
+        displayedTitle
+    }
 
     TopAppBar(
         title = {
@@ -84,10 +122,13 @@ fun ChatTopBar(
                 )
             ) {
                 Text(
-                    text = title,
+                    text = animatedTitle,
                     style = MaterialTheme.typography.titleMedium,
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.alpha(
+                        if (revealProgress.value < 0.1f) 0f else 1f
+                    )
                 )
                 Row(
                     verticalAlignment = Alignment.CenterVertically
