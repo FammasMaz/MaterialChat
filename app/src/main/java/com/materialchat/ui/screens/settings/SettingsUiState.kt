@@ -23,6 +23,7 @@ sealed interface SettingsUiState {
      * @property themeMode Current theme mode setting
      * @property dynamicColorEnabled Whether dynamic color is enabled
      * @property isDynamicColorSupported Whether the device supports dynamic color (Android 12+)
+     * @property hapticsEnabled Whether haptic feedback is enabled
      * @property showAddProviderSheet Whether to show the add provider bottom sheet
      * @property editingProvider Provider being edited, if any
      * @property showDeleteConfirmation Provider being deleted (for confirmation dialog)
@@ -34,6 +35,7 @@ sealed interface SettingsUiState {
         val themeMode: AppPreferences.ThemeMode,
         val dynamicColorEnabled: Boolean,
         val isDynamicColorSupported: Boolean,
+        val hapticsEnabled: Boolean = true,
         val showAddProviderSheet: Boolean = false,
         val editingProvider: Provider? = null,
         val showDeleteConfirmation: Provider? = null,

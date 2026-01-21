@@ -62,6 +62,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.materialchat.ui.components.HapticPattern
+import com.materialchat.ui.components.rememberHapticFeedback
 import com.materialchat.ui.screens.conversations.components.ConversationItem
 import com.materialchat.ui.screens.conversations.components.SwipeToDeleteBox
 import com.materialchat.ui.theme.CustomShapes
@@ -140,9 +142,15 @@ fun ConversationsScreen(
             )
         },
         floatingActionButton = {
+            val hapticsEnabled = when (val state = uiState) {
+                is ConversationsUiState.Success -> state.hapticsEnabled
+                is ConversationsUiState.Empty -> state.hapticsEnabled
+                else -> true
+            }
             NewChatFab(
                 onClick = { viewModel.createNewConversation() },
-                visible = uiState !is ConversationsUiState.Loading
+                visible = uiState !is ConversationsUiState.Loading,
+                hapticsEnabled = hapticsEnabled
             )
         },
         snackbarHost = {
@@ -201,12 +209,14 @@ private fun ConversationsTopBar(
 @Composable
 private fun NewChatFab(
     onClick: () -> Unit,
-    visible: Boolean
+    visible: Boolean,
+    hapticsEnabled: Boolean = true
 ) {
     val listState = rememberLazyListState()
     val isScrolling by remember {
         derivedStateOf { listState.isScrollInProgress }
     }
+    val haptics = rememberHapticFeedback()
 
     AnimatedVisibility(
         visible = visible,
@@ -225,7 +235,10 @@ private fun NewChatFab(
                 .padding(12.dp) // Padding for shadow
         ) {
             ExtendedFloatingActionButton(
-                onClick = onClick,
+                onClick = {
+                    haptics.perform(HapticPattern.CLICK, hapticsEnabled)
+                    onClick()
+                },
                 icon = {
                     Icon(
                         imageVector = Icons.Default.Add,
@@ -296,7 +309,8 @@ private fun ConversationsContent(
                     ConversationList(
                         conversations = uiState.conversations,
                         onConversationClick = onConversationClick,
-                        onConversationDelete = onConversationDelete
+                        onConversationDelete = onConversationDelete,
+                        hapticsEnabled = uiState.hapticsEnabled
                     )
                 }
                 is ConversationsUiState.Error -> {
@@ -380,9 +394,11 @@ private fun EmptyContent(
 private fun ConversationList(
     conversations: List<ConversationUiItem>,
     onConversationClick: (String) -> Unit,
-    onConversationDelete: (com.materialchat.domain.model.Conversation) -> Unit
+    onConversationDelete: (com.materialchat.domain.model.Conversation) -> Unit,
+    hapticsEnabled: Boolean = true
 ) {
     val listState = rememberLazyListState()
+    val haptics = rememberHapticFeedback()
 
     LazyColumn(
         state = listState,
@@ -401,6 +417,7 @@ private fun ConversationList(
         ) { conversationItem ->
             SwipeToDeleteBox(
                 onDelete = { onConversationDelete(conversationItem.conversation) },
+                hapticsEnabled = hapticsEnabled,
                 modifier = Modifier
                     .fillMaxWidth()
                     .animateItem(
@@ -414,7 +431,10 @@ private fun ConversationList(
             ) {
                 ConversationItem(
                     conversationItem = conversationItem,
-                    onClick = { onConversationClick(conversationItem.conversation.id) }
+                    onClick = {
+                        haptics.perform(HapticPattern.CLICK, hapticsEnabled)
+                        onConversationClick(conversationItem.conversation.id)
+                    }
                 )
             }
         }

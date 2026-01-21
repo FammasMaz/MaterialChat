@@ -55,13 +55,15 @@ class SettingsViewModel @Inject constructor(
                 manageProvidersUseCase.observeProviders(),
                 appPreferences.systemPrompt,
                 appPreferences.themeMode,
-                appPreferences.dynamicColorEnabled
-            ) { providers, systemPrompt, themeMode, dynamicColorEnabled ->
+                appPreferences.dynamicColorEnabled,
+                appPreferences.hapticsEnabled
+            ) { providers, systemPrompt, themeMode, dynamicColorEnabled, hapticsEnabled ->
                 SettingsData(
                     providers = providers,
                     systemPrompt = systemPrompt,
                     themeMode = themeMode,
-                    dynamicColorEnabled = dynamicColorEnabled
+                    dynamicColorEnabled = dynamicColorEnabled,
+                    hapticsEnabled = hapticsEnabled
                 )
             }
                 .catch { e ->
@@ -92,6 +94,7 @@ class SettingsViewModel @Inject constructor(
                         themeMode = data.themeMode,
                         dynamicColorEnabled = data.dynamicColorEnabled,
                         isDynamicColorSupported = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S,
+                        hapticsEnabled = data.hapticsEnabled,
                         showAddProviderSheet = if (currentState is SettingsUiState.Success) {
                             currentState.showAddProviderSheet
                         } else false,
@@ -430,6 +433,21 @@ class SettingsViewModel @Inject constructor(
     }
 
     /**
+     * Updates the haptic feedback setting.
+     */
+    fun updateHapticsEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            try {
+                appPreferences.setHapticsEnabled(enabled)
+            } catch (e: Exception) {
+                _events.emit(SettingsEvent.ShowSnackbar(
+                    message = "Failed to save haptics setting"
+                ))
+            }
+        }
+    }
+
+    /**
      * Retries loading settings after an error.
      */
     fun retry() {
@@ -459,6 +477,7 @@ class SettingsViewModel @Inject constructor(
         val providers: List<Provider>,
         val systemPrompt: String,
         val themeMode: AppPreferences.ThemeMode,
-        val dynamicColorEnabled: Boolean
+        val dynamicColorEnabled: Boolean,
+        val hapticsEnabled: Boolean
     )
 }

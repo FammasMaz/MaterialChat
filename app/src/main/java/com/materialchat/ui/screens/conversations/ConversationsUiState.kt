@@ -19,9 +19,11 @@ sealed interface ConversationsUiState {
      * Empty state when there are no conversations.
      *
      * @property hasActiveProvider Whether an active provider is configured
+     * @property hapticsEnabled Whether haptic feedback is enabled
      */
     data class Empty(
-        val hasActiveProvider: Boolean
+        val hasActiveProvider: Boolean,
+        val hapticsEnabled: Boolean = true
     ) : ConversationsUiState
 
     /**
@@ -30,11 +32,13 @@ sealed interface ConversationsUiState {
      * @property conversations The list of conversations to display
      * @property activeProvider The currently active provider, if any
      * @property deletedConversation Temporarily holds a deleted conversation for undo functionality
+     * @property hapticsEnabled Whether haptic feedback is enabled
      */
     data class Success(
         val conversations: List<ConversationUiItem>,
         val activeProvider: Provider? = null,
-        val deletedConversation: Conversation? = null
+        val deletedConversation: Conversation? = null,
+        val hapticsEnabled: Boolean = true
     ) : ConversationsUiState
 
     /**

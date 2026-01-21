@@ -3,6 +3,7 @@ package com.materialchat.ui.screens.conversations
 import android.text.format.DateUtils
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.materialchat.data.local.preferences.AppPreferences
 import com.materialchat.domain.model.Conversation
 import com.materialchat.domain.model.Provider
 import com.materialchat.domain.usecase.CreateConversationUseCase
@@ -31,7 +32,8 @@ import javax.inject.Inject
 class ConversationsViewModel @Inject constructor(
     private val getConversationsUseCase: GetConversationsUseCase,
     private val createConversationUseCase: CreateConversationUseCase,
-    private val manageProvidersUseCase: ManageProvidersUseCase
+    private val manageProvidersUseCase: ManageProvidersUseCase,
+    private val appPreferences: AppPreferences
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<ConversationsUiState>(ConversationsUiState.Loading)
@@ -54,34 +56,47 @@ class ConversationsViewModel @Inject constructor(
         viewModelScope.launch {
             combine(
                 getConversationsUseCase.observeConversations(),
-                manageProvidersUseCase.observeProviders()
-            ) { conversations, providers ->
+                manageProvidersUseCase.observeProviders(),
+                appPreferences.hapticsEnabled
+            ) { conversations, providers, hapticsEnabled ->
                 val activeProvider = providers.find { it.isActive }
-                Triple(conversations, providers, activeProvider)
+                ConversationsData(conversations, providers, activeProvider, hapticsEnabled)
             }
                 .catch { e ->
                     _uiState.value = ConversationsUiState.Error(
                         message = e.message ?: "Failed to load conversations"
                     )
                 }
-                .collect { (conversations, providers, activeProvider) ->
-                    _uiState.value = if (conversations.isEmpty()) {
+                .collect { data ->
+                    _uiState.value = if (data.conversations.isEmpty()) {
                         ConversationsUiState.Empty(
-                            hasActiveProvider = activeProvider != null
+                            hasActiveProvider = data.activeProvider != null,
+                            hapticsEnabled = data.hapticsEnabled
                         )
                     } else {
-                        val uiItems = conversations.map { conversation ->
-                            conversation.toUiItem(providers)
+                        val uiItems = data.conversations.map { conversation ->
+                            conversation.toUiItem(data.providers)
                         }
                         ConversationsUiState.Success(
                             conversations = uiItems,
-                            activeProvider = activeProvider,
-                            deletedConversation = conversationToDelete
+                            activeProvider = data.activeProvider,
+                            deletedConversation = conversationToDelete,
+                            hapticsEnabled = data.hapticsEnabled
                         )
                     }
                 }
         }
     }
+
+    /**
+     * Internal data class for combining conversation flows.
+     */
+    private data class ConversationsData(
+        val conversations: List<Conversation>,
+        val providers: List<Provider>,
+        val activeProvider: Provider?,
+        val hapticsEnabled: Boolean
+    )
 
     /**
      * Creates a new conversation and navigates to it.
@@ -139,7 +154,8 @@ class ConversationsViewModel @Inject constructor(
             }
             _uiState.value = if (updatedConversations.isEmpty()) {
                 ConversationsUiState.Empty(
-                    hasActiveProvider = currentState.activeProvider != null
+                    hasActiveProvider = currentState.activeProvider != null,
+                    hapticsEnabled = currentState.hapticsEnabled
                 )
             } else {
                 currentState.copy(

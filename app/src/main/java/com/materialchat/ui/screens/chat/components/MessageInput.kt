@@ -39,6 +39,8 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
+import com.materialchat.ui.components.HapticPattern
+import com.materialchat.ui.components.rememberHapticFeedback
 import com.materialchat.ui.theme.CustomShapes
 
 /**
@@ -50,6 +52,7 @@ import com.materialchat.ui.theme.CustomShapes
  * - Keyboard action support (Enter to send)
  * - Disabled state during streaming
  * - Material 3 Expressive styling with spring animations
+ * - Haptic feedback on button interactions
  *
  * @param inputText Current text in the input field
  * @param isStreaming Whether a message is currently streaming
@@ -58,6 +61,7 @@ import com.materialchat.ui.theme.CustomShapes
  * @param onSend Callback when send button is clicked
  * @param onCancel Callback when stop button is clicked (during streaming)
  * @param modifier Modifier for the input bar container
+ * @param hapticsEnabled Whether haptic feedback is enabled
  */
 @Composable
 fun MessageInput(
@@ -67,8 +71,11 @@ fun MessageInput(
     onInputChange: (String) -> Unit,
     onSend: () -> Unit,
     onCancel: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    hapticsEnabled: Boolean = true
 ) {
+    val haptics = rememberHapticFeedback()
+
     Surface(
         modifier = modifier
             .fillMaxWidth()
@@ -91,7 +98,10 @@ fun MessageInput(
                 onValueChange = onInputChange,
                 enabled = !isStreaming,
                 canSend = canSend,
-                onSend = onSend,
+                onSend = {
+                    haptics.perform(HapticPattern.CLICK, hapticsEnabled)
+                    onSend()
+                },
                 modifier = Modifier.weight(1f)
             )
 
@@ -99,8 +109,14 @@ fun MessageInput(
             ActionButton(
                 isStreaming = isStreaming,
                 canSend = canSend,
-                onSend = onSend,
-                onCancel = onCancel
+                onSend = {
+                    haptics.perform(HapticPattern.CLICK, hapticsEnabled)
+                    onSend()
+                },
+                onCancel = {
+                    haptics.perform(HapticPattern.CONFIRM, hapticsEnabled)
+                    onCancel()
+                }
             )
         }
     }
