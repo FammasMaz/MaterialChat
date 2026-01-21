@@ -27,6 +27,15 @@ interface ConversationRepository {
     suspend fun getConversation(conversationId: String): Conversation?
 
     /**
+     * Observes a single conversation by its ID.
+     * Emits updates whenever the conversation changes (e.g., title update).
+     *
+     * @param conversationId The ID of the conversation to observe
+     * @return A Flow emitting the conversation whenever it changes, or null if not found
+     */
+    fun observeConversation(conversationId: String): Flow<Conversation?>
+
+    /**
      * Creates a new conversation.
      *
      * @param conversation The conversation to create

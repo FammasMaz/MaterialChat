@@ -44,6 +44,12 @@ class ConversationRepositoryImpl @Inject constructor(
         return conversationDao.getConversationById(conversationId)?.toDomain()
     }
 
+    override fun observeConversation(conversationId: String): Flow<Conversation?> {
+        return conversationDao.getConversationByIdFlow(conversationId).map { entity ->
+            entity?.toDomain()
+        }
+    }
+
     override suspend fun createConversation(conversation: Conversation): String {
         conversationDao.insert(conversation.toEntity())
         return conversation.id

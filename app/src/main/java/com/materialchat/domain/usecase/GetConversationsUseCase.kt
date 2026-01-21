@@ -38,6 +38,17 @@ class GetConversationsUseCase @Inject constructor(
     }
 
     /**
+     * Observes a single conversation by its ID.
+     * Emits updates whenever the conversation changes (e.g., title update).
+     *
+     * @param conversationId The ID of the conversation to observe
+     * @return A Flow emitting the conversation whenever it changes
+     */
+    fun observeConversation(conversationId: String): Flow<Conversation?> {
+        return conversationRepository.observeConversation(conversationId)
+    }
+
+    /**
      * Observes messages in a conversation.
      *
      * @param conversationId The ID of the conversation

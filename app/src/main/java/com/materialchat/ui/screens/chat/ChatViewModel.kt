@@ -22,6 +22,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -68,26 +69,36 @@ class ChatViewModel @Inject constructor(
     private fun loadConversation() {
         viewModelScope.launch {
             try {
-                // Get the conversation details
-                val conversation = getConversationsUseCase.getConversation(conversationId)
-                if (conversation == null) {
+                // Get initial conversation details for provider info
+                val initialConversation = getConversationsUseCase.getConversation(conversationId)
+                if (initialConversation == null) {
                     _uiState.value = ChatUiState.Error("Conversation not found")
                     return@launch
                 }
 
                 // Get provider info
                 val providers = manageProvidersUseCase.observeProviders().first()
-                val provider = providers.find { it.id == conversation.providerId }
+                val provider = providers.find { it.id == initialConversation.providerId }
                 val providerName = provider?.name ?: "Unknown Provider"
 
-                // Observe messages
-                getConversationsUseCase.observeMessages(conversationId)
+                // Combine conversation and messages observation
+                combine(
+                    getConversationsUseCase.observeConversation(conversationId),
+                    getConversationsUseCase.observeMessages(conversationId)
+                ) { conversation, messages ->
+                    Pair(conversation, messages)
+                }
                     .catch { e ->
                         _uiState.value = ChatUiState.Error(
                             message = e.message ?: "Failed to load messages"
                         )
                     }
-                    .collect { messages ->
+                    .collect { (conversation, messages) ->
+                        if (conversation == null) {
+                            _uiState.value = ChatUiState.Error("Conversation not found")
+                            return@collect
+                        }
+
                         val currentState = _uiState.value
                         val inputText = if (currentState is ChatUiState.Success) {
                             currentState.inputText
@@ -147,7 +158,7 @@ class ChatViewModel @Inject constructor(
                         // Track message count to detect new messages
                         val previousMessageCount = (currentState as? ChatUiState.Success)?.messages?.size ?: 0
                         val newMessageAdded = messages.size > previousMessageCount
-                        
+
                         if (messages.isNotEmpty() && newMessageAdded) {
                             _events.emit(ChatEvent.ScrollToBottom)
                         }
