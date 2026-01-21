@@ -30,6 +30,7 @@ sealed interface ChatUiState {
      * @property isLoadingModels Whether models are currently being loaded
      * @property showExportSheet Whether to show the export bottom sheet
      * @property isExporting Whether an export operation is in progress
+     * @property hapticsEnabled Whether haptic feedback is enabled
      */
     data class Success(
         val conversationId: String,
@@ -42,7 +43,8 @@ sealed interface ChatUiState {
         val availableModels: List<AiModel> = emptyList(),
         val isLoadingModels: Boolean = false,
         val showExportSheet: Boolean = false,
-        val isExporting: Boolean = false
+        val isExporting: Boolean = false,
+        val hapticsEnabled: Boolean = true
     ) : ChatUiState {
         /**
          * Whether a message is currently streaming.

@@ -54,10 +54,12 @@ class ChatViewModel @Inject constructor(
 
     private var streamingJob: Job? = null
     private var currentSystemPrompt: String = AppPreferences.DEFAULT_SYSTEM_PROMPT
+    private var currentHapticsEnabled: Boolean = AppPreferences.DEFAULT_HAPTICS_ENABLED
 
     init {
         loadConversation()
         loadSystemPrompt()
+        loadHapticsPreference()
     }
 
     /**
@@ -137,7 +139,8 @@ class ChatViewModel @Inject constructor(
                             inputText = inputText,
                             streamingState = streamingState,
                             availableModels = availableModels,
-                            isLoadingModels = isLoadingModels
+                            isLoadingModels = isLoadingModels,
+                            hapticsEnabled = currentHapticsEnabled
                         )
 
                         // Only scroll to bottom when a NEW message is added, not during streaming updates
@@ -164,6 +167,22 @@ class ChatViewModel @Inject constructor(
         viewModelScope.launch {
             appPreferences.systemPrompt.collect { prompt ->
                 currentSystemPrompt = prompt
+            }
+        }
+    }
+
+    /**
+     * Loads the haptics preference and updates UI state when it changes.
+     */
+    private fun loadHapticsPreference() {
+        viewModelScope.launch {
+            appPreferences.hapticsEnabled.collect { enabled ->
+                currentHapticsEnabled = enabled
+                // Update UI state if we're in Success state
+                val currentState = _uiState.value
+                if (currentState is ChatUiState.Success) {
+                    _uiState.value = currentState.copy(hapticsEnabled = enabled)
+                }
             }
         }
     }

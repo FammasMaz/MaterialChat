@@ -31,9 +31,10 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -45,6 +46,9 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.materialchat.domain.model.StreamingState
+import com.materialchat.ui.components.HapticPattern
+import com.materialchat.ui.components.rememberHapticFeedback
 import com.materialchat.ui.screens.chat.components.ChatTopBar
 import com.materialchat.ui.screens.chat.components.ExportBottomSheet
 import com.materialchat.ui.screens.chat.components.MessageBubble
@@ -322,6 +326,37 @@ private fun ChatContent(
     onCopyMessage: (String) -> Unit,
     onRegenerateResponse: () -> Unit
 ) {
+    val haptics = rememberHapticFeedback()
+
+    // Track content lengths for haptic feedback during streaming
+    var lastContentLength by remember { mutableIntStateOf(0) }
+    var lastThinkingLength by remember { mutableIntStateOf(0) }
+
+    // Trigger haptic feedback when streaming content changes
+    LaunchedEffect(state.streamingState) {
+        val streamingState = state.streamingState
+        if (streamingState is StreamingState.Streaming) {
+            val currentContentLength = streamingState.content.length
+            val currentThinkingLength = streamingState.thinkingContent?.length ?: 0
+
+            // Check if thinking content grew (lighter tap)
+            if (currentThinkingLength > lastThinkingLength && lastThinkingLength > 0) {
+                haptics.perform(HapticPattern.THINKING_TICK, state.hapticsEnabled)
+            }
+            // Check if regular content grew (slightly louder tap)
+            else if (currentContentLength > lastContentLength && lastContentLength > 0) {
+                haptics.perform(HapticPattern.CONTENT_TICK, state.hapticsEnabled)
+            }
+
+            lastContentLength = currentContentLength
+            lastThinkingLength = currentThinkingLength
+        } else if (streamingState is StreamingState.Idle || streamingState is StreamingState.Starting) {
+            // Reset tracking when not streaming
+            lastContentLength = 0
+            lastThinkingLength = 0
+        }
+    }
+
     // M3 Expressive: Rounded container wrapping main content
     Surface(
         modifier = Modifier
@@ -358,7 +393,8 @@ private fun ChatContent(
                 canSend = state.canSend,
                 onInputChange = onInputChange,
                 onSend = onSendMessage,
-                onCancel = onCancelStreaming
+                onCancel = onCancelStreaming,
+                hapticsEnabled = state.hapticsEnabled
             )
         }
     }
