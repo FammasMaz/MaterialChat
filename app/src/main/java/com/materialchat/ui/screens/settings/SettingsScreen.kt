@@ -21,6 +21,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.DarkMode
 import androidx.compose.material.icons.outlined.LightMode
 import androidx.compose.material.icons.outlined.Palette
@@ -196,6 +197,7 @@ fun SettingsScreen(
             onThemeModeChange = { viewModel.updateThemeMode(it) },
             onDynamicColorChange = { viewModel.updateDynamicColorEnabled(it) },
             onHapticsChange = { viewModel.updateHapticsEnabled(it) },
+            onAiGeneratedTitlesChange = { viewModel.updateAiGeneratedTitlesEnabled(it) },
             onRetry = { viewModel.retry() }
         )
     }
@@ -246,6 +248,7 @@ private fun SettingsContent(
     onThemeModeChange: (AppPreferences.ThemeMode) -> Unit,
     onDynamicColorChange: (Boolean) -> Unit,
     onHapticsChange: (Boolean) -> Unit,
+    onAiGeneratedTitlesChange: (Boolean) -> Unit,
     onRetry: () -> Unit
 ) {
     Box(
@@ -268,7 +271,8 @@ private fun SettingsContent(
                     onSystemPromptChange = onSystemPromptChange,
                     onThemeModeChange = onThemeModeChange,
                     onDynamicColorChange = onDynamicColorChange,
-                    onHapticsChange = onHapticsChange
+                    onHapticsChange = onHapticsChange,
+                    onAiGeneratedTitlesChange = onAiGeneratedTitlesChange
                 )
             }
             is SettingsUiState.Error -> {
@@ -304,7 +308,8 @@ private fun SuccessContent(
     onSystemPromptChange: (String) -> Unit,
     onThemeModeChange: (AppPreferences.ThemeMode) -> Unit,
     onDynamicColorChange: (Boolean) -> Unit,
-    onHapticsChange: (Boolean) -> Unit
+    onHapticsChange: (Boolean) -> Unit,
+    onAiGeneratedTitlesChange: (Boolean) -> Unit
 ) {
     LazyColumn(
         modifier = Modifier
@@ -371,6 +376,22 @@ private fun SuccessContent(
             HapticsToggle(
                 enabled = uiState.hapticsEnabled,
                 onToggle = onHapticsChange
+            )
+        }
+
+        item {
+            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+        }
+
+        // Chat Section
+        item {
+            SectionHeader(title = "Chat")
+        }
+
+        item {
+            AiGeneratedTitlesToggle(
+                enabled = uiState.aiGeneratedTitlesEnabled,
+                onToggle = onAiGeneratedTitlesChange
             )
         }
 
@@ -584,6 +605,58 @@ private fun HapticsToggle(
                     haptics.perform(HapticPattern.TOGGLE, enabled = newValue)
                     onToggle(newValue)
                 }
+            )
+        }
+    }
+}
+
+@Composable
+private fun AiGeneratedTitlesToggle(
+    enabled: Boolean,
+    onToggle: (Boolean) -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+        ),
+        shape = RoundedCornerShape(16.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.weight(1f)
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.AutoAwesome,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(24.dp)
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                Column {
+                    Text(
+                        text = "AI-Generated Titles",
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = "Use AI to create meaningful conversation titles",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            Switch(
+                checked = enabled,
+                onCheckedChange = onToggle
             )
         }
     }

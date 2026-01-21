@@ -42,6 +42,21 @@ interface ChatRepository {
     fun cancelStreaming()
 
     /**
+     * Generates a simple non-streaming completion from the AI provider.
+     * Useful for short tasks like generating conversation titles.
+     *
+     * @param provider The AI provider to use
+     * @param prompt The prompt to send
+     * @param model The model to use for generation
+     * @return The generated text, or an error
+     */
+    suspend fun generateSimpleCompletion(
+        provider: Provider,
+        prompt: String,
+        model: String
+    ): Result<String>
+
+    /**
      * Tests the connection to a provider.
      *
      * @param provider The AI provider to test

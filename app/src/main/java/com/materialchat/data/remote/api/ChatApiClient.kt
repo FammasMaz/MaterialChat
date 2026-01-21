@@ -1,8 +1,10 @@
 package com.materialchat.data.remote.api
 
 import com.materialchat.data.remote.dto.OllamaChatRequest
+import com.materialchat.data.remote.dto.OllamaChatResponse
 import com.materialchat.data.remote.dto.OllamaMessage
 import com.materialchat.data.remote.dto.OpenAiChatRequest
+import com.materialchat.data.remote.dto.OpenAiChatResponse
 import com.materialchat.data.remote.dto.OpenAiMessage
 import com.materialchat.data.remote.sse.SseEventParser
 import com.materialchat.domain.model.Message
@@ -299,6 +301,134 @@ class ChatApiClient(
     fun cancelStreaming() {
         isCancelled.set(true)
         activeCall.getAndSet(null)?.cancel()
+    }
+
+    /**
+     * Generates a simple non-streaming completion from the AI provider.
+     * Useful for short tasks like generating conversation titles.
+     *
+     * @param provider The provider to use
+     * @param prompt The prompt to send
+     * @param model The model to use
+     * @param apiKey The API key (if required)
+     * @return Result containing the generated text or an error
+     */
+    suspend fun generateSimpleCompletion(
+        provider: Provider,
+        prompt: String,
+        model: String,
+        apiKey: String?
+    ): Result<String> = withContext(Dispatchers.IO) {
+        try {
+            when (provider.type) {
+                ProviderType.OPENAI_COMPATIBLE -> generateOpenAiCompletion(
+                    baseUrl = provider.baseUrl,
+                    model = model,
+                    prompt = prompt,
+                    apiKey = apiKey ?: ""
+                )
+                ProviderType.OLLAMA_NATIVE -> generateOllamaCompletion(
+                    baseUrl = provider.baseUrl,
+                    model = model,
+                    prompt = prompt
+                )
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Generates a non-streaming completion from an OpenAI-compatible API.
+     */
+    private fun generateOpenAiCompletion(
+        baseUrl: String,
+        model: String,
+        prompt: String,
+        apiKey: String
+    ): Result<String> {
+        val messages = listOf(OpenAiMessage(role = "user", content = prompt))
+        val request = OpenAiChatRequest(
+            model = model,
+            messages = messages,
+            stream = false,
+            temperature = 0.7
+        )
+
+        val requestBody = json.encodeToString(request)
+            .toRequestBody(JSON_MEDIA_TYPE)
+
+        val url = "${baseUrl.trimEnd('/')}/v1/chat/completions"
+        val httpRequest = Request.Builder()
+            .url(url)
+            .addHeader("Authorization", "Bearer $apiKey")
+            .addHeader("Content-Type", "application/json")
+            .post(requestBody)
+            .build()
+
+        val response = okHttpClient.newCall(httpRequest).execute()
+        return response.use { resp ->
+            if (!resp.isSuccessful) {
+                val errorBody = resp.body?.string() ?: "Unknown error"
+                return@use Result.failure(IOException("API error ${resp.code}: $errorBody"))
+            }
+
+            val body = resp.body?.string() ?: return@use Result.failure(IOException("Empty response"))
+            try {
+                val jsonResponse = json.decodeFromString<OpenAiChatResponse>(body)
+                val content = jsonResponse.choices.firstOrNull()?.message?.content
+                    ?: return@use Result.failure(IOException("No content in response"))
+                Result.success(content.trim())
+            } catch (e: Exception) {
+                Result.failure(IOException("Failed to parse response: ${e.message}"))
+            }
+        }
+    }
+
+    /**
+     * Generates a non-streaming completion from an Ollama server.
+     */
+    private fun generateOllamaCompletion(
+        baseUrl: String,
+        model: String,
+        prompt: String
+    ): Result<String> {
+        val messages = listOf(OllamaMessage(role = "user", content = prompt))
+        val request = OllamaChatRequest(
+            model = model,
+            messages = messages,
+            stream = false,
+            think = false,
+            options = com.materialchat.data.remote.dto.OllamaOptions(temperature = 0.7)
+        )
+
+        val requestBody = json.encodeToString(request)
+            .toRequestBody(JSON_MEDIA_TYPE)
+
+        val url = "${baseUrl.trimEnd('/')}/api/chat"
+        val httpRequest = Request.Builder()
+            .url(url)
+            .addHeader("Content-Type", "application/json")
+            .post(requestBody)
+            .build()
+
+        val response = okHttpClient.newCall(httpRequest).execute()
+        return response.use { resp ->
+            if (!resp.isSuccessful) {
+                val errorBody = resp.body?.string() ?: "Unknown error"
+                return@use Result.failure(IOException("API error ${resp.code}: $errorBody"))
+            }
+
+            val body = resp.body?.string() ?: return@use Result.failure(IOException("Empty response"))
+            try {
+                val jsonResponse = json.decodeFromString<OllamaChatResponse>(body)
+                val content = jsonResponse.message?.content
+                    ?: return@use Result.failure(IOException("No content in response"))
+                Result.success(content.trim())
+            } catch (e: Exception) {
+                Result.failure(IOException("Failed to parse response: ${e.message}"))
+            }
+        }
     }
 
     /**

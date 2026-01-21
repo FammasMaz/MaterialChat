@@ -148,4 +148,19 @@ class ChatRepositoryImpl @Inject constructor(
 
         return chatApiClient.testConnection(provider, apiKey)
     }
+
+    override suspend fun generateSimpleCompletion(
+        provider: Provider,
+        prompt: String,
+        model: String
+    ): Result<String> {
+        // Get API key if required
+        val apiKey = if (provider.requiresApiKey) {
+            encryptedPreferences.getApiKey(provider.id)
+        } else {
+            null
+        }
+
+        return chatApiClient.generateSimpleCompletion(provider, prompt, model, apiKey)
+    }
 }

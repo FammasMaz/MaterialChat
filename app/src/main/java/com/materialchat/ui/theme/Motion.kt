@@ -94,6 +94,15 @@ object MaterialChatMotion {
             dampingRatio = 0.6f,
             stiffness = 500f
         )
+
+        /**
+         * Spring for title reveal animation.
+         * Used when AI-generated titles appear with a character reveal effect.
+         */
+        val TitleReveal = spring<Float>(
+            dampingRatio = Spring.DampingRatioLowBouncy,
+            stiffness = Spring.StiffnessLow
+        )
     }
 
     /**

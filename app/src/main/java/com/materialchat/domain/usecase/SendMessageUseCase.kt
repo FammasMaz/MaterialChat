@@ -1,5 +1,6 @@
 package com.materialchat.domain.usecase
 
+import com.materialchat.data.local.preferences.AppPreferences
 import com.materialchat.domain.model.Conversation
 import com.materialchat.domain.model.Message
 import com.materialchat.domain.model.MessageRole
@@ -8,10 +9,15 @@ import com.materialchat.domain.model.StreamingState
 import com.materialchat.domain.repository.ChatRepository
 import com.materialchat.domain.repository.ConversationRepository
 import com.materialchat.domain.repository.ProviderRepository
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.onCompletion
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 /**
@@ -23,12 +29,17 @@ import javax.inject.Inject
  * 3. Sending the message to the AI provider
  * 4. Updating the assistant message with streaming content
  * 5. Finalizing the message when streaming completes
+ * 6. Generating AI-powered conversation title (if enabled)
  */
 class SendMessageUseCase @Inject constructor(
     private val chatRepository: ChatRepository,
     private val conversationRepository: ConversationRepository,
-    private val providerRepository: ProviderRepository
+    private val providerRepository: ProviderRepository,
+    private val appPreferences: AppPreferences,
+    private val generateConversationTitleUseCase: GenerateConversationTitleUseCase
 ) {
+    // Coroutine scope for non-blocking title generation
+    private val titleGenerationScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     /**
      * Sends a message and returns a flow of streaming states.
      *
@@ -160,19 +171,36 @@ class SendMessageUseCase @Inject constructor(
         }
 
         // Update conversation title if this is the first message
-        updateConversationTitleIfNeeded(conversation, userContent)
+        updateConversationTitleIfNeeded(conversation, userContent, accumulatedContent)
     }
 
     /**
-     * Updates the conversation title based on the first user message.
+     * Updates the conversation title based on the first message exchange.
+     * Uses AI-generated title if enabled, otherwise falls back to truncation.
      */
     private suspend fun updateConversationTitleIfNeeded(
         conversation: Conversation,
-        userContent: String
+        userContent: String,
+        assistantResponse: String
     ) {
         if (conversation.title == Conversation.generateDefaultTitle()) {
-            val newTitle = generateTitleFromMessage(userContent)
-            conversationRepository.updateConversationTitle(conversation.id, newTitle)
+            // Check if AI-generated titles are enabled
+            val aiTitlesEnabled = appPreferences.aiGeneratedTitlesEnabled.first()
+            
+            if (aiTitlesEnabled && assistantResponse.isNotBlank()) {
+                // Launch non-blocking AI title generation
+                titleGenerationScope.launch {
+                    generateConversationTitleUseCase(
+                        conversationId = conversation.id,
+                        userMessage = userContent,
+                        assistantResponse = assistantResponse
+                    )
+                }
+            } else {
+                // Fall back to simple truncation
+                val newTitle = generateTitleFromMessage(userContent)
+                conversationRepository.updateConversationTitle(conversation.id, newTitle)
+            }
         }
     }
 
