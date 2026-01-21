@@ -61,6 +61,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.materialchat.data.local.preferences.AppPreferences
 import com.materialchat.domain.model.Provider
+import com.materialchat.ui.components.HapticPattern
+import com.materialchat.ui.components.rememberHapticFeedback
 import com.materialchat.ui.screens.settings.components.AddProviderSheet
 import com.materialchat.ui.screens.settings.components.ProviderCard
 import com.materialchat.ui.screens.settings.components.SystemPromptField
@@ -535,6 +537,8 @@ private fun HapticsToggle(
     enabled: Boolean,
     onToggle: (Boolean) -> Unit
 ) {
+    val haptics = rememberHapticFeedback()
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
@@ -575,7 +579,11 @@ private fun HapticsToggle(
 
             Switch(
                 checked = enabled,
-                onCheckedChange = onToggle
+                onCheckedChange = { newValue ->
+                    // Provide haptic feedback when toggling (use the NEW value for enabled check)
+                    haptics.perform(HapticPattern.TOGGLE, enabled = newValue)
+                    onToggle(newValue)
+                }
             )
         }
     }
