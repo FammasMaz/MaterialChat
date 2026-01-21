@@ -17,9 +17,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.KeyboardArrowDown
@@ -200,16 +198,12 @@ private fun ModelDropdownMenu(
                 EmptyMenuItem()
             }
             else -> {
-                Column(
-                    modifier = Modifier.verticalScroll(rememberScrollState())
-                ) {
-                    availableModels.forEach { model ->
-                        ModelMenuItem(
-                            model = model,
-                            isSelected = model.id == currentModel || model.name == currentModel,
-                            onClick = { onModelSelected(model) }
-                        )
-                    }
+                availableModels.forEach { model ->
+                    ModelMenuItem(
+                        model = model,
+                        isSelected = model.id == currentModel || model.name == currentModel,
+                        onClick = { onModelSelected(model) }
+                    )
                 }
             }
         }

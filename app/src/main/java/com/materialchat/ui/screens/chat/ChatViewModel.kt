@@ -107,6 +107,11 @@ class ChatViewModel @Inject constructor(
                         } else {
                             false
                         }
+                        val currentModelName = if (currentState is ChatUiState.Success) {
+                            currentState.modelName
+                        } else {
+                            conversation.modelName
+                        }
 
                         // Find the last assistant message index
                         val lastAssistantIndex = messages.indexOfLast {
@@ -127,7 +132,7 @@ class ChatViewModel @Inject constructor(
                             conversationId = conversationId,
                             conversationTitle = conversation.title,
                             providerName = providerName,
-                            modelName = conversation.modelName,
+                            modelName = currentModelName,
                             messages = messageItems,
                             inputText = inputText,
                             streamingState = streamingState,
