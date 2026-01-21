@@ -410,7 +410,7 @@ Building a native Android AI chat application with Material 3 Expressive design.
       "Write tests for entity mappers",
       "Run all tests with ./gradlew test"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "build-01",

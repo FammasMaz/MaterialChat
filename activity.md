@@ -3,9 +3,9 @@
 ## Current Status
 
 **Last Updated:** 2026-01-21
-**Tasks Completed:** 32/35
-**Current Task:** testing-01
-**Build Status:** Debug APK builds successfully
+**Tasks Completed:** 33/35
+**Current Task:** build-01
+**Build Status:** Debug APK builds successfully, all unit tests passing
 
 ---
 
@@ -20,7 +20,7 @@
 | UI | 13 | 13 | 0 |
 | Integration | 2 | 2 | 0 |
 | Polish | 1 | 1 | 0 |
-| Testing | 1 | 0 | 1 |
+| Testing | 1 | 1 | 0 |
 | Build | 1 | 0 | 1 |
 
 
@@ -1034,5 +1034,43 @@
 - `./gradlew assembleDebug` - BUILD SUCCESSFUL (44s)
 
 **Status:** All steps completed, compilation verified
+
+---
+
+### 2026-01-21: Task testing-01 Completed
+
+**Task:** Create and run tests
+
+**Files Created:**
+- `app/src/test/java/com/materialchat/data/remote/sse/SseEventParserTest.kt` - Unit tests for SSE/NDJSON event parsing with 30+ test cases covering OpenAI SSE format, Ollama NDJSON format, edge cases, and error handling
+- `app/src/test/java/com/materialchat/data/mapper/EntityMappersTest.kt` - Unit tests for entity mappers covering Provider, Conversation, and Message domain/entity conversions with roundtrip tests and edge cases
+- `app/src/test/java/com/materialchat/domain/usecase/SendMessageUseCaseTest.kt` - Unit tests for SendMessageUseCase with MockK mocks covering message flow, streaming states, error handling, cancellation, and title generation
+
+**Key Features Implemented:**
+
+**SseEventParserTest (32 tests):**
+- OpenAI SSE format tests: content chunks, done marker, empty lines, comments, role deltas, finish reasons
+- Ollama NDJSON format tests: content messages, done flag, empty content, statistics
+- Edge cases: unicode characters, special characters, invalid JSON, batch parsing
+- Tests verify actual behavior (well-formed error JSON returns KeepAlive since it parses as valid response)
+
+**EntityMappersTest (29 tests):**
+- Provider mapping: OpenAI and Ollama types, roundtrip preservation, list conversions
+- Conversation mapping: all fields, null providerId handling, roundtrip preservation
+- Message mapping: USER/ASSISTANT/SYSTEM roles, streaming flag, list conversions
+- Edge cases: empty content, special characters, unicode
+
+**SendMessageUseCaseTest (17 tests):**
+- Message flow: Starting state emission, user message persistence, assistant placeholder creation
+- Streaming: content updates, completion handling, messageId mapping
+- Error handling: Error and Cancelled states, partial content preservation
+- Title generation: truncation, newline removal
+- Exception cases: conversation not found, provider not found
+- Cancellation: delegates to chat repository
+
+**Commands Run:**
+- `./gradlew test` - BUILD SUCCESSFUL (all 78 tests passing)
+
+**Status:** All steps completed, all unit tests passing
 
 ---
