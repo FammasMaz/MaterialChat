@@ -56,16 +56,18 @@ class SettingsViewModel @Inject constructor(
                 appPreferences.systemPrompt,
                 appPreferences.themeMode,
                 appPreferences.dynamicColorEnabled,
-                appPreferences.hapticsEnabled,
-                appPreferences.aiGeneratedTitlesEnabled
-            ) { providers, systemPrompt, themeMode, dynamicColorEnabled, hapticsEnabled, aiGeneratedTitlesEnabled ->
+                combine(
+                    appPreferences.hapticsEnabled,
+                    appPreferences.aiGeneratedTitlesEnabled
+                ) { haptics, aiTitles -> Pair(haptics, aiTitles) }
+            ) { providers, systemPrompt, themeMode, dynamicColorEnabled, toggles ->
                 SettingsData(
                     providers = providers,
                     systemPrompt = systemPrompt,
                     themeMode = themeMode,
                     dynamicColorEnabled = dynamicColorEnabled,
-                    hapticsEnabled = hapticsEnabled,
-                    aiGeneratedTitlesEnabled = aiGeneratedTitlesEnabled
+                    hapticsEnabled = toggles.first,
+                    aiGeneratedTitlesEnabled = toggles.second
                 )
             }
                 .catch { e ->

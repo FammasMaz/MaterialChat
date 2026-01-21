@@ -1,6 +1,7 @@
 package com.materialchat.domain.usecase
 
 import com.materialchat.data.local.preferences.AppPreferences
+import com.materialchat.di.ApplicationScope
 import com.materialchat.domain.model.Conversation
 import com.materialchat.domain.model.Message
 import com.materialchat.domain.model.MessageRole
@@ -10,8 +11,6 @@ import com.materialchat.domain.repository.ChatRepository
 import com.materialchat.domain.repository.ConversationRepository
 import com.materialchat.domain.repository.ProviderRepository
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
@@ -36,10 +35,9 @@ class SendMessageUseCase @Inject constructor(
     private val conversationRepository: ConversationRepository,
     private val providerRepository: ProviderRepository,
     private val appPreferences: AppPreferences,
-    private val generateConversationTitleUseCase: GenerateConversationTitleUseCase
+    private val generateConversationTitleUseCase: GenerateConversationTitleUseCase,
+    @ApplicationScope private val applicationScope: CoroutineScope
 ) {
-    // Coroutine scope for non-blocking title generation
-    private val titleGenerationScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     /**
      * Sends a message and returns a flow of streaming states.
      *
@@ -125,6 +123,8 @@ class SendMessageUseCase @Inject constructor(
                     conversationRepository.setMessageStreaming(assistantMessageId, false)
                 }
                 is StreamingState.Completed -> {
+                    // Capture final content for title generation
+                    accumulatedContent = state.finalContent
                     if (state.finalThinkingContent != null) {
                         conversationRepository.updateMessageContentWithThinking(
                             assistantMessageId,
@@ -188,8 +188,8 @@ class SendMessageUseCase @Inject constructor(
             val aiTitlesEnabled = appPreferences.aiGeneratedTitlesEnabled.first()
             
             if (aiTitlesEnabled && assistantResponse.isNotBlank()) {
-                // Launch non-blocking AI title generation
-                titleGenerationScope.launch {
+                // Launch non-blocking AI title generation in application scope
+                applicationScope.launch {
                     generateConversationTitleUseCase(
                         conversationId = conversation.id,
                         userMessage = userContent,

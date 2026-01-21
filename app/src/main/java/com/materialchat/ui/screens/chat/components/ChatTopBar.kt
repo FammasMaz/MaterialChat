@@ -127,7 +127,8 @@ fun ChatTopBar(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.alpha(
-                        if (revealProgress.value < 0.1f) 0f else 1f
+                        // Smooth fade-in: ramp up alpha over first 20% of animation
+                        (revealProgress.value * 5f).coerceIn(0f, 1f)
                     )
                 )
                 Row(

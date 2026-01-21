@@ -9,7 +9,9 @@ import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.serialization.json.Json
 import javax.inject.Qualifier
 import javax.inject.Singleton
@@ -61,6 +63,17 @@ object AppModule {
     fun provideMainDispatcher(): CoroutineDispatcher = Dispatchers.Main
 
     /**
+     * Provides an application-scoped CoroutineScope for fire-and-forget operations
+     * that should survive individual component lifecycles.
+     */
+    @Provides
+    @Singleton
+    @ApplicationScope
+    fun provideApplicationScope(
+        @IoDispatcher dispatcher: CoroutineDispatcher
+    ): CoroutineScope = CoroutineScope(SupervisorJob() + dispatcher)
+
+    /**
      * Provides the AppPreferences manager for non-sensitive app settings.
      */
     @Provides
@@ -99,3 +112,10 @@ annotation class DefaultDispatcher
 @Qualifier
 @Retention(AnnotationRetention.BINARY)
 annotation class MainDispatcher
+
+/**
+ * Qualifier annotation for the application-scoped CoroutineScope.
+ */
+@Qualifier
+@Retention(AnnotationRetention.BINARY)
+annotation class ApplicationScope
