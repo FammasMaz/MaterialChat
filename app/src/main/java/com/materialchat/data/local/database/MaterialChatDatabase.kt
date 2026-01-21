@@ -19,7 +19,7 @@ import com.materialchat.data.local.database.entity.ProviderEntity
  * This database stores all local data including:
  * - Provider configurations (API endpoints, settings)
  * - Conversations (chat sessions)
- * - Messages (individual chat messages)
+ * - Messages (individual chat messages with optional image attachments)
  *
  * Note: API keys are NOT stored in this database. They are stored separately
  * in encrypted storage using Google Tink (see EncryptedPreferences).
@@ -30,7 +30,7 @@ import com.materialchat.data.local.database.entity.ProviderEntity
         ConversationEntity::class,
         MessageEntity::class
     ],
-    version = 3,
+    version = 4,
     exportSchema = true
 )
 abstract class MaterialChatDatabase : RoomDatabase() {
@@ -66,6 +66,15 @@ abstract class MaterialChatDatabase : RoomDatabase() {
         }
 
         /**
+         * Migration from version 3 to 4: Add image_attachments column to messages table.
+         */
+        private val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE messages ADD COLUMN image_attachments TEXT DEFAULT NULL")
+            }
+        }
+
+        /**
          * Get the singleton database instance.
          *
          * Uses double-checked locking to ensure thread-safe lazy initialization.
@@ -82,7 +91,7 @@ abstract class MaterialChatDatabase : RoomDatabase() {
                 MaterialChatDatabase::class.java,
                 DATABASE_NAME
             )
-                .addMigrations(MIGRATION_2_3)
+                .addMigrations(MIGRATION_2_3, MIGRATION_3_4)
                 .fallbackToDestructiveMigration()
                 .build()
         }

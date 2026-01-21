@@ -2,6 +2,7 @@ package com.materialchat.domain.usecase
 
 import com.materialchat.data.local.preferences.AppPreferences
 import com.materialchat.di.ApplicationScope
+import com.materialchat.domain.model.Attachment
 import com.materialchat.domain.model.Conversation
 import com.materialchat.domain.model.Message
 import com.materialchat.domain.model.MessageRole
@@ -23,7 +24,7 @@ import javax.inject.Inject
  * Use case for sending a message in a conversation and receiving a streaming response.
  *
  * This use case orchestrates:
- * 1. Adding the user message to the database
+ * 1. Adding the user message to the database (with optional image attachments)
  * 2. Creating a placeholder assistant message
  * 3. Sending the message to the AI provider
  * 4. Updating the assistant message with streaming content
@@ -43,12 +44,14 @@ class SendMessageUseCase @Inject constructor(
      *
      * @param conversationId The ID of the conversation to send the message in
      * @param userContent The content of the user's message
+     * @param attachments Optional list of image attachments to include with the message
      * @param systemPrompt The system prompt to use for the conversation
      * @return A Flow of StreamingState representing the response progress
      */
     operator fun invoke(
         conversationId: String,
         userContent: String,
+        attachments: List<Attachment> = emptyList(),
         systemPrompt: String
     ): Flow<StreamingState> = flow {
         // Get the conversation and provider
@@ -58,11 +61,12 @@ class SendMessageUseCase @Inject constructor(
         val provider = providerRepository.getProvider(conversation.providerId)
             ?: throw IllegalStateException("Provider not found: ${conversation.providerId}")
 
-        // Create and save the user message
+        // Create and save the user message (with attachments if any)
         val userMessage = Message(
             conversationId = conversationId,
             role = MessageRole.USER,
-            content = userContent
+            content = userContent,
+            attachments = attachments
         )
         conversationRepository.addMessage(userMessage)
 
@@ -186,7 +190,7 @@ class SendMessageUseCase @Inject constructor(
         if (conversation.title == Conversation.generateDefaultTitle()) {
             // Check if AI-generated titles are enabled
             val aiTitlesEnabled = appPreferences.aiGeneratedTitlesEnabled.first()
-            
+
             if (aiTitlesEnabled && assistantResponse.isNotBlank()) {
                 // Launch non-blocking AI title generation in application scope
                 applicationScope.launch {

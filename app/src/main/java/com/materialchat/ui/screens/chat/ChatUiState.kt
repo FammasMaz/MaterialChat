@@ -1,6 +1,7 @@
 package com.materialchat.ui.screens.chat
 
 import com.materialchat.domain.model.AiModel
+import com.materialchat.domain.model.Attachment
 import com.materialchat.domain.model.Message
 import com.materialchat.domain.model.StreamingState
 
@@ -26,6 +27,7 @@ sealed interface ChatUiState {
      * @property modelName The name of the current model
      * @property messages The list of messages in the conversation
      * @property inputText The current text in the input field
+     * @property pendingAttachments List of image attachments pending to be sent with the next message
      * @property streamingState The current state of streaming response
      * @property availableModels The list of available models from the provider
      * @property isLoadingModels Whether models are currently being loaded
@@ -41,6 +43,7 @@ sealed interface ChatUiState {
         val modelName: String,
         val messages: List<MessageUiItem>,
         val inputText: String = "",
+        val pendingAttachments: List<Attachment> = emptyList(),
         val streamingState: StreamingState = StreamingState.Idle,
         val availableModels: List<AiModel> = emptyList(),
         val isLoadingModels: Boolean = false,
@@ -56,10 +59,17 @@ sealed interface ChatUiState {
                     streamingState is StreamingState.Streaming
 
         /**
+         * Whether there are pending attachments to be sent.
+         */
+        val hasAttachments: Boolean
+            get() = pendingAttachments.isNotEmpty()
+
+        /**
          * Whether the send button should be enabled.
+         * Can send if there's text OR attachments, and not currently streaming.
          */
         val canSend: Boolean
-            get() = inputText.isNotBlank() && !isStreaming
+            get() = (inputText.isNotBlank() || hasAttachments) && !isStreaming
     }
 
     /**

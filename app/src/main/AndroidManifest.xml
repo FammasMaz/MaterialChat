@@ -10,6 +10,15 @@
     <!-- Haptic feedback for enhanced UX -->
     <uses-permission android:name="android.permission.VIBRATE" />
 
+    <!-- Image attachment permissions -->
+    <!-- For Android 13+ (API 33+): Read images from media store -->
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+
+    <!-- For Android 12 and below: Read external storage for images -->
+    <uses-permission
+        android:name="android.permission.READ_EXTERNAL_STORAGE"
+        android:maxSdkVersion="32" />
+
     <application
         android:name=".MaterialChatApplication"
         android:allowBackup="true"

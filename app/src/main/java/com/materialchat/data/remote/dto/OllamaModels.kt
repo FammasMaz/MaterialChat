@@ -26,11 +26,13 @@ data class OllamaChatRequest(
 
 /**
  * Message in Ollama format.
+ * Supports optional images for multimodal models (e.g., llava, bakllava).
  */
 @Serializable
 data class OllamaMessage(
     val role: String,
-    val content: String
+    val content: String,
+    val images: List<String>? = null
 )
 
 /**

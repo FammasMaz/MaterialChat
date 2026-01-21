@@ -4,20 +4,32 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.filled.AddPhotoAlternate
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -31,10 +43,15 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
+import com.materialchat.domain.model.Attachment
 import com.materialchat.ui.components.HapticPattern
 import com.materialchat.ui.components.rememberHapticFeedback
 import com.materialchat.ui.theme.CustomShapes
@@ -49,13 +66,17 @@ import com.materialchat.ui.theme.CustomShapes
  * - Disabled state during streaming
  * - Material 3 Expressive styling with spring animations
  * - Haptic feedback on button interactions
+ * - Image attachment support with preview
  *
  * @param inputText Current text in the input field
  * @param isStreaming Whether a message is currently streaming
  * @param canSend Whether the send button should be enabled
+ * @param pendingAttachments List of pending image attachments
  * @param onInputChange Callback when input text changes
  * @param onSend Callback when send button is clicked
  * @param onCancel Callback when stop button is clicked (during streaming)
+ * @param onAttachImage Callback when the attach image button is clicked
+ * @param onRemoveAttachment Callback when an attachment is removed
  * @param modifier Modifier for the input bar container
  * @param hapticsEnabled Whether haptic feedback is enabled
  */
@@ -64,9 +85,12 @@ fun MessageInput(
     inputText: String,
     isStreaming: Boolean,
     canSend: Boolean,
+    pendingAttachments: List<Attachment> = emptyList(),
     onInputChange: (String) -> Unit,
     onSend: () -> Unit,
     onCancel: () -> Unit,
+    onAttachImage: () -> Unit = {},
+    onRemoveAttachment: (Attachment) -> Unit = {},
     modifier: Modifier = Modifier,
     hapticsEnabled: Boolean = true
 ) {
@@ -79,40 +103,162 @@ fun MessageInput(
         color = MaterialTheme.colorScheme.surface,
         tonalElevation = 2.dp
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.Bottom,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        Column(
+            modifier = Modifier.fillMaxWidth()
         ) {
-            // Text input field
-            MessageTextField(
-                value = inputText,
-                onValueChange = onInputChange,
-                enabled = !isStreaming,
-                canSend = canSend,
-                onSend = {
-                    haptics.perform(HapticPattern.CLICK, hapticsEnabled)
-                    onSend()
-                },
-                modifier = Modifier.weight(1f)
-            )
+            // Attachment preview row (shown when there are pending attachments)
+            AnimatedVisibility(
+                visible = pendingAttachments.isNotEmpty(),
+                enter = expandVertically() + fadeIn(),
+                exit = shrinkVertically() + fadeOut()
+            ) {
+                AttachmentPreviewRow(
+                    attachments = pendingAttachments,
+                    onRemoveAttachment = onRemoveAttachment,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                )
+            }
 
-            // Action button (send or stop)
-            ActionButton(
-                isStreaming = isStreaming,
-                canSend = canSend,
-                onSend = {
-                    haptics.perform(HapticPattern.CLICK, hapticsEnabled)
-                    onSend()
-                },
-                onCancel = {
-                    haptics.perform(HapticPattern.CONFIRM, hapticsEnabled)
-                    onCancel()
-                }
+            // Input row
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.Bottom,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                // Attach image button
+                AttachButton(
+                    onClick = {
+                        haptics.perform(HapticPattern.CLICK, hapticsEnabled)
+                        onAttachImage()
+                    },
+                    enabled = !isStreaming
+                )
+
+                // Text input field
+                MessageTextField(
+                    value = inputText,
+                    onValueChange = onInputChange,
+                    enabled = !isStreaming,
+                    canSend = canSend,
+                    onSend = {
+                        haptics.perform(HapticPattern.CLICK, hapticsEnabled)
+                        onSend()
+                    },
+                    modifier = Modifier.weight(1f)
+                )
+
+                // Action button (send or stop)
+                ActionButton(
+                    isStreaming = isStreaming,
+                    canSend = canSend,
+                    onSend = {
+                        haptics.perform(HapticPattern.CLICK, hapticsEnabled)
+                        onSend()
+                    },
+                    onCancel = {
+                        haptics.perform(HapticPattern.CONFIRM, hapticsEnabled)
+                        onCancel()
+                    }
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Row of attachment previews with remove buttons.
+ */
+@Composable
+private fun AttachmentPreviewRow(
+    attachments: List<Attachment>,
+    onRemoveAttachment: (Attachment) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier.horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        attachments.forEach { attachment ->
+            AttachmentPreviewItem(
+                attachment = attachment,
+                onRemove = { onRemoveAttachment(attachment) }
             )
         }
+    }
+}
+
+/**
+ * Single attachment preview with remove button.
+ */
+@Composable
+private fun AttachmentPreviewItem(
+    attachment: Attachment,
+    onRemove: () -> Unit
+) {
+    Box(
+        modifier = Modifier.size(72.dp)
+    ) {
+        // Image thumbnail
+        AsyncImage(
+            model = ImageRequest.Builder(LocalContext.current)
+                .data(attachment.uri)
+                .crossfade(true)
+                .build(),
+            contentDescription = "Attached image",
+            contentScale = ContentScale.Crop,
+            modifier = Modifier
+                .size(64.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .align(Alignment.BottomStart)
+        )
+
+        // Remove button
+        Box(
+            modifier = Modifier
+                .size(24.dp)
+                .align(Alignment.TopEnd)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.errorContainer)
+                .clickable { onRemove() },
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = Icons.Default.Close,
+                contentDescription = "Remove attachment",
+                tint = MaterialTheme.colorScheme.onErrorContainer,
+                modifier = Modifier.size(16.dp)
+            )
+        }
+    }
+}
+
+/**
+ * Button to attach an image.
+ */
+@Composable
+private fun AttachButton(
+    onClick: () -> Unit,
+    enabled: Boolean
+) {
+    IconButton(
+        onClick = onClick,
+        enabled = enabled,
+        colors = IconButtonDefaults.iconButtonColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+            contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+            disabledContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.6f),
+            disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
+        ),
+        modifier = Modifier.size(48.dp)
+    ) {
+        Icon(
+            imageVector = Icons.Default.AddPhotoAlternate,
+            contentDescription = "Attach image"
+        )
     }
 }
 

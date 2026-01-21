@@ -3,11 +3,19 @@ package com.materialchat.data.mapper
 import com.materialchat.data.local.database.entity.ConversationEntity
 import com.materialchat.data.local.database.entity.MessageEntity
 import com.materialchat.data.local.database.entity.ProviderEntity
+import com.materialchat.domain.model.Attachment
 import com.materialchat.domain.model.Conversation
 import com.materialchat.domain.model.Message
 import com.materialchat.domain.model.MessageRole
 import com.materialchat.domain.model.Provider
 import com.materialchat.domain.model.ProviderType
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
+
+private val json = Json {
+    ignoreUnknownKeys = true
+    encodeDefaults = true
+}
 
 // ============================================================================
 // Provider Mappers
@@ -104,6 +112,7 @@ fun Message.toEntity(): MessageEntity = MessageEntity(
     role = role.name,
     content = content,
     thinkingContent = thinkingContent,
+    imageAttachments = serializeAttachments(attachments),
     isStreaming = isStreaming,
     createdAt = createdAt
 )
@@ -117,9 +126,50 @@ fun MessageEntity.toDomain(): Message = Message(
     role = MessageRole.valueOf(role),
     content = content,
     thinkingContent = thinkingContent,
+    attachments = deserializeAttachments(imageAttachments),
     isStreaming = isStreaming,
     createdAt = createdAt
 )
+
+/**
+ * Serializes a list of [Attachment] domain models to a JSON string for database storage.
+ */
+private fun serializeAttachments(attachments: List<Attachment>): String? {
+    if (attachments.isEmpty()) return null
+    return try {
+        val attachmentDataList = attachments.map { attachment ->
+            AttachmentData(
+                id = attachment.id,
+                uri = attachment.uri,
+                mimeType = attachment.mimeType,
+                base64Data = attachment.base64Data
+            )
+        }
+        json.encodeToString(attachmentDataList)
+    } catch (e: Exception) {
+        null
+    }
+}
+
+/**
+ * Deserializes a JSON string from the database to a list of [Attachment] domain models.
+ */
+private fun deserializeAttachments(jsonString: String?): List<Attachment> {
+    if (jsonString.isNullOrEmpty()) return emptyList()
+    return try {
+        val attachmentDataList = json.decodeFromString<List<AttachmentData>>(jsonString)
+        attachmentDataList.map { data ->
+            Attachment(
+                id = data.id,
+                uri = data.uri,
+                mimeType = data.mimeType,
+                base64Data = data.base64Data
+            )
+        }
+    } catch (e: Exception) {
+        emptyList()
+    }
+}
 
 /**
  * Converts a list of [MessageEntity] to a list of [Message] domain models.

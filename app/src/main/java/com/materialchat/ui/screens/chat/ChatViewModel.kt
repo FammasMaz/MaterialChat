@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.materialchat.data.local.preferences.AppPreferences
 import com.materialchat.domain.model.AiModel
+import com.materialchat.domain.model.Attachment
 import com.materialchat.domain.model.MessageRole
 import com.materialchat.domain.model.StreamingState
 import com.materialchat.domain.usecase.ExportConversationUseCase
@@ -105,6 +106,11 @@ class ChatViewModel @Inject constructor(
                         } else {
                             ""
                         }
+                        val pendingAttachments = if (currentState is ChatUiState.Success) {
+                            currentState.pendingAttachments
+                        } else {
+                            emptyList()
+                        }
                         val streamingState = if (currentState is ChatUiState.Success) {
                             currentState.streamingState
                         } else {
@@ -149,6 +155,7 @@ class ChatViewModel @Inject constructor(
                             modelName = currentModelName,
                             messages = messageItems,
                             inputText = inputText,
+                            pendingAttachments = pendingAttachments,
                             streamingState = streamingState,
                             availableModels = availableModels,
                             isLoadingModels = isLoadingModels,
@@ -210,6 +217,44 @@ class ChatViewModel @Inject constructor(
     }
 
     /**
+     * Adds an image attachment to the pending attachments list.
+     *
+     * @param attachment The attachment to add
+     */
+    fun addAttachment(attachment: Attachment) {
+        val currentState = _uiState.value
+        if (currentState is ChatUiState.Success) {
+            _uiState.value = currentState.copy(
+                pendingAttachments = currentState.pendingAttachments + attachment
+            )
+        }
+    }
+
+    /**
+     * Removes an image attachment from the pending attachments list.
+     *
+     * @param attachment The attachment to remove
+     */
+    fun removeAttachment(attachment: Attachment) {
+        val currentState = _uiState.value
+        if (currentState is ChatUiState.Success) {
+            _uiState.value = currentState.copy(
+                pendingAttachments = currentState.pendingAttachments.filter { it.id != attachment.id }
+            )
+        }
+    }
+
+    /**
+     * Clears all pending attachments.
+     */
+    fun clearAttachments() {
+        val currentState = _uiState.value
+        if (currentState is ChatUiState.Success) {
+            _uiState.value = currentState.copy(pendingAttachments = emptyList())
+        }
+    }
+
+    /**
      * Sends the current message.
      */
     fun sendMessage() {
@@ -218,10 +263,12 @@ class ChatViewModel @Inject constructor(
         if (!currentState.canSend) return
 
         val messageContent = currentState.inputText.trim()
+        val attachments = currentState.pendingAttachments.toList()
 
-        // Clear input immediately
+        // Clear input and attachments immediately
         _uiState.value = currentState.copy(
             inputText = "",
+            pendingAttachments = emptyList(),
             streamingState = StreamingState.Starting
         )
 
@@ -230,6 +277,7 @@ class ChatViewModel @Inject constructor(
                 sendMessageUseCase(
                     conversationId = conversationId,
                     userContent = messageContent,
+                    attachments = attachments,
                     systemPrompt = currentSystemPrompt
                 ).collect { state ->
                     updateStreamingState(state)

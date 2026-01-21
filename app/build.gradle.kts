@@ -120,6 +120,9 @@ dependencies {
     implementation(libs.richtext.commonmark)
     implementation(libs.richtext.ui.material3)
 
+    // Coil Image Loading
+    implementation(libs.coil.compose)
+
     // Testing
     testImplementation(libs.junit)
     testImplementation(libs.mockk)
