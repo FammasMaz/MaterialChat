@@ -22,22 +22,12 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import com.materialchat.ui.theme.MaterialChatMotion
 import kotlin.math.sin
 
 /**
  * Animated streaming indicator showing that a response is being generated.
- *
- * Features:
- * - Three bouncing dots in a wave pattern
- * - 100ms delay between each dot for wave effect
- * - Smooth 60fps animation using infinite transition
- * - Material 3 Expressive styling
- *
- * Based on PRD specification:
- * - Three dots, 8dp diameter
- * - Wave animation with 100ms offset between dots
- * - Color: onSurfaceVariant
+ * 
+ * Uses a smooth wave animation with staggered dots for a Google Messages-like effect.
  *
  * @param dotSize Size of each dot
  * @param dotSpacing Space between dots
@@ -46,77 +36,50 @@ import kotlin.math.sin
  */
 @Composable
 fun StreamingIndicator(
-    dotSize: Dp = 8.dp,
+    dotSize: Dp = 6.dp,
     dotSpacing: Dp = 4.dp,
     color: Color = MaterialTheme.colorScheme.onSurfaceVariant,
     modifier: Modifier = Modifier
 ) {
-    val infiniteTransition = rememberInfiniteTransition(label = "streaming_indicator")
-
-    // Animation phase for the wave effect (0 to 2*PI)
+    val infiniteTransition = rememberInfiniteTransition(label = "streaming_dots")
+    
+    // Smooth continuous phase animation (0 to 2π)
     val phase by infiniteTransition.animateFloat(
         initialValue = 0f,
-        targetValue = (2 * Math.PI).toFloat(),
+        targetValue = (2.0 * Math.PI).toFloat(),
         animationSpec = infiniteRepeatable(
             animation = tween(
-                durationMillis = MaterialChatMotion.Durations.StreamingIndicator,
+                durationMillis = 600,
                 easing = LinearEasing
             ),
             repeatMode = RepeatMode.Restart
         ),
-        label = "streaming_phase"
+        label = "phase"
     )
-
+    
     Row(
         modifier = modifier,
         horizontalArrangement = Arrangement.spacedBy(dotSpacing),
         verticalAlignment = Alignment.CenterVertically
     ) {
         repeat(3) { index ->
-            // Calculate offset for each dot based on phase
-            // Each dot is delayed by 100ms (phase offset)
-            val dotPhaseOffset = index * (MaterialChatMotion.Durations.StreamingDotDelay /
-                MaterialChatMotion.Durations.StreamingIndicator.toFloat()) * (2 * Math.PI).toFloat()
-
-            val bounceOffset = sin(phase + dotPhaseOffset).toFloat()
-            val normalizedOffset = (bounceOffset + 1f) / 2f // Normalize to 0-1
-
-            // Calculate vertical offset (bounce height: 4dp)
-            val yOffset = -(normalizedOffset * 4f)
-
-            // Calculate alpha (fade in/out with bounce)
-            val alpha = 0.4f + (normalizedOffset * 0.6f)
-
-            BouncingDot(
-                size = dotSize,
-                color = color,
-                yOffset = yOffset.dp,
-                alpha = alpha
+            // Each dot offset by 1/3 of the cycle for wave effect
+            val dotPhase = phase + (index * 2.0 * Math.PI / 3.0).toFloat()
+            
+            // Full sine wave for continuous smooth motion, shifted up
+            val bounceY = sin(dotPhase.toDouble()).toFloat() * -4f - 10f
+            
+            Box(
+                modifier = Modifier
+                    .size(dotSize)
+                    .offset(y = bounceY.dp)
+                    .background(
+                        color = color.copy(alpha = 0.7f),
+                        shape = CircleShape
+                    )
             )
         }
     }
-}
-
-/**
- * Individual bouncing dot with vertical offset animation.
- */
-@Composable
-private fun BouncingDot(
-    size: Dp,
-    color: Color,
-    yOffset: Dp,
-    alpha: Float
-) {
-    Box(
-        modifier = Modifier
-            .size(size)
-            .offset(y = yOffset)
-            .alpha(alpha)
-            .background(
-                color = color,
-                shape = CircleShape
-            )
-    )
 }
 
 /**

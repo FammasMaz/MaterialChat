@@ -128,9 +128,7 @@ private fun MessageContent(
     textColor: Color,
     isAssistant: Boolean
 ) {
-    val displayContent = content.ifEmpty {
-        if (isStreaming) "..." else ""
-    }
+    val displayContent = content.ifEmpty { "" }
 
     if (isAssistant && displayContent.isNotEmpty()) {
         // Render assistant messages with Markdown
