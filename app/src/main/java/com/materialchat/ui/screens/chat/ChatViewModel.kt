@@ -135,8 +135,12 @@ class ChatViewModel @Inject constructor(
                             isLoadingModels = isLoadingModels
                         )
 
-                        // Scroll to bottom when new messages arrive
-                        if (messages.isNotEmpty()) {
+                        // Only scroll to bottom when a NEW message is added, not during streaming updates
+                        // Track message count to detect new messages
+                        val previousMessageCount = (currentState as? ChatUiState.Success)?.messages?.size ?: 0
+                        val newMessageAdded = messages.size > previousMessageCount
+                        
+                        if (messages.isNotEmpty() && newMessageAdded) {
                             _events.emit(ChatEvent.ScrollToBottom)
                         }
                     }
