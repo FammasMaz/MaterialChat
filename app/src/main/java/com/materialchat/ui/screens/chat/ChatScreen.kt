@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
@@ -24,6 +25,7 @@ import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
@@ -156,6 +158,7 @@ fun ChatScreen(
         modifier = Modifier
             .nestedScroll(scrollBehavior.nestedScrollConnection)
             .imePadding(),
+        containerColor = MaterialTheme.colorScheme.surfaceContainer,
         topBar = {
             when (val state = uiState) {
                 is ChatUiState.Success -> {
@@ -307,6 +310,7 @@ private fun ErrorContent(
 
 /**
  * Main chat content with message list and input bar.
+ * Wrapped in M3 Expressive rounded container.
  */
 @Composable
 private fun ChatContent(
@@ -319,31 +323,45 @@ private fun ChatContent(
     onCopyMessage: (String) -> Unit,
     onRegenerateResponse: () -> Unit
 ) {
-    Column(
+    // M3 Expressive: Rounded container wrapping main content
+    Surface(
         modifier = Modifier
             .fillMaxSize()
-            .padding(paddingValues)
+            .padding(top = paddingValues.calculateTopPadding()),
+        shape = RoundedCornerShape(
+            topStart = 28.dp,
+            topEnd = 28.dp,
+            bottomStart = 0.dp,
+            bottomEnd = 0.dp
+        ),
+        color = MaterialTheme.colorScheme.surfaceContainerLowest,
+        shadowElevation = 4.dp,
+        tonalElevation = 1.dp
     ) {
-        // Message list
-        MessageList(
-            messages = state.messages,
-            listState = listState,
-            onCopyMessage = onCopyMessage,
-            onRegenerateResponse = onRegenerateResponse,
-            modifier = Modifier
-                .weight(1f)
-                .fillMaxWidth()
-        )
+        Column(
+            modifier = Modifier.fillMaxSize()
+        ) {
+            // Message list
+            MessageList(
+                messages = state.messages,
+                listState = listState,
+                onCopyMessage = onCopyMessage,
+                onRegenerateResponse = onRegenerateResponse,
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+            )
 
-        // Input area
-        MessageInput(
-            inputText = state.inputText,
-            isStreaming = state.isStreaming,
-            canSend = state.canSend,
-            onInputChange = onInputChange,
-            onSend = onSendMessage,
-            onCancel = onCancelStreaming
-        )
+            // Input area
+            MessageInput(
+                inputText = state.inputText,
+                isStreaming = state.isStreaming,
+                canSend = state.canSend,
+                onInputChange = onInputChange,
+                onSend = onSendMessage,
+                onCancel = onCancelStreaming
+            )
+        }
     }
 }
 

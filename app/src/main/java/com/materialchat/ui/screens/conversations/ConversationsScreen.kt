@@ -17,8 +17,11 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.wrapContentSize
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -29,6 +32,7 @@ import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LargeTopAppBar
@@ -39,6 +43,7 @@ import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
@@ -51,6 +56,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -126,6 +132,7 @@ fun ConversationsScreen(
 
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+        containerColor = MaterialTheme.colorScheme.surfaceContainer,
         topBar = {
             ConversationsTopBar(
                 scrollBehavior = scrollBehavior,
@@ -184,7 +191,7 @@ private fun ConversationsTopBar(
         },
         scrollBehavior = scrollBehavior,
         colors = TopAppBarDefaults.largeTopAppBarColors(
-            containerColor = MaterialTheme.colorScheme.surface,
+            containerColor = MaterialTheme.colorScheme.surfaceContainer,
             scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainer,
             titleContentColor = MaterialTheme.colorScheme.onSurface
         )
@@ -203,33 +210,47 @@ private fun NewChatFab(
 
     AnimatedVisibility(
         visible = visible,
-        enter = scaleIn(
+        enter = fadeIn(
             animationSpec = spring(
                 dampingRatio = Spring.DampingRatioMediumBouncy,
                 stiffness = Spring.StiffnessMedium
             )
-        ) + fadeIn(),
-        exit = scaleOut() + fadeOut()
+        ),
+        exit = fadeOut()
     ) {
-        ExtendedFloatingActionButton(
-            onClick = onClick,
-            icon = {
-                Icon(
-                    imageVector = Icons.Default.Add,
-                    contentDescription = null
-                )
-            },
-            text = { Text("New Chat") },
-            shape = CustomShapes.ExtendedFab,
-            containerColor = MaterialTheme.colorScheme.primaryContainer,
-            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-            modifier = Modifier.animateContentSize(
-                animationSpec = spring(
-                    dampingRatio = Spring.DampingRatioMediumBouncy,
-                    stiffness = Spring.StiffnessMediumLow
-                )
+        Box(
+            modifier = Modifier
+                .wrapContentSize()
+                .navigationBarsPadding()
+                .padding(12.dp) // Padding for shadow
+        ) {
+            ExtendedFloatingActionButton(
+                onClick = onClick,
+                icon = {
+                    Icon(
+                        imageVector = Icons.Default.Add,
+                        contentDescription = null
+                    )
+                },
+                text = { Text("New Chat") },
+                shape = CustomShapes.ExtendedFab,
+                containerColor = MaterialTheme.colorScheme.primaryContainer,
+                contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                elevation = FloatingActionButtonDefaults.elevation(
+                    defaultElevation = 2.dp,
+                    pressedElevation = 4.dp,
+                    focusedElevation = 2.dp,
+                    hoveredElevation = 3.dp
+                ),
+                modifier = Modifier
+                    .animateContentSize(
+                        animationSpec = spring(
+                            dampingRatio = Spring.DampingRatioMediumBouncy,
+                            stiffness = Spring.StiffnessMediumLow
+                        )
+                    )
             )
-        )
+        }
     }
 }
 
@@ -242,33 +263,48 @@ private fun ConversationsContent(
     onRetry: () -> Unit,
     onNavigateToSettings: () -> Unit
 ) {
-    Box(
+    // M3 Expressive: Rounded container wrapping main content
+    // Fill entire screen and use content padding inside
+    Surface(
         modifier = Modifier
             .fillMaxSize()
-            .padding(paddingValues)
+            .padding(top = paddingValues.calculateTopPadding()),
+        shape = RoundedCornerShape(
+            topStart = 28.dp,
+            topEnd = 28.dp,
+            bottomStart = 0.dp,
+            bottomEnd = 0.dp
+        ),
+        color = MaterialTheme.colorScheme.surfaceContainerLowest,
+        shadowElevation = 4.dp,
+        tonalElevation = 1.dp
     ) {
-        when (uiState) {
-            is ConversationsUiState.Loading -> {
-                LoadingContent()
-            }
-            is ConversationsUiState.Empty -> {
-                EmptyContent(
-                    hasActiveProvider = uiState.hasActiveProvider,
-                    onNavigateToSettings = onNavigateToSettings
-                )
-            }
-            is ConversationsUiState.Success -> {
-                ConversationList(
-                    conversations = uiState.conversations,
-                    onConversationClick = onConversationClick,
-                    onConversationDelete = onConversationDelete
-                )
-            }
-            is ConversationsUiState.Error -> {
-                ErrorContent(
-                    message = uiState.message,
-                    onRetry = onRetry
-                )
+        Box(
+            modifier = Modifier.fillMaxSize()
+        ) {
+            when (uiState) {
+                is ConversationsUiState.Loading -> {
+                    LoadingContent()
+                }
+                is ConversationsUiState.Empty -> {
+                    EmptyContent(
+                        hasActiveProvider = uiState.hasActiveProvider,
+                        onNavigateToSettings = onNavigateToSettings
+                    )
+                }
+                is ConversationsUiState.Success -> {
+                    ConversationList(
+                        conversations = uiState.conversations,
+                        onConversationClick = onConversationClick,
+                        onConversationDelete = onConversationDelete
+                    )
+                }
+                is ConversationsUiState.Error -> {
+                    ErrorContent(
+                        message = uiState.message,
+                        onRetry = onRetry
+                    )
+                }
             }
         }
     }

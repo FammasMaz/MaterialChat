@@ -31,6 +31,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import com.materialchat.ui.theme.CustomShapes
 import com.materialchat.ui.theme.MaterialChatMotion
 import kotlin.math.absoluteValue
 import kotlin.math.roundToInt
@@ -132,23 +133,25 @@ fun SwipeToDeleteBox(
     Box(
         modifier = modifier
     ) {
-        // Background with delete icon
-        Box(
-            modifier = Modifier
-                .matchParentSize()
-                .clip(RoundedCornerShape(12.dp))
-                .background(backgroundColor),
-            contentAlignment = Alignment.CenterEnd
-        ) {
-            if (deleteProgress > 0.1f) {
-                Icon(
-                    imageVector = Icons.Outlined.Delete,
-                    contentDescription = "Delete",
-                    tint = iconColor,
-                    modifier = Modifier
-                        .padding(end = iconPadding)
-                        .scale(iconScale)
-                )
+        // Background with delete icon - only show when swiping
+        if (animatedOffsetX.absoluteValue > 1f) {
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .clip(CustomShapes.ConversationItem)
+                    .background(backgroundColor),
+                contentAlignment = Alignment.CenterEnd
+            ) {
+                if (deleteProgress > 0.1f) {
+                    Icon(
+                        imageVector = Icons.Outlined.Delete,
+                        contentDescription = "Delete",
+                        tint = iconColor,
+                        modifier = Modifier
+                            .padding(end = iconPadding)
+                            .scale(iconScale)
+                    )
+                }
             }
         }
 

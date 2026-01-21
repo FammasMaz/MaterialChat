@@ -2,56 +2,72 @@ package com.materialchat.ui.theme
 
 import androidx.compose.material3.Typography
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.googlefonts.Font
+import androidx.compose.ui.text.googlefonts.GoogleFont
 import androidx.compose.ui.unit.sp
+import com.materialchat.R
 
 /**
  * Material 3 Expressive Typography for MaterialChat.
  *
- * This typography scale uses the system default fonts (Roboto) but with
- * expressive sizing and weights that follow Material 3 Expressive guidelines.
- *
- * The expressive type scale features:
- * - Larger display and headline sizes for impact
- * - Comfortable body text for readability in chat
- * - Clear label styles for UI elements
+ * Uses Roboto Flex - Google's open-source variable font that provides
+ * expressive typography with fluid sizing and weights.
  */
 
 /**
- * Default font family using system fonts.
- * On Android, this defaults to Roboto.
+ * Google Fonts provider configuration.
+ */
+private val fontProvider = GoogleFont.Provider(
+    providerAuthority = "com.google.android.gms.fonts",
+    providerPackage = "com.google.android.gms",
+    certificates = R.array.com_google_android_gms_fonts_certs
+)
+
+/**
+ * Roboto Flex font from Google Fonts.
+ * A variable font that supports M3 Expressive's fluid typography.
+ */
+private val robotoFlexFont = GoogleFont("Roboto Flex")
+
+/**
+ * Roboto Flex font family with all weights.
+ */
+val RobotoFlexFontFamily = FontFamily(
+    Font(googleFont = robotoFlexFont, fontProvider = fontProvider, weight = FontWeight.Light),
+    Font(googleFont = robotoFlexFont, fontProvider = fontProvider, weight = FontWeight.Normal),
+    Font(googleFont = robotoFlexFont, fontProvider = fontProvider, weight = FontWeight.Medium),
+    Font(googleFont = robotoFlexFont, fontProvider = fontProvider, weight = FontWeight.SemiBold),
+    Font(googleFont = robotoFlexFont, fontProvider = fontProvider, weight = FontWeight.Bold)
+)
+
+/**
+ * Fallback to system default if Google Fonts fails to load.
  */
 val DefaultFontFamily = FontFamily.Default
 
 /**
- * Material 3 Expressive Typography configuration.
- *
- * Display styles: For large, impactful text
- * Headline styles: For section headers
- * Title styles: For medium emphasis headers
- * Body styles: For chat messages and content
- * Label styles: For buttons and small UI elements
+ * Material 3 Expressive Typography configuration using Roboto Flex.
  */
 val MaterialChatTypography = Typography(
-    // Display - Extra large, impactful text (rarely used in chat app)
+    // Display - Extra large, impactful text
     displayLarge = TextStyle(
-        fontFamily = DefaultFontFamily,
+        fontFamily = RobotoFlexFontFamily,
         fontWeight = FontWeight.Normal,
         fontSize = 57.sp,
         lineHeight = 64.sp,
         letterSpacing = (-0.25).sp
     ),
     displayMedium = TextStyle(
-        fontFamily = DefaultFontFamily,
+        fontFamily = RobotoFlexFontFamily,
         fontWeight = FontWeight.Normal,
         fontSize = 45.sp,
         lineHeight = 52.sp,
         letterSpacing = 0.sp
     ),
     displaySmall = TextStyle(
-        fontFamily = DefaultFontFamily,
+        fontFamily = RobotoFlexFontFamily,
         fontWeight = FontWeight.Normal,
         fontSize = 36.sp,
         lineHeight = 44.sp,
@@ -60,21 +76,21 @@ val MaterialChatTypography = Typography(
 
     // Headline - Section headers, app bar titles
     headlineLarge = TextStyle(
-        fontFamily = DefaultFontFamily,
+        fontFamily = RobotoFlexFontFamily,
         fontWeight = FontWeight.Medium,
         fontSize = 32.sp,
         lineHeight = 40.sp,
         letterSpacing = 0.sp
     ),
     headlineMedium = TextStyle(
-        fontFamily = DefaultFontFamily,
+        fontFamily = RobotoFlexFontFamily,
         fontWeight = FontWeight.Medium,
         fontSize = 28.sp,
         lineHeight = 36.sp,
         letterSpacing = 0.sp
     ),
     headlineSmall = TextStyle(
-        fontFamily = DefaultFontFamily,
+        fontFamily = RobotoFlexFontFamily,
         fontWeight = FontWeight.Medium,
         fontSize = 24.sp,
         lineHeight = 32.sp,
@@ -83,21 +99,21 @@ val MaterialChatTypography = Typography(
 
     // Title - Card titles, dialog titles, top bar
     titleLarge = TextStyle(
-        fontFamily = DefaultFontFamily,
+        fontFamily = RobotoFlexFontFamily,
         fontWeight = FontWeight.Medium,
         fontSize = 22.sp,
         lineHeight = 28.sp,
         letterSpacing = 0.sp
     ),
     titleMedium = TextStyle(
-        fontFamily = DefaultFontFamily,
+        fontFamily = RobotoFlexFontFamily,
         fontWeight = FontWeight.Medium,
         fontSize = 16.sp,
         lineHeight = 24.sp,
         letterSpacing = 0.15.sp
     ),
     titleSmall = TextStyle(
-        fontFamily = DefaultFontFamily,
+        fontFamily = RobotoFlexFontFamily,
         fontWeight = FontWeight.Medium,
         fontSize = 14.sp,
         lineHeight = 20.sp,
@@ -106,21 +122,21 @@ val MaterialChatTypography = Typography(
 
     // Body - Chat messages, paragraphs, descriptions
     bodyLarge = TextStyle(
-        fontFamily = DefaultFontFamily,
+        fontFamily = RobotoFlexFontFamily,
         fontWeight = FontWeight.Normal,
         fontSize = 16.sp,
         lineHeight = 24.sp,
         letterSpacing = 0.5.sp
     ),
     bodyMedium = TextStyle(
-        fontFamily = DefaultFontFamily,
+        fontFamily = RobotoFlexFontFamily,
         fontWeight = FontWeight.Normal,
         fontSize = 14.sp,
         lineHeight = 20.sp,
         letterSpacing = 0.25.sp
     ),
     bodySmall = TextStyle(
-        fontFamily = DefaultFontFamily,
+        fontFamily = RobotoFlexFontFamily,
         fontWeight = FontWeight.Normal,
         fontSize = 12.sp,
         lineHeight = 16.sp,
@@ -129,21 +145,21 @@ val MaterialChatTypography = Typography(
 
     // Label - Buttons, chips, tabs, captions
     labelLarge = TextStyle(
-        fontFamily = DefaultFontFamily,
+        fontFamily = RobotoFlexFontFamily,
         fontWeight = FontWeight.Medium,
         fontSize = 14.sp,
         lineHeight = 20.sp,
         letterSpacing = 0.1.sp
     ),
     labelMedium = TextStyle(
-        fontFamily = DefaultFontFamily,
+        fontFamily = RobotoFlexFontFamily,
         fontWeight = FontWeight.Medium,
         fontSize = 12.sp,
         lineHeight = 16.sp,
         letterSpacing = 0.5.sp
     ),
     labelSmall = TextStyle(
-        fontFamily = DefaultFontFamily,
+        fontFamily = RobotoFlexFontFamily,
         fontWeight = FontWeight.Medium,
         fontSize = 11.sp,
         lineHeight = 16.sp,
@@ -177,7 +193,7 @@ val InlineCodeTypography = TextStyle(
  * Typography for message timestamps.
  */
 val TimestampTypography = TextStyle(
-    fontFamily = DefaultFontFamily,
+    fontFamily = RobotoFlexFontFamily,
     fontWeight = FontWeight.Normal,
     fontSize = 11.sp,
     lineHeight = 14.sp,
