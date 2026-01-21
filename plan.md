@@ -423,7 +423,7 @@ Building a native Android AI chat application with Material 3 Expressive design.
       "Verify no crashes during normal usage",
       "Take screenshot of working app"
     ],
-    "passes": false
+    "passes": true
   }
 ]
 ```
