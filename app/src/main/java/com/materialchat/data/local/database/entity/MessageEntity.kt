@@ -44,6 +44,9 @@ data class MessageEntity(
     @ColumnInfo(name = "thinking_content")
     val thinkingContent: String? = null,
 
+    @ColumnInfo(name = "image_attachments")
+    val imageAttachments: String? = null,
+
     @ColumnInfo(name = "is_streaming")
     val isStreaming: Boolean,
 

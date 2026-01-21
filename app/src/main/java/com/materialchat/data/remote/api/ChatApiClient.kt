@@ -5,7 +5,10 @@ import com.materialchat.data.remote.dto.OllamaChatResponse
 import com.materialchat.data.remote.dto.OllamaMessage
 import com.materialchat.data.remote.dto.OpenAiChatRequest
 import com.materialchat.data.remote.dto.OpenAiChatResponse
+import com.materialchat.data.remote.dto.OpenAiContent
+import com.materialchat.data.remote.dto.OpenAiContentPart
 import com.materialchat.data.remote.dto.OpenAiMessage
+import com.materialchat.data.remote.dto.ImageUrl
 import com.materialchat.data.remote.sse.SseEventParser
 import com.materialchat.domain.model.Message
 import com.materialchat.domain.model.MessageRole
@@ -347,7 +350,7 @@ class ChatApiClient(
         prompt: String,
         apiKey: String
     ): Result<String> {
-        val messages = listOf(OpenAiMessage(role = "user", content = prompt))
+        val messages = listOf(OpenAiMessage(role = "user", content = OpenAiContent.Text(prompt)))
         val request = OpenAiChatRequest(
             model = model,
             messages = messages,
@@ -564,6 +567,7 @@ class ChatApiClient(
 
     /**
      * Converts domain Messages to OpenAI format with optional system prompt.
+     * Handles multimodal messages with image attachments.
      */
     private fun buildOpenAiMessages(
         messages: List<Message>,
@@ -573,14 +577,40 @@ class ChatApiClient(
 
         // Add system prompt if provided
         if (!systemPrompt.isNullOrBlank()) {
-            result.add(OpenAiMessage(role = "system", content = systemPrompt))
+            result.add(OpenAiMessage(
+                role = "system",
+                content = OpenAiContent.Text(systemPrompt)
+            ))
         }
 
         // Add conversation messages
         messages.forEach { message ->
+            val content = if (message.attachments.isNotEmpty()) {
+                // Build multimodal content with text and images
+                val parts = mutableListOf<OpenAiContentPart>()
+
+                // Add text content first
+                if (message.content.isNotBlank()) {
+                    parts.add(OpenAiContentPart.TextPart(text = message.content))
+                }
+
+                // Add image attachments
+                message.attachments.forEach { attachment ->
+                    val dataUrl = "data:${attachment.mimeType};base64,${attachment.base64Data}"
+                    parts.add(OpenAiContentPart.ImageUrlPart(
+                        imageUrl = ImageUrl(url = dataUrl)
+                    ))
+                }
+
+                OpenAiContent.Parts(parts)
+            } else {
+                // Simple text content
+                OpenAiContent.Text(message.content)
+            }
+
             result.add(OpenAiMessage(
                 role = message.role.toApiRole(),
-                content = message.content
+                content = content
             ))
         }
 
@@ -589,6 +619,7 @@ class ChatApiClient(
 
     /**
      * Converts domain Messages to Ollama format with optional system prompt.
+     * Handles multimodal messages with image attachments.
      */
     private fun buildOllamaMessages(
         messages: List<Message>,
@@ -603,9 +634,17 @@ class ChatApiClient(
 
         // Add conversation messages
         messages.forEach { message ->
+            val images = if (message.attachments.isNotEmpty()) {
+                // Ollama expects raw base64 strings (without data URL prefix)
+                message.attachments.map { it.base64Data }
+            } else {
+                null
+            }
+
             result.add(OllamaMessage(
                 role = message.role.toApiRole(),
-                content = message.content
+                content = message.content,
+                images = images
             ))
         }
 

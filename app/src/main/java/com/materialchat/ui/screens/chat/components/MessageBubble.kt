@@ -9,8 +9,11 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -18,6 +21,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
@@ -33,12 +37,18 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
+import com.materialchat.domain.model.Attachment
 import com.materialchat.domain.model.MessageRole
 import com.materialchat.ui.components.MarkdownText
 import com.materialchat.ui.screens.chat.MessageUiItem
@@ -110,6 +120,16 @@ fun MessageBubble(
                             thinkingContent = message.thinkingContent,
                             textColor = bubbleStyle.textColor,
                             isStreaming = message.isStreaming
+                        )
+                        if (message.content.isNotEmpty() || message.hasAttachments) {
+                            Spacer(modifier = Modifier.height(8.dp))
+                        }
+                    }
+
+                    // Image attachments (displayed before text content)
+                    if (message.hasAttachments) {
+                        AttachmentImagesGrid(
+                            attachments = message.attachments
                         )
                         if (message.content.isNotEmpty()) {
                             Spacer(modifier = Modifier.height(8.dp))
@@ -272,4 +292,46 @@ private fun ThinkingSection(
             )
         }
     }
+}
+
+/**
+ * Grid layout for displaying image attachments in a message.
+ * Uses FlowRow for responsive layout that wraps images.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun AttachmentImagesGrid(
+    attachments: List<Attachment>,
+    modifier: Modifier = Modifier
+) {
+    FlowRow(
+        modifier = modifier,
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        attachments.forEach { attachment ->
+            AttachmentImage(attachment = attachment)
+        }
+    }
+}
+
+/**
+ * Single image attachment display.
+ */
+@Composable
+private fun AttachmentImage(
+    attachment: Attachment,
+    modifier: Modifier = Modifier
+) {
+    AsyncImage(
+        model = ImageRequest.Builder(LocalContext.current)
+            .data(attachment.uri)
+            .crossfade(true)
+            .build(),
+        contentDescription = "Attached image",
+        contentScale = ContentScale.Crop,
+        modifier = modifier
+            .size(120.dp)
+            .clip(RoundedCornerShape(8.dp))
+    )
 }

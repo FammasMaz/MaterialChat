@@ -10,6 +10,7 @@ import java.util.UUID
  * @property role The role of the message sender (USER, ASSISTANT, or SYSTEM)
  * @property content The text content of the message
  * @property thinkingContent The thinking/reasoning content (for models that support it)
+ * @property attachments List of image attachments for this message (for multimodal support)
  * @property isStreaming Whether the message is currently being streamed
  * @property createdAt Timestamp when the message was created (epoch milliseconds)
  */
@@ -19,6 +20,13 @@ data class Message(
     val role: MessageRole,
     val content: String,
     val thinkingContent: String? = null,
+    val attachments: List<Attachment> = emptyList(),
     val isStreaming: Boolean = false,
     val createdAt: Long = System.currentTimeMillis()
-)
+) {
+    /**
+     * Whether this message has any image attachments.
+     */
+    val hasAttachments: Boolean
+        get() = attachments.isNotEmpty()
+}
