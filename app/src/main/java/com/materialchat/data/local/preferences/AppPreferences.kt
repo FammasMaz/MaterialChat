@@ -36,6 +36,7 @@ class AppPreferences(private val context: Context) {
         val SYSTEM_PROMPT = stringPreferencesKey("system_prompt")
         val THEME_MODE = stringPreferencesKey("theme_mode")
         val DYNAMIC_COLOR_ENABLED = booleanPreferencesKey("dynamic_color_enabled")
+        val HAPTICS_ENABLED = booleanPreferencesKey("haptics_enabled")
         val FIRST_LAUNCH_COMPLETE = booleanPreferencesKey("first_launch_complete")
     }
 
@@ -55,6 +56,7 @@ class AppPreferences(private val context: Context) {
         const val DEFAULT_SYSTEM_PROMPT = "You are a helpful assistant."
         val DEFAULT_THEME_MODE = ThemeMode.SYSTEM
         const val DEFAULT_DYNAMIC_COLOR_ENABLED = true
+        const val DEFAULT_HAPTICS_ENABLED = true
     }
 
     // ========== System Prompt ==========
@@ -113,6 +115,24 @@ class AppPreferences(private val context: Context) {
     suspend fun setDynamicColorEnabled(enabled: Boolean) {
         dataStore.edit { preferences ->
             preferences[Keys.DYNAMIC_COLOR_ENABLED] = enabled
+        }
+    }
+
+    // ========== Haptic Feedback ==========
+
+    /**
+     * Get whether haptic feedback is enabled as a Flow.
+     */
+    val hapticsEnabled: Flow<Boolean> = dataStore.data.map { preferences ->
+        preferences[Keys.HAPTICS_ENABLED] ?: DEFAULT_HAPTICS_ENABLED
+    }
+
+    /**
+     * Set whether haptic feedback is enabled.
+     */
+    suspend fun setHapticsEnabled(enabled: Boolean) {
+        dataStore.edit { preferences ->
+            preferences[Keys.HAPTICS_ENABLED] = enabled
         }
     }
 

@@ -7,6 +7,9 @@
     <!-- Optional: Network state for better error handling -->
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
+    <!-- Haptic feedback for enhanced UX -->
+    <uses-permission android:name="android.permission.VIBRATE" />
+
     <application
         android:name=".MaterialChatApplication"
         android:allowBackup="true"

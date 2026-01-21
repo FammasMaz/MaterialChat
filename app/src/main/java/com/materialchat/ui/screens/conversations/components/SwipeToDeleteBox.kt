@@ -31,6 +31,8 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import com.materialchat.ui.components.HapticPattern
+import com.materialchat.ui.components.rememberHapticFeedback
 import com.materialchat.ui.theme.CustomShapes
 import com.materialchat.ui.theme.MaterialChatMotion
 import kotlin.math.absoluteValue
@@ -45,6 +47,7 @@ import kotlin.math.roundToInt
  * @param onDelete Callback when the item should be deleted
  * @param modifier Modifier for the container
  * @param enabled Whether swipe-to-delete is enabled
+ * @param hapticsEnabled Whether haptic feedback is enabled
  * @param content The content to display
  */
 @Composable
@@ -52,14 +55,17 @@ fun SwipeToDeleteBox(
     onDelete: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
+    hapticsEnabled: Boolean = true,
     content: @Composable () -> Unit
 ) {
     val density = LocalDensity.current
+    val haptics = rememberHapticFeedback()
 
     // Track the horizontal offset of the content
     var offsetX by remember { mutableFloatStateOf(0f) }
     var isDragging by remember { mutableStateOf(false) }
     var shouldDelete by remember { mutableStateOf(false) }
+    var hasTriggeredThresholdHaptic by remember { mutableStateOf(false) }
 
     // Threshold for triggering delete (in dp)
     val deleteThresholdDp = 100.dp
@@ -81,6 +87,16 @@ fun SwipeToDeleteBox(
 
     // Calculate delete progress (0 to 1)
     val deleteProgress = (animatedOffsetX.absoluteValue / deleteThresholdPx).coerceIn(0f, 1f)
+
+    // Trigger haptic feedback when crossing the threshold
+    LaunchedEffect(deleteProgress > 0.9f) {
+        if (deleteProgress > 0.9f && !hasTriggeredThresholdHaptic) {
+            haptics.perform(HapticPattern.SWIPE_THRESHOLD, hapticsEnabled)
+            hasTriggeredThresholdHaptic = true
+        } else if (deleteProgress <= 0.9f) {
+            hasTriggeredThresholdHaptic = false
+        }
+    }
 
     // Background color animates based on delete progress
     val backgroundColor by animateColorAsState(

@@ -25,6 +25,7 @@ import androidx.compose.material.icons.outlined.DarkMode
 import androidx.compose.material.icons.outlined.LightMode
 import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.SettingsSystemDaydream
+import androidx.compose.material.icons.outlined.Vibration
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -192,6 +193,7 @@ fun SettingsScreen(
             onSystemPromptChange = { viewModel.updateSystemPrompt(it) },
             onThemeModeChange = { viewModel.updateThemeMode(it) },
             onDynamicColorChange = { viewModel.updateDynamicColorEnabled(it) },
+            onHapticsChange = { viewModel.updateHapticsEnabled(it) },
             onRetry = { viewModel.retry() }
         )
     }
@@ -241,6 +243,7 @@ private fun SettingsContent(
     onSystemPromptChange: (String) -> Unit,
     onThemeModeChange: (AppPreferences.ThemeMode) -> Unit,
     onDynamicColorChange: (Boolean) -> Unit,
+    onHapticsChange: (Boolean) -> Unit,
     onRetry: () -> Unit
 ) {
     Box(
@@ -262,7 +265,8 @@ private fun SettingsContent(
                     onTestConnection = onTestConnection,
                     onSystemPromptChange = onSystemPromptChange,
                     onThemeModeChange = onThemeModeChange,
-                    onDynamicColorChange = onDynamicColorChange
+                    onDynamicColorChange = onDynamicColorChange,
+                    onHapticsChange = onHapticsChange
                 )
             }
             is SettingsUiState.Error -> {
@@ -297,7 +301,8 @@ private fun SuccessContent(
     onTestConnection: (String) -> Unit,
     onSystemPromptChange: (String) -> Unit,
     onThemeModeChange: (AppPreferences.ThemeMode) -> Unit,
-    onDynamicColorChange: (Boolean) -> Unit
+    onDynamicColorChange: (Boolean) -> Unit,
+    onHapticsChange: (Boolean) -> Unit
 ) {
     LazyColumn(
         modifier = Modifier
@@ -357,6 +362,14 @@ private fun SuccessContent(
                     onToggle = onDynamicColorChange
                 )
             }
+        }
+
+        // Haptics Toggle
+        item {
+            HapticsToggle(
+                enabled = uiState.hapticsEnabled,
+                onToggle = onHapticsChange
+            )
         }
 
         item {
@@ -503,6 +516,57 @@ private fun DynamicColorToggle(
                     )
                     Text(
                         text = "Use colors from your wallpaper",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            Switch(
+                checked = enabled,
+                onCheckedChange = onToggle
+            )
+        }
+    }
+}
+
+@Composable
+private fun HapticsToggle(
+    enabled: Boolean,
+    onToggle: (Boolean) -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+        ),
+        shape = RoundedCornerShape(16.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.Vibration,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(24.dp)
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                Column {
+                    Text(
+                        text = "Haptic Feedback",
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = "Vibrate on interactions",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
