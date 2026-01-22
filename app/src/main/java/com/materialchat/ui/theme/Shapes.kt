@@ -166,4 +166,9 @@ object CustomShapes {
         bottomStart = 24.dp,
         bottomEnd = 24.dp
     )
+
+    /**
+     * Shape for search bar - fully rounded pill shape.
+     */
+    val SearchBar = RoundedCornerShape(28.dp)
 }

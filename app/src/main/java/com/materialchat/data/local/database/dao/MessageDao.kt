@@ -145,4 +145,36 @@ interface MessageDao {
      */
     @Query("UPDATE messages SET is_streaming = 0 WHERE is_streaming = 1")
     suspend fun completeAllStreamingMessages()
+
+    /**
+     * Search messages by content, excluding system messages.
+     * Returns messages grouped by conversation.
+     *
+     * @param query The search query string
+     * @param limit Maximum number of results to return
+     */
+    @Query("""
+        SELECT * FROM messages 
+        WHERE content LIKE '%' || :query || '%' COLLATE NOCASE
+        AND role != 'SYSTEM'
+        ORDER BY created_at DESC
+        LIMIT :limit
+    """)
+    suspend fun searchMessageContent(query: String, limit: Int = 50): List<MessageEntity>
+
+    /**
+     * Get all non-system messages for a conversation.
+     * Used for displaying search result context.
+     *
+     * @param conversationId The ID of the conversation
+     * @param limit Maximum number of messages to return
+     */
+    @Query("""
+        SELECT * FROM messages 
+        WHERE conversation_id = :conversationId 
+        AND role != 'SYSTEM'
+        ORDER BY created_at ASC
+        LIMIT :limit
+    """)
+    suspend fun getNonSystemMessagesForConversation(conversationId: String, limit: Int = 20): List<MessageEntity>
 }

@@ -2,6 +2,8 @@ package com.materialchat.domain.repository
 
 import com.materialchat.domain.model.Conversation
 import com.materialchat.domain.model.Message
+import com.materialchat.domain.model.SearchQuery
+import com.materialchat.domain.model.SearchResult
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -171,4 +173,18 @@ interface ConversationRepository {
      * @return The Markdown string representation of the conversation
      */
     suspend fun exportToMarkdown(conversationId: String): String
+
+    // ========== Search Operations ==========
+
+    /**
+     * Searches conversations by title and/or message content.
+     *
+     * Results are organized title-first: conversations are the primary results,
+     * with matching messages shown as context under each conversation.
+     * System messages are excluded from search results.
+     *
+     * @param query The search query parameters
+     * @return List of search results ordered by relevance (title matches first)
+     */
+    suspend fun searchConversations(query: SearchQuery): List<SearchResult>
 }
