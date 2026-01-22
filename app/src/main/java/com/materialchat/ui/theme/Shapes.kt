@@ -35,7 +35,7 @@ val MaterialChatShapes = Shapes(
 
 /**
  * Custom shape for message bubbles.
- * Uses larger radii for the expressive, friendly feel.
+ * Uses larger radii (28dp) for the M3 Expressive friendly feel.
  */
 object MessageBubbleShapes {
     /**
@@ -43,10 +43,10 @@ object MessageBubbleShapes {
      * Very rounded with a small corner on top-right to indicate origin.
      */
     val UserBubble = RoundedCornerShape(
-        topStart = 24.dp,
+        topStart = 28.dp,
         topEnd = 6.dp,
-        bottomStart = 24.dp,
-        bottomEnd = 24.dp
+        bottomStart = 28.dp,
+        bottomEnd = 28.dp
     )
 
     /**
@@ -55,21 +55,54 @@ object MessageBubbleShapes {
      */
     val AssistantBubble = RoundedCornerShape(
         topStart = 6.dp,
-        topEnd = 24.dp,
-        bottomStart = 24.dp,
-        bottomEnd = 24.dp
+        topEnd = 28.dp,
+        bottomStart = 28.dp,
+        bottomEnd = 28.dp
     )
 
     /**
      * System message bubble shape.
      * Fully rounded corners for neutral appearance.
      */
-    val SystemBubble = RoundedCornerShape(20.dp)
+    val SystemBubble = RoundedCornerShape(24.dp)
 
     /**
      * Continuation message shape (for messages in a sequence).
      */
-    val ContinuationBubble = RoundedCornerShape(16.dp)
+    val ContinuationBubble = RoundedCornerShape(20.dp)
+    
+    /**
+     * Grouped message shapes - for consecutive messages from same sender.
+     * Creates a visual "stack" effect with varying corner radii.
+     */
+    object Grouped {
+        // First message in a group (has tail corner)
+        val UserFirst = RoundedCornerShape(
+            topStart = 28.dp, topEnd = 6.dp,
+            bottomStart = 28.dp, bottomEnd = 6.dp
+        )
+        val UserMiddle = RoundedCornerShape(
+            topStart = 28.dp, topEnd = 6.dp,
+            bottomStart = 28.dp, bottomEnd = 6.dp
+        )
+        val UserLast = RoundedCornerShape(
+            topStart = 28.dp, topEnd = 6.dp,
+            bottomStart = 28.dp, bottomEnd = 28.dp
+        )
+        
+        val AssistantFirst = RoundedCornerShape(
+            topStart = 6.dp, topEnd = 28.dp,
+            bottomStart = 6.dp, bottomEnd = 28.dp
+        )
+        val AssistantMiddle = RoundedCornerShape(
+            topStart = 6.dp, topEnd = 28.dp,
+            bottomStart = 6.dp, bottomEnd = 28.dp
+        )
+        val AssistantLast = RoundedCornerShape(
+            topStart = 6.dp, topEnd = 28.dp,
+            bottomStart = 28.dp, bottomEnd = 28.dp
+        )
+    }
 }
 
 /**
@@ -78,14 +111,21 @@ object MessageBubbleShapes {
  */
 object CustomShapes {
     /**
-     * Shape for FAB (Floating Action Button) - rounded rectangle.
+     * Shape for FAB (Floating Action Button) - pill-like per M3 Expressive.
+     * 28dp corners for the friendly, modern look.
      */
-    val Fab = RoundedCornerShape(16.dp)
+    val Fab = RoundedCornerShape(28.dp)
 
     /**
-     * Extended FAB shape - rounded rectangle.
+     * Extended FAB shape - pill-like per M3 Expressive.
+     * 28dp corners matching standard FAB.
      */
-    val ExtendedFab = RoundedCornerShape(16.dp)
+    val ExtendedFab = RoundedCornerShape(28.dp)
+    
+    /**
+     * FAB shape when pressed - slightly less rounded for shape morphing.
+     */
+    val FabPressed = RoundedCornerShape(20.dp)
 
     /**
      * Shape for bottom sheets - very rounded top corners.
@@ -110,12 +150,22 @@ object CustomShapes {
     /**
      * Shape for action buttons on message bubbles.
      */
-    val MessageActionButton = RoundedCornerShape(16.dp)
+    val MessageActionButton = RoundedCornerShape(20.dp)
+    
+    /**
+     * Button shape - M3 Expressive uses 20dp.
+     */
+    val Button = RoundedCornerShape(20.dp)
+    
+    /**
+     * Button shape when pressed - morphs to smaller radius.
+     */
+    val ButtonPressed = RoundedCornerShape(12.dp)
 
     /**
-     * Shape for the message input field container - very rounded.
+     * Shape for the message input field container - matches FAB for consistency.
      */
-    val MessageInputContainer = RoundedCornerShape(32.dp)
+    val MessageInputContainer = RoundedCornerShape(28.dp)
 
     /**
      * Shape for the send button - circle.
