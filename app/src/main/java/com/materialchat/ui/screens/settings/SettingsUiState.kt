@@ -25,6 +25,7 @@ sealed interface SettingsUiState {
      * @property isDynamicColorSupported Whether the device supports dynamic color (Android 12+)
      * @property hapticsEnabled Whether haptic feedback is enabled
      * @property aiGeneratedTitlesEnabled Whether AI-generated conversation titles are enabled
+     * @property titleGenerationModel Custom model for title generation (empty = use conversation model)
      * @property showAddProviderSheet Whether to show the add provider bottom sheet
      * @property editingProvider Provider being edited, if any
      * @property showDeleteConfirmation Provider being deleted (for confirmation dialog)
@@ -38,6 +39,7 @@ sealed interface SettingsUiState {
         val isDynamicColorSupported: Boolean,
         val hapticsEnabled: Boolean = true,
         val aiGeneratedTitlesEnabled: Boolean = true,
+        val titleGenerationModel: String = "",
         val showAddProviderSheet: Boolean = false,
         val editingProvider: Provider? = null,
         val showDeleteConfirmation: Provider? = null,

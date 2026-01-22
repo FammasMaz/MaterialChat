@@ -39,6 +39,7 @@ class AppPreferences(private val context: Context) {
         val HAPTICS_ENABLED = booleanPreferencesKey("haptics_enabled")
         val FIRST_LAUNCH_COMPLETE = booleanPreferencesKey("first_launch_complete")
         val AI_GENERATED_TITLES_ENABLED = booleanPreferencesKey("ai_generated_titles_enabled")
+        val TITLE_GENERATION_MODEL = stringPreferencesKey("title_generation_model")
     }
 
     /**
@@ -172,6 +173,26 @@ class AppPreferences(private val context: Context) {
     suspend fun setAiGeneratedTitlesEnabled(enabled: Boolean) {
         dataStore.edit { preferences ->
             preferences[Keys.AI_GENERATED_TITLES_ENABLED] = enabled
+        }
+    }
+
+    // ========== Title Generation Model ==========
+
+    /**
+     * Get the custom model for title generation as a Flow.
+     * Empty string means use the conversation's model.
+     */
+    val titleGenerationModel: Flow<String> = dataStore.data.map { preferences ->
+        preferences[Keys.TITLE_GENERATION_MODEL] ?: ""
+    }
+
+    /**
+     * Set the custom model for title generation.
+     * Set to empty string to use the conversation's model.
+     */
+    suspend fun setTitleGenerationModel(model: String) {
+        dataStore.edit { preferences ->
+            preferences[Keys.TITLE_GENERATION_MODEL] = model
         }
     }
 
