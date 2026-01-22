@@ -387,6 +387,7 @@ class ChatApiClient(
 
     /**
      * Generates a non-streaming completion from an Ollama server.
+     * Uses streaming mode internally since some Ollama proxies don't support stream=false.
      */
     private fun generateOllamaCompletion(
         baseUrl: String,
@@ -394,16 +395,20 @@ class ChatApiClient(
         prompt: String
     ): Result<String> {
         val messages = listOf(OllamaMessage(role = "user", content = prompt))
+        // Use streaming mode like the regular chat - some APIs don't support stream=false
         val request = OllamaChatRequest(
             model = model,
             messages = messages,
-            stream = false,
-            think = false,
+            stream = true,
+            think = true,  // Same as regular chat
             options = com.materialchat.data.remote.dto.OllamaOptions(temperature = 0.7)
         )
 
-        val requestBody = json.encodeToString(request)
-            .toRequestBody(JSON_MEDIA_TYPE)
+        val jsonBody = json.encodeToString(request)
+        android.util.Log.d("ChatApiClient", "Ollama request URL: ${baseUrl.trimEnd('/')}/api/chat")
+        android.util.Log.d("ChatApiClient", "Ollama request body: $jsonBody")
+
+        val requestBody = jsonBody.toRequestBody(JSON_MEDIA_TYPE)
 
         val url = "${baseUrl.trimEnd('/')}/api/chat"
         val httpRequest = Request.Builder()
@@ -416,17 +421,35 @@ class ChatApiClient(
         return response.use { resp ->
             if (!resp.isSuccessful) {
                 val errorBody = resp.body?.string() ?: "Unknown error"
+                android.util.Log.e("ChatApiClient", "Ollama error response: $errorBody")
                 return@use Result.failure(IOException("API error ${resp.code}: $errorBody"))
             }
 
-            val body = resp.body?.string() ?: return@use Result.failure(IOException("Empty response"))
-            try {
-                val jsonResponse = json.decodeFromString<OllamaChatResponse>(body)
-                val content = jsonResponse.message?.content
-                    ?: return@use Result.failure(IOException("No content in response"))
-                Result.success(content.trim())
-            } catch (e: Exception) {
-                Result.failure(IOException("Failed to parse response: ${e.message}"))
+            // Collect streaming response chunks
+            val reader = resp.body?.source()?.inputStream()?.bufferedReader()
+                ?: return@use Result.failure(IOException("Empty response"))
+
+            val contentBuilder = StringBuilder()
+            reader.useLines { lines ->
+                for (line in lines) {
+                    if (line.isBlank()) continue
+                    try {
+                        val chunk = json.decodeFromString<OllamaChatResponse>(line)
+                        chunk.message?.content?.let { contentBuilder.append(it) }
+                        if (chunk.done) break
+                    } catch (e: Exception) {
+                        android.util.Log.w("ChatApiClient", "Failed to parse chunk: $line")
+                    }
+                }
+            }
+
+            val content = contentBuilder.toString().trim()
+            android.util.Log.d("ChatApiClient", "Ollama collected response: $content")
+
+            if (content.isEmpty()) {
+                Result.failure(IOException("No content in response"))
+            } else {
+                Result.success(content)
             }
         }
     }

@@ -20,7 +20,7 @@ data class OllamaChatRequest(
     val model: String,
     val messages: List<OllamaMessage>,
     val stream: Boolean = true,
-    val think: Boolean = false,
+    val think: Boolean? = null,  // Only include when explicitly set (for thinking models)
     val options: OllamaOptions? = null
 )
 

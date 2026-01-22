@@ -1,5 +1,6 @@
 package com.materialchat.domain.usecase
 
+import android.util.Log
 import com.materialchat.domain.repository.ChatRepository
 import com.materialchat.domain.repository.ConversationRepository
 import com.materialchat.domain.repository.ProviderRepository
@@ -20,6 +21,7 @@ class GenerateConversationTitleUseCase @Inject constructor(
     private val providerRepository: ProviderRepository
 ) {
     companion object {
+        private const val TAG = "GenerateTitleUseCase"
         private const val MAX_TITLE_WORDS = 6
         private const val MAX_TITLE_LENGTH = 60
         private const val FALLBACK_MAX_LENGTH = 40
@@ -38,6 +40,7 @@ class GenerateConversationTitleUseCase @Inject constructor(
         userMessage: String,
         assistantResponse: String
     ): Result<String> = withContext(Dispatchers.IO) {
+        Log.d(TAG, "Starting title generation for conversation: $conversationId")
         try {
             val conversation = conversationRepository.getConversation(conversationId)
                 ?: return@withContext Result.failure(
@@ -49,7 +52,9 @@ class GenerateConversationTitleUseCase @Inject constructor(
                     IllegalStateException("Provider not found: ${conversation.providerId}")
                 )
 
+            Log.d(TAG, "Using provider: ${provider.name}, model: ${conversation.modelName}")
             val prompt = buildTitlePrompt(userMessage, assistantResponse)
+            Log.d(TAG, "Prompt length: ${prompt.length}")
 
             val result = chatRepository.generateSimpleCompletion(
                 provider = provider,
@@ -59,17 +64,22 @@ class GenerateConversationTitleUseCase @Inject constructor(
 
             result.fold(
                 onSuccess = { generatedTitle ->
+                    Log.d(TAG, "AI generated title: $generatedTitle")
                     val cleanedTitle = cleanTitle(generatedTitle)
+                    Log.d(TAG, "Cleaned title: $cleanedTitle")
                     conversationRepository.updateConversationTitle(conversationId, cleanedTitle)
                     Result.success(cleanedTitle)
                 },
-                onFailure = { _ ->
+                onFailure = { error ->
+                    Log.e(TAG, "Title generation failed: ${error.message}", error)
                     val fallbackTitle = generateFallbackTitle(userMessage)
+                    Log.d(TAG, "Using fallback title: $fallbackTitle")
                     conversationRepository.updateConversationTitle(conversationId, fallbackTitle)
                     Result.success(fallbackTitle)
                 }
             )
         } catch (e: Exception) {
+            Log.e(TAG, "Exception during title generation: ${e.message}", e)
             val fallbackTitle = generateFallbackTitle(userMessage)
             try {
                 conversationRepository.updateConversationTitle(conversationId, fallbackTitle)
