@@ -4,12 +4,17 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
+import com.materialchat.ui.navigation.LocalAnimatedVisibilityScope
+import com.materialchat.ui.navigation.LocalSharedTransitionScope
+import com.materialchat.ui.navigation.SHARED_ELEMENT_FAB_TO_INPUT
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
@@ -59,11 +64,13 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
@@ -72,9 +79,11 @@ import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.materialchat.ui.components.AnimatedExtendedFab
 import com.materialchat.ui.components.HapticPattern
 import com.materialchat.ui.components.rememberHapticFeedback
 import com.materialchat.ui.screens.conversations.components.ConversationItem
@@ -112,7 +121,31 @@ fun ConversationsScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
-
+    
+    // Shared list state for scroll detection (M3 Expressive FAB behavior)
+    val conversationListState = rememberLazyListState()
+    
+    // M3 Expressive: FAB expand/collapse with stable state
+    // Start expanded, only update when USER actively scrolls (not data changes)
+    var fabExpanded by rememberSaveable { mutableStateOf(true) }
+    
+    // Only update FAB state during active user scrolling
+    val isScrolling = conversationListState.isScrollInProgress
+    LaunchedEffect(isScrolling, conversationListState.firstVisibleItemIndex) {
+        if (isScrolling) {
+            // Collapse when scrolled past first item
+            fabExpanded = conversationListState.firstVisibleItemIndex == 0
+        }
+    }
+    
+    // Always expand when at the very top (even after scroll stops)
+    LaunchedEffect(conversationListState.firstVisibleItemIndex, conversationListState.firstVisibleItemScrollOffset) {
+        if (conversationListState.firstVisibleItemIndex == 0 && 
+            conversationListState.firstVisibleItemScrollOffset < 20) {
+            fabExpanded = true
+        }
+    }
+    
     // Search state
     var isSearchActive by remember { mutableStateOf(false) }
     val searchQuery by searchViewModel.searchQuery.collectAsStateWithLifecycle()
@@ -214,6 +247,7 @@ fun ConversationsScreen(
             NewChatFab(
                 onClick = { viewModel.createNewConversation() },
                 visible = uiState !is ConversationsUiState.Loading,
+                expanded = fabExpanded,
                 hapticsEnabled = hapticsEnabled
             )
         },
@@ -244,6 +278,7 @@ fun ConversationsScreen(
             ConversationsContent(
                 uiState = uiState,
                 paddingValues = paddingValues,
+                listState = conversationListState,
                 onConversationClick = { viewModel.openConversation(it) },
                 onConversationDelete = { viewModel.deleteConversation(it) },
                 onRetry = { viewModel.retry() },
@@ -290,17 +325,17 @@ private fun ConversationsTopBar(
     )
 }
 
+@OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 private fun NewChatFab(
     onClick: () -> Unit,
     visible: Boolean,
+    expanded: Boolean = true,
     hapticsEnabled: Boolean = true
 ) {
-    val listState = rememberLazyListState()
-    val isScrolling by remember {
-        derivedStateOf { listState.isScrollInProgress }
-    }
     val haptics = rememberHapticFeedback()
+    val sharedTransitionScope = LocalSharedTransitionScope.current
+    val animatedVisibilityScope = LocalAnimatedVisibilityScope.current
 
     AnimatedVisibility(
         visible = visible,
@@ -316,9 +351,28 @@ private fun NewChatFab(
             modifier = Modifier
                 .wrapContentSize()
                 .navigationBarsPadding()
-                .padding(12.dp) // Padding for shadow
+                .padding(12.dp)
         ) {
-            ExtendedFloatingActionButton(
+            // Apply sharedElement modifier for FAB-to-Input morph
+            val fabModifier = if (sharedTransitionScope != null && animatedVisibilityScope != null) {
+                with(sharedTransitionScope) {
+                    Modifier.sharedElement(
+                        state = rememberSharedContentState(key = SHARED_ELEMENT_FAB_TO_INPUT),
+                        animatedVisibilityScope = animatedVisibilityScope,
+                        boundsTransform = { _, _ ->
+                            spring(
+                                dampingRatio = 0.8f,
+                                stiffness = 380f
+                            )
+                        }
+                    )
+                }
+            } else {
+                Modifier
+            }
+            
+            AnimatedExtendedFab(
+                expanded = expanded,
                 onClick = {
                     haptics.perform(HapticPattern.CLICK, hapticsEnabled)
                     onClick()
@@ -329,23 +383,17 @@ private fun NewChatFab(
                         contentDescription = null
                     )
                 },
-                text = { Text("New Chat") },
-                shape = CustomShapes.ExtendedFab,
-                containerColor = MaterialTheme.colorScheme.primaryContainer,
-                contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                elevation = FloatingActionButtonDefaults.elevation(
-                    defaultElevation = 2.dp,
-                    pressedElevation = 4.dp,
-                    focusedElevation = 2.dp,
-                    hoveredElevation = 3.dp
-                ),
-                modifier = Modifier
-                    .animateContentSize(
-                        animationSpec = spring(
-                            dampingRatio = Spring.DampingRatioMediumBouncy,
-                            stiffness = Spring.StiffnessMediumLow
-                        )
+                text = { 
+                    Text(
+                        text = "New Chat",
+                        maxLines = 1,
+                        softWrap = false,
+                        overflow = TextOverflow.Clip
                     )
+                },
+                modifier = fabModifier,
+                containerColor = MaterialTheme.colorScheme.primaryContainer,
+                contentColor = MaterialTheme.colorScheme.onPrimaryContainer
             )
         }
     }
@@ -355,6 +403,7 @@ private fun NewChatFab(
 private fun ConversationsContent(
     uiState: ConversationsUiState,
     paddingValues: PaddingValues,
+    listState: androidx.compose.foundation.lazy.LazyListState,
     onConversationClick: (String) -> Unit,
     onConversationDelete: (com.materialchat.domain.model.Conversation) -> Unit,
     onRetry: () -> Unit,
@@ -392,6 +441,7 @@ private fun ConversationsContent(
                 is ConversationsUiState.Success -> {
                     ConversationList(
                         conversations = uiState.conversations,
+                        listState = listState,
                         onConversationClick = onConversationClick,
                         onConversationDelete = onConversationDelete,
                         hapticsEnabled = uiState.hapticsEnabled
@@ -477,11 +527,11 @@ private fun EmptyContent(
 @Composable
 private fun ConversationList(
     conversations: List<ConversationUiItem>,
+    listState: androidx.compose.foundation.lazy.LazyListState,
     onConversationClick: (String) -> Unit,
     onConversationDelete: (com.materialchat.domain.model.Conversation) -> Unit,
     hapticsEnabled: Boolean = true
 ) {
-    val listState = rememberLazyListState()
     val haptics = rememberHapticFeedback()
 
     LazyColumn(
