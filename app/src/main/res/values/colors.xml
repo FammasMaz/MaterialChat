@@ -3,6 +3,9 @@
     <!-- Brand colors for MaterialChat -->
     <color name="splash_background">#EADDFF</color>
     <color name="splash_icon_background">#6750A4</color>
+    <!-- Dark splash colors (fallback - overridden in values-night) -->
+    <color name="splash_background_dark">#381E72</color>
+    <color name="splash_icon_background_dark">#D0BCFF</color>
 
     <!-- Primary brand colors -->
     <color name="primary">#006B5F</color>
