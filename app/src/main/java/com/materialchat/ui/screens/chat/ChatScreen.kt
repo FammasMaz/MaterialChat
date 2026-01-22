@@ -151,24 +151,30 @@ fun ChatScreen(
                     onNavigateBack()
                 }
                 is ChatEvent.ShowSnackbar -> {
-                    val result = snackbarHostState.showSnackbar(
-                        message = event.message,
-                        actionLabel = event.actionLabel,
-                        duration = if (event.actionLabel != null) {
-                            SnackbarDuration.Long
-                        } else {
-                            SnackbarDuration.Short
+                    coroutineScope.launch {
+                        val result = snackbarHostState.showSnackbar(
+                            message = event.message,
+                            actionLabel = event.actionLabel,
+                            duration = if (event.actionLabel != null) {
+                                SnackbarDuration.Long
+                            } else {
+                                SnackbarDuration.Short
+                            }
+                        )
+                        if (result == SnackbarResult.ActionPerformed) {
+                            event.onAction?.invoke()
                         }
-                    )
-                    if (result == SnackbarResult.ActionPerformed) {
-                        event.onAction?.invoke()
                     }
                 }
                 is ChatEvent.MessageCopied -> {
-                    snackbarHostState.showSnackbar("Message copied")
+                    coroutineScope.launch {
+                        snackbarHostState.showSnackbar("Message copied")
+                    }
                 }
                 is ChatEvent.ModelChanged -> {
-                    snackbarHostState.showSnackbar("Switched to ${event.modelName}")
+                    coroutineScope.launch {
+                        snackbarHostState.showSnackbar("Switched to ${event.modelName}")
+                    }
                 }
                 is ChatEvent.ShowExportOptions -> {
                     // Now handled via UI state
@@ -201,7 +207,9 @@ fun ChatScreen(
                             Intent.createChooser(shareIntent, "Export Conversation")
                         )
                     } catch (e: Exception) {
-                        snackbarHostState.showSnackbar("Failed to share: ${e.message}")
+                        coroutineScope.launch {
+                            snackbarHostState.showSnackbar("Failed to share: ${e.message}")
+                        }
                     }
                 }
                 is ChatEvent.ScrollToBottom -> {

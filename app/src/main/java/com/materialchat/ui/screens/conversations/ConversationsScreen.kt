@@ -63,7 +63,9 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ColorFilter
@@ -109,7 +111,8 @@ fun ConversationsScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
-    
+    val coroutineScope = rememberCoroutineScope()
+
     // Search state
     var isSearchActive by remember { mutableStateOf(false) }
     val searchQuery by searchViewModel.searchQuery.collectAsStateWithLifecycle()
@@ -132,27 +135,31 @@ fun ConversationsScreen(
                     onNavigateToSettings()
                 }
                 is ConversationsEvent.ShowSnackbar -> {
-                    val result = snackbarHostState.showSnackbar(
-                        message = event.message,
-                        actionLabel = event.actionLabel,
-                        duration = if (event.actionLabel != null) {
-                            SnackbarDuration.Long
-                        } else {
-                            SnackbarDuration.Short
+                    coroutineScope.launch {
+                        val result = snackbarHostState.showSnackbar(
+                            message = event.message,
+                            actionLabel = event.actionLabel,
+                            duration = if (event.actionLabel != null) {
+                                SnackbarDuration.Long
+                            } else {
+                                SnackbarDuration.Short
+                            }
+                        )
+                        if (result == SnackbarResult.ActionPerformed) {
+                            event.onAction?.invoke()
                         }
-                    )
-                    if (result == SnackbarResult.ActionPerformed) {
-                        event.onAction?.invoke()
                     }
                 }
                 is ConversationsEvent.ShowNoProviderError -> {
-                    val result = snackbarHostState.showSnackbar(
-                        message = "No provider configured",
-                        actionLabel = "Settings",
-                        duration = SnackbarDuration.Long
-                    )
-                    if (result == SnackbarResult.ActionPerformed) {
-                        onNavigateToSettings()
+                    coroutineScope.launch {
+                        val result = snackbarHostState.showSnackbar(
+                            message = "No provider configured",
+                            actionLabel = "Settings",
+                            duration = SnackbarDuration.Long
+                        )
+                        if (result == SnackbarResult.ActionPerformed) {
+                            onNavigateToSettings()
+                        }
                     }
                 }
             }

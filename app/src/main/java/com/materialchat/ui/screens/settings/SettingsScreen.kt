@@ -57,7 +57,9 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -97,6 +99,7 @@ fun SettingsScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val formState by viewModel.formState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
+    val coroutineScope = rememberCoroutineScope()
 
     // Handle events
     LaunchedEffect(Unit) {
@@ -106,36 +109,46 @@ fun SettingsScreen(
                     onNavigateBack()
                 }
                 is SettingsEvent.ShowSnackbar -> {
-                    snackbarHostState.showSnackbar(
-                        message = event.message,
-                        actionLabel = event.actionLabel,
-                        duration = SnackbarDuration.Short
-                    )
+                    coroutineScope.launch {
+                        snackbarHostState.showSnackbar(
+                            message = event.message,
+                            actionLabel = event.actionLabel,
+                            duration = SnackbarDuration.Short
+                        )
+                    }
                 }
                 is SettingsEvent.ProviderSaved -> {
                     val action = if (event.isNew) "added" else "updated"
-                    snackbarHostState.showSnackbar(
-                        message = "${event.providerName} $action",
-                        duration = SnackbarDuration.Short
-                    )
+                    coroutineScope.launch {
+                        snackbarHostState.showSnackbar(
+                            message = "${event.providerName} $action",
+                            duration = SnackbarDuration.Short
+                        )
+                    }
                 }
                 is SettingsEvent.ProviderDeleted -> {
-                    snackbarHostState.showSnackbar(
-                        message = "${event.providerName} deleted",
-                        duration = SnackbarDuration.Short
-                    )
+                    coroutineScope.launch {
+                        snackbarHostState.showSnackbar(
+                            message = "${event.providerName} deleted",
+                            duration = SnackbarDuration.Short
+                        )
+                    }
                 }
                 is SettingsEvent.ProviderActivated -> {
-                    snackbarHostState.showSnackbar(
-                        message = "${event.providerName} is now active",
-                        duration = SnackbarDuration.Short
-                    )
+                    coroutineScope.launch {
+                        snackbarHostState.showSnackbar(
+                            message = "${event.providerName} is now active",
+                            duration = SnackbarDuration.Short
+                        )
+                    }
                 }
                 is SettingsEvent.SettingsSaved -> {
-                    snackbarHostState.showSnackbar(
-                        message = "Settings saved",
-                        duration = SnackbarDuration.Short
-                    )
+                    coroutineScope.launch {
+                        snackbarHostState.showSnackbar(
+                            message = "Settings saved",
+                            duration = SnackbarDuration.Short
+                        )
+                    }
                 }
                 is SettingsEvent.ConnectionTestResult -> {
                     val message = if (event.success) {
@@ -143,10 +156,12 @@ fun SettingsScreen(
                     } else {
                         "Connection failed: ${event.errorMessage ?: "Unknown error"}"
                     }
-                    snackbarHostState.showSnackbar(
-                        message = message,
-                        duration = SnackbarDuration.Short
-                    )
+                    coroutineScope.launch {
+                        snackbarHostState.showSnackbar(
+                            message = message,
+                            duration = SnackbarDuration.Short
+                        )
+                    }
                 }
             }
         }
