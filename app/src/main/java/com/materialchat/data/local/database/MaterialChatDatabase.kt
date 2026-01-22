@@ -4,6 +4,8 @@ import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 import com.materialchat.data.local.database.dao.ConversationDao
 import com.materialchat.data.local.database.dao.MessageDao
 import com.materialchat.data.local.database.dao.ProviderDao
@@ -28,7 +30,7 @@ import com.materialchat.data.local.database.entity.ProviderEntity
         ConversationEntity::class,
         MessageEntity::class
     ],
-    version = 2,
+    version = 3,
     exportSchema = true
 )
 abstract class MaterialChatDatabase : RoomDatabase() {
@@ -55,6 +57,15 @@ abstract class MaterialChatDatabase : RoomDatabase() {
         private var INSTANCE: MaterialChatDatabase? = null
 
         /**
+         * Migration from version 2 to 3: Add icon column to conversations table.
+         */
+        private val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE conversations ADD COLUMN icon TEXT DEFAULT NULL")
+            }
+        }
+
+        /**
          * Get the singleton database instance.
          *
          * Uses double-checked locking to ensure thread-safe lazy initialization.
@@ -71,6 +82,7 @@ abstract class MaterialChatDatabase : RoomDatabase() {
                 MaterialChatDatabase::class.java,
                 DATABASE_NAME
             )
+                .addMigrations(MIGRATION_2_3)
                 .fallbackToDestructiveMigration()
                 .build()
         }

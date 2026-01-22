@@ -79,6 +79,12 @@ interface ConversationDao {
     suspend fun updateTitle(conversationId: String, title: String, updatedAt: Long)
 
     /**
+     * Update the title and icon of a conversation.
+     */
+    @Query("UPDATE conversations SET title = :title, icon = :icon, updated_at = :updatedAt WHERE id = :conversationId")
+    suspend fun updateTitleAndIcon(conversationId: String, title: String, icon: String?, updatedAt: Long)
+
+    /**
      * Update the model of a conversation.
      */
     @Query("UPDATE conversations SET model_name = :modelName, updated_at = :updatedAt WHERE id = :conversationId")

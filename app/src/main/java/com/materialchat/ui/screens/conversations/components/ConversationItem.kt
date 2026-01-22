@@ -88,13 +88,23 @@ fun ConversationItem(
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Chat icon
-        Icon(
-            imageVector = Icons.AutoMirrored.Outlined.Chat,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.size(40.dp)
-        )
+        // Chat icon or emoji
+        if (conversationItem.conversation.icon != null) {
+            // Display AI-generated emoji
+            Text(
+                text = conversationItem.conversation.icon,
+                style = MaterialTheme.typography.headlineMedium,
+                modifier = Modifier.size(40.dp)
+            )
+        } else {
+            // Fallback to chat icon
+            Icon(
+                imageVector = Icons.AutoMirrored.Outlined.Chat,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(40.dp)
+            )
+        }
 
         Spacer(modifier = Modifier.width(16.dp))
 

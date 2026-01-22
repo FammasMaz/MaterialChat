@@ -72,6 +72,19 @@ class ConversationRepositoryImpl @Inject constructor(
         )
     }
 
+    override suspend fun updateConversationTitleAndIcon(
+        conversationId: String,
+        title: String,
+        icon: String?
+    ) {
+        conversationDao.updateTitleAndIcon(
+            conversationId = conversationId,
+            title = title,
+            icon = icon,
+            updatedAt = System.currentTimeMillis()
+        )
+    }
+
     override suspend fun updateConversationModel(conversationId: String, modelName: String) {
         conversationDao.updateModel(
             conversationId = conversationId,
