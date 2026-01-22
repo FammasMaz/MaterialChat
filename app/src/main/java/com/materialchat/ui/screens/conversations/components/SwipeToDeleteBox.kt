@@ -34,7 +34,7 @@ import androidx.compose.ui.unit.dp
 import com.materialchat.ui.components.HapticPattern
 import com.materialchat.ui.components.rememberHapticFeedback
 import com.materialchat.ui.theme.CustomShapes
-import com.materialchat.ui.theme.MaterialChatMotion
+import com.materialchat.ui.theme.ExpressiveMotion
 import kotlin.math.absoluteValue
 import kotlin.math.roundToInt
 
@@ -75,13 +75,10 @@ fun SwipeToDeleteBox(
     val maxSwipeDp = 150.dp
     val maxSwipePx = with(density) { maxSwipeDp.toPx() }
 
-    // Animated offset for smooth transitions
+    // M3 Expressive: SPATIAL spring for position (can bounce)
     val animatedOffsetX by animateFloatAsState(
         targetValue = if (isDragging) offsetX else 0f,
-        animationSpec = spring(
-            dampingRatio = MaterialChatMotion.Springs.Default.dampingRatio,
-            stiffness = MaterialChatMotion.Springs.Default.stiffness
-        ),
+        animationSpec = ExpressiveMotion.Spatial.default(),
         label = "offsetX"
     )
 
@@ -98,42 +95,39 @@ fun SwipeToDeleteBox(
         }
     }
 
-    // Background color animates based on delete progress
+    // M3 Expressive: EFFECTS spring for color (no bounce!)
     val backgroundColor by animateColorAsState(
         targetValue = if (deleteProgress > 0.9f) {
             MaterialTheme.colorScheme.error
         } else {
             MaterialTheme.colorScheme.errorContainer
         },
-        animationSpec = spring(),
+        animationSpec = ExpressiveMotion.Effects.color(),
         label = "backgroundColor"
     )
 
-    // Icon scale based on progress
+    // M3 Expressive: SPATIAL spring for scale (bouncy feedback)
     val iconScale by animateFloatAsState(
         targetValue = if (deleteProgress > 0.5f) 1.2f else 0.8f + (deleteProgress * 0.4f),
-        animationSpec = spring(
-            dampingRatio = MaterialChatMotion.Springs.Bouncy.dampingRatio,
-            stiffness = MaterialChatMotion.Springs.Bouncy.stiffness
-        ),
+        animationSpec = ExpressiveMotion.Spatial.playful(),
         label = "iconScale"
     )
 
-    // Icon color
+    // M3 Expressive: EFFECTS spring for icon color (no bounce)
     val iconColor by animateColorAsState(
         targetValue = if (deleteProgress > 0.9f) {
             MaterialTheme.colorScheme.onError
         } else {
             MaterialTheme.colorScheme.onErrorContainer
         },
-        animationSpec = spring(),
+        animationSpec = ExpressiveMotion.Effects.color(),
         label = "iconColor"
     )
 
-    // Padding for the icon
+    // M3 Expressive: EFFECTS spring for padding (smooth)
     val iconPadding by animateDpAsState(
         targetValue = if (deleteProgress > 0.5f) 24.dp else 16.dp,
-        animationSpec = spring(),
+        animationSpec = ExpressiveMotion.Effects.elevation(),
         label = "iconPadding"
     )
 
