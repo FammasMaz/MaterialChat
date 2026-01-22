@@ -6,6 +6,180 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.CubicBezierEasing
+import androidx.compose.animation.core.SpringSpec
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntOffset
+
+/**
+ * Material 3 Expressive Motion System for MaterialChat.
+ *
+ * M3 Expressive distinguishes between two types of springs:
+ * 
+ * 1. SPATIAL SPRINGS - For position, size, rotation, corners
+ *    - CAN overshoot and bounce
+ *    - Creates playful, lively feel
+ *    - dampingRatio < 1.0
+ *
+ * 2. EFFECTS SPRINGS - For color, opacity, blur, elevation  
+ *    - NO overshoot - seamless, smooth transitions
+ *    - dampingRatio = 1.0 (critical!)
+ *
+ * This distinction is KEY to M3 Expressive motion language.
+ */
+object ExpressiveMotion {
+
+    /**
+     * SPATIAL SPRINGS - For position, size, rotation, corners
+     * CAN overshoot and bounce - creates playful feel
+     */
+    object Spatial {
+        
+        /**
+         * Default spatial spring for most interactions.
+         * Balanced bounce with good responsiveness.
+         */
+        fun <T> default(): SpringSpec<T> = spring(
+            dampingRatio = 0.7f,
+            stiffness = 400f
+        )
+        
+        /**
+         * Shape morphing spring for corner radius changes.
+         * Noticeable bounce for playful shape transformations.
+         */
+        fun <T> shapeMorph(): SpringSpec<T> = spring(
+            dampingRatio = 0.65f,
+            stiffness = 500f
+        )
+        
+        /**
+         * Scale spring for button press animations.
+         * Bouncy feedback on press/release.
+         */
+        fun <T> scale(): SpringSpec<T> = spring(
+            dampingRatio = 0.6f,
+            stiffness = 600f
+        )
+        
+        /**
+         * Container spring for large movements like screen transitions.
+         * Smoother but still has subtle life.
+         */
+        fun <T> container(): SpringSpec<T> = spring(
+            dampingRatio = 0.8f,
+            stiffness = 300f
+        )
+        
+        /**
+         * Playful spring for hero moments like FAB animations.
+         * Very bouncy for delightful interactions.
+         */
+        fun <T> playful(): SpringSpec<T> = spring(
+            dampingRatio = 0.5f,
+            stiffness = 400f
+        )
+        
+        /**
+         * FAB expand/collapse spring.
+         * Bouncy width animation for scroll behavior.
+         */
+        fun <T> fabExpand(): SpringSpec<T> = spring(
+            dampingRatio = 0.7f,
+            stiffness = 400f
+        )
+        
+        /**
+         * Shared element transition spring.
+         * Smooth but lively for container transforms.
+         */
+        fun <T> sharedElement(): SpringSpec<T> = spring(
+            dampingRatio = 0.8f,
+            stiffness = 380f
+        )
+        
+        /**
+         * Message entrance slide spring.
+         */
+        fun <T> messageEntrance(): SpringSpec<T> = spring(
+            dampingRatio = 0.7f,
+            stiffness = 400f
+        )
+        
+        /**
+         * List item press spring.
+         */
+        fun <T> listItemPress(): SpringSpec<T> = spring(
+            dampingRatio = 0.65f,
+            stiffness = 500f
+        )
+    }
+
+    /**
+     * EFFECTS SPRINGS - For color, opacity, blur, elevation
+     * NO overshoot - seamless, smooth transitions (dampingRatio = 1.0)
+     */
+    object Effects {
+        
+        /**
+         * Color transition spring.
+         * Smooth with NO bounce - colors should never overshoot.
+         */
+        fun <T> color(): SpringSpec<T> = spring(
+            dampingRatio = 1.0f,
+            stiffness = 300f
+        )
+        
+        /**
+         * Alpha/opacity transition spring.
+         * Smooth fade with no bounce.
+         */
+        fun <T> alpha(): SpringSpec<T> = spring(
+            dampingRatio = 1.0f,
+            stiffness = 300f
+        )
+        
+        /**
+         * Elevation/shadow transition spring.
+         * Smooth shadow changes.
+         */
+        fun <T> elevation(): SpringSpec<T> = spring(
+            dampingRatio = 1.0f,
+            stiffness = 350f
+        )
+        
+        /**
+         * Blur transition spring.
+         */
+        fun <T> blur(): SpringSpec<T> = spring(
+            dampingRatio = 1.0f,
+            stiffness = 300f
+        )
+    }
+    
+    /**
+     * Pre-built spring specs for common types.
+     * Use these for type-safe animation specs.
+     */
+    object SpringSpecs {
+        // Float springs
+        val ScaleFloat: SpringSpec<Float> = Spatial.scale()
+        val AlphaFloat: SpringSpec<Float> = Effects.alpha()
+        val ContainerFloat: SpringSpec<Float> = Spatial.container()
+        val PlayfulFloat: SpringSpec<Float> = Spatial.playful()
+        
+        // Dp springs
+        val ShapeMorphDp: SpringSpec<Dp> = Spatial.shapeMorph()
+        val ElevationDp: SpringSpec<Dp> = Effects.elevation()
+        val FabExpandDp: SpringSpec<Dp> = Spatial.fabExpand()
+        
+        // Color springs
+        val ColorTransition: SpringSpec<Color> = Effects.color()
+        
+        // IntOffset springs (for position)
+        val PositionOffset: SpringSpec<IntOffset> = Spatial.default()
+    }
+}
 
 /**
  * Material 3 Expressive Motion specifications for MaterialChat.
