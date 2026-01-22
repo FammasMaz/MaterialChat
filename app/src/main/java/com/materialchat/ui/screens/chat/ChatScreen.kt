@@ -171,6 +171,7 @@ fun ChatScreen(
                 is ChatUiState.Success -> {
                     ChatTopBar(
                         title = state.conversationTitle,
+                        icon = state.conversationIcon,
                         modelName = state.modelName,
                         providerName = state.providerName,
                         isStreaming = state.isStreaming,

@@ -36,6 +36,9 @@ data class ConversationEntity(
     @ColumnInfo(name = "title")
     val title: String,
 
+    @ColumnInfo(name = "icon", defaultValue = "NULL")
+    val icon: String? = null,
+
     @ColumnInfo(name = "provider_id")
     val providerId: String?,
 

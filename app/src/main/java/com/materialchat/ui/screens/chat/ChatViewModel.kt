@@ -144,6 +144,7 @@ class ChatViewModel @Inject constructor(
                         _uiState.value = ChatUiState.Success(
                             conversationId = conversationId,
                             conversationTitle = conversation.title,
+                            conversationIcon = conversation.icon,
                             providerName = providerName,
                             modelName = currentModelName,
                             messages = messageItems,

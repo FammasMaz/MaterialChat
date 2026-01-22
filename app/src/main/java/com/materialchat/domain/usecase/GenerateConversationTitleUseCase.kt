@@ -9,11 +9,19 @@ import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 /**
- * Use case for generating AI-powered conversation titles.
+ * Represents the result of AI title generation containing both emoji and title.
+ */
+data class TitleGenerationResult(
+    val title: String,
+    val icon: String?
+)
+
+/**
+ * Use case for generating AI-powered conversation titles with emoji icons.
  *
  * This use case generates a concise, meaningful title for a conversation
  * using the same AI model that's being used in the chat. The title is
- * limited to 6 words maximum.
+ * limited to 6 words maximum and includes a relevant emoji icon.
  */
 class GenerateConversationTitleUseCase @Inject constructor(
     private val chatRepository: ChatRepository,
@@ -25,10 +33,18 @@ class GenerateConversationTitleUseCase @Inject constructor(
         private const val MAX_TITLE_WORDS = 6
         private const val MAX_TITLE_LENGTH = 60
         private const val FALLBACK_MAX_LENGTH = 40
+
+        // Regex to match emoji at the start of a string
+        private val EMOJI_PATTERN = Regex(
+            "^[\\p{So}\\p{Cs}\\u200D\\uFE0F\\u2600-\\u26FF\\u2700-\\u27BF" +
+            "\\U0001F300-\\U0001F5FF\\U0001F600-\\U0001F64F\\U0001F680-\\U0001F6FF" +
+            "\\U0001F700-\\U0001F77F\\U0001F780-\\U0001F7FF\\U0001F800-\\U0001F8FF" +
+            "\\U0001F900-\\U0001F9FF\\U0001FA00-\\U0001FA6F\\U0001FA70-\\U0001FAFF]+"
+        )
     }
 
     /**
-     * Generates an AI-powered title for a conversation.
+     * Generates an AI-powered title and emoji for a conversation.
      *
      * @param conversationId The ID of the conversation to update
      * @param userMessage The user's first message in the conversation
@@ -63,12 +79,16 @@ class GenerateConversationTitleUseCase @Inject constructor(
             )
 
             result.fold(
-                onSuccess = { generatedTitle ->
-                    Log.d(TAG, "AI generated title: $generatedTitle")
-                    val cleanedTitle = cleanTitle(generatedTitle)
-                    Log.d(TAG, "Cleaned title: $cleanedTitle")
-                    conversationRepository.updateConversationTitle(conversationId, cleanedTitle)
-                    Result.success(cleanedTitle)
+                onSuccess = { generatedResponse ->
+                    Log.d(TAG, "AI generated response: $generatedResponse")
+                    val parsed = parseEmojiAndTitle(generatedResponse)
+                    Log.d(TAG, "Parsed - icon: ${parsed.icon}, title: ${parsed.title}")
+                    conversationRepository.updateConversationTitleAndIcon(
+                        conversationId,
+                        parsed.title,
+                        parsed.icon
+                    )
+                    Result.success(parsed.title)
                 },
                 onFailure = { error ->
                     Log.e(TAG, "Title generation failed: ${error.message}", error)
@@ -92,12 +112,45 @@ class GenerateConversationTitleUseCase @Inject constructor(
         val truncatedUser = userMessage.take(500)
         val truncatedAssistant = assistantResponse.take(500)
 
-        return "Generate a concise title (maximum $MAX_TITLE_WORDS words) for this conversation. " +
-            "The title should capture the main topic or purpose. " +
-            "Only respond with the title itself, no quotes, no explanation, no punctuation at the end.\n\n" +
+        return "Generate a single emoji and a concise title (maximum $MAX_TITLE_WORDS words) for this conversation. " +
+            "The emoji should represent the main topic. The title should capture the purpose. " +
+            "Format: [emoji] [title] - for example: 💻 Python Code Review\n" +
+            "Only respond with the emoji and title, no quotes, no explanation, no punctuation at the end.\n\n" +
             "User: $truncatedUser\n\n" +
             "Assistant: $truncatedAssistant\n\n" +
-            "Title:"
+            "Response:"
+    }
+
+    /**
+     * Parses the AI response to extract emoji and title.
+     * Expected format: "🎯 Title Here" or just "Title Here"
+     */
+    private fun parseEmojiAndTitle(response: String): TitleGenerationResult {
+        val trimmed = response
+            .trim()
+            .removeSurrounding("\"")
+            .removeSurrounding("'")
+            .replace(Regex("^(Response|Title):\\s*", RegexOption.IGNORE_CASE), "")
+            .trim()
+
+        // Try to find emoji at the start
+        val emojiMatch = EMOJI_PATTERN.find(trimmed)
+
+        return if (emojiMatch != null && emojiMatch.range.first == 0) {
+            val emoji = emojiMatch.value
+            val titlePart = trimmed.substring(emojiMatch.range.last + 1).trim()
+            val cleanedTitle = cleanTitle(titlePart)
+            TitleGenerationResult(
+                title = cleanedTitle,
+                icon = emoji
+            )
+        } else {
+            // No emoji found at start, use the whole response as title
+            TitleGenerationResult(
+                title = cleanTitle(trimmed),
+                icon = null
+            )
+        }
     }
 
     private fun cleanTitle(title: String): String {

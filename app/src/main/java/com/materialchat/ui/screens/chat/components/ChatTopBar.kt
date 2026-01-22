@@ -44,11 +44,12 @@ import com.materialchat.ui.screens.chat.components.ModelPickerDropdown
  *
  * Features:
  * - Back navigation button
- * - Conversation title with tappable model picker subtitle
+ * - Conversation title with optional emoji and tappable model picker subtitle
  * - Overflow menu with export option
  * - Collapsing behavior on scroll
  *
  * @param title The conversation title
+ * @param icon Optional emoji icon for the conversation
  * @param modelName The current model name
  * @param providerName The provider name
  * @param isStreaming Whether a message is currently streaming
@@ -64,6 +65,7 @@ import com.materialchat.ui.screens.chat.components.ModelPickerDropdown
 @Composable
 fun ChatTopBar(
     title: String,
+    icon: String? = null,
     modelName: String,
     providerName: String,
     isStreaming: Boolean,
@@ -121,16 +123,31 @@ fun ChatTopBar(
                     )
                 )
             ) {
-                Text(
-                    text = animatedTitle,
-                    style = MaterialTheme.typography.titleMedium,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.alpha(
-                        // Smooth fade-in: ramp up alpha over first 20% of animation
-                        (revealProgress.value * 5f).coerceIn(0f, 1f)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Display icon if available
+                    if (icon != null) {
+                        Text(
+                            text = icon,
+                            style = MaterialTheme.typography.titleMedium,
+                            modifier = Modifier.alpha(
+                                (revealProgress.value * 5f).coerceIn(0f, 1f)
+                            )
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                    }
+                    Text(
+                        text = animatedTitle,
+                        style = MaterialTheme.typography.titleMedium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.alpha(
+                            // Smooth fade-in: ramp up alpha over first 20% of animation
+                            (revealProgress.value * 5f).coerceIn(0f, 1f)
+                        )
                     )
-                )
+                }
                 Row(
                     verticalAlignment = Alignment.CenterVertically
                 ) {

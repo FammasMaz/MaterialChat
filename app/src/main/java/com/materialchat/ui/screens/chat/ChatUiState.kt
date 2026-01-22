@@ -21,6 +21,7 @@ sealed interface ChatUiState {
      *
      * @property conversationId The ID of the current conversation
      * @property conversationTitle The title of the conversation
+     * @property conversationIcon The icon (emoji) of the conversation
      * @property providerName The name of the provider being used
      * @property modelName The name of the current model
      * @property messages The list of messages in the conversation
@@ -35,6 +36,7 @@ sealed interface ChatUiState {
     data class Success(
         val conversationId: String,
         val conversationTitle: String,
+        val conversationIcon: String? = null,
         val providerName: String,
         val modelName: String,
         val messages: List<MessageUiItem>,

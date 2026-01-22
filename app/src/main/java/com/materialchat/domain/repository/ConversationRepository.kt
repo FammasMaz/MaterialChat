@@ -66,6 +66,15 @@ interface ConversationRepository {
     suspend fun updateConversationTitle(conversationId: String, title: String)
 
     /**
+     * Updates the title and icon of a conversation.
+     *
+     * @param conversationId The ID of the conversation
+     * @param title The new title
+     * @param icon The new icon (emoji)
+     */
+    suspend fun updateConversationTitleAndIcon(conversationId: String, title: String, icon: String?)
+
+    /**
      * Updates the model used in a conversation.
      *
      * @param conversationId The ID of the conversation
