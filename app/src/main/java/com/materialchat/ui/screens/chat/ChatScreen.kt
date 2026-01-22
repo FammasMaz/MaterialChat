@@ -230,6 +230,7 @@ fun ChatScreen(
         modifier = Modifier
             .nestedScroll(scrollBehavior.nestedScrollConnection),
         containerColor = MaterialTheme.colorScheme.surfaceContainer,
+        contentWindowInsets = WindowInsets(0, 0, 0, 0), // Draw edge-to-edge
         topBar = {
             when (val state = uiState) {
                 is ChatUiState.Success -> {
