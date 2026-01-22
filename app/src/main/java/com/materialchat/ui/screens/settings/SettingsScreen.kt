@@ -52,7 +52,9 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -198,6 +200,7 @@ fun SettingsScreen(
             onDynamicColorChange = { viewModel.updateDynamicColorEnabled(it) },
             onHapticsChange = { viewModel.updateHapticsEnabled(it) },
             onAiGeneratedTitlesChange = { viewModel.updateAiGeneratedTitlesEnabled(it) },
+            onTitleGenerationModelChange = { viewModel.updateTitleGenerationModel(it) },
             onRetry = { viewModel.retry() }
         )
     }
@@ -249,6 +252,7 @@ private fun SettingsContent(
     onDynamicColorChange: (Boolean) -> Unit,
     onHapticsChange: (Boolean) -> Unit,
     onAiGeneratedTitlesChange: (Boolean) -> Unit,
+    onTitleGenerationModelChange: (String) -> Unit,
     onRetry: () -> Unit
 ) {
     Box(
@@ -272,7 +276,8 @@ private fun SettingsContent(
                     onThemeModeChange = onThemeModeChange,
                     onDynamicColorChange = onDynamicColorChange,
                     onHapticsChange = onHapticsChange,
-                    onAiGeneratedTitlesChange = onAiGeneratedTitlesChange
+                    onAiGeneratedTitlesChange = onAiGeneratedTitlesChange,
+                    onTitleGenerationModelChange = onTitleGenerationModelChange
                 )
             }
             is SettingsUiState.Error -> {
@@ -309,7 +314,8 @@ private fun SuccessContent(
     onThemeModeChange: (AppPreferences.ThemeMode) -> Unit,
     onDynamicColorChange: (Boolean) -> Unit,
     onHapticsChange: (Boolean) -> Unit,
-    onAiGeneratedTitlesChange: (Boolean) -> Unit
+    onAiGeneratedTitlesChange: (Boolean) -> Unit,
+    onTitleGenerationModelChange: (String) -> Unit
 ) {
     LazyColumn(
         modifier = Modifier
@@ -393,6 +399,16 @@ private fun SuccessContent(
                 enabled = uiState.aiGeneratedTitlesEnabled,
                 onToggle = onAiGeneratedTitlesChange
             )
+        }
+
+        // Show title generation model field only when AI titles are enabled
+        if (uiState.aiGeneratedTitlesEnabled) {
+            item {
+                TitleGenerationModelField(
+                    currentModel = uiState.titleGenerationModel,
+                    onModelChange = onTitleGenerationModelChange
+                )
+            }
         }
 
         item {
@@ -658,6 +674,89 @@ private fun AiGeneratedTitlesToggle(
                 checked = enabled,
                 onCheckedChange = onToggle
             )
+        }
+    }
+}
+
+@Composable
+private fun TitleGenerationModelField(
+    currentModel: String,
+    onModelChange: (String) -> Unit
+) {
+    var text by remember(currentModel) { mutableStateOf(currentModel) }
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+        ),
+        shape = RoundedCornerShape(16.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.AutoAwesome,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.secondary,
+                    modifier = Modifier.size(24.dp)
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                Column {
+                    Text(
+                        text = "Title Generation Model",
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = "Leave empty to use the conversation's model",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            androidx.compose.material3.OutlinedTextField(
+                value = text,
+                onValueChange = { newValue ->
+                    text = newValue
+                },
+                placeholder = {
+                    Text(
+                        text = "e.g., llama3.2:1b or gpt-4o-mini",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                    )
+                },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
+                colors = androidx.compose.material3.OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                    unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
+                )
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End
+            ) {
+                TextButton(
+                    onClick = { onModelChange(text) },
+                    enabled = text != currentModel
+                ) {
+                    Text("Save")
+                }
+            }
         }
     }
 }

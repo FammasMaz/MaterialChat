@@ -1,10 +1,12 @@
 package com.materialchat.domain.usecase
 
 import android.util.Log
+import com.materialchat.data.local.preferences.AppPreferences
 import com.materialchat.domain.repository.ChatRepository
 import com.materialchat.domain.repository.ConversationRepository
 import com.materialchat.domain.repository.ProviderRepository
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
@@ -20,13 +22,14 @@ data class TitleGenerationResult(
  * Use case for generating AI-powered conversation titles with emoji icons.
  *
  * This use case generates a concise, meaningful title for a conversation
- * using the same AI model that's being used in the chat. The title is
- * limited to 6 words maximum and includes a relevant emoji icon.
+ * using the AI model configured in settings (or falls back to the conversation's model).
+ * The title is limited to 6 words maximum and includes a relevant emoji icon.
  */
 class GenerateConversationTitleUseCase @Inject constructor(
     private val chatRepository: ChatRepository,
     private val conversationRepository: ConversationRepository,
-    private val providerRepository: ProviderRepository
+    private val providerRepository: ProviderRepository,
+    private val appPreferences: AppPreferences
 ) {
     companion object {
         private const val TAG = "GenerateTitleUseCase"
@@ -68,14 +71,23 @@ class GenerateConversationTitleUseCase @Inject constructor(
                     IllegalStateException("Provider not found: ${conversation.providerId}")
                 )
 
-            Log.d(TAG, "Using provider: ${provider.name}, model: ${conversation.modelName}")
+            // Check if a custom model is configured for title generation
+            val customModel = appPreferences.titleGenerationModel.first()
+            val modelToUse = if (customModel.isNotBlank()) {
+                Log.d(TAG, "Using custom title generation model: $customModel")
+                customModel
+            } else {
+                conversation.modelName
+            }
+
+            Log.d(TAG, "Using provider: ${provider.name}, model: $modelToUse")
             val prompt = buildTitlePrompt(userMessage, assistantResponse)
             Log.d(TAG, "Prompt length: ${prompt.length}")
 
             val result = chatRepository.generateSimpleCompletion(
                 provider = provider,
                 prompt = prompt,
-                model = conversation.modelName
+                model = modelToUse
             )
 
             result.fold(

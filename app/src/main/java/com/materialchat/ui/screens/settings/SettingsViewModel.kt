@@ -58,8 +58,9 @@ class SettingsViewModel @Inject constructor(
                 appPreferences.dynamicColorEnabled,
                 combine(
                     appPreferences.hapticsEnabled,
-                    appPreferences.aiGeneratedTitlesEnabled
-                ) { haptics, aiTitles -> Pair(haptics, aiTitles) }
+                    appPreferences.aiGeneratedTitlesEnabled,
+                    appPreferences.titleGenerationModel
+                ) { haptics, aiTitles, titleModel -> Triple(haptics, aiTitles, titleModel) }
             ) { providers, systemPrompt, themeMode, dynamicColorEnabled, toggles ->
                 SettingsData(
                     providers = providers,
@@ -67,7 +68,8 @@ class SettingsViewModel @Inject constructor(
                     themeMode = themeMode,
                     dynamicColorEnabled = dynamicColorEnabled,
                     hapticsEnabled = toggles.first,
-                    aiGeneratedTitlesEnabled = toggles.second
+                    aiGeneratedTitlesEnabled = toggles.second,
+                    titleGenerationModel = toggles.third
                 )
             }
                 .catch { e ->
@@ -100,6 +102,7 @@ class SettingsViewModel @Inject constructor(
                         isDynamicColorSupported = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S,
                         hapticsEnabled = data.hapticsEnabled,
                         aiGeneratedTitlesEnabled = data.aiGeneratedTitlesEnabled,
+                        titleGenerationModel = data.titleGenerationModel,
                         showAddProviderSheet = if (currentState is SettingsUiState.Success) {
                             currentState.showAddProviderSheet
                         } else false,
@@ -468,6 +471,21 @@ class SettingsViewModel @Inject constructor(
     }
 
     /**
+     * Updates the custom title generation model.
+     */
+    fun updateTitleGenerationModel(model: String) {
+        viewModelScope.launch {
+            try {
+                appPreferences.setTitleGenerationModel(model)
+            } catch (e: Exception) {
+                _events.emit(SettingsEvent.ShowSnackbar(
+                    message = "Failed to save title model setting"
+                ))
+            }
+        }
+    }
+
+    /**
      * Retries loading settings after an error.
      */
     fun retry() {
@@ -499,6 +517,7 @@ class SettingsViewModel @Inject constructor(
         val themeMode: AppPreferences.ThemeMode,
         val dynamicColorEnabled: Boolean,
         val hapticsEnabled: Boolean,
-        val aiGeneratedTitlesEnabled: Boolean
+        val aiGeneratedTitlesEnabled: Boolean,
+        val titleGenerationModel: String
     )
 }
