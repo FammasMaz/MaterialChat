@@ -43,12 +43,10 @@ enum class MatchType {
  *
  * @property message The matching message
  * @property contextSnippet A snippet of the message content with context around the match
- * @property highlightRange The range within the snippet where the match occurs
  */
 data class MessageMatch(
     val message: Message,
-    val contextSnippet: String,
-    val highlightRange: IntRange? = null
+    val contextSnippet: String
 )
 
 /**

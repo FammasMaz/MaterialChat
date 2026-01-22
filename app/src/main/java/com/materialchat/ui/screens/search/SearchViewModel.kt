@@ -1,12 +1,6 @@
 package com.materialchat.ui.screens.search
 
 import android.text.format.DateUtils
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.buildAnnotatedString
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.withStyle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.materialchat.domain.model.MessageMatch
@@ -129,52 +123,15 @@ class SearchViewModel @Inject constructor(
     }
 
     /**
-     * Converts a MessageMatch to a UI snippet with highlighting.
+     * Converts a MessageMatch to a UI snippet.
      */
     private fun MessageMatch.toSnippet(query: String): MessageSnippet {
         return MessageSnippet(
             id = message.id,
             role = message.role.name.lowercase().replaceFirstChar { it.uppercase() },
             snippet = contextSnippet,
-            highlightedSnippet = highlightMatch(contextSnippet, query)
+            searchQuery = query
         )
-    }
-
-    /**
-     * Creates an AnnotatedString with the query match highlighted.
-     */
-    private fun highlightMatch(text: String, query: String): AnnotatedString {
-        return buildAnnotatedString {
-            val lowerText = text.lowercase()
-            val lowerQuery = query.lowercase()
-            var currentIndex = 0
-
-            while (currentIndex < text.length) {
-                val matchIndex = lowerText.indexOf(lowerQuery, currentIndex)
-                if (matchIndex == -1) {
-                    // No more matches, append the rest
-                    append(text.substring(currentIndex))
-                    break
-                }
-
-                // Append text before the match
-                if (matchIndex > currentIndex) {
-                    append(text.substring(currentIndex, matchIndex))
-                }
-
-                // Append the match with highlighting
-                withStyle(
-                    SpanStyle(
-                        fontWeight = FontWeight.Bold,
-                        background = Color(0x40FFEB3B) // Yellow highlight
-                    )
-                ) {
-                    append(text.substring(matchIndex, matchIndex + query.length))
-                }
-
-                currentIndex = matchIndex + query.length
-            }
-        }
     }
 
     /**

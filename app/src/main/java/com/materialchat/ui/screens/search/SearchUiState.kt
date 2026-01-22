@@ -1,6 +1,5 @@
 package com.materialchat.ui.screens.search
 
-import androidx.compose.ui.text.AnnotatedString
 import com.materialchat.domain.model.MatchType
 
 /**
@@ -78,11 +77,11 @@ data class SearchResultUiItem(
  * @property id The message ID
  * @property role The role of the message sender (user/assistant)
  * @property snippet The context snippet with match highlighted
- * @property highlightedSnippet The snippet with match emphasis for display
+ * @property searchQuery The search query for highlighting in the UI layer
  */
 data class MessageSnippet(
     val id: String,
     val role: String,
     val snippet: String,
-    val highlightedSnippet: AnnotatedString
+    val searchQuery: String
 )

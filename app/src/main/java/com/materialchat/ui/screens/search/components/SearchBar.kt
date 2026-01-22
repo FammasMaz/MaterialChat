@@ -10,7 +10,6 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -121,22 +120,4 @@ fun ChatSearchBar(
             color = MaterialTheme.colorScheme.onSurface
         )
     )
-}
-
-/**
- * Search icon button for the top app bar.
- *
- * @param onClick Callback when the search button is clicked
- */
-@Composable
-fun SearchIconButton(
-    onClick: () -> Unit
-) {
-    IconButton(onClick = onClick) {
-        Icon(
-            imageVector = Icons.Default.Search,
-            contentDescription = "Search",
-            tint = MaterialTheme.colorScheme.onSurface
-        )
-    }
 }

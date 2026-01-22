@@ -29,14 +29,18 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import com.materialchat.domain.model.MatchType
 import com.materialchat.ui.screens.search.MessageSnippet
@@ -62,7 +66,6 @@ fun SearchResultItem(
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
-    var isExpanded by remember { mutableStateOf(true) }
 
     // Press animation
     val scale by animateFloatAsState(
@@ -184,16 +187,20 @@ fun SearchResultItem(
 
         // Matching messages (branched from title)
         AnimatedVisibility(
-            visible = isExpanded && item.matchingMessages.isNotEmpty(),
+            visible = item.matchingMessages.isNotEmpty(),
             enter = expandVertically(),
             exit = shrinkVertically()
         ) {
+            val highlightColor = MaterialTheme.colorScheme.tertiaryContainer
             Column(
                 modifier = Modifier
                     .padding(start = 56.dp, top = 8.dp)
             ) {
                 item.matchingMessages.take(3).forEach { snippet ->
-                    MessageSnippetItem(snippet = snippet)
+                    MessageSnippetItem(
+                        snippet = snippet,
+                        highlightColor = highlightColor
+                    )
                     Spacer(modifier = Modifier.height(4.dp))
                 }
             }
@@ -207,8 +214,13 @@ fun SearchResultItem(
 @Composable
 private fun MessageSnippetItem(
     snippet: MessageSnippet,
+    highlightColor: Color,
     modifier: Modifier = Modifier
 ) {
+    val highlightedText = remember(snippet.snippet, snippet.searchQuery, highlightColor) {
+        highlightMatch(snippet.snippet, snippet.searchQuery, highlightColor)
+    }
+
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -233,12 +245,49 @@ private fun MessageSnippetItem(
 
         // Snippet text with highlighting
         Text(
-            text = snippet.highlightedSnippet,
+            text = highlightedText,
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.weight(1f)
         )
+    }
+}
+
+/**
+ * Creates an AnnotatedString with the query match highlighted using theme-aware colors.
+ */
+private fun highlightMatch(text: String, query: String, highlightColor: Color): AnnotatedString {
+    return buildAnnotatedString {
+        val lowerText = text.lowercase()
+        val lowerQuery = query.lowercase()
+        var currentIndex = 0
+
+        while (currentIndex < text.length) {
+            val matchIndex = lowerText.indexOf(lowerQuery, currentIndex)
+            if (matchIndex == -1) {
+                // No more matches, append the rest
+                append(text.substring(currentIndex))
+                break
+            }
+
+            // Append text before the match
+            if (matchIndex > currentIndex) {
+                append(text.substring(currentIndex, matchIndex))
+            }
+
+            // Append the match with highlighting
+            withStyle(
+                SpanStyle(
+                    fontWeight = FontWeight.Bold,
+                    background = highlightColor
+                )
+            ) {
+                append(text.substring(matchIndex, matchIndex + query.length))
+            }
+
+            currentIndex = matchIndex + query.length
+        }
     }
 }
