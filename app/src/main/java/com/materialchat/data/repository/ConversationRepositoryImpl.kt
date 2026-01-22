@@ -236,9 +236,7 @@ class ConversationRepositoryImpl @Inject constructor(
 
         // Step 1: Search by title first (title-first approach)
         if (query.searchInTitles) {
-            val titleMatches = conversationDao.getAllConversationsOnce()
-                .filter { it.title.contains(query.text, ignoreCase = true) }
-                .take(query.limit)
+            val titleMatches = conversationDao.searchConversationsByTitle(query.text, query.limit)
 
             for (entity in titleMatches) {
                 val conversation = entity.toDomain()
@@ -284,8 +282,7 @@ class ConversationRepositoryImpl @Inject constructor(
                 val matchingMessages = messages.take(3).map { message ->
                     MessageMatch(
                         message = message,
-                        contextSnippet = extractContextSnippet(message.content, query.text),
-                        highlightRange = findMatchRange(message.content, query.text)
+                        contextSnippet = extractContextSnippet(message.content, query.text)
                     )
                 }
 
@@ -317,8 +314,7 @@ class ConversationRepositoryImpl @Inject constructor(
             .map { message ->
                 MessageMatch(
                     message = message,
-                    contextSnippet = extractContextSnippet(message.content, query),
-                    highlightRange = findMatchRange(message.content, query)
+                    contextSnippet = extractContextSnippet(message.content, query)
                 )
             }
     }
@@ -337,18 +333,6 @@ class ConversationRepositoryImpl @Inject constructor(
             if (start > 0) append("...")
             append(content.substring(start, end))
             if (end < content.length) append("...")
-        }
-    }
-
-    /**
-     * Finds the range of the matched text within the content.
-     */
-    private fun findMatchRange(content: String, query: String): IntRange? {
-        val index = content.indexOf(query, ignoreCase = true)
-        return if (index >= 0) {
-            index until (index + query.length)
-        } else {
-            null
         }
     }
 }

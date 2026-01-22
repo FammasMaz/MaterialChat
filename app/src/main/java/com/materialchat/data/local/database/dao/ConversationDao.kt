@@ -113,4 +113,14 @@ interface ConversationDao {
      */
     @Query("SELECT * FROM conversations WHERE title LIKE '%' || :query || '%' ORDER BY updated_at DESC")
     fun searchConversations(query: String): Flow<List<ConversationEntity>>
+
+    /**
+     * Search conversations by title (one-shot).
+     * Used for search functionality to avoid loading all conversations into memory.
+     *
+     * @param query The search query string
+     * @param limit Maximum number of results to return
+     */
+    @Query("SELECT * FROM conversations WHERE title LIKE '%' || :query || '%' COLLATE NOCASE ORDER BY updated_at DESC LIMIT :limit")
+    suspend fun searchConversationsByTitle(query: String, limit: Int): List<ConversationEntity>
 }
