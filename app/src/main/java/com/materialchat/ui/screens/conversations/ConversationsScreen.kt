@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.LazyColumn
@@ -167,6 +168,7 @@ fun ConversationsScreen(
                 if (searchActive) {
                     // Search mode - show search bar
                     Surface(
+                        modifier = Modifier.statusBarsPadding(),
                         color = MaterialTheme.colorScheme.surfaceContainer
                     ) {
                         ChatSearchBar(
