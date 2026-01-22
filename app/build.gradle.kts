@@ -123,6 +123,10 @@ dependencies {
     // Coil Image Loading
     implementation(libs.coil.compose)
 
+    // Ackpine (APK installer)
+    implementation(libs.ackpine.core)
+    implementation(libs.ackpine.ktx)
+
     // Testing
     testImplementation(libs.junit)
     testImplementation(libs.mockk)

@@ -1,11 +1,16 @@
 package com.materialchat.di
 
+import android.content.Context
+import com.materialchat.data.local.preferences.AppPreferences
 import com.materialchat.data.remote.api.ChatApiClient
+import com.materialchat.data.remote.api.GitHubReleaseApiClient
 import com.materialchat.data.remote.api.ModelListApiClient
 import com.materialchat.data.remote.sse.SseEventParser
+import com.materialchat.data.repository.UpdateManager
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
+import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import kotlinx.serialization.json.Json
 import okhttp3.OkHttpClient
@@ -111,6 +116,42 @@ object NetworkModule {
         return ModelListApiClient(
             okHttpClient = okHttpClient,
             json = json
+        )
+    }
+
+    /**
+     * Provides the GitHubReleaseApiClient for checking app updates.
+     *
+     * Uses the standard OkHttpClient for fetching release information.
+     */
+    @Provides
+    @Singleton
+    fun provideGitHubReleaseApiClient(
+        @StandardClient okHttpClient: OkHttpClient,
+        json: Json
+    ): GitHubReleaseApiClient {
+        return GitHubReleaseApiClient(
+            okHttpClient = okHttpClient,
+            json = json
+        )
+    }
+
+    /**
+     * Provides the UpdateManager for managing app updates.
+     */
+    @Provides
+    @Singleton
+    fun provideUpdateManager(
+        githubApiClient: GitHubReleaseApiClient,
+        appPreferences: AppPreferences,
+        @StandardClient okHttpClient: OkHttpClient,
+        @ApplicationContext context: Context
+    ): UpdateManager {
+        return UpdateManager(
+            githubApiClient = githubApiClient,
+            appPreferences = appPreferences,
+            okHttpClient = okHttpClient,
+            context = context
         )
     }
 }

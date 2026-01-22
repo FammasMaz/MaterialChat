@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
+import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
@@ -40,6 +41,9 @@ class AppPreferences(private val context: Context) {
         val FIRST_LAUNCH_COMPLETE = booleanPreferencesKey("first_launch_complete")
         val AI_GENERATED_TITLES_ENABLED = booleanPreferencesKey("ai_generated_titles_enabled")
         val TITLE_GENERATION_MODEL = stringPreferencesKey("title_generation_model")
+        val AUTO_CHECK_UPDATES = booleanPreferencesKey("auto_check_updates")
+        val LAST_UPDATE_CHECK = longPreferencesKey("last_update_check")
+        val SKIPPED_UPDATE_VERSION = stringPreferencesKey("skipped_update_version")
     }
 
     /**
@@ -193,6 +197,58 @@ class AppPreferences(private val context: Context) {
     suspend fun setTitleGenerationModel(model: String) {
         dataStore.edit { preferences ->
             preferences[Keys.TITLE_GENERATION_MODEL] = model
+        }
+    }
+
+    // ========== App Updates ==========
+
+    /**
+     * Get whether automatic update checking is enabled as a Flow.
+     * When enabled, the app checks for updates on startup (once per day).
+     */
+    val autoCheckUpdates: Flow<Boolean> = dataStore.data.map { preferences ->
+        preferences[Keys.AUTO_CHECK_UPDATES] ?: true
+    }
+
+    /**
+     * Set whether automatic update checking is enabled.
+     */
+    suspend fun setAutoCheckUpdates(enabled: Boolean) {
+        dataStore.edit { preferences ->
+            preferences[Keys.AUTO_CHECK_UPDATES] = enabled
+        }
+    }
+
+    /**
+     * Get the timestamp of the last update check as a Flow.
+     */
+    val lastUpdateCheck: Flow<Long> = dataStore.data.map { preferences ->
+        preferences[Keys.LAST_UPDATE_CHECK] ?: 0L
+    }
+
+    /**
+     * Set the timestamp of the last update check.
+     */
+    suspend fun setLastUpdateCheck(timestamp: Long) {
+        dataStore.edit { preferences ->
+            preferences[Keys.LAST_UPDATE_CHECK] = timestamp
+        }
+    }
+
+    /**
+     * Get the version that the user has chosen to skip as a Flow.
+     * Empty string means no version is skipped.
+     */
+    val skippedUpdateVersion: Flow<String> = dataStore.data.map { preferences ->
+        preferences[Keys.SKIPPED_UPDATE_VERSION] ?: ""
+    }
+
+    /**
+     * Set the version to skip (user chose to dismiss this update).
+     */
+    suspend fun setSkippedUpdateVersion(version: String) {
+        dataStore.edit { preferences ->
+            preferences[Keys.SKIPPED_UPDATE_VERSION] = version
         }
     }
 

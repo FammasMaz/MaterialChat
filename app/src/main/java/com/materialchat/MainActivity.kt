@@ -4,6 +4,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -13,17 +14,24 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.compose.rememberNavController
 import com.materialchat.data.local.preferences.AppPreferences
+import com.materialchat.data.repository.UpdateManager
 import com.materialchat.di.AppInitializer
+import com.materialchat.domain.model.UpdateState
+import com.materialchat.ui.components.UpdateBanner
 import com.materialchat.ui.navigation.MaterialChatNavHost
 import com.materialchat.ui.theme.MaterialChatTheme
 import com.materialchat.ui.theme.isDynamicColorSupported
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 /**
@@ -38,6 +46,9 @@ class MainActivity : ComponentActivity() {
 
     @Inject
     lateinit var appInitializer: AppInitializer
+
+    @Inject
+    lateinit var updateManager: UpdateManager
 
     override fun onCreate(savedInstanceState: Bundle?) {
         // Install splash screen before calling super.onCreate()
@@ -56,11 +67,14 @@ class MainActivity : ComponentActivity() {
             // Track initialization state
             var initComplete by remember { mutableStateOf(false) }
 
-            // Perform first-launch initialization
+            // Perform first-launch initialization and check for updates
             LaunchedEffect(Unit) {
                 appInitializer.initializeIfNeeded()
                 initComplete = true
                 isInitialized = true
+
+                // Check for updates in background (respects auto-check preference)
+                updateManager.checkForUpdates(force = false)
             }
 
             val themeMode by appPreferences.themeMode.collectAsState(
@@ -76,7 +90,7 @@ class MainActivity : ComponentActivity() {
             ) {
                 // Only show the app after initialization is complete
                 if (initComplete) {
-                    MaterialChatApp()
+                    MaterialChatApp(updateManager = updateManager)
                 }
             }
         }
@@ -86,19 +100,59 @@ class MainActivity : ComponentActivity() {
 /**
  * Root composable for the MaterialChat application.
  * Sets up navigation with Material 3 Expressive transitions.
+ * Includes update banner overlay for non-blocking update notifications.
  */
 @Composable
-fun MaterialChatApp() {
+fun MaterialChatApp(
+    updateManager: UpdateManager? = null
+) {
     val navController = rememberNavController()
+    val scope = rememberCoroutineScope()
 
-    Surface(
-        modifier = Modifier.fillMaxSize(),
-        color = MaterialTheme.colorScheme.background
-    ) {
-        MaterialChatNavHost(
-            navController = navController,
-            modifier = Modifier.fillMaxSize()
-        )
+    // Collect update state if updateManager is provided
+    val updateState by updateManager?.updateState?.collectAsStateWithLifecycle()
+        ?: remember { mutableStateOf(UpdateState.Idle) }
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        // Main app content
+        Surface(
+            modifier = Modifier.fillMaxSize(),
+            color = MaterialTheme.colorScheme.background
+        ) {
+            MaterialChatNavHost(
+                navController = navController,
+                modifier = Modifier.fillMaxSize()
+            )
+        }
+
+        // Update banner overlay (top)
+        if (updateManager != null) {
+            UpdateBanner(
+                state = updateState,
+                onDownload = { update ->
+                    scope.launch {
+                        updateManager.downloadUpdate(update)
+                    }
+                },
+                onInstall = {
+                    scope.launch {
+                        updateManager.installUpdate()
+                    }
+                },
+                onCancel = {
+                    updateManager.cancelDownload()
+                },
+                onDismiss = {
+                    updateManager.dismissBanner()
+                },
+                onSkipVersion = {
+                    scope.launch {
+                        updateManager.skipVersion()
+                    }
+                },
+                modifier = Modifier.align(Alignment.TopCenter)
+            )
+        }
     }
 }
 

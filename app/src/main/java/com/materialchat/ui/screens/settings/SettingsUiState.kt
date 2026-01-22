@@ -2,6 +2,7 @@ package com.materialchat.ui.screens.settings
 
 import com.materialchat.data.local.preferences.AppPreferences
 import com.materialchat.domain.model.Provider
+import com.materialchat.domain.model.UpdateState
 
 /**
  * UI state for the Settings screen.
@@ -26,6 +27,9 @@ sealed interface SettingsUiState {
      * @property hapticsEnabled Whether haptic feedback is enabled
      * @property aiGeneratedTitlesEnabled Whether AI-generated conversation titles are enabled
      * @property titleGenerationModel Custom model for title generation (empty = use conversation model)
+     * @property appVersion Current app version for display
+     * @property autoCheckUpdates Whether automatic update checking is enabled
+     * @property updateState Current state of the update system
      * @property showAddProviderSheet Whether to show the add provider bottom sheet
      * @property editingProvider Provider being edited, if any
      * @property showDeleteConfirmation Provider being deleted (for confirmation dialog)
@@ -40,6 +44,9 @@ sealed interface SettingsUiState {
         val hapticsEnabled: Boolean = true,
         val aiGeneratedTitlesEnabled: Boolean = true,
         val titleGenerationModel: String = "",
+        val appVersion: String = "",
+        val autoCheckUpdates: Boolean = true,
+        val updateState: UpdateState = UpdateState.Idle,
         val showAddProviderSheet: Boolean = false,
         val editingProvider: Provider? = null,
         val showDeleteConfirmation: Provider? = null,

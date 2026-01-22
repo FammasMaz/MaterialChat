@@ -47,6 +47,9 @@ richtext = "1.0.0-alpha01"
 # Image loading
 coil = "2.5.0"
 
+# Ackpine (APK installer)
+ackpine = "0.9.4"
+
 # Testing
 junit = "4.13.2"
 junitVersion = "1.2.1"
@@ -116,6 +119,10 @@ richtext-ui-material3 = { group = "com.halilibo.compose-richtext", name = "richt
 
 # Coil Image Loading
 coil-compose = { group = "io.coil-kt", name = "coil-compose", version.ref = "coil" }
+
+# Ackpine (APK installer with Kotlin coroutines support)
+ackpine-core = { group = "ru.solrudev.ackpine", name = "ackpine-core", version.ref = "ackpine" }
+ackpine-ktx = { group = "ru.solrudev.ackpine", name = "ackpine-ktx", version.ref = "ackpine" }
 
 # Testing
 junit = { group = "junit", name = "junit", version.ref = "junit" }

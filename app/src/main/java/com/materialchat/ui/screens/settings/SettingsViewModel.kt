@@ -4,6 +4,8 @@ import android.os.Build
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.materialchat.data.local.preferences.AppPreferences
+import com.materialchat.data.repository.UpdateManager
+import com.materialchat.domain.model.AppUpdate
 import com.materialchat.domain.model.Provider
 import com.materialchat.domain.model.ProviderType
 import com.materialchat.domain.usecase.ManageProvidersUseCase
@@ -27,7 +29,8 @@ import javax.inject.Inject
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
     private val manageProvidersUseCase: ManageProvidersUseCase,
-    private val appPreferences: AppPreferences
+    private val appPreferences: AppPreferences,
+    private val updateManager: UpdateManager
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<SettingsUiState>(SettingsUiState.Loading)
@@ -59,17 +62,23 @@ class SettingsViewModel @Inject constructor(
                 combine(
                     appPreferences.hapticsEnabled,
                     appPreferences.aiGeneratedTitlesEnabled,
-                    appPreferences.titleGenerationModel
-                ) { haptics, aiTitles, titleModel -> Triple(haptics, aiTitles, titleModel) }
+                    appPreferences.titleGenerationModel,
+                    appPreferences.autoCheckUpdates,
+                    updateManager.updateState
+                ) { haptics, aiTitles, titleModel, autoCheck, updateState ->
+                    SettingsToggles(haptics, aiTitles, titleModel, autoCheck, updateState)
+                }
             ) { providers, systemPrompt, themeMode, dynamicColorEnabled, toggles ->
                 SettingsData(
                     providers = providers,
                     systemPrompt = systemPrompt,
                     themeMode = themeMode,
                     dynamicColorEnabled = dynamicColorEnabled,
-                    hapticsEnabled = toggles.first,
-                    aiGeneratedTitlesEnabled = toggles.second,
-                    titleGenerationModel = toggles.third
+                    hapticsEnabled = toggles.haptics,
+                    aiGeneratedTitlesEnabled = toggles.aiTitles,
+                    titleGenerationModel = toggles.titleModel,
+                    autoCheckUpdates = toggles.autoCheck,
+                    updateState = toggles.updateState
                 )
             }
                 .catch { e ->
@@ -103,6 +112,9 @@ class SettingsViewModel @Inject constructor(
                         hapticsEnabled = data.hapticsEnabled,
                         aiGeneratedTitlesEnabled = data.aiGeneratedTitlesEnabled,
                         titleGenerationModel = data.titleGenerationModel,
+                        appVersion = updateManager.getCurrentVersion(),
+                        autoCheckUpdates = data.autoCheckUpdates,
+                        updateState = data.updateState,
                         showAddProviderSheet = if (currentState is SettingsUiState.Success) {
                             currentState.showAddProviderSheet
                         } else false,
@@ -485,6 +497,73 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
+    // ========== App Updates ==========
+
+    /**
+     * Updates the auto-check for updates setting.
+     */
+    fun updateAutoCheckUpdates(enabled: Boolean) {
+        viewModelScope.launch {
+            try {
+                appPreferences.setAutoCheckUpdates(enabled)
+            } catch (e: Exception) {
+                _events.emit(SettingsEvent.ShowSnackbar(
+                    message = "Failed to save auto-update setting"
+                ))
+            }
+        }
+    }
+
+    /**
+     * Manually checks for updates.
+     */
+    fun checkForUpdates() {
+        viewModelScope.launch {
+            updateManager.checkForUpdates(force = true)
+        }
+    }
+
+    /**
+     * Downloads the specified update.
+     */
+    fun downloadUpdate(update: AppUpdate) {
+        viewModelScope.launch {
+            updateManager.downloadUpdate(update)
+        }
+    }
+
+    /**
+     * Installs the downloaded update.
+     */
+    fun installUpdate() {
+        viewModelScope.launch {
+            updateManager.installUpdate()
+        }
+    }
+
+    /**
+     * Cancels the current download.
+     */
+    fun cancelDownload() {
+        updateManager.cancelDownload()
+    }
+
+    /**
+     * Skips the currently available version.
+     */
+    fun skipVersion() {
+        viewModelScope.launch {
+            updateManager.skipVersion()
+        }
+    }
+
+    /**
+     * Dismisses the update banner.
+     */
+    fun dismissUpdateBanner() {
+        updateManager.dismissBanner()
+    }
+
     /**
      * Retries loading settings after an error.
      */
@@ -518,6 +597,19 @@ class SettingsViewModel @Inject constructor(
         val dynamicColorEnabled: Boolean,
         val hapticsEnabled: Boolean,
         val aiGeneratedTitlesEnabled: Boolean,
-        val titleGenerationModel: String
+        val titleGenerationModel: String,
+        val autoCheckUpdates: Boolean,
+        val updateState: com.materialchat.domain.model.UpdateState
+    )
+
+    /**
+     * Internal data class for combining toggle settings.
+     */
+    private data class SettingsToggles(
+        val haptics: Boolean,
+        val aiTitles: Boolean,
+        val titleModel: String,
+        val autoCheck: Boolean,
+        val updateState: com.materialchat.domain.model.UpdateState
     )
 }

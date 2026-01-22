@@ -23,9 +23,12 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.DarkMode
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.LightMode
 import androidx.compose.material.icons.outlined.Palette
+import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.SettingsSystemDaydream
+import androidx.compose.material.icons.outlined.SystemUpdate
 import androidx.compose.material.icons.outlined.Vibration
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
@@ -63,7 +66,9 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.materialchat.data.local.preferences.AppPreferences
+import com.materialchat.domain.model.AppUpdate
 import com.materialchat.domain.model.Provider
+import com.materialchat.domain.model.UpdateState
 import com.materialchat.ui.components.HapticPattern
 import com.materialchat.ui.components.rememberHapticFeedback
 import com.materialchat.ui.screens.settings.components.AddProviderSheet
@@ -201,6 +206,12 @@ fun SettingsScreen(
             onHapticsChange = { viewModel.updateHapticsEnabled(it) },
             onAiGeneratedTitlesChange = { viewModel.updateAiGeneratedTitlesEnabled(it) },
             onTitleGenerationModelChange = { viewModel.updateTitleGenerationModel(it) },
+            onAutoCheckUpdatesChange = { viewModel.updateAutoCheckUpdates(it) },
+            onCheckForUpdates = { viewModel.checkForUpdates() },
+            onDownloadUpdate = { viewModel.downloadUpdate(it) },
+            onInstallUpdate = { viewModel.installUpdate() },
+            onCancelDownload = { viewModel.cancelDownload() },
+            onSkipVersion = { viewModel.skipVersion() },
             onRetry = { viewModel.retry() }
         )
     }
@@ -253,6 +264,12 @@ private fun SettingsContent(
     onHapticsChange: (Boolean) -> Unit,
     onAiGeneratedTitlesChange: (Boolean) -> Unit,
     onTitleGenerationModelChange: (String) -> Unit,
+    onAutoCheckUpdatesChange: (Boolean) -> Unit,
+    onCheckForUpdates: () -> Unit,
+    onDownloadUpdate: (AppUpdate) -> Unit,
+    onInstallUpdate: () -> Unit,
+    onCancelDownload: () -> Unit,
+    onSkipVersion: () -> Unit,
     onRetry: () -> Unit
 ) {
     Box(
@@ -277,7 +294,13 @@ private fun SettingsContent(
                     onDynamicColorChange = onDynamicColorChange,
                     onHapticsChange = onHapticsChange,
                     onAiGeneratedTitlesChange = onAiGeneratedTitlesChange,
-                    onTitleGenerationModelChange = onTitleGenerationModelChange
+                    onTitleGenerationModelChange = onTitleGenerationModelChange,
+                    onAutoCheckUpdatesChange = onAutoCheckUpdatesChange,
+                    onCheckForUpdates = onCheckForUpdates,
+                    onDownloadUpdate = onDownloadUpdate,
+                    onInstallUpdate = onInstallUpdate,
+                    onCancelDownload = onCancelDownload,
+                    onSkipVersion = onSkipVersion
                 )
             }
             is SettingsUiState.Error -> {
@@ -315,7 +338,13 @@ private fun SuccessContent(
     onDynamicColorChange: (Boolean) -> Unit,
     onHapticsChange: (Boolean) -> Unit,
     onAiGeneratedTitlesChange: (Boolean) -> Unit,
-    onTitleGenerationModelChange: (String) -> Unit
+    onTitleGenerationModelChange: (String) -> Unit,
+    onAutoCheckUpdatesChange: (Boolean) -> Unit,
+    onCheckForUpdates: () -> Unit,
+    onDownloadUpdate: (AppUpdate) -> Unit,
+    onInstallUpdate: () -> Unit,
+    onCancelDownload: () -> Unit,
+    onSkipVersion: () -> Unit
 ) {
     LazyColumn(
         modifier = Modifier
@@ -424,6 +453,29 @@ private fun SuccessContent(
             SystemPromptField(
                 currentPrompt = uiState.systemPrompt,
                 onPromptChange = onSystemPromptChange
+            )
+        }
+
+        item {
+            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+        }
+
+        // About & Updates Section
+        item {
+            SectionHeader(title = "About & Updates")
+        }
+
+        item {
+            AboutSection(
+                appVersion = uiState.appVersion,
+                autoCheckUpdates = uiState.autoCheckUpdates,
+                updateState = uiState.updateState,
+                onAutoCheckUpdatesChange = onAutoCheckUpdatesChange,
+                onCheckForUpdates = onCheckForUpdates,
+                onDownloadUpdate = onDownloadUpdate,
+                onInstallUpdate = onInstallUpdate,
+                onCancelDownload = onCancelDownload,
+                onSkipVersion = onSkipVersion
             )
         }
 
@@ -836,5 +888,251 @@ private fun ErrorContent(
         TextButton(onClick = onRetry) {
             Text("Retry")
         }
+    }
+}
+
+@Composable
+private fun AboutSection(
+    appVersion: String,
+    autoCheckUpdates: Boolean,
+    updateState: UpdateState,
+    onAutoCheckUpdatesChange: (Boolean) -> Unit,
+    onCheckForUpdates: () -> Unit,
+    onDownloadUpdate: (AppUpdate) -> Unit,
+    onInstallUpdate: () -> Unit,
+    onCancelDownload: () -> Unit,
+    onSkipVersion: () -> Unit
+) {
+    Column(
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        // App Version Card
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+            ),
+            shape = RoundedCornerShape(16.dp)
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.Info,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column {
+                        Text(
+                            text = "MaterialChat",
+                            style = MaterialTheme.typography.titleSmall,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            text = "Version $appVersion",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+        }
+
+        // Auto-check for updates toggle
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+            ),
+            shape = RoundedCornerShape(16.dp)
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.SystemUpdate,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column {
+                        Text(
+                            text = "Auto-check for updates",
+                            style = MaterialTheme.typography.titleSmall,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            text = "Check for updates on startup",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+
+                Switch(
+                    checked = autoCheckUpdates,
+                    onCheckedChange = onAutoCheckUpdatesChange
+                )
+            }
+        }
+
+        // Check for updates button with status
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+            ),
+            shape = RoundedCornerShape(16.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.Refresh,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column {
+                            Text(
+                                text = "Check for updates",
+                                style = MaterialTheme.typography.titleSmall,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                text = getUpdateStatusText(updateState),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+
+                    when (updateState) {
+                        is UpdateState.Checking -> {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(24.dp),
+                                strokeWidth = 2.dp
+                            )
+                        }
+                        is UpdateState.Downloading -> {
+                            CircularProgressIndicator(
+                                progress = { updateState.progress },
+                                modifier = Modifier.size(24.dp),
+                                strokeWidth = 2.dp
+                            )
+                        }
+                        else -> {
+                            OutlinedButton(
+                                onClick = onCheckForUpdates,
+                                shape = RoundedCornerShape(12.dp),
+                                enabled = updateState !is UpdateState.Installing
+                            ) {
+                                Text("Check")
+                            }
+                        }
+                    }
+                }
+
+                // Show actions based on update state
+                when (updateState) {
+                    is UpdateState.Available -> {
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.End,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            TextButton(onClick = onSkipVersion) {
+                                Text("Skip")
+                            }
+                            Spacer(modifier = Modifier.width(8.dp))
+                            OutlinedButton(
+                                onClick = { onDownloadUpdate(updateState.update) },
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                Text("Download v${updateState.update.versionName}")
+                            }
+                        }
+                    }
+                    is UpdateState.Downloading -> {
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.End
+                        ) {
+                            TextButton(onClick = onCancelDownload) {
+                                Text("Cancel")
+                            }
+                        }
+                    }
+                    is UpdateState.ReadyToInstall -> {
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.End
+                        ) {
+                            OutlinedButton(
+                                onClick = onInstallUpdate,
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                Text("Install Now")
+                            }
+                        }
+                    }
+                    is UpdateState.Error -> {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = updateState.message,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    }
+                    else -> { /* No additional UI */ }
+                }
+            }
+        }
+    }
+}
+
+private fun getUpdateStatusText(state: UpdateState): String {
+    return when (state) {
+        is UpdateState.Idle -> "Tap to check for updates"
+        is UpdateState.Checking -> "Checking..."
+        is UpdateState.Available -> "Update available: v${state.update.versionName}"
+        is UpdateState.UpToDate -> "You're up to date"
+        is UpdateState.Downloading -> "Downloading... ${(state.progress * 100).toInt()}%"
+        is UpdateState.ReadyToInstall -> "Ready to install v${state.update.versionName}"
+        is UpdateState.Installing -> "Installing..."
+        is UpdateState.Error -> "Error checking for updates"
     }
 }
