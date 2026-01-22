@@ -1,5 +1,6 @@
 package com.materialchat.ui.screens.conversations
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
@@ -113,6 +114,12 @@ fun ConversationsScreen(
     var isSearchActive by remember { mutableStateOf(false) }
     val searchQuery by searchViewModel.searchQuery.collectAsStateWithLifecycle()
     val searchUiState by searchViewModel.uiState.collectAsStateWithLifecycle()
+
+    // Handle back gesture when search is active
+    BackHandler(enabled = isSearchActive) {
+        searchViewModel.clearSearch()
+        isSearchActive = false
+    }
 
     // Handle events
     LaunchedEffect(Unit) {
