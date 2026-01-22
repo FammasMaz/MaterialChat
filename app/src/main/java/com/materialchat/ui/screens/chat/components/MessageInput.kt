@@ -1,6 +1,7 @@
 package com.materialchat.ui.screens.chat.components
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -17,6 +18,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.defaultMinSize
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
@@ -24,10 +27,12 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AddPhotoAlternate
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Stop
@@ -45,6 +50,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.ImeAction
@@ -54,6 +60,9 @@ import coil.request.ImageRequest
 import com.materialchat.domain.model.Attachment
 import com.materialchat.ui.components.HapticPattern
 import com.materialchat.ui.components.rememberHapticFeedback
+import com.materialchat.ui.navigation.LocalAnimatedVisibilityScope
+import com.materialchat.ui.navigation.LocalSharedTransitionScope
+import com.materialchat.ui.navigation.SHARED_ELEMENT_FAB_TO_INPUT
 import com.materialchat.ui.theme.CustomShapes
 
 /**
@@ -80,6 +89,7 @@ import com.materialchat.ui.theme.CustomShapes
  * @param modifier Modifier for the input bar container
  * @param hapticsEnabled Whether haptic feedback is enabled
  */
+@OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 fun MessageInput(
     inputText: String,
@@ -96,74 +106,151 @@ fun MessageInput(
 ) {
     val haptics = rememberHapticFeedback()
 
-    Surface(
+    // M3 Expressive: Transparent container, edge-to-edge with nav bar padding
+    Column(
         modifier = modifier
             .fillMaxWidth()
-            .navigationBarsPadding(),
-        color = MaterialTheme.colorScheme.surface,
-        tonalElevation = 2.dp
+            .navigationBarsPadding()
+            .padding(horizontal = 8.dp, vertical = 8.dp)
     ) {
-        Column(
-            modifier = Modifier.fillMaxWidth()
+        // Attachment preview row (shown when there are pending attachments)
+        AnimatedVisibility(
+            visible = pendingAttachments.isNotEmpty(),
+            enter = expandVertically() + fadeIn(),
+            exit = shrinkVertically() + fadeOut()
         ) {
-            // Attachment preview row (shown when there are pending attachments)
-            AnimatedVisibility(
-                visible = pendingAttachments.isNotEmpty(),
-                enter = expandVertically() + fadeIn(),
-                exit = shrinkVertically() + fadeOut()
-            ) {
-                AttachmentPreviewRow(
-                    attachments = pendingAttachments,
-                    onRemoveAttachment = onRemoveAttachment,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp)
-                )
-            }
-
-            // Input row
-            Row(
+            AttachmentPreviewRow(
+                attachments = pendingAttachments,
+                onRemoveAttachment = onRemoveAttachment,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                verticalAlignment = Alignment.Bottom,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                // Attach image button
-                AttachButton(
-                    onClick = {
-                        haptics.perform(HapticPattern.CLICK, hapticsEnabled)
-                        onAttachImage()
-                    },
-                    enabled = !isStreaming
-                )
+                    .padding(horizontal = 8.dp, vertical = 4.dp)
+            )
+        }
 
-                // Text input field
-                MessageTextField(
+        // M3 Expressive: Row with separate circular buttons + pill input
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            // Attach button - M3 circular, same height as text pill
+            Surface(
+                onClick = {
+                    haptics.perform(HapticPattern.CLICK, hapticsEnabled)
+                    onAttachImage()
+                },
+                modifier = Modifier.size(48.dp),
+                shape = CircleShape,
+                color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                enabled = !isStreaming
+            ) {
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Add,
+                        contentDescription = "Attach",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            // Text input pill - shared element for FAB morph
+            val sharedTransitionScope = LocalSharedTransitionScope.current
+            val animatedVisibilityScope = LocalAnimatedVisibilityScope.current
+            
+            val sharedContentState = sharedTransitionScope?.let {
+                with(it) {
+                    rememberSharedContentState(key = SHARED_ELEMENT_FAB_TO_INPUT)
+                }
+            }
+            
+            val basePillModifier = Modifier
+                .weight(1f)
+                .defaultMinSize(minHeight = 48.dp)
+            
+            val pillModifier = if (sharedTransitionScope != null && animatedVisibilityScope != null && sharedContentState != null) {
+                with(sharedTransitionScope) {
+                    basePillModifier.sharedElement(
+                        state = sharedContentState,
+                        animatedVisibilityScope = animatedVisibilityScope,
+                        boundsTransform = { _, _ ->
+                            spring(
+                                dampingRatio = 0.8f,
+                                stiffness = 380f
+                            )
+                        }
+                    )
+                }
+            } else {
+                basePillModifier
+            }
+            
+            Surface(
+                modifier = pillModifier,
+                shape = RoundedCornerShape(24.dp),
+                color = MaterialTheme.colorScheme.surfaceContainerHigh,
+            ) {
+                BasicTextField(
                     value = inputText,
                     onValueChange = onInputChange,
                     enabled = !isStreaming,
-                    canSend = canSend,
-                    onSend = {
-                        haptics.perform(HapticPattern.CLICK, hapticsEnabled)
-                        onSend()
-                    },
-                    modifier = Modifier.weight(1f)
-                )
-
-                // Action button (send or stop)
-                ActionButton(
-                    isStreaming = isStreaming,
-                    canSend = canSend,
-                    onSend = {
-                        haptics.perform(HapticPattern.CLICK, hapticsEnabled)
-                        onSend()
-                    },
-                    onCancel = {
-                        haptics.perform(HapticPattern.CONFIRM, hapticsEnabled)
-                        onCancel()
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 14.dp),
+                    textStyle = MaterialTheme.typography.bodyLarge.copy(
+                        color = MaterialTheme.colorScheme.onSurface
+                    ),
+                    cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                    decorationBox = { innerTextField ->
+                        Box {
+                            if (inputText.isEmpty()) {
+                                Text(
+                                    text = "Type a message...",
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            innerTextField()
+                        }
                     }
                 )
+            }
+
+            // Send/Stop button - M3 circular, same height as text pill
+            Surface(
+                onClick = {
+                    if (isStreaming) {
+                        haptics.perform(HapticPattern.CONFIRM, hapticsEnabled)
+                        onCancel()
+                    } else if (canSend) {
+                        haptics.perform(HapticPattern.CLICK, hapticsEnabled)
+                        onSend()
+                    }
+                },
+                modifier = Modifier.size(48.dp),
+                shape = CircleShape,
+                color = if (canSend || isStreaming) 
+                    MaterialTheme.colorScheme.primaryContainer 
+                else 
+                    MaterialTheme.colorScheme.surfaceContainerHigh,
+                enabled = canSend || isStreaming
+            ) {
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    Icon(
+                        imageVector = if (isStreaming) Icons.Default.Close else Icons.AutoMirrored.Filled.Send,
+                        contentDescription = if (isStreaming) "Stop" else "Send",
+                        tint = if (canSend || isStreaming)
+                            MaterialTheme.colorScheme.onPrimaryContainer
+                        else
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
         }
     }
