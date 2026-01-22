@@ -12,6 +12,8 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.defaultMinSize
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -42,7 +44,10 @@ import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.materialchat.ui.theme.ExpressiveMotion
 import com.materialchat.ui.theme.MaterialChatMotion
 
 /**
@@ -72,23 +77,17 @@ fun ExpressiveButton(
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
 
-    // Animate scale on press with spring physics
+    // Animate scale on press with M3 Expressive SPATIAL spring (bouncy)
     val scale by animateFloatAsState(
-        targetValue = if (isPressed) MaterialChatMotion.Scales.Pressed else MaterialChatMotion.Scales.Normal,
-        animationSpec = spring(
-            dampingRatio = MaterialChatMotion.Springs.ScalePress.dampingRatio,
-            stiffness = MaterialChatMotion.Springs.ScalePress.stiffness
-        ),
+        targetValue = if (isPressed) 0.95f else 1f,
+        animationSpec = ExpressiveMotion.Spatial.scale(),
         label = "buttonScale"
     )
 
-    // Animate corner radius on press (shape morph effect)
+    // Animate corner radius on press with SPATIAL spring (shape morph effect)
     val cornerRadius by animateDpAsState(
-        targetValue = if (isPressed) 8.dp else 16.dp,
-        animationSpec = spring(
-            dampingRatio = 0.6f,
-            stiffness = 400f
-        ),
+        targetValue = if (isPressed) 12.dp else 20.dp,
+        animationSpec = ExpressiveMotion.Spatial.shapeMorph(),
         label = "cornerRadius"
     )
 
@@ -235,37 +234,28 @@ fun ExpressiveIconButton(
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
 
-    // Animate scale on press
+    // Animate scale on press with M3 Expressive SPATIAL spring
     val scale by animateFloatAsState(
         targetValue = if (isPressed) 0.9f else 1f,
-        animationSpec = spring(
-            dampingRatio = 0.6f,
-            stiffness = 500f
-        ),
+        animationSpec = ExpressiveMotion.Spatial.scale(),
         label = "iconButtonScale"
     )
 
-    // Animate corner radius on press (more rounded when pressed)
+    // Animate corner radius on press with SPATIAL spring (more rounded when pressed)
     val cornerRadius by animateDpAsState(
         targetValue = if (isPressed) size / 2 else size / 4,
-        animationSpec = spring(
-            dampingRatio = 0.6f,
-            stiffness = 400f
-        ),
+        animationSpec = ExpressiveMotion.Spatial.shapeMorph(),
         label = "iconButtonCornerRadius"
     )
 
-    // Animate container color
+    // Animate container color with M3 Expressive EFFECTS spring (no bounce!)
     val animatedContainerColor by animateColorAsState(
         targetValue = if (isPressed) {
             containerColor.copy(alpha = 0.85f)
         } else {
             containerColor
         },
-        animationSpec = spring(
-            dampingRatio = 0.7f,
-            stiffness = 300f
-        ),
+        animationSpec = ExpressiveMotion.Effects.color(),
         label = "iconButtonContainerColor"
     )
 
@@ -316,21 +306,17 @@ fun ExpressiveActionButton(
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
 
+    // M3 Expressive SPATIAL spring for scale
     val scale by animateFloatAsState(
         targetValue = if (isPressed) 0.85f else 1f,
-        animationSpec = spring(
-            dampingRatio = 0.5f,
-            stiffness = 600f
-        ),
+        animationSpec = ExpressiveMotion.Spatial.scale(),
         label = "actionButtonScale"
     )
 
+    // M3 Expressive SPATIAL spring for shape morph
     val cornerRadius by animateDpAsState(
         targetValue = if (isPressed) 12.dp else 8.dp,
-        animationSpec = spring(
-            dampingRatio = 0.6f,
-            stiffness = 400f
-        ),
+        animationSpec = ExpressiveMotion.Spatial.shapeMorph(),
         label = "actionButtonCornerRadius"
     )
 
@@ -383,30 +369,24 @@ fun ExpressiveFab(
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
 
+    // M3 Expressive SPATIAL spring for playful scale (FAB is a hero element)
     val scale by animateFloatAsState(
         targetValue = if (isPressed) 0.92f else 1f,
-        animationSpec = spring(
-            dampingRatio = MaterialChatMotion.Springs.Fab.dampingRatio,
-            stiffness = MaterialChatMotion.Springs.Fab.stiffness
-        ),
+        animationSpec = ExpressiveMotion.Spatial.playful(),
         label = "fabScale"
     )
 
+    // M3 Expressive SPATIAL spring for shape morph
     val cornerRadius by animateDpAsState(
-        targetValue = if (isPressed) 12.dp else 16.dp,
-        animationSpec = spring(
-            dampingRatio = 0.6f,
-            stiffness = 400f
-        ),
+        targetValue = if (isPressed) 20.dp else 28.dp,
+        animationSpec = ExpressiveMotion.Spatial.shapeMorph(),
         label = "fabCornerRadius"
     )
 
+    // M3 Expressive EFFECTS spring for elevation (no bounce)
     val elevation by animateDpAsState(
         targetValue = if (isPressed) 2.dp else 6.dp,
-        animationSpec = spring(
-            dampingRatio = 0.7f,
-            stiffness = 300f
-        ),
+        animationSpec = ExpressiveMotion.Effects.elevation(),
         label = "fabElevation"
     )
 
@@ -445,6 +425,110 @@ fun ExpressiveFab(
                     style = MaterialTheme.typography.labelLarge,
                     fontWeight = FontWeight.Medium
                 )
+            }
+        }
+    }
+}
+
+/**
+ * An animated extended FAB that expands/collapses based on scroll state.
+ * 
+ * M3 Expressive behavior:
+ * - Scroll DOWN: FAB collapses to icon-only (width shrinks with bounce, label fades)
+ * - Scroll UP: FAB expands back with label (width grows with bouncy overshoot)
+ * - At top of list: FAB always expanded
+ *
+ * @param expanded Whether the FAB should be in expanded state (controlled by scroll)
+ * @param onClick The callback invoked when the button is clicked
+ * @param icon The icon composable to display
+ * @param text The text composable to display when expanded
+ * @param modifier The modifier to apply
+ * @param containerColor The background color of the FAB
+ * @param contentColor The color of the icon and text
+ */
+@Composable
+fun AnimatedExtendedFab(
+    expanded: Boolean,
+    onClick: () -> Unit,
+    icon: @Composable () -> Unit,
+    text: @Composable () -> Unit,
+    modifier: Modifier = Modifier,
+    containerColor: Color = MaterialTheme.colorScheme.primaryContainer,
+    contentColor: Color = MaterialTheme.colorScheme.onPrimaryContainer
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+
+    // M3 Expressive SPATIAL spring for width (bouncy expand/collapse)
+    val width by animateDpAsState(
+        targetValue = if (expanded) 140.dp else 56.dp,
+        animationSpec = ExpressiveMotion.Spatial.fabExpand(),
+        label = "fabWidth"
+    )
+
+    // M3 Expressive EFFECTS spring for label alpha (smooth fade, no bounce)
+    val labelAlpha by animateFloatAsState(
+        targetValue = if (expanded) 1f else 0f,
+        animationSpec = ExpressiveMotion.Effects.alpha(),
+        label = "fabLabelAlpha"
+    )
+
+    // M3 Expressive SPATIAL spring for press scale (playful)
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.92f else 1f,
+        animationSpec = ExpressiveMotion.Spatial.playful(),
+        label = "fabScale"
+    )
+
+    // M3 Expressive SPATIAL spring for corner radius morph
+    val cornerRadius by animateDpAsState(
+        targetValue = if (isPressed) 20.dp else 28.dp,
+        animationSpec = ExpressiveMotion.Spatial.shapeMorph(),
+        label = "fabCornerRadius"
+    )
+
+    // M3 Expressive EFFECTS spring for elevation (no bounce)
+    val elevation by animateDpAsState(
+        targetValue = if (isPressed) 2.dp else 6.dp,
+        animationSpec = ExpressiveMotion.Effects.elevation(),
+        label = "fabElevation"
+    )
+
+    Surface(
+        onClick = onClick,
+        modifier = modifier
+            .width(width)
+            .height(56.dp)
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            },
+        shape = RoundedCornerShape(cornerRadius),
+        color = containerColor,
+        contentColor = contentColor,
+        shadowElevation = elevation,
+        interactionSource = interactionSource
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxSize()
+                .clipToBounds() // Clip text cleanly as FAB shrinks
+                .padding(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            icon()
+            
+            // Only render label content when visible - clip prevents text wrap
+            if (labelAlpha > 0.01f) {
+                Spacer(Modifier.width(8.dp))
+                Box(
+                    modifier = Modifier
+                        .graphicsLayer { alpha = labelAlpha }
+                        .clipToBounds() // Ensure text doesn't wrap/overflow
+                ) {
+                    text()
+                }
             }
         }
     }
