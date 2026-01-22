@@ -226,8 +226,8 @@ private fun getBubbleStyle(
         )
         isAssistant -> BubbleStyle(
             shape = MessageBubbleShapes.AssistantBubble,
-            backgroundColor = MaterialTheme.colorScheme.surfaceVariant,
-            textColor = MaterialTheme.colorScheme.onSurfaceVariant,
+            backgroundColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+            textColor = MaterialTheme.colorScheme.onSurface,
             maxWidth = 340.dp
         )
         else -> BubbleStyle(
