@@ -35,6 +35,7 @@ import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -63,7 +64,6 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -531,6 +531,7 @@ private fun ConversationList(
     hapticsEnabled: Boolean = true
 ) {
     val haptics = rememberHapticFeedback()
+    val cornerRadius = 20.dp
 
     LazyColumn(
         state = listState,
@@ -541,15 +542,35 @@ private fun ConversationList(
             top = 8.dp,
             bottom = 88.dp // Extra padding for FAB
         ),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+        verticalArrangement = Arrangement.spacedBy(0.dp)
     ) {
-        items(
+        itemsIndexed(
             items = conversations,
-            key = { it.conversation.id }
-        ) { conversationItem ->
+            key = { _, item -> item.conversation.id }
+        ) { index, conversationItem ->
+            val isFirst = index == 0
+            val isLast = index == conversations.lastIndex
+            val itemShape = when {
+                isFirst && isLast -> RoundedCornerShape(cornerRadius)
+                isFirst -> RoundedCornerShape(
+                    topStart = cornerRadius,
+                    topEnd = cornerRadius,
+                    bottomStart = 0.dp,
+                    bottomEnd = 0.dp
+                )
+                isLast -> RoundedCornerShape(
+                    topStart = 0.dp,
+                    topEnd = 0.dp,
+                    bottomStart = cornerRadius,
+                    bottomEnd = cornerRadius
+                )
+                else -> RoundedCornerShape(0.dp)
+            }
+
             SwipeToDeleteBox(
                 onDelete = { onConversationDelete(conversationItem.conversation) },
                 hapticsEnabled = hapticsEnabled,
+                shape = itemShape,
                 modifier = Modifier
                     .fillMaxWidth()
                     .animateItem(
@@ -566,7 +587,9 @@ private fun ConversationList(
                     onClick = {
                         haptics.perform(HapticPattern.CLICK, hapticsEnabled)
                         onConversationClick(conversationItem.conversation.id)
-                    }
+                    },
+                    shape = itemShape,
+                    showDivider = !isLast
                 )
             }
         }

@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Chat
 import androidx.compose.material3.Icon
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.ripple
@@ -30,6 +31,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.unit.dp
 import com.materialchat.ui.screens.conversations.ConversationUiItem
 import com.materialchat.ui.theme.CustomShapes
@@ -49,6 +51,8 @@ import com.materialchat.ui.theme.MaterialChatMotion
 fun ConversationItem(
     conversationItem: ConversationUiItem,
     onClick: () -> Unit,
+    shape: Shape = CustomShapes.ConversationItem,
+    showDivider: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     val interactionSource = remember { MutableInteractionSource() }
@@ -67,108 +71,119 @@ fun ConversationItem(
     // Background color animation
     val backgroundColor by animateColorAsState(
         targetValue = if (isPressed) {
-            MaterialTheme.colorScheme.surfaceContainerHighest
+            MaterialTheme.colorScheme.surfaceContainerHigh
         } else {
-            MaterialTheme.colorScheme.surfaceContainerLow
+            MaterialTheme.colorScheme.surfaceContainer
         },
         animationSpec = spring(),
         label = "backgroundColor"
     )
 
-    Row(
+    Column(
         modifier = modifier
             .fillMaxWidth()
             .scale(scale)
-            .clip(CustomShapes.ConversationItem)
+            .clip(shape)
             .background(backgroundColor)
             .clickable(
                 interactionSource = interactionSource,
                 indication = ripple()
             ) { onClick() }
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically
     ) {
-        // Chat icon or emoji
-        if (conversationItem.conversation.icon != null) {
-            // Display AI-generated emoji
-            Text(
-                text = conversationItem.conversation.icon,
-                style = MaterialTheme.typography.headlineMedium,
-                modifier = Modifier.size(40.dp)
-            )
-        } else {
-            // Fallback to chat icon
-            Icon(
-                imageVector = Icons.AutoMirrored.Outlined.Chat,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(40.dp)
-            )
-        }
-
-        Spacer(modifier = Modifier.width(16.dp))
-
-        // Content
-        Column(
-            modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(4.dp)
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            // Title
-            Text(
-                text = conversationItem.conversation.title,
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurface,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-
-            // Provider and model info
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                // Provider name with badge style
+            // Chat icon or emoji
+            if (conversationItem.conversation.icon != null) {
+                // Display AI-generated emoji
                 Text(
-                    text = conversationItem.providerName,
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier
-                        .clip(CustomShapes.Pill)
-                        .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f))
-                        .padding(horizontal = 8.dp, vertical = 2.dp)
+                    text = conversationItem.conversation.icon,
+                    style = MaterialTheme.typography.headlineMedium,
+                    modifier = Modifier.size(40.dp)
                 )
-
-                // Model name
-                Text(
-                    text = conversationItem.conversation.modelName,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f, fill = false)
+            } else {
+                // Fallback to chat icon
+                Icon(
+                    imageVector = Icons.AutoMirrored.Outlined.Chat,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(40.dp)
                 )
             }
 
-            // Message preview (if available)
-            conversationItem.messagePreview?.let { preview ->
-                Spacer(modifier = Modifier.height(2.dp))
+            Spacer(modifier = Modifier.width(16.dp))
+
+            // Content
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                // Title
                 Text(
-                    text = preview,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    text = conversationItem.conversation.title,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
+
+                // Provider and model info
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Provider name with badge style
+                    Text(
+                        text = conversationItem.providerName,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier
+                            .clip(CustomShapes.Pill)
+                            .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f))
+                            .padding(horizontal = 8.dp, vertical = 2.dp)
+                    )
+
+                    // Model name
+                    Text(
+                        text = conversationItem.conversation.modelName,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false)
+                    )
+                }
+
+                // Message preview (if available)
+                conversationItem.messagePreview?.let { preview ->
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = preview,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
             }
+
+            Spacer(modifier = Modifier.width(8.dp))
+
+            // Relative time
+            Text(
+                text = conversationItem.relativeTime,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
 
-        Spacer(modifier = Modifier.width(8.dp))
-
-        // Relative time
-        Text(
-            text = conversationItem.relativeTime,
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-    }
+        if (showDivider) {
+            HorizontalDivider(
+                modifier = Modifier.padding(start = 72.dp, end = 16.dp),
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f)
+            )
+        }
 }

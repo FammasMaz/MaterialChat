@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material3.Icon
@@ -27,6 +26,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
@@ -56,6 +56,7 @@ fun SwipeToDeleteBox(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     hapticsEnabled: Boolean = true,
+    shape: Shape = CustomShapes.ConversationItem,
     content: @Composable () -> Unit
 ) {
     val density = LocalDensity.current
@@ -148,7 +149,7 @@ fun SwipeToDeleteBox(
             Box(
                 modifier = Modifier
                     .matchParentSize()
-                    .clip(CustomShapes.ConversationItem)
+                    .clip(shape)
                     .background(backgroundColor),
                 contentAlignment = Alignment.CenterEnd
             ) {
@@ -176,9 +177,11 @@ fun SwipeToDeleteBox(
                     detectHorizontalDragGestures(
                         onDragStart = {
                             isDragging = true
+                            haptics.perform(HapticPattern.GESTURE_START, hapticsEnabled)
                         },
                         onDragEnd = {
                             isDragging = false
+                            haptics.perform(HapticPattern.GESTURE_END, hapticsEnabled)
                             if (offsetX.absoluteValue > deleteThresholdPx) {
                                 shouldDelete = true
                             } else {
