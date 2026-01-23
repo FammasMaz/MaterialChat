@@ -40,6 +40,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -154,7 +155,11 @@ fun MessageBubble(
                     // Streaming indicator
                     if (message.isStreaming) {
                         Spacer(modifier = Modifier.height(4.dp))
-                        StreamingIndicator()
+                        TypingIndicator(
+                            dotSize = 7.dp,
+                            dotSpacing = 4.dp,
+                            color = bubbleStyle.textColor.copy(alpha = 0.6f)
+                        )
                     }
                 }
             }
@@ -228,6 +233,10 @@ private fun getBubbleStyle(
     val configuration = LocalConfiguration.current
     val maxBubbleWidth = (configuration.screenWidthDp * 0.82f).dp
     val maxSystemWidth = (configuration.screenWidthDp * 0.7f).dp
+    val surfaceBase = MaterialTheme.colorScheme.surfaceContainer
+    val userBubble = lerp(surfaceBase, MaterialTheme.colorScheme.primaryContainer, 0.75f)
+    val assistantBubble = lerp(surfaceBase, MaterialTheme.colorScheme.surfaceContainerHigh, 0.7f)
+    val systemBubble = lerp(surfaceBase, MaterialTheme.colorScheme.tertiaryContainer, 0.55f)
 
     return when {
         isUser -> BubbleStyle(
@@ -237,7 +246,7 @@ private fun getBubbleStyle(
                 MessageGroupPosition.Last -> MessageBubbleShapes.Grouped.UserLast
                 MessageGroupPosition.Single -> MessageBubbleShapes.UserBubble
             },
-            backgroundColor = MaterialTheme.colorScheme.primaryContainer,
+            backgroundColor = userBubble,
             textColor = MaterialTheme.colorScheme.onPrimaryContainer,
             maxWidth = maxBubbleWidth
         )
@@ -248,14 +257,14 @@ private fun getBubbleStyle(
                 MessageGroupPosition.Last -> MessageBubbleShapes.Grouped.AssistantLast
                 MessageGroupPosition.Single -> MessageBubbleShapes.AssistantBubble
             },
-            backgroundColor = MaterialTheme.colorScheme.surfaceContainer,
+            backgroundColor = assistantBubble,
             textColor = MaterialTheme.colorScheme.onSurface,
             maxWidth = maxBubbleWidth
         )
         else -> BubbleStyle(
             shape = MessageBubbleShapes.SystemBubble,
-            backgroundColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-            textColor = MaterialTheme.colorScheme.onSurface,
+            backgroundColor = systemBubble,
+            textColor = MaterialTheme.colorScheme.onTertiaryContainer,
             maxWidth = maxSystemWidth
         )
     }

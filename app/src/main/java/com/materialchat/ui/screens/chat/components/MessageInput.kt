@@ -201,7 +201,7 @@ fun MessageInput(
             Surface(
                 modifier = pillModifier,
                 shape = CustomShapes.MessageInputContainer,
-                color = MaterialTheme.colorScheme.surfaceContainer,
+                color = MaterialTheme.colorScheme.surfaceContainerHigh,
             ) {
                 BasicTextField(
                     value = inputText,
@@ -210,8 +210,7 @@ fun MessageInput(
                     modifier = Modifier
                         .fillMaxWidth()
                         .heightIn(min = 48.dp, max = 160.dp)
-                        .verticalScroll(textScrollState)
-                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                        .verticalScroll(textScrollState),
                     textStyle = MaterialTheme.typography.bodyLarge.copy(
                         color = MaterialTheme.colorScheme.onSurface
                     ),
@@ -229,7 +228,12 @@ fun MessageInput(
                         }
                     ),
                     decorationBox = { innerTextField ->
-                        Box {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 12.dp),
+                            contentAlignment = Alignment.CenterStart
+                        ) {
                             if (inputText.isEmpty()) {
                                 Text(
                                     text = "Type a message...",

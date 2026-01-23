@@ -41,6 +41,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
@@ -72,6 +73,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.ByteArrayOutputStream
 import java.io.File
+import androidx.compose.ui.layout.onSizeChanged
 
 private const val TAG = "ChatScreen"
 
@@ -229,7 +231,7 @@ fun ChatScreen(
     Scaffold(
         modifier = Modifier
             .nestedScroll(scrollBehavior.nestedScrollConnection),
-        containerColor = MaterialTheme.colorScheme.surfaceContainer,
+        containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
         contentWindowInsets = WindowInsets(0, 0, 0, 0), // Draw edge-to-edge
         topBar = {
             when (val state = uiState) {
@@ -409,6 +411,18 @@ private fun ChatContent(
     val imeBottom = WindowInsets.ime.getBottom(density)
     val navBottom = WindowInsets.navigationBars.getBottom(density)
     val imePadding = with(density) { (imeBottom - navBottom).coerceAtLeast(0).toDp() }
+    var inputHeightPx by remember { mutableIntStateOf(0) }
+    val isAtBottom by remember {
+        derivedStateOf {
+            val totalItems = listState.layoutInfo.totalItemsCount
+            if (totalItems == 0) {
+                true
+            } else {
+                val lastVisible = listState.layoutInfo.visibleItemsInfo.lastOrNull()
+                lastVisible == null || lastVisible.index >= totalItems - 1
+            }
+        }
+    }
 
     // Track content lengths for haptic feedback during streaming
     var lastContentLength by remember { mutableIntStateOf(0) }
@@ -439,6 +453,12 @@ private fun ChatContent(
         }
     }
 
+    LaunchedEffect(state.streamingState, state.messages.size, inputHeightPx, isAtBottom) {
+        if (isAtBottom && state.messages.isNotEmpty()) {
+            listState.scrollToItem(state.messages.size - 1)
+        }
+    }
+
     // M3 Expressive: Rounded container wrapping main content
     Surface(
         modifier = Modifier
@@ -450,7 +470,7 @@ private fun ChatContent(
             bottomStart = 0.dp,
             bottomEnd = 0.dp
         ),
-        color = MaterialTheme.colorScheme.surfaceContainerLow
+        color = MaterialTheme.colorScheme.surfaceContainer
     ) {
         Column(
             modifier = Modifier
@@ -479,7 +499,8 @@ private fun ChatContent(
                 onCancel = onCancelStreaming,
                 onAttachImage = onAttachImage,
                 onRemoveAttachment = onRemoveAttachment,
-                hapticsEnabled = state.hapticsEnabled
+                hapticsEnabled = state.hapticsEnabled,
+                modifier = Modifier.onSizeChanged { inputHeightPx = it.height }
             )
         }
     }
