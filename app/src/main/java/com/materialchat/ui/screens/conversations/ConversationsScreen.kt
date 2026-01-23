@@ -532,6 +532,7 @@ private fun ConversationList(
 ) {
     val haptics = rememberHapticFeedback()
     val cornerRadius = 20.dp
+    val activeItemShape = RoundedCornerShape(cornerRadius)
 
     LazyColumn(
         state = listState,
@@ -571,6 +572,7 @@ private fun ConversationList(
                 onDelete = { onConversationDelete(conversationItem.conversation) },
                 hapticsEnabled = hapticsEnabled,
                 shape = itemShape,
+                activeShape = activeItemShape,
                 modifier = Modifier
                     .fillMaxWidth()
                     .animateItem(

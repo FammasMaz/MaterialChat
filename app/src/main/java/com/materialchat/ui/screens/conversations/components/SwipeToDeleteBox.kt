@@ -57,6 +57,7 @@ fun SwipeToDeleteBox(
     enabled: Boolean = true,
     hapticsEnabled: Boolean = true,
     shape: Shape = CustomShapes.ConversationItem,
+    activeShape: Shape = CustomShapes.ConversationItem,
     content: @Composable () -> Unit
 ) {
     val density = LocalDensity.current
@@ -141,15 +142,16 @@ fun SwipeToDeleteBox(
         }
     }
 
-    Box(
-        modifier = modifier
-    ) {
+    val swipeActive = animatedOffsetX.absoluteValue > 1f || isDragging
+    val currentShape = if (swipeActive) activeShape else shape
+
+    Box(modifier = modifier) {
         // Background with delete icon - only show when swiping
         if (animatedOffsetX.absoluteValue > 1f) {
             Box(
                 modifier = Modifier
                     .matchParentSize()
-                    .clip(shape)
+                    .clip(currentShape)
                     .background(backgroundColor),
                 contentAlignment = Alignment.CenterEnd
             ) {
@@ -171,6 +173,7 @@ fun SwipeToDeleteBox(
             modifier = Modifier
                 .offset { IntOffset(animatedOffsetX.roundToInt(), 0) }
                 .fillMaxSize()
+                .clip(currentShape)
                 .pointerInput(enabled) {
                     if (!enabled) return@pointerInput
 

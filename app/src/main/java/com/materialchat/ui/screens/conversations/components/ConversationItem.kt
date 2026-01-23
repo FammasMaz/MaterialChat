@@ -19,7 +19,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Chat
 import androidx.compose.material3.Icon
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.ripple
@@ -181,9 +180,13 @@ fun ConversationItem(
         }
 
         if (showDivider) {
-            HorizontalDivider(
-                modifier = Modifier.padding(start = 72.dp, end = 16.dp),
-                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f)
+            Spacer(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 72.dp, end = 16.dp)
+                    .height(1.dp)
+                    .background(MaterialTheme.colorScheme.surfaceContainerLow)
             )
         }
+    }
 }
