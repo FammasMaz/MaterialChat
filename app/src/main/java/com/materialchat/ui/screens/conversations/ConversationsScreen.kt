@@ -3,7 +3,6 @@ package com.materialchat.ui.screens.conversations
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.animation.core.Spring
@@ -77,6 +76,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -300,36 +300,31 @@ private fun ConversationsTopBar(
     LargeTopAppBar(
         title = {
             val collapseFraction = scrollBehavior.state.collapsedFraction.coerceIn(0f, 1f)
-            val materialAlpha = (1f - collapseFraction * 1.4f).coerceIn(0f, 1f)
-            val suffixAlpha = ((collapseFraction - 0.35f) / 0.65f).coerceIn(0f, 1f)
-            val titleScale = 1f - 0.3f * collapseFraction
+            val baseStyle = LocalTextStyle.current
+            val largeTitleSize = MaterialTheme.typography.headlineLarge.fontSize
+            val isLargeSlot = baseStyle.fontSize >= largeTitleSize
+            val materialAlpha = if (isLargeSlot) {
+                (1f - collapseFraction * 1.2f).coerceIn(0f, 1f)
+            } else {
+                0f
+            }
+            val chatAlpha = if (isLargeSlot) {
+                (1f - collapseFraction * 0.85f).coerceIn(0f, 1f)
+            } else {
+                1f
+            }
+            val suffixAlpha = if (isLargeSlot) {
+                0f
+            } else {
+                ((collapseFraction - 0.2f) / 0.8f).coerceIn(0f, 1f)
+            }
 
-            Row(
-                modifier = Modifier
-                    .graphicsLayer {
-                        scaleX = titleScale
-                        scaleY = titleScale
-                    }
-                    .animateContentSize(
-                        animationSpec = spring(
-                            dampingRatio = Spring.DampingRatioMediumBouncy,
-                            stiffness = Spring.StiffnessMedium
-                        )
-                    ),
-                verticalAlignment = Alignment.Bottom
-            ) {
+            Row(verticalAlignment = Alignment.Bottom) {
                 if (materialAlpha > 0.02f) {
                     Text(
                         text = "material",
-                        modifier = Modifier
-                            .alignByBaseline()
-                            .graphicsLayer {
-                                alpha = materialAlpha
-                                val scale = 0.92f + 0.08f * materialAlpha
-                                scaleX = scale
-                                scaleY = scale
-                            },
-                        style = MaterialTheme.typography.headlineLarge,
+                        modifier = Modifier.graphicsLayer { alpha = materialAlpha },
+                        style = baseStyle,
                         color = MaterialTheme.colorScheme.primary,
                         fontWeight = FontWeight.Bold,
                         fontStyle = FontStyle.Italic,
@@ -339,8 +334,8 @@ private fun ConversationsTopBar(
                 }
                 Text(
                     text = "Chat",
-                    modifier = Modifier.alignByBaseline(),
-                    style = MaterialTheme.typography.headlineLarge,
+                    modifier = Modifier.graphicsLayer { alpha = chatAlpha },
+                    style = baseStyle,
                     color = MaterialTheme.colorScheme.onSurface,
                     fontWeight = FontWeight.Medium,
                     maxLines = 1,
@@ -349,15 +344,8 @@ private fun ConversationsTopBar(
                 if (suffixAlpha > 0.02f) {
                     Text(
                         text = "s",
-                        modifier = Modifier
-                            .alignByBaseline()
-                            .graphicsLayer {
-                                alpha = suffixAlpha
-                                val scale = 0.9f + 0.1f * suffixAlpha
-                                scaleX = scale
-                                scaleY = scale
-                            },
-                        style = MaterialTheme.typography.headlineLarge,
+                        modifier = Modifier.graphicsLayer { alpha = suffixAlpha },
+                        style = baseStyle,
                         color = MaterialTheme.colorScheme.onSurface,
                         fontWeight = FontWeight.Medium,
                         maxLines = 1,
