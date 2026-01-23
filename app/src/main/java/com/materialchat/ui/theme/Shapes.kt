@@ -43,10 +43,10 @@ object MessageBubbleShapes {
      * Very rounded with a small corner on top-right to indicate origin.
      */
     val UserBubble = RoundedCornerShape(
-        topStart = 28.dp,
-        topEnd = 6.dp,
-        bottomStart = 28.dp,
-        bottomEnd = 28.dp
+        topStart = 24.dp,
+        topEnd = 8.dp,
+        bottomStart = 24.dp,
+        bottomEnd = 24.dp
     )
 
     /**
@@ -54,17 +54,17 @@ object MessageBubbleShapes {
      * Very rounded with a small corner on top-left to indicate origin.
      */
     val AssistantBubble = RoundedCornerShape(
-        topStart = 6.dp,
-        topEnd = 28.dp,
-        bottomStart = 28.dp,
-        bottomEnd = 28.dp
+        topStart = 8.dp,
+        topEnd = 24.dp,
+        bottomStart = 24.dp,
+        bottomEnd = 24.dp
     )
 
     /**
      * System message bubble shape.
      * Fully rounded corners for neutral appearance.
      */
-    val SystemBubble = RoundedCornerShape(24.dp)
+    val SystemBubble = RoundedCornerShape(20.dp)
 
     /**
      * Continuation message shape (for messages in a sequence).
@@ -78,29 +78,29 @@ object MessageBubbleShapes {
     object Grouped {
         // First message in a group (has tail corner)
         val UserFirst = RoundedCornerShape(
-            topStart = 28.dp, topEnd = 6.dp,
-            bottomStart = 28.dp, bottomEnd = 6.dp
+            topStart = 24.dp, topEnd = 8.dp,
+            bottomStart = 24.dp, bottomEnd = 8.dp
         )
         val UserMiddle = RoundedCornerShape(
-            topStart = 28.dp, topEnd = 6.dp,
-            bottomStart = 28.dp, bottomEnd = 6.dp
+            topStart = 24.dp, topEnd = 8.dp,
+            bottomStart = 24.dp, bottomEnd = 8.dp
         )
         val UserLast = RoundedCornerShape(
-            topStart = 28.dp, topEnd = 6.dp,
-            bottomStart = 28.dp, bottomEnd = 28.dp
+            topStart = 24.dp, topEnd = 8.dp,
+            bottomStart = 24.dp, bottomEnd = 24.dp
         )
         
         val AssistantFirst = RoundedCornerShape(
-            topStart = 6.dp, topEnd = 28.dp,
-            bottomStart = 6.dp, bottomEnd = 28.dp
+            topStart = 8.dp, topEnd = 24.dp,
+            bottomStart = 8.dp, bottomEnd = 24.dp
         )
         val AssistantMiddle = RoundedCornerShape(
-            topStart = 6.dp, topEnd = 28.dp,
-            bottomStart = 6.dp, bottomEnd = 28.dp
+            topStart = 8.dp, topEnd = 24.dp,
+            bottomStart = 8.dp, bottomEnd = 24.dp
         )
         val AssistantLast = RoundedCornerShape(
-            topStart = 6.dp, topEnd = 28.dp,
-            bottomStart = 28.dp, bottomEnd = 28.dp
+            topStart = 8.dp, topEnd = 24.dp,
+            bottomStart = 24.dp, bottomEnd = 24.dp
         )
     }
 }

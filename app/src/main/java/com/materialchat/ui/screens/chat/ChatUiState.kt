@@ -92,8 +92,19 @@ sealed interface ChatUiState {
 data class MessageUiItem(
     val message: Message,
     val isLastAssistantMessage: Boolean = false,
-    val showActions: Boolean = false
+    val showActions: Boolean = false,
+    val groupPosition: MessageGroupPosition = MessageGroupPosition.Single
 )
+
+/**
+ * Indicates where a message sits within a consecutive group from the same sender.
+ */
+enum class MessageGroupPosition {
+    Single,
+    First,
+    Middle,
+    Last
+}
 
 /**
  * Events that can occur on the Chat screen.

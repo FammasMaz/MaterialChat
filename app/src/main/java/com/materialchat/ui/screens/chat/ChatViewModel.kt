@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.materialchat.data.local.preferences.AppPreferences
 import com.materialchat.domain.model.AiModel
 import com.materialchat.domain.model.Attachment
+import com.materialchat.domain.model.Message
 import com.materialchat.domain.model.MessageRole
 import com.materialchat.domain.model.StreamingState
 import com.materialchat.domain.usecase.ExportConversationUseCase
@@ -27,6 +28,9 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import kotlin.math.abs
+
+private const val MESSAGE_GROUP_TIME_WINDOW_MS = 5 * 60 * 1000L
 
 /**
  * ViewModel for the Chat screen.
@@ -143,7 +147,8 @@ class ChatViewModel @Inject constructor(
                                 isLastAssistantMessage = index == lastAssistantIndex &&
                                         message.role == MessageRole.ASSISTANT,
                                 showActions = message.role == MessageRole.ASSISTANT ||
-                                        message.role == MessageRole.USER
+                                        message.role == MessageRole.USER,
+                                groupPosition = resolveGroupPosition(messages, index)
                             )
                         }
 
@@ -214,6 +219,41 @@ class ChatViewModel @Inject constructor(
         if (currentState is ChatUiState.Success) {
             _uiState.value = currentState.copy(inputText = text)
         }
+    }
+
+    private fun resolveGroupPosition(
+        messages: List<Message>,
+        index: Int
+    ): MessageGroupPosition {
+        val message = messages[index]
+        if (message.role == MessageRole.SYSTEM) {
+            return MessageGroupPosition.Single
+        }
+
+        val previous = messages.getOrNull(index - 1)
+        val next = messages.getOrNull(index + 1)
+
+        val groupedWithPrevious = previous?.let { isGroupedMessage(message, it) } ?: false
+        val groupedWithNext = next?.let { isGroupedMessage(next, message) } ?: false
+
+        return when {
+            groupedWithPrevious && groupedWithNext -> MessageGroupPosition.Middle
+            groupedWithPrevious -> MessageGroupPosition.Last
+            groupedWithNext -> MessageGroupPosition.First
+            else -> MessageGroupPosition.Single
+        }
+    }
+
+    private fun isGroupedMessage(
+        current: Message,
+        other: Message
+    ): Boolean {
+        if (current.role != other.role || current.role == MessageRole.SYSTEM) {
+            return false
+        }
+
+        val timeGap = abs(current.createdAt - other.createdAt)
+        return timeGap <= MESSAGE_GROUP_TIME_WINDOW_MS
     }
 
     /**

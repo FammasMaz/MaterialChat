@@ -10,7 +10,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
@@ -19,6 +18,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -65,16 +65,17 @@ fun StreamingIndicator(
         repeat(3) { index ->
             // Each dot offset by 1/3 of the cycle for wave effect
             val dotPhase = phase + (index * 2.0 * Math.PI / 3.0).toFloat()
-            
-            // Full sine wave for continuous smooth motion, shifted up
-            val bounceY = sin(dotPhase.toDouble()).toFloat() * -4f - 10f
+            val wave = sin(dotPhase.toDouble()).toFloat()
+            val scale = 0.85f + (wave + 1f) * 0.075f
+            val alpha = 0.5f + (wave + 1f) * 0.25f
             
             Box(
                 modifier = Modifier
                     .size(dotSize)
-                    .offset(y = bounceY.dp)
+                    .scale(scale)
+                    .alpha(alpha)
                     .background(
-                        color = color.copy(alpha = 0.7f),
+                        color = color,
                         shape = CircleShape
                     )
             )

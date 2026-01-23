@@ -40,6 +40,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontStyle
@@ -52,6 +53,7 @@ import com.materialchat.domain.model.Attachment
 import com.materialchat.domain.model.MessageRole
 import com.materialchat.ui.components.MarkdownText
 import com.materialchat.ui.screens.chat.MessageUiItem
+import com.materialchat.ui.screens.chat.MessageGroupPosition
 import com.materialchat.ui.theme.MessageBubbleShapes
 
 /**
@@ -81,7 +83,12 @@ fun MessageBubble(
     val isAssistant = message.role == MessageRole.ASSISTANT
     val isSystem = message.role == MessageRole.SYSTEM
 
-    val bubbleStyle = getBubbleStyle(isUser, isAssistant, isSystem)
+    val bubbleStyle = getBubbleStyle(
+        isUser = isUser,
+        isAssistant = isAssistant,
+        isSystem = isSystem,
+        groupPosition = messageItem.groupPosition
+    )
 
     val alignment = when {
         isUser -> Alignment.CenterEnd
@@ -110,8 +117,8 @@ fun MessageBubble(
             ) {
                 Column(
                     modifier = Modifier.padding(
-                        horizontal = 12.dp,
-                        vertical = 8.dp
+                        horizontal = 14.dp,
+                        vertical = 10.dp
                     )
                 ) {
                     // Thinking content (collapsible for assistant messages)
@@ -215,26 +222,41 @@ private data class BubbleStyle(
 private fun getBubbleStyle(
     isUser: Boolean,
     isAssistant: Boolean,
-    isSystem: Boolean
+    isSystem: Boolean,
+    groupPosition: MessageGroupPosition
 ): BubbleStyle {
+    val configuration = LocalConfiguration.current
+    val maxBubbleWidth = (configuration.screenWidthDp * 0.82f).dp
+    val maxSystemWidth = (configuration.screenWidthDp * 0.7f).dp
+
     return when {
         isUser -> BubbleStyle(
-            shape = MessageBubbleShapes.UserBubble,
+            shape = when (groupPosition) {
+                MessageGroupPosition.First -> MessageBubbleShapes.Grouped.UserFirst
+                MessageGroupPosition.Middle -> MessageBubbleShapes.Grouped.UserMiddle
+                MessageGroupPosition.Last -> MessageBubbleShapes.Grouped.UserLast
+                MessageGroupPosition.Single -> MessageBubbleShapes.UserBubble
+            },
             backgroundColor = MaterialTheme.colorScheme.primaryContainer,
             textColor = MaterialTheme.colorScheme.onPrimaryContainer,
-            maxWidth = 340.dp
+            maxWidth = maxBubbleWidth
         )
         isAssistant -> BubbleStyle(
-            shape = MessageBubbleShapes.AssistantBubble,
-            backgroundColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+            shape = when (groupPosition) {
+                MessageGroupPosition.First -> MessageBubbleShapes.Grouped.AssistantFirst
+                MessageGroupPosition.Middle -> MessageBubbleShapes.Grouped.AssistantMiddle
+                MessageGroupPosition.Last -> MessageBubbleShapes.Grouped.AssistantLast
+                MessageGroupPosition.Single -> MessageBubbleShapes.AssistantBubble
+            },
+            backgroundColor = MaterialTheme.colorScheme.surfaceContainer,
             textColor = MaterialTheme.colorScheme.onSurface,
-            maxWidth = 340.dp
+            maxWidth = maxBubbleWidth
         )
         else -> BubbleStyle(
             shape = MessageBubbleShapes.SystemBubble,
-            backgroundColor = MaterialTheme.colorScheme.tertiaryContainer,
-            textColor = MaterialTheme.colorScheme.onTertiaryContainer,
-            maxWidth = 280.dp
+            backgroundColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+            textColor = MaterialTheme.colorScheme.onSurface,
+            maxWidth = maxSystemWidth
         )
     }
 }

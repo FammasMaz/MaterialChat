@@ -23,7 +23,7 @@ import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
@@ -450,9 +450,7 @@ private fun ChatContent(
             bottomStart = 0.dp,
             bottomEnd = 0.dp
         ),
-        color = MaterialTheme.colorScheme.surfaceContainerLowest,
-        shadowElevation = 4.dp,
-        tonalElevation = 1.dp
+        color = MaterialTheme.colorScheme.surfaceContainerLow
     ) {
         Column(
             modifier = Modifier
@@ -507,12 +505,19 @@ private fun MessageList(
             top = 8.dp,
             bottom = 8.dp
         ),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+        verticalArrangement = Arrangement.spacedBy(0.dp)
     ) {
-        items(
+        itemsIndexed(
             items = messages,
-            key = { it.message.id }
-        ) { messageItem ->
+            key = { _, item -> item.message.id }
+        ) { _, messageItem ->
+            val topSpacing = when (messageItem.groupPosition) {
+                MessageGroupPosition.Middle,
+                MessageGroupPosition.Last -> 2.dp
+                MessageGroupPosition.First,
+                MessageGroupPosition.Single -> 10.dp
+            }
+
             MessageBubble(
                 messageItem = messageItem,
                 onCopy = { onCopyMessage(messageItem.message.content) },
@@ -520,7 +525,8 @@ private fun MessageList(
                     { onRegenerateResponse() }
                 } else {
                     null
-                }
+                },
+                modifier = Modifier.padding(top = topSpacing)
             )
         }
     }
