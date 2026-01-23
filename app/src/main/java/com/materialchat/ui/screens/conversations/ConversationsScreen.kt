@@ -308,22 +308,20 @@ private fun ConversationsTopBar(
             AnimatedContent(
                 targetState = isCollapsed,
                 transitionSpec = {
-                    val springSpec = spring(
+                    val scaleSpec = spring<Float>(
                         dampingRatio = Spring.DampingRatioMediumBouncy,
                         stiffness = Spring.StiffnessMedium
                     )
-                    val sizeTransform = SizeTransform(clip = false, sizeAnimationSpec = { _, _ -> springSpec })
-                    if (targetState) {
-                        (fadeIn() + scaleIn(initialScale = 0.9f, animationSpec = springSpec)) togetherWith
-                            (fadeOut() + scaleOut(targetScale = 1.05f, animationSpec = springSpec)) using sizeTransform
-                    } else {
-                        (fadeIn() + scaleIn(initialScale = 0.95f, animationSpec = springSpec)) togetherWith
-                            (fadeOut() + scaleOut(targetScale = 0.92f, animationSpec = springSpec)) using sizeTransform
-                    }
+                    val sizeTransform = SizeTransform(clip = false)
+                    val enter = fadeIn(animationSpec = scaleSpec) +
+                        scaleIn(initialScale = 0.92f, animationSpec = scaleSpec)
+                    val exit = fadeOut(animationSpec = scaleSpec) +
+                        scaleOut(targetScale = 1.05f, animationSpec = scaleSpec)
+                    enter togetherWith exit using sizeTransform
                 },
                 contentAlignment = Alignment.BottomStart,
                 label = "titleMorph"
-            ) { collapsed ->
+            ) { collapsed: Boolean ->
                 if (collapsed) {
                     Text(
                         text = "Chats",
