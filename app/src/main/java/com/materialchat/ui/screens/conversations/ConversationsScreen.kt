@@ -6,6 +6,8 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -73,6 +75,7 @@ import androidx.compose.runtime.setValue
 import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
@@ -81,6 +84,8 @@ import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.layout.layout
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalDensity
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -96,6 +101,7 @@ import com.materialchat.ui.screens.search.SearchViewModel
 import com.materialchat.ui.screens.search.components.ChatSearchBar
 import com.materialchat.ui.screens.search.components.SearchResultItem
 import com.materialchat.ui.theme.CustomShapes
+import kotlin.math.roundToInt
 
 /**
  * Main conversations screen showing the list of all conversations.
@@ -303,12 +309,62 @@ private fun ConversationsTopBar(
     val iconRowHeight = 48.dp
     val collapseFraction = scrollBehavior.state.collapsedFraction.coerceIn(0f, 1f)
     val barHeight = expandedHeight - (expandedHeight - collapsedHeight) * collapseFraction
-    val titleScale = 1f - 0.22f * collapseFraction
     val expandedTitleOffset = iconRowHeight + 20.dp
     val collapsedTitleOffset = 6.dp
-    val titleOffset = expandedTitleOffset - (expandedTitleOffset - collapsedTitleOffset) * collapseFraction
-    val materialAlpha = (1f - collapseFraction * 1.25f).coerceIn(0f, 1f)
-    val suffixAlpha = ((collapseFraction - 0.2f) / 0.8f).coerceIn(0f, 1f)
+    val titleOffsetTarget = expandedTitleOffset -
+        (expandedTitleOffset - collapsedTitleOffset) * collapseFraction
+    val titleScaleTarget = 1f - 0.22f * collapseFraction
+    val materialWidthTarget = (1f - collapseFraction * 1.25f).coerceIn(0f, 1f)
+    val suffixWidthTarget = ((collapseFraction - 0.2f) / 0.8f).coerceIn(0f, 1f)
+
+    val titleOffset by animateDpAsState(
+        targetValue = titleOffsetTarget,
+        animationSpec = spring<Dp>(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMediumLow
+        ),
+        label = "titleOffset"
+    )
+    val titleScale by animateFloatAsState(
+        targetValue = titleScaleTarget,
+        animationSpec = spring<Float>(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMediumLow
+        ),
+        label = "titleScale"
+    )
+    val materialWidth by animateFloatAsState(
+        targetValue = materialWidthTarget,
+        animationSpec = spring<Float>(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMediumLow
+        ),
+        label = "materialWidth"
+    )
+    val materialAlpha by animateFloatAsState(
+        targetValue = materialWidthTarget,
+        animationSpec = spring<Float>(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMediumLow
+        ),
+        label = "materialAlpha"
+    )
+    val suffixWidth by animateFloatAsState(
+        targetValue = suffixWidthTarget,
+        animationSpec = spring<Float>(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMediumLow
+        ),
+        label = "suffixWidth"
+    )
+    val suffixAlpha by animateFloatAsState(
+        targetValue = suffixWidthTarget,
+        animationSpec = spring<Float>(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMediumLow
+        ),
+        label = "suffixAlpha"
+    )
 
     val density = LocalDensity.current
     SideEffect {
@@ -359,18 +415,19 @@ private fun ConversationsTopBar(
                     },
                 verticalAlignment = Alignment.Bottom
             ) {
-                if (materialAlpha > 0.02f) {
-                    Text(
-                        text = "material",
-                        modifier = Modifier.graphicsLayer { alpha = materialAlpha },
-                        style = MaterialTheme.typography.headlineLarge,
-                        color = MaterialTheme.colorScheme.primary,
-                        fontWeight = FontWeight.Bold,
-                        fontStyle = FontStyle.Italic,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
+                Text(
+                    text = "material",
+                    modifier = Modifier
+                        .clipToBounds()
+                        .shrinkWidth(materialWidth)
+                        .graphicsLayer { alpha = materialAlpha.coerceIn(0f, 1f) },
+                    style = MaterialTheme.typography.headlineLarge,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold,
+                    fontStyle = FontStyle.Italic,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
                 Text(
                     text = "Chat",
                     style = MaterialTheme.typography.headlineLarge,
@@ -379,19 +436,28 @@ private fun ConversationsTopBar(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
-                if (suffixAlpha > 0.02f) {
-                    Text(
-                        text = "s",
-                        modifier = Modifier.graphicsLayer { alpha = suffixAlpha },
-                        style = MaterialTheme.typography.headlineLarge,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        fontWeight = FontWeight.Medium,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
+                Text(
+                    text = "s",
+                    modifier = Modifier
+                        .clipToBounds()
+                        .shrinkWidth(suffixWidth)
+                        .graphicsLayer { alpha = suffixAlpha.coerceIn(0f, 1f) },
+                    style = MaterialTheme.typography.headlineLarge,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    fontWeight = FontWeight.Medium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
             }
         }
+    }
+}
+
+private fun Modifier.shrinkWidth(factor: Float): Modifier = layout { measurable, constraints ->
+    val placeable = measurable.measure(constraints)
+    val width = (placeable.width * factor.coerceIn(0f, 1f)).roundToInt()
+    layout(width, placeable.height) {
+        placeable.placeRelative(0, 0)
     }
 }
 
