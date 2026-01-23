@@ -32,13 +32,12 @@ data class OpenAiChatRequest(
     val model: String,
     val messages: List<OpenAiMessage>,
     val stream: Boolean = true,
-    val temperature: Double = 0.7,
     @SerialName("max_tokens")
     val maxTokens: Int? = null,
-    // Thinking/reasoning parameters for providers that support it
-    val thinking: Boolean? = null,
-    @SerialName("include_reasoning")
-    val includeReasoning: Boolean? = null
+    // Reasoning effort parameter for providers that support extended thinking
+    // Values: "low", "medium", "high" - used by LiteLLM proxy and compatible APIs
+    @SerialName("reasoning_effort")
+    val reasoningEffort: String? = null
 )
 
 /**
