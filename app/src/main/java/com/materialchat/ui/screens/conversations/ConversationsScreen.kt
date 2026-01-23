@@ -360,14 +360,15 @@ private fun ConversationsTopBar(
     }
 
     Surface(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .statusBarsPadding(),
         color = MaterialTheme.colorScheme.surfaceContainer
     ) {
         Box(
             modifier = Modifier
                 .height(barHeight)
                 .padding(horizontal = 16.dp)
-                .statusBarsPadding()
         ) {
             Row(
                 modifier = Modifier
