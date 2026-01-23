@@ -111,6 +111,9 @@ class SseEventParser(
      * Parses an OpenAI stream chunk into a StreamingEvent.
      * Handles APIs that may include content and finish_reason in the same chunk.
      * Also handles APIs that put content in message field instead of delta.
+     *
+     * Note: Some APIs (like LiteLLM) send finish_reason on EVERY chunk, not just the last.
+     * We ignore finish_reason here and rely on the [DONE] marker for stream termination.
      */
     private fun parseOpenAiChunk(chunk: OpenAiStreamChunk): StreamingEvent {
         val choices = chunk.choices
@@ -122,7 +125,6 @@ class SseEventParser(
         val choice = choices.first()
         val delta = choice.delta
         val message = choice.message
-        val finishReason = choice.finishReason
 
         // Check for content in delta first (standard streaming format)
         val deltaContent = delta?.content?.takeIf { it.isNotEmpty() }
@@ -133,8 +135,7 @@ class SseEventParser(
         // Use whichever has content
         val content = deltaContent ?: messageContent
 
-        // First, check if there's content to emit (even if finish_reason is also present)
-        // Some APIs (LiteLLM, etc.) send content and finish_reason in the same chunk
+        // If there's content, emit it
         if (!content.isNullOrEmpty()) {
             return StreamingEvent.Content(
                 content = content,
@@ -142,21 +143,15 @@ class SseEventParser(
             )
         }
 
-        // No content - check for completion signal
-        if (finishReason != null) {
-            return StreamingEvent.Done(
-                finishReason = finishReason,
-                model = chunk.model
-            )
-        }
-
         // Role-only delta (first message) or empty delta
         val role = delta?.role
         if (role != null) {
-            // First chunk, return connected event
+            // First chunk with role info
             return StreamingEvent.Connected
         }
 
+        // Empty chunk - could be keep-alive or final chunk before [DONE]
+        // Don't return Done here - let the [DONE] marker handle termination
         return StreamingEvent.KeepAlive
     }
 
