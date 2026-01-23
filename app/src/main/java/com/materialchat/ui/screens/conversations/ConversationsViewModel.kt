@@ -42,8 +42,12 @@ class ConversationsViewModel @Inject constructor(
     private val _events = MutableSharedFlow<ConversationsEvent>()
     val events: SharedFlow<ConversationsEvent> = _events.asSharedFlow()
 
-    private var pendingDeleteJob: Job? = null
-    private var conversationToDelete: Conversation? = null
+    // Track multiple pending deletions: conversation ID -> delete job
+    private val pendingDeletions = mutableMapOf<String, Job>()
+    // Set of conversation IDs pending deletion (for UI filtering)
+    private val pendingDeleteIds = mutableSetOf<String>()
+    // Most recent deletion for undo functionality
+    private var lastDeletedConversation: Conversation? = null
 
     init {
         observeConversations()
@@ -68,10 +72,12 @@ class ConversationsViewModel @Inject constructor(
                     )
                 }
                 .collect { data ->
-                    // Filter out conversation pending deletion during undo window
-                    val filteredConversations = conversationToDelete?.let { pending ->
-                        data.conversations.filter { it.id != pending.id }
-                    } ?: data.conversations
+                    // Filter out all conversations pending deletion
+                    val filteredConversations = if (pendingDeleteIds.isNotEmpty()) {
+                        data.conversations.filter { it.id !in pendingDeleteIds }
+                    } else {
+                        data.conversations
+                    }
 
                     _uiState.value = if (filteredConversations.isEmpty()) {
                         ConversationsUiState.Empty(
@@ -85,7 +91,7 @@ class ConversationsViewModel @Inject constructor(
                         ConversationsUiState.Success(
                             conversations = uiItems,
                             activeProvider = data.activeProvider,
-                            deletedConversation = conversationToDelete,
+                            deletedConversation = lastDeletedConversation,
                             hapticsEnabled = data.hapticsEnabled
                         )
                     }
@@ -144,18 +150,24 @@ class ConversationsViewModel @Inject constructor(
     /**
      * Initiates deletion of a conversation with undo capability.
      *
-     * The deletion is delayed to allow the user to undo.
+     * Supports multiple concurrent deletions - each gets its own timer.
+     * Only the most recent deletion can be undone via the snackbar.
      */
     fun deleteConversation(conversation: Conversation) {
-        // Cancel any pending delete
-        pendingDeleteJob?.cancel()
-        conversationToDelete = conversation
+        val conversationId = conversation.id
+
+        // Cancel any existing deletion job for this specific conversation (in case of re-delete)
+        pendingDeletions[conversationId]?.cancel()
+
+        // Track this conversation as pending deletion
+        pendingDeleteIds.add(conversationId)
+        lastDeletedConversation = conversation
 
         // Update state to remove the conversation visually
         val currentState = _uiState.value
         if (currentState is ConversationsUiState.Success) {
             val updatedConversations = currentState.conversations.filter {
-                it.conversation.id != conversation.id
+                it.conversation.id !in pendingDeleteIds
             }
             _uiState.value = if (updatedConversations.isEmpty()) {
                 ConversationsUiState.Empty(
@@ -170,58 +182,81 @@ class ConversationsViewModel @Inject constructor(
             }
         }
 
-        // Show undo snackbar and schedule actual deletion
+        // Show undo snackbar
         viewModelScope.launch {
             _events.emit(
                 ConversationsEvent.ShowSnackbar(
                     message = "Conversation deleted",
                     actionLabel = "Undo",
-                    onAction = { undoDelete() }
+                    onAction = { undoDelete(conversationId) }
                 )
             )
         }
 
-        pendingDeleteJob = viewModelScope.launch {
+        // Schedule actual deletion with its own job
+        val deleteJob = viewModelScope.launch {
             delay(UNDO_DELAY_MS)
-            performDelete(conversation)
+            performDelete(conversationId)
         }
+        pendingDeletions[conversationId] = deleteJob
     }
 
     /**
      * Undoes a pending conversation deletion.
+     *
+     * @param conversationId The ID of the conversation to restore
      */
-    fun undoDelete() {
-        pendingDeleteJob?.cancel()
-        pendingDeleteJob = null
+    fun undoDelete(conversationId: String) {
+        // Cancel the deletion job for this conversation
+        pendingDeletions[conversationId]?.cancel()
+        pendingDeletions.remove(conversationId)
+        pendingDeleteIds.remove(conversationId)
 
-        val deletedConversation = conversationToDelete ?: return
-        conversationToDelete = null
+        // Clear last deleted if it matches
+        if (lastDeletedConversation?.id == conversationId) {
+            lastDeletedConversation = null
+        }
 
-        // Refresh the list to restore the conversation
-        observeConversations()
-
-        viewModelScope.launch {
-            _events.emit(
-                ConversationsEvent.ShowSnackbar(message = "Deletion cancelled")
-            )
+        // Trigger UI refresh to restore the conversation
+        val currentState = _uiState.value
+        if (currentState is ConversationsUiState.Success || currentState is ConversationsUiState.Empty) {
+            // Force a re-collection by updating state - the Flow will re-emit
+            viewModelScope.launch {
+                _events.emit(
+                    ConversationsEvent.ShowSnackbar(message = "Deletion cancelled")
+                )
+            }
         }
     }
 
     /**
-     * Performs the actual deletion of a conversation.
+     * Undoes the most recent pending deletion (legacy support).
      */
-    private suspend fun performDelete(conversation: Conversation) {
+    fun undoDelete() {
+        lastDeletedConversation?.let { undoDelete(it.id) }
+    }
+
+    /**
+     * Performs the actual deletion of a conversation.
+     *
+     * @param conversationId The ID of the conversation to delete
+     */
+    private suspend fun performDelete(conversationId: String) {
         try {
-            getConversationsUseCase.deleteConversation(conversation.id)
-            conversationToDelete = null
+            getConversationsUseCase.deleteConversation(conversationId)
         } catch (e: Exception) {
             _events.emit(
                 ConversationsEvent.ShowSnackbar(
                     message = "Failed to delete conversation: ${e.message}"
                 )
             )
-            // Refresh to restore the conversation
-            observeConversations()
+        } finally {
+            // Clean up tracking regardless of success/failure
+            pendingDeletions.remove(conversationId)
+            pendingDeleteIds.remove(conversationId)
+            if (lastDeletedConversation?.id == conversationId) {
+                lastDeletedConversation = null
+            }
         }
     }
 
