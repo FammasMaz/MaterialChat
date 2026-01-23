@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -30,6 +31,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Add
@@ -45,6 +47,7 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -105,6 +108,13 @@ fun MessageInput(
     hapticsEnabled: Boolean = true
 ) {
     val haptics = rememberHapticFeedback()
+    val textScrollState = rememberScrollState()
+
+    LaunchedEffect(inputText) {
+        if (textScrollState.maxValue > 0) {
+            textScrollState.scrollTo(textScrollState.maxValue)
+        }
+    }
 
     // M3 Expressive: Transparent container, edge-to-edge with nav bar padding
     Column(
@@ -190,8 +200,8 @@ fun MessageInput(
             
             Surface(
                 modifier = pillModifier,
-                shape = RoundedCornerShape(24.dp),
-                color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                shape = CustomShapes.MessageInputContainer,
+                color = MaterialTheme.colorScheme.surfaceContainer,
             ) {
                 BasicTextField(
                     value = inputText,
@@ -199,11 +209,25 @@ fun MessageInput(
                     enabled = !isStreaming,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 14.dp),
+                        .heightIn(min = 48.dp, max = 160.dp)
+                        .verticalScroll(textScrollState)
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
                     textStyle = MaterialTheme.typography.bodyLarge.copy(
                         color = MaterialTheme.colorScheme.onSurface
                     ),
                     cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                    maxLines = 6,
+                    minLines = 1,
+                    keyboardOptions = KeyboardOptions(
+                        imeAction = ImeAction.Send
+                    ),
+                    keyboardActions = KeyboardActions(
+                        onSend = {
+                            if (canSend) {
+                                onSend()
+                            }
+                        }
+                    ),
                     decorationBox = { innerTextField ->
                         Box {
                             if (inputText.isEmpty()) {
