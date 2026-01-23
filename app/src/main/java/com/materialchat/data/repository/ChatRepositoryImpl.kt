@@ -69,6 +69,7 @@ class ChatRepositoryImpl @Inject constructor(
             apiKey = apiKey,
             systemPrompt = systemPrompt
         ).collect { event ->
+            android.util.Log.d("ChatRepository", "Received event: $event")
             when (event) {
                 is StreamingEvent.Connected -> {
                     // Already emitted Starting state
@@ -77,6 +78,7 @@ class ChatRepositoryImpl @Inject constructor(
                 is StreamingEvent.Content -> {
                     accumulatedContent.append(event.content)
                     event.thinking?.let { accumulatedThinking.append(it) }
+                    android.util.Log.d("ChatRepository", "Accumulated content: ${accumulatedContent.length} chars")
                     emit(StreamingState.Streaming(
                         content = accumulatedContent.toString(),
                         thinkingContent = accumulatedThinking.toString().takeIf { it.isNotEmpty() },
@@ -85,6 +87,7 @@ class ChatRepositoryImpl @Inject constructor(
                 }
 
                 is StreamingEvent.Done -> {
+                    android.util.Log.d("ChatRepository", "Stream done, final content: ${accumulatedContent.length} chars")
                     emit(StreamingState.Completed(
                         finalContent = accumulatedContent.toString(),
                         finalThinkingContent = accumulatedThinking.toString().takeIf { it.isNotEmpty() },
@@ -93,6 +96,7 @@ class ChatRepositoryImpl @Inject constructor(
                 }
 
                 is StreamingEvent.Error -> {
+                    android.util.Log.e("ChatRepository", "Stream error: ${event.message}")
                     emit(StreamingState.Error(
                         error = Exception(event.message),
                         partialContent = accumulatedContent.toString().takeIf { it.isNotEmpty() },

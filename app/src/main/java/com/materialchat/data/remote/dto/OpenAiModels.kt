@@ -34,7 +34,11 @@ data class OpenAiChatRequest(
     val stream: Boolean = true,
     val temperature: Double = 0.7,
     @SerialName("max_tokens")
-    val maxTokens: Int? = null
+    val maxTokens: Int? = null,
+    // Thinking/reasoning parameters for providers that support it
+    val thinking: Boolean? = null,
+    @SerialName("include_reasoning")
+    val includeReasoning: Boolean? = null
 )
 
 /**

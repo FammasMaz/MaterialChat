@@ -126,7 +126,9 @@ class ChatApiClient(
             model = model,
             messages = openAiMessages,
             stream = true,
-            temperature = temperature
+            temperature = temperature,
+            thinking = true,  // Request thinking/reasoning if supported
+            includeReasoning = true
         )
 
         val requestBody = json.encodeToString(request)
