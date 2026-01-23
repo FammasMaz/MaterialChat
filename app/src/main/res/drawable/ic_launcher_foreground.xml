@@ -5,54 +5,44 @@
     android:viewportWidth="108"
     android:viewportHeight="108">
     
-    <!-- 
+    <!--
     MaterialChat Adaptive Icon Foreground
-    
-    Adaptive icon guidelines:
-    - Viewport: 108dp x 108dp  
-    - Safe zone: 66dp circle centered at (54, 54)
-    - Content bounds: 21dp to 87dp
-    
-    Design: Chat bubble with three dots, Google Messages inspired
-    Bubble made larger and centered accounting for tail visual weight
+
+    Design: Warm, friendly chat bubble with sparkle accent
+    Safe zone: 66dp circle centered at (54, 54)
+    Content bounds: 21dp to 87dp
     -->
-    
-    <!-- Outer ring - centered at 54,54, radius 30 (within safe zone) -->
+
+    <!-- Sparkle accent -->
     <path
-        android:fillColor="#D4A574"
-        android:pathData="M54,54m-30,0a30,30 0,1 1,60 0a30,30 0,1 1,-60 0" />
-    
-    <!-- Inner cream circle - radius 25 -->
+        android:fillColor="#D9824A"
+        android:pathData="M72,24 L78,30 L72,36 L66,30 Z" />
+
+    <!-- Chat bubble -->
     <path
-        android:fillColor="#FFF3E0"
-        android:pathData="M54,54m-25,0a25,25 0,1 1,50 0a25,25 0,1 1,-50 0" />
-    
-    <!-- Chat bubble - larger size, shifted right slightly to account for tail -->
-    <path
-        android:fillColor="#5D4037"
-        android:pathData="M56,36
-                         C44,36 32,44 32,53
-                         C32,58 34.5,62.5 38.5,66
-                         L35,75
-                         L46,70
-                         C49,71 52.5,71.5 56,71.5
-                         C68,71.5 78,63 78,53
-                         C78,44 68,36 56,36
+        android:fillColor="#5A3A2C"
+        android:pathData="M38,38
+                         H70
+                         C75,38 79,42 79,47
+                         V59
+                         C79,64 75,68 70,68
+                         H53
+                         L45,76
+                         L46,68
+                         H38
+                         C33,68 29,64 29,59
+                         V47
+                         C29,42 33,38 38,38
                          Z" />
 
-    <!-- Three dots - horizontally centered in bubble, slightly larger -->
-    <!-- Left dot -->
+    <!-- Three dots -->
     <path
-        android:fillColor="#FFF3E0"
-        android:pathData="M46,53m-3.5,0a3.5,3.5 0,1 1,7 0a3.5,3.5 0,1 1,-7 0" />
-    
-    <!-- Center dot -->
+        android:fillColor="#FDF7F1"
+        android:pathData="M48,53m-3,0a3,3 0,1 1,6 0a3,3 0,1 1,-6 0" />
     <path
-        android:fillColor="#FFF3E0"
-        android:pathData="M56,53m-3.5,0a3.5,3.5 0,1 1,7 0a3.5,3.5 0,1 1,-7 0" />
-    
-    <!-- Right dot -->
+        android:fillColor="#FDF7F1"
+        android:pathData="M58,53m-3,0a3,3 0,1 1,6 0a3,3 0,1 1,-6 0" />
     <path
-        android:fillColor="#FFF3E0"
-        android:pathData="M66,53m-3.5,0a3.5,3.5 0,1 1,7 0a3.5,3.5 0,1 1,-7 0" />
+        android:fillColor="#FDF7F1"
+        android:pathData="M68,53m-3,0a3,3 0,1 1,6 0a3,3 0,1 1,-6 0" />
 </vector>

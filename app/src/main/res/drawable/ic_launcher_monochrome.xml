@@ -5,22 +5,46 @@
     android:viewportWidth="108"
     android:viewportHeight="108">
     
-    <!-- 
+    <!--
     MaterialChat Monochrome Icon for Themed Icons (Android 13+)
     Single color version - system will tint this based on wallpaper
-    Matches foreground bubble size and position
     -->
-    
-    <!-- Chat bubble with tail -->
+
+    <!-- Sparkle accent -->
     <path
         android:fillColor="#000000"
-        android:pathData="M56,36
-                         C44,36 32,44 32,53
-                         C32,58 34.5,62.5 38.5,66
-                         L35,75
-                         L46,70
-                         C49,71 52.5,71.5 56,71.5
-                         C68,71.5 78,63 78,53
-                         C78,44 68,36 56,36
+        android:pathData="M72,24 L78,30 L72,36 L66,30 Z" />
+
+    <!-- Chat bubble with cut-out dots -->
+    <path
+        android:fillColor="#000000"
+        android:fillType="evenOdd"
+        android:pathData="M38,38
+                         H70
+                         C75,38 79,42 79,47
+                         V59
+                         C79,64 75,68 70,68
+                         H53
+                         L45,76
+                         L46,68
+                         H38
+                         C33,68 29,64 29,59
+                         V47
+                         C29,42 33,38 38,38
+                         Z
+                         M48,53
+                         m-3,0
+                         a3,3 0,1 0,6 0
+                         a3,3 0,1 0,-6 0
+                         Z
+                         M58,53
+                         m-3,0
+                         a3,3 0,1 0,6 0
+                         a3,3 0,1 0,-6 0
+                         Z
+                         M68,53
+                         m-3,0
+                         a3,3 0,1 0,6 0
+                         a3,3 0,1 0,-6 0
                          Z" />
 </vector>
