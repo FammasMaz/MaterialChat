@@ -149,11 +149,12 @@ fun SwipeToDeleteBox(
     }
 
     val swipeActive = animatedOffsetX.absoluteValue > 1f || isDragging
-    val shapeProgress by animateFloatAsState(
+    val shapeProgressRaw by animateFloatAsState(
         targetValue = if (swipeActive) 1f else 0f,
         animationSpec = ExpressiveMotion.Spatial.shapeMorph(),
         label = "shapeProgress"
     )
+    val shapeProgress = shapeProgressRaw.coerceIn(0f, 1f) // Avoid negative corner sizes on overshoot.
     val currentShape = RoundedCornerShape(
         topStart = lerpDp(baseCorners.topStart, activeCorners.topStart, shapeProgress),
         topEnd = lerpDp(baseCorners.topEnd, activeCorners.topEnd, shapeProgress),
