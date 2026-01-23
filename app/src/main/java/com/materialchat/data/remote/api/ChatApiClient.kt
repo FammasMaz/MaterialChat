@@ -133,7 +133,7 @@ class ChatApiClient(
             .toRequestBody(JSON_MEDIA_TYPE)
 
         // Build HTTP request
-        val url = "${baseUrl.trimEnd('/')}/v1/chat/completions"
+        val url = "${normalizeBaseUrl(baseUrl)}/v1/chat/completions"
         val httpRequest = Request.Builder()
             .url(url)
             .addHeader("Authorization", "Bearer $apiKey")
@@ -470,7 +470,7 @@ class ChatApiClient(
     ): Result<Boolean> = withContext(Dispatchers.IO) {
         try {
             val url = when (provider.type) {
-                ProviderType.OPENAI_COMPATIBLE -> "${provider.baseUrl.trimEnd('/')}/v1/models"
+                ProviderType.OPENAI_COMPATIBLE -> "${normalizeBaseUrl(provider.baseUrl)}/v1/models"
                 ProviderType.OLLAMA_NATIVE -> "${provider.baseUrl.trimEnd('/')}/api/tags"
             }
 
@@ -682,6 +682,22 @@ class ChatApiClient(
          * Default timeout for streaming requests.
          */
         private const val STREAMING_TIMEOUT_SECONDS = 120L
+
+        /**
+         * Normalizes a base URL by removing trailing API version paths.
+         * This prevents duplication when the user includes /v1 in their base URL.
+         *
+         * Examples:
+         * - "https://api.example.com/v1" -> "https://api.example.com"
+         * - "https://api.example.com/v1/" -> "https://api.example.com"
+         * - "https://api.example.com" -> "https://api.example.com"
+         */
+        fun normalizeBaseUrl(url: String): String {
+            return url.trimEnd('/')
+                .removeSuffix("/v1")
+                .removeSuffix("/api")
+                .trimEnd('/')
+        }
 
         /**
          * Creates a default OkHttpClient configured for streaming.

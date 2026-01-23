@@ -69,7 +69,7 @@ class ModelListApiClient(
         apiKey: String
     ): Result<List<AiModel>> = withContext(Dispatchers.IO) {
         try {
-            val url = "${baseUrl.trimEnd('/')}/v1/models"
+            val url = "${ChatApiClient.normalizeBaseUrl(baseUrl)}/v1/models"
 
             val request = Request.Builder()
                 .url(url)

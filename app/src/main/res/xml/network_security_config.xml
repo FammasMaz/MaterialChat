@@ -1,17 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <network-security-config>
-    <!-- Allow cleartext (HTTP) for local Ollama instances -->
-    <domain-config cleartextTrafficPermitted="true">
-        <domain includeSubdomains="true">localhost</domain>
-        <domain includeSubdomains="true">127.0.0.1</domain>
-        <domain includeSubdomains="true">10.0.0.0</domain>
-        <domain includeSubdomains="true">10.0.2.2</domain>
-        <domain includeSubdomains="true">192.168.0.0</domain>
-        <domain includeSubdomains="true">172.16.0.0</domain>
-    </domain-config>
-
-    <!-- Default: require HTTPS for all other connections -->
-    <base-config cleartextTrafficPermitted="false">
+    <!--
+        Allow cleartext (HTTP) traffic for user-configured API endpoints.
+        Users explicitly configure provider URLs in settings, so they control
+        whether to use HTTP or HTTPS. This is needed for local LLM servers
+        (Ollama, LM Studio, etc.) that may run on HTTP.
+    -->
+    <base-config cleartextTrafficPermitted="true">
         <trust-anchors>
             <certificates src="system" />
         </trust-anchors>
