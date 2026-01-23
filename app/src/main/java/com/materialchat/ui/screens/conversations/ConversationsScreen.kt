@@ -101,6 +101,7 @@ import com.materialchat.ui.screens.search.SearchViewModel
 import com.materialchat.ui.screens.search.components.ChatSearchBar
 import com.materialchat.ui.screens.search.components.SearchResultItem
 import com.materialchat.ui.theme.CustomShapes
+import com.materialchat.ui.theme.ExpressiveMotion
 import kotlin.math.roundToInt
 
 /**
@@ -317,52 +318,37 @@ private fun ConversationsTopBar(
     val materialWidthTarget = (1f - collapseFraction * 1.25f).coerceIn(0f, 1f)
     val suffixWidthTarget = ((collapseFraction - 0.2f) / 0.8f).coerceIn(0f, 1f)
 
+    val spatialDpSpec = ExpressiveMotion.Spatial.container<Dp>()
+    val spatialFloatSpec = ExpressiveMotion.Spatial.container<Float>()
+    val alphaFloatSpec = ExpressiveMotion.Effects.alpha<Float>()
     val titleOffset by animateDpAsState(
         targetValue = titleOffsetTarget,
-        animationSpec = spring<Dp>(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessMediumLow
-        ),
+        animationSpec = spatialDpSpec,
         label = "titleOffset"
     )
     val titleScale by animateFloatAsState(
         targetValue = titleScaleTarget,
-        animationSpec = spring<Float>(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessMediumLow
-        ),
+        animationSpec = spatialFloatSpec,
         label = "titleScale"
     )
     val materialWidth by animateFloatAsState(
         targetValue = materialWidthTarget,
-        animationSpec = spring<Float>(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessMediumLow
-        ),
+        animationSpec = spatialFloatSpec,
         label = "materialWidth"
     )
     val materialAlpha by animateFloatAsState(
         targetValue = materialWidthTarget,
-        animationSpec = spring<Float>(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessMediumLow
-        ),
+        animationSpec = alphaFloatSpec,
         label = "materialAlpha"
     )
     val suffixWidth by animateFloatAsState(
         targetValue = suffixWidthTarget,
-        animationSpec = spring<Float>(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessMediumLow
-        ),
+        animationSpec = spatialFloatSpec,
         label = "suffixWidth"
     )
     val suffixAlpha by animateFloatAsState(
         targetValue = suffixWidthTarget,
-        animationSpec = spring<Float>(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessMediumLow
-        ),
+        animationSpec = alphaFloatSpec,
         label = "suffixAlpha"
     )
 
