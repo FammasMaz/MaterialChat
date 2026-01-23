@@ -70,7 +70,11 @@ class SendMessageUseCase @Inject constructor(
         )
         conversationRepository.addMessage(userMessage)
 
-        // Create a placeholder assistant message for streaming
+        // Get all messages for the conversation to send to the AI
+        // IMPORTANT: Get messages BEFORE adding the placeholder to avoid sending empty assistant message
+        val messages = conversationRepository.getMessages(conversationId)
+
+        // Create a placeholder assistant message for streaming (after getting messages for API)
         val assistantMessage = Message(
             conversationId = conversationId,
             role = MessageRole.ASSISTANT,
@@ -78,9 +82,6 @@ class SendMessageUseCase @Inject constructor(
             isStreaming = true
         )
         val assistantMessageId = conversationRepository.addMessage(assistantMessage)
-
-        // Get all messages for the conversation to send to the AI
-        val messages = conversationRepository.getMessages(conversationId)
 
         // Emit starting state
         emit(StreamingState.Starting)

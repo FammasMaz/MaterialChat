@@ -135,6 +135,7 @@ class ChatApiClient(
         // Build HTTP request
         val url = "${normalizeBaseUrl(baseUrl)}/v1/chat/completions"
         android.util.Log.d("ChatApiClient", "OpenAI streaming URL: $url")
+        android.util.Log.d("ChatApiClient", "OpenAI request body: ${json.encodeToString(request)}")
         val httpRequest = Request.Builder()
             .url(url)
             .addHeader("Authorization", "Bearer $apiKey")
