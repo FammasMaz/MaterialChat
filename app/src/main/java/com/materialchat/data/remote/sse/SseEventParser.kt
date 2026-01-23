@@ -135,10 +135,22 @@ class SseEventParser(
         // Use whichever has content
         val content = deltaContent ?: messageContent
 
-        // If there's content, emit it
-        if (!content.isNullOrEmpty()) {
+        // Extract thinking/reasoning from delta or message
+        // Different providers use different field names
+        val deltaThinking = delta?.thinking
+            ?: delta?.reasoning
+            ?: delta?.reasoningContent
+        val messageThinking = message?.thinking
+            ?: message?.reasoning
+            ?: message?.reasoningContent
+        val thinking = deltaThinking?.takeIf { it.isNotEmpty() }
+            ?: messageThinking?.takeIf { it.isNotEmpty() }
+
+        // If there's content or thinking, emit it
+        if (!content.isNullOrEmpty() || !thinking.isNullOrEmpty()) {
             return StreamingEvent.Content(
-                content = content,
+                content = content ?: "",
+                thinking = thinking,
                 isFirst = false
             )
         }

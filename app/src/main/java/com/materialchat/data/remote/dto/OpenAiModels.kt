@@ -133,7 +133,12 @@ data class OpenAiChoice(
 @Serializable
 data class OpenAiResponseMessage(
     val role: String? = null,
-    val content: String? = null
+    val content: String? = null,
+    // Reasoning/thinking fields used by various providers
+    val reasoning: String? = null,
+    @SerialName("reasoning_content")
+    val reasoningContent: String? = null,
+    val thinking: String? = null
 )
 
 /**
@@ -142,7 +147,12 @@ data class OpenAiResponseMessage(
 @Serializable
 data class OpenAiDelta(
     val role: String? = null,
-    val content: String? = null
+    val content: String? = null,
+    // Reasoning/thinking fields used by various providers
+    val reasoning: String? = null,
+    @SerialName("reasoning_content")
+    val reasoningContent: String? = null,
+    val thinking: String? = null
 )
 
 /**
