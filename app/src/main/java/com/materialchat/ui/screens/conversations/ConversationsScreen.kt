@@ -12,6 +12,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
+import androidx.compose.animation.SizeTransform
 import com.materialchat.ui.navigation.LocalAnimatedVisibilityScope
 import com.materialchat.ui.navigation.LocalSharedTransitionScope
 import com.materialchat.ui.navigation.SHARED_ELEMENT_FAB_TO_INPUT
@@ -77,7 +78,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -88,6 +93,7 @@ import com.materialchat.ui.components.HapticPattern
 import com.materialchat.ui.components.rememberHapticFeedback
 import com.materialchat.ui.screens.conversations.components.ConversationItem
 import com.materialchat.ui.screens.conversations.components.SwipeToDeleteBox
+import com.materialchat.ui.screens.conversations.components.SwipeCornerSpec
 import com.materialchat.ui.screens.search.SearchUiState
 import com.materialchat.ui.screens.search.SearchViewModel
 import com.materialchat.ui.screens.search.components.ChatSearchBar
@@ -297,10 +303,61 @@ private fun ConversationsTopBar(
 ) {
     LargeTopAppBar(
         title = {
-            Text(
-                text = "Chats",
-                style = MaterialTheme.typography.headlineLarge
-            )
+            val isCollapsed = scrollBehavior.state.collapsedFraction > 0.55f
+
+            AnimatedContent(
+                targetState = isCollapsed,
+                transitionSpec = {
+                    val springSpec = spring(
+                        dampingRatio = Spring.DampingRatioMediumBouncy,
+                        stiffness = Spring.StiffnessMedium
+                    )
+                    val sizeTransform = SizeTransform(clip = false, sizeAnimationSpec = { _, _ -> springSpec })
+                    if (targetState) {
+                        (fadeIn() + scaleIn(initialScale = 0.9f, animationSpec = springSpec)) togetherWith
+                            (fadeOut() + scaleOut(targetScale = 1.05f, animationSpec = springSpec)) using sizeTransform
+                    } else {
+                        (fadeIn() + scaleIn(initialScale = 0.95f, animationSpec = springSpec)) togetherWith
+                            (fadeOut() + scaleOut(targetScale = 0.92f, animationSpec = springSpec)) using sizeTransform
+                    }
+                },
+                contentAlignment = Alignment.BottomStart,
+                label = "titleMorph"
+            ) { collapsed ->
+                if (collapsed) {
+                    Text(
+                        text = "Chats",
+                        style = MaterialTheme.typography.titleLarge,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                } else {
+                    Text(
+                        text = buildAnnotatedString {
+                            withStyle(
+                                SpanStyle(
+                                    color = MaterialTheme.colorScheme.primary,
+                                    fontWeight = FontWeight.Bold,
+                                    fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
+                                )
+                            ) {
+                                append("material")
+                            }
+                            withStyle(
+                                SpanStyle(
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            ) {
+                                append("Chat")
+                            }
+                        },
+                        style = MaterialTheme.typography.headlineLarge,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
         },
         actions = {
             IconButton(onClick = onSearchClick) {
@@ -532,7 +589,6 @@ private fun ConversationList(
 ) {
     val haptics = rememberHapticFeedback()
     val cornerRadius = 20.dp
-    val activeItemShape = RoundedCornerShape(cornerRadius)
 
     LazyColumn(
         state = listState,
@@ -540,7 +596,7 @@ private fun ConversationList(
         contentPadding = PaddingValues(
             start = 16.dp,
             end = 16.dp,
-            top = 8.dp,
+            top = 16.dp,
             bottom = 88.dp // Extra padding for FAB
         ),
         verticalArrangement = Arrangement.spacedBy(0.dp)
@@ -551,28 +607,24 @@ private fun ConversationList(
         ) { index, conversationItem ->
             val isFirst = index == 0
             val isLast = index == conversations.lastIndex
-            val itemShape = when {
-                isFirst && isLast -> RoundedCornerShape(cornerRadius)
-                isFirst -> RoundedCornerShape(
-                    topStart = cornerRadius,
-                    topEnd = cornerRadius,
-                    bottomStart = 0.dp,
-                    bottomEnd = 0.dp
-                )
-                isLast -> RoundedCornerShape(
-                    topStart = 0.dp,
-                    topEnd = 0.dp,
-                    bottomStart = cornerRadius,
-                    bottomEnd = cornerRadius
-                )
-                else -> RoundedCornerShape(0.dp)
+            val baseCorners = when {
+                isFirst && isLast -> SwipeCornerSpec(cornerRadius, cornerRadius, cornerRadius, cornerRadius)
+                isFirst -> SwipeCornerSpec(cornerRadius, cornerRadius, 0.dp, 0.dp)
+                isLast -> SwipeCornerSpec(0.dp, 0.dp, cornerRadius, cornerRadius)
+                else -> SwipeCornerSpec(0.dp, 0.dp, 0.dp, 0.dp)
             }
+            val itemShape = RoundedCornerShape(
+                topStart = baseCorners.topStart,
+                topEnd = baseCorners.topEnd,
+                bottomStart = baseCorners.bottomStart,
+                bottomEnd = baseCorners.bottomEnd
+            )
 
             SwipeToDeleteBox(
                 onDelete = { onConversationDelete(conversationItem.conversation) },
                 hapticsEnabled = hapticsEnabled,
-                shape = itemShape,
-                activeShape = activeItemShape,
+                baseCorners = baseCorners,
+                activeCorners = SwipeCornerSpec(cornerRadius, cornerRadius, cornerRadius, cornerRadius),
                 modifier = Modifier
                     .fillMaxWidth()
                     .animateItem(
@@ -740,7 +792,7 @@ private fun SearchResultsList(
         contentPadding = PaddingValues(
             start = 16.dp,
             end = 16.dp,
-            top = 8.dp,
+            top = 16.dp,
             bottom = 88.dp
         ),
         verticalArrangement = Arrangement.spacedBy(8.dp)

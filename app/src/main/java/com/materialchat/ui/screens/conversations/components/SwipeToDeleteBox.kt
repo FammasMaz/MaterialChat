@@ -1,7 +1,6 @@
 package com.materialchat.ui.screens.conversations.components
 
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
@@ -10,6 +9,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material3.Icon
@@ -26,14 +26,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.materialchat.ui.components.HapticPattern
 import com.materialchat.ui.components.rememberHapticFeedback
-import com.materialchat.ui.theme.CustomShapes
 import com.materialchat.ui.theme.ExpressiveMotion
 import kotlin.math.absoluteValue
 import kotlin.math.roundToInt
@@ -50,14 +49,21 @@ import kotlin.math.roundToInt
  * @param hapticsEnabled Whether haptic feedback is enabled
  * @param content The content to display
  */
+data class SwipeCornerSpec(
+    val topStart: Dp,
+    val topEnd: Dp,
+    val bottomStart: Dp,
+    val bottomEnd: Dp
+)
+
 @Composable
 fun SwipeToDeleteBox(
     onDelete: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     hapticsEnabled: Boolean = true,
-    shape: Shape = CustomShapes.ConversationItem,
-    activeShape: Shape = CustomShapes.ConversationItem,
+    baseCorners: SwipeCornerSpec = SwipeCornerSpec(20.dp, 20.dp, 20.dp, 20.dp),
+    activeCorners: SwipeCornerSpec = SwipeCornerSpec(20.dp, 20.dp, 20.dp, 20.dp),
     content: @Composable () -> Unit
 ) {
     val density = LocalDensity.current
@@ -127,8 +133,8 @@ fun SwipeToDeleteBox(
     )
 
     // M3 Expressive: EFFECTS spring for padding (smooth)
-    val iconPadding by animateDpAsState(
-        targetValue = if (deleteProgress > 0.5f) 24.dp else 16.dp,
+    val iconPadding by animateFloatAsState(
+        targetValue = if (deleteProgress > 0.5f) 24f else 16f,
         animationSpec = ExpressiveMotion.Effects.elevation(),
         label = "iconPadding"
     )
@@ -143,7 +149,17 @@ fun SwipeToDeleteBox(
     }
 
     val swipeActive = animatedOffsetX.absoluteValue > 1f || isDragging
-    val currentShape = if (swipeActive) activeShape else shape
+    val shapeProgress by animateFloatAsState(
+        targetValue = if (swipeActive) 1f else 0f,
+        animationSpec = ExpressiveMotion.Spatial.shapeMorph(),
+        label = "shapeProgress"
+    )
+    val currentShape = RoundedCornerShape(
+        topStart = lerpDp(baseCorners.topStart, activeCorners.topStart, shapeProgress),
+        topEnd = lerpDp(baseCorners.topEnd, activeCorners.topEnd, shapeProgress),
+        bottomStart = lerpDp(baseCorners.bottomStart, activeCorners.bottomStart, shapeProgress),
+        bottomEnd = lerpDp(baseCorners.bottomEnd, activeCorners.bottomEnd, shapeProgress)
+    )
 
     Box(modifier = modifier) {
         // Background with delete icon - only show when swiping
@@ -161,7 +177,7 @@ fun SwipeToDeleteBox(
                         contentDescription = "Delete",
                         tint = iconColor,
                         modifier = Modifier
-                            .padding(end = iconPadding)
+                            .padding(end = iconPadding.dp)
                             .scale(iconScale)
                     )
                 }
@@ -209,4 +225,8 @@ fun SwipeToDeleteBox(
             content()
         }
     }
+}
+
+private fun lerpDp(start: Dp, end: Dp, fraction: Float): Dp {
+    return start + (end - start) * fraction
 }
