@@ -10,9 +10,7 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
-import androidx.compose.animation.SizeTransform
+import androidx.compose.foundation.layout.Row
 import com.materialchat.ui.navigation.LocalAnimatedVisibilityScope
 import com.materialchat.ui.navigation.LocalSharedTransitionScope
 import com.materialchat.ui.navigation.SHARED_ELEMENT_FAB_TO_INPUT
@@ -78,10 +76,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.buildAnnotatedString
-import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -303,54 +299,67 @@ private fun ConversationsTopBar(
 ) {
     LargeTopAppBar(
         title = {
-            val isCollapsed = scrollBehavior.state.collapsedFraction > 0.55f
+            val collapseFraction = scrollBehavior.state.collapsedFraction.coerceIn(0f, 1f)
+            val materialAlpha = (1f - collapseFraction * 1.4f).coerceIn(0f, 1f)
+            val suffixAlpha = ((collapseFraction - 0.35f) / 0.65f).coerceIn(0f, 1f)
+            val titleScale = 1f - 0.3f * collapseFraction
 
-            AnimatedContent(
-                targetState = isCollapsed,
-                transitionSpec = {
-                    val scaleSpec = spring<Float>(
-                        dampingRatio = Spring.DampingRatioMediumBouncy,
-                        stiffness = Spring.StiffnessMedium
-                    )
-                    val sizeTransform = SizeTransform(clip = false)
-                    val enter = fadeIn(animationSpec = scaleSpec) +
-                        scaleIn(initialScale = 0.92f, animationSpec = scaleSpec)
-                    val exit = fadeOut(animationSpec = scaleSpec) +
-                        scaleOut(targetScale = 1.05f, animationSpec = scaleSpec)
-                    enter togetherWith exit using sizeTransform
-                },
-                contentAlignment = Alignment.BottomStart,
-                label = "titleMorph"
-            ) { collapsed: Boolean ->
-                if (collapsed) {
+            Row(
+                modifier = Modifier
+                    .graphicsLayer {
+                        scaleX = titleScale
+                        scaleY = titleScale
+                    }
+                    .animateContentSize(
+                        animationSpec = spring(
+                            dampingRatio = Spring.DampingRatioMediumBouncy,
+                            stiffness = Spring.StiffnessMedium
+                        )
+                    ),
+                verticalAlignment = Alignment.Bottom
+            ) {
+                if (materialAlpha > 0.02f) {
                     Text(
-                        text = "Chats",
-                        style = MaterialTheme.typography.titleLarge,
+                        text = "material",
+                        modifier = Modifier
+                            .alignByBaseline()
+                            .graphicsLayer {
+                                alpha = materialAlpha
+                                val scale = 0.92f + 0.08f * materialAlpha
+                                scaleX = scale
+                                scaleY = scale
+                            },
+                        style = MaterialTheme.typography.headlineLarge,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.Bold,
+                        fontStyle = FontStyle.Italic,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
-                } else {
+                }
+                Text(
+                    text = "Chat",
+                    modifier = Modifier.alignByBaseline(),
+                    style = MaterialTheme.typography.headlineLarge,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    fontWeight = FontWeight.Medium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                if (suffixAlpha > 0.02f) {
                     Text(
-                        text = buildAnnotatedString {
-                            withStyle(
-                                SpanStyle(
-                                    color = MaterialTheme.colorScheme.primary,
-                                    fontWeight = FontWeight.Bold,
-                                    fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
-                                )
-                            ) {
-                                append("material")
-                            }
-                            withStyle(
-                                SpanStyle(
-                                    color = MaterialTheme.colorScheme.onSurface,
-                                    fontWeight = FontWeight.Medium
-                                )
-                            ) {
-                                append("Chat")
-                            }
-                        },
+                        text = "s",
+                        modifier = Modifier
+                            .alignByBaseline()
+                            .graphicsLayer {
+                                alpha = suffixAlpha
+                                val scale = 0.9f + 0.1f * suffixAlpha
+                                scaleX = scale
+                                scaleY = scale
+                            },
                         style = MaterialTheme.typography.headlineLarge,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        fontWeight = FontWeight.Medium,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
