@@ -3,6 +3,7 @@ package com.materialchat.ui.screens.chat.components
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
@@ -328,6 +329,11 @@ private fun ReasoningEffortSelector(
     val options = remember { ReasoningEffort.values().toList() }
     val itemAnimations = remember { options.map { Animatable(0f) } }
     val scope = rememberCoroutineScope()
+    var selectedEffort by remember { mutableStateOf(reasoningEffort) }
+
+    LaunchedEffect(reasoningEffort) {
+        selectedEffort = reasoningEffort
+    }
 
     LaunchedEffect(expanded) {
         if (expanded) {
@@ -379,7 +385,7 @@ private fun ReasoningEffortSelector(
     val cascadeStepPx = with(density) { 6.dp.toPx() }
     val menuAnchorOffset = with(density) { (48.dp + 8.dp).roundToPx() }
 
-    val isActive = reasoningEffort != ReasoningEffort.NONE
+    val isActive = selectedEffort != ReasoningEffort.NONE
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
     val buttonSize = 48.dp
@@ -463,12 +469,13 @@ private fun ReasoningEffortSelector(
                             (options.size - index - 1) * cascadeStepPx
                         ReasoningOptionPill(
                             option = option,
-                            selected = option == reasoningEffort,
+                            selected = option == selectedEffort,
                             onClick = {
-                                expanded = false
+                                selectedEffort = option
+                                onReasoningEffortChange(option)
                                 scope.launch {
-                                    delay(MaterialChatMotion.Durations.Short.toLong())
-                                    onReasoningEffortChange(option)
+                                    delay(MaterialChatMotion.Durations.Short.toLong() / 2)
+                                    expanded = false
                                 }
                             },
                             modifier = Modifier
@@ -494,19 +501,30 @@ private fun ReasoningOptionPill(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Surface(
-        onClick = onClick,
-        shape = RoundedCornerShape(999.dp),
-        color = if (selected) {
+    val containerColor by animateColorAsState(
+        targetValue = if (selected) {
             MaterialTheme.colorScheme.primaryContainer
         } else {
             MaterialTheme.colorScheme.surfaceContainerHigh
         },
-        contentColor = if (selected) {
+        animationSpec = ExpressiveMotion.SpringSpecs.ColorTransition,
+        label = "reasoningPillColor"
+    )
+    val contentColor by animateColorAsState(
+        targetValue = if (selected) {
             MaterialTheme.colorScheme.onPrimaryContainer
         } else {
             MaterialTheme.colorScheme.onSurfaceVariant
         },
+        animationSpec = ExpressiveMotion.SpringSpecs.ColorTransition,
+        label = "reasoningPillContent"
+    )
+
+    Surface(
+        onClick = onClick,
+        shape = RoundedCornerShape(999.dp),
+        color = containerColor,
+        contentColor = contentColor,
         tonalElevation = if (selected) 3.dp else 1.dp,
         shadowElevation = if (selected) 3.dp else 1.dp,
         modifier = modifier
@@ -514,7 +532,9 @@ private fun ReasoningOptionPill(
             .padding(horizontal = 6.dp)
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 18.dp, vertical = 10.dp),
+            modifier = Modifier
+                .animateContentSize(animationSpec = ExpressiveMotion.Spatial.playful())
+                .padding(horizontal = 18.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
@@ -522,7 +542,21 @@ private fun ReasoningOptionPill(
                 text = option.displayName,
                 style = MaterialTheme.typography.labelLarge
             )
-            if (selected) {
+            AnimatedVisibility(
+                visible = selected,
+                enter = scaleIn(
+                    animationSpec = ExpressiveMotion.Spatial.scale(),
+                    initialScale = 0.6f
+                ) + fadeIn(
+                    animationSpec = ExpressiveMotion.Effects.alpha()
+                ),
+                exit = scaleOut(
+                    animationSpec = ExpressiveMotion.Spatial.scale(),
+                    targetScale = 0.6f
+                ) + fadeOut(
+                    animationSpec = ExpressiveMotion.Effects.alpha()
+                )
+            ) {
                 Icon(
                     imageVector = Icons.Default.Check,
                     contentDescription = null
