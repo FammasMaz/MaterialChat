@@ -68,13 +68,18 @@ class ConversationsViewModel @Inject constructor(
                     )
                 }
                 .collect { data ->
-                    _uiState.value = if (data.conversations.isEmpty()) {
+                    // Filter out conversation pending deletion during undo window
+                    val filteredConversations = conversationToDelete?.let { pending ->
+                        data.conversations.filter { it.id != pending.id }
+                    } ?: data.conversations
+
+                    _uiState.value = if (filteredConversations.isEmpty()) {
                         ConversationsUiState.Empty(
                             hasActiveProvider = data.activeProvider != null,
                             hapticsEnabled = data.hapticsEnabled
                         )
                     } else {
-                        val uiItems = data.conversations.map { conversation ->
+                        val uiItems = filteredConversations.map { conversation ->
                             conversation.toUiItem(data.providers)
                         }
                         ConversationsUiState.Success(
