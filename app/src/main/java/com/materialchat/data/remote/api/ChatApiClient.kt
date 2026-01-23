@@ -370,7 +370,7 @@ class ChatApiClient(
         val requestBody = json.encodeToString(request)
             .toRequestBody(JSON_MEDIA_TYPE)
 
-        val url = "${baseUrl.trimEnd('/')}/v1/chat/completions"
+        val url = "${normalizeBaseUrl(baseUrl)}/v1/chat/completions"
         val httpRequest = Request.Builder()
             .url(url)
             .addHeader("Authorization", "Bearer $apiKey")
