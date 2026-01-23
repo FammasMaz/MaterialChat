@@ -14,6 +14,7 @@ import com.materialchat.domain.model.Message
 import com.materialchat.domain.model.MessageRole
 import com.materialchat.domain.model.Provider
 import com.materialchat.domain.model.ProviderType
+import com.materialchat.domain.model.ReasoningEffort
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.awaitClose
@@ -74,7 +75,8 @@ class ChatApiClient(
         model: String,
         apiKey: String?,
         systemPrompt: String? = null,
-        temperature: Double = 0.7
+        temperature: Double = 0.7,
+        reasoningEffort: ReasoningEffort = ReasoningEffort.HIGH
     ): Flow<StreamingEvent> {
         return when (provider.type) {
             ProviderType.OPENAI_COMPATIBLE -> streamOpenAiChat(
@@ -83,14 +85,16 @@ class ChatApiClient(
                 messages = messages,
                 apiKey = apiKey ?: "",
                 systemPrompt = systemPrompt,
-                temperature = temperature
+                temperature = temperature,
+                reasoningEffort = reasoningEffort
             )
             ProviderType.OLLAMA_NATIVE -> streamOllamaChat(
                 baseUrl = provider.baseUrl,
                 model = model,
                 messages = messages,
                 systemPrompt = systemPrompt,
-                temperature = temperature
+                temperature = temperature,
+                reasoningEffort = reasoningEffort
             )
         }
     }
@@ -114,7 +118,8 @@ class ChatApiClient(
         messages: List<Message>,
         apiKey: String,
         systemPrompt: String? = null,
-        temperature: Double = 0.7
+        temperature: Double = 0.7,
+        reasoningEffort: ReasoningEffort = ReasoningEffort.HIGH
     ): Flow<StreamingEvent> = callbackFlow {
         isCancelled.set(false)
 
@@ -126,7 +131,7 @@ class ChatApiClient(
             model = model,
             messages = openAiMessages,
             stream = true,
-            reasoningEffort = "high"  // Request extended thinking/reasoning if supported
+            reasoningEffort = reasoningEffort.apiValue
         )
 
         val requestBody = json.encodeToString(request)
@@ -218,7 +223,8 @@ class ChatApiClient(
         model: String,
         messages: List<Message>,
         systemPrompt: String? = null,
-        temperature: Double = 0.7
+        temperature: Double = 0.7,
+        reasoningEffort: ReasoningEffort = ReasoningEffort.HIGH
     ): Flow<StreamingEvent> = callbackFlow {
         isCancelled.set(false)
 
@@ -230,7 +236,7 @@ class ChatApiClient(
             model = model,
             messages = ollamaMessages,
             stream = true,
-            think = true,
+            think = reasoningEffort.enablesThinking,
             options = com.materialchat.data.remote.dto.OllamaOptions(
                 temperature = temperature
             )

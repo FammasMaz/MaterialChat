@@ -63,6 +63,7 @@ import androidx.core.content.FileProvider
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.materialchat.domain.model.Attachment
+import com.materialchat.domain.model.ReasoningEffort
 import com.materialchat.domain.model.StreamingState
 import com.materialchat.ui.components.HapticPattern
 import com.materialchat.ui.components.rememberHapticFeedback
@@ -313,7 +314,9 @@ fun ChatScreen(
                             PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
                         )
                     },
-                    onRemoveAttachment = { viewModel.removeAttachment(it) }
+                    onRemoveAttachment = { viewModel.removeAttachment(it) },
+                    reasoningEffort = state.reasoningEffort,
+                    onReasoningEffortChange = { viewModel.updateReasoningEffort(it) }
                 )
 
                 // Export bottom sheet
@@ -407,7 +410,9 @@ private fun ChatContent(
     onCopyMessage: (String) -> Unit,
     onRegenerateResponse: () -> Unit,
     onAttachImage: () -> Unit,
-    onRemoveAttachment: (Attachment) -> Unit
+    onRemoveAttachment: (Attachment) -> Unit,
+    reasoningEffort: ReasoningEffort,
+    onReasoningEffortChange: (ReasoningEffort) -> Unit
 ) {
     val haptics = rememberHapticFeedback()
     val density = LocalDensity.current
@@ -542,6 +547,8 @@ private fun ChatContent(
                 onCancel = onCancelStreaming,
                 onAttachImage = onAttachImage,
                 onRemoveAttachment = onRemoveAttachment,
+                reasoningEffort = reasoningEffort,
+                onReasoningEffortChange = onReasoningEffortChange,
                 hapticsEnabled = state.hapticsEnabled,
                 modifier = Modifier.onSizeChanged { inputHeightPx = it.height }
             )

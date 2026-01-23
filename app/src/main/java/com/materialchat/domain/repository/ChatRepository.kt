@@ -3,6 +3,7 @@ package com.materialchat.domain.repository
 import com.materialchat.domain.model.AiModel
 import com.materialchat.domain.model.Message
 import com.materialchat.domain.model.Provider
+import com.materialchat.domain.model.ReasoningEffort
 import com.materialchat.domain.model.StreamingState
 import kotlinx.coroutines.flow.Flow
 
@@ -18,6 +19,7 @@ interface ChatRepository {
      * @param provider The AI provider to send the message to
      * @param messages The conversation history including the new message
      * @param model The model to use for generation
+     * @param reasoningEffort The reasoning effort setting for compatible models
      * @param systemPrompt Optional system prompt to include
      * @return A Flow of StreamingState representing the response progress
      */
@@ -25,6 +27,7 @@ interface ChatRepository {
         provider: Provider,
         messages: List<Message>,
         model: String,
+        reasoningEffort: ReasoningEffort,
         systemPrompt: String? = null
     ): Flow<StreamingState>
 

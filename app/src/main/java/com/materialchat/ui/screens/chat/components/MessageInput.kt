@@ -2,7 +2,10 @@ package com.materialchat.ui.screens.chat.components
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.expandVertically
@@ -14,6 +17,8 @@ import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -25,6 +30,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -36,8 +42,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AddPhotoAlternate
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Stop
+import androidx.compose.material.icons.outlined.PsychologyAlt
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
@@ -49,24 +57,38 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Popup
+import androidx.compose.ui.window.PopupProperties
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.materialchat.domain.model.Attachment
+import com.materialchat.domain.model.ReasoningEffort
 import com.materialchat.ui.components.HapticPattern
 import com.materialchat.ui.components.rememberHapticFeedback
 import com.materialchat.ui.navigation.LocalAnimatedVisibilityScope
 import com.materialchat.ui.navigation.LocalSharedTransitionScope
 import com.materialchat.ui.navigation.SHARED_ELEMENT_FAB_TO_INPUT
 import com.materialchat.ui.theme.CustomShapes
+import com.materialchat.ui.theme.ExpressiveMotion
+import com.materialchat.ui.theme.MaterialChatMotion
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 /**
  * Message input bar component for the chat screen.
@@ -104,6 +126,8 @@ fun MessageInput(
     onCancel: () -> Unit,
     onAttachImage: () -> Unit = {},
     onRemoveAttachment: (Attachment) -> Unit = {},
+    reasoningEffort: ReasoningEffort = ReasoningEffort.HIGH,
+    onReasoningEffortChange: (ReasoningEffort) -> Unit = {},
     modifier: Modifier = Modifier,
     hapticsEnabled: Boolean = true
 ) {
@@ -188,8 +212,8 @@ fun MessageInput(
                         animatedVisibilityScope = animatedVisibilityScope,
                         boundsTransform = { _, _ ->
                             spring(
-                                dampingRatio = 0.8f,
-                                stiffness = 380f
+                                dampingRatio = 0.65f,
+                                stiffness = 340f
                             )
                         }
                     )
@@ -247,6 +271,13 @@ fun MessageInput(
                 )
             }
 
+            ReasoningEffortSelector(
+                reasoningEffort = reasoningEffort,
+                enabled = !isStreaming,
+                onReasoningEffortChange = onReasoningEffortChange,
+                modifier = Modifier.defaultMinSize(minHeight = 48.dp)
+            )
+
             // Send/Stop button - M3 circular, same height as text pill
             Surface(
                 onClick = {
@@ -279,6 +310,223 @@ fun MessageInput(
                             MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ReasoningEffortSelector(
+    reasoningEffort: ReasoningEffort,
+    enabled: Boolean,
+    onReasoningEffortChange: (ReasoningEffort) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    var expanded by remember { mutableStateOf(false) }
+    var menuVisible by remember { mutableStateOf(false) }
+    val density = LocalDensity.current
+    val options = remember { ReasoningEffort.values().toList() }
+    val itemAnimations = remember { options.map { Animatable(0f) } }
+    val scope = rememberCoroutineScope()
+
+    LaunchedEffect(expanded) {
+        if (expanded) {
+            menuVisible = true
+            itemAnimations.forEachIndexed { index, animatable ->
+                launch {
+                    delay((options.size - 1 - index) * 45L)
+                    animatable.animateTo(
+                        targetValue = 1f,
+                        animationSpec = ExpressiveMotion.Spatial.playful()
+                    )
+                }
+            }
+        } else {
+            itemAnimations.forEachIndexed { index, animatable ->
+                launch {
+                    delay(index * 25L)
+                    animatable.animateTo(
+                        targetValue = 0f,
+                        animationSpec = ExpressiveMotion.Spatial.playful()
+                    )
+                }
+            }
+            delay(MaterialChatMotion.Durations.Short.toLong())
+            menuVisible = false
+        }
+    }
+
+    val menuScale by animateFloatAsState(
+        targetValue = if (expanded) 1f else 0.92f,
+        animationSpec = ExpressiveMotion.Spatial.playful(),
+        label = "reasoningMenuScale"
+    )
+
+    val menuAlpha by animateFloatAsState(
+        targetValue = if (expanded) 1f else 0f,
+        animationSpec = ExpressiveMotion.Effects.alpha(),
+        label = "reasoningMenuAlpha"
+    )
+
+    val menuOffset by animateFloatAsState(
+        targetValue = if (expanded) 0f else 12f,
+        animationSpec = ExpressiveMotion.Spatial.playful(),
+        label = "reasoningMenuOffset"
+    )
+
+    val menuOffsetPx = with(density) { menuOffset.dp.toPx() }
+    val itemOffsetPx = with(density) { 18.dp.toPx() }
+    val cascadeStepPx = with(density) { 6.dp.toPx() }
+    val menuAnchorOffset = with(density) { (48.dp + 8.dp).roundToPx() }
+
+    val isActive = reasoningEffort != ReasoningEffort.NONE
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val buttonSize = 48.dp
+    val cornerRadius by animateDpAsState(
+        targetValue = if (expanded || isPressed) buttonSize / 2 else 8.dp,
+        animationSpec = ExpressiveMotion.Spatial.shapeMorph(),
+        label = "reasoningButtonCorner"
+    )
+    val buttonScale by animateFloatAsState(
+        targetValue = if (isPressed) 0.9f else 1f,
+        animationSpec = ExpressiveMotion.Spatial.scale(),
+        label = "reasoningButtonScale"
+    )
+    val baseContainerColor = if (isActive) {
+        MaterialTheme.colorScheme.primaryContainer
+    } else {
+        MaterialTheme.colorScheme.surfaceContainerHigh
+    }
+    val containerColor by animateColorAsState(
+        targetValue = if (isPressed) {
+            baseContainerColor.copy(alpha = 0.85f)
+        } else {
+            baseContainerColor
+        },
+        animationSpec = ExpressiveMotion.SpringSpecs.ColorTransition,
+        label = "reasoningButtonColor"
+    )
+    val contentColor = if (isActive) {
+        MaterialTheme.colorScheme.onPrimaryContainer
+    } else {
+        MaterialTheme.colorScheme.onSurfaceVariant
+    }
+
+    Box(modifier = modifier) {
+        Surface(
+            onClick = { if (enabled) expanded = !expanded },
+            enabled = enabled,
+            shape = RoundedCornerShape(cornerRadius),
+            color = containerColor,
+            contentColor = contentColor,
+            interactionSource = interactionSource,
+            modifier = Modifier
+                .align(Alignment.CenterStart)
+                .size(buttonSize)
+                .graphicsLayer {
+                    scaleX = buttonScale
+                    scaleY = buttonScale
+                }
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Icon(
+                    imageVector = Icons.Outlined.PsychologyAlt,
+                    contentDescription = "Reasoning options"
+                )
+            }
+        }
+
+        if (menuVisible) {
+            Popup(
+                alignment = Alignment.BottomEnd,
+                offset = IntOffset(0, -menuAnchorOffset),
+                onDismissRequest = { expanded = false },
+                properties = PopupProperties(focusable = true)
+            ) {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    horizontalAlignment = Alignment.End,
+                    modifier = Modifier
+                        .wrapContentWidth(Alignment.End)
+                        .graphicsLayer {
+                        scaleX = menuScale
+                        scaleY = menuScale
+                        alpha = menuAlpha
+                        translationX = menuOffsetPx
+                        transformOrigin = androidx.compose.ui.graphics.TransformOrigin(1f, 1f)
+                    }
+                ) {
+                    options.forEachIndexed { index, option ->
+                        val progress = itemAnimations[index].value
+                        val cascadeOffsetPx = itemOffsetPx +
+                            (options.size - index - 1) * cascadeStepPx
+                        ReasoningOptionPill(
+                            option = option,
+                            selected = option == reasoningEffort,
+                            onClick = {
+                                expanded = false
+                                scope.launch {
+                                    delay(MaterialChatMotion.Durations.Short.toLong())
+                                    onReasoningEffortChange(option)
+                                }
+                            },
+                            modifier = Modifier
+                                .align(Alignment.End)
+                                .graphicsLayer {
+                                    alpha = progress
+                                    scaleX = 0.9f + (0.1f * progress)
+                                    scaleY = 0.9f + (0.1f * progress)
+                                    translationX = (1f - progress) * cascadeOffsetPx
+                                }
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ReasoningOptionPill(
+    option: ReasoningEffort,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        onClick = onClick,
+        shape = RoundedCornerShape(999.dp),
+        color = if (selected) {
+            MaterialTheme.colorScheme.primaryContainer
+        } else {
+            MaterialTheme.colorScheme.surfaceContainerHigh
+        },
+        contentColor = if (selected) {
+            MaterialTheme.colorScheme.onPrimaryContainer
+        } else {
+            MaterialTheme.colorScheme.onSurfaceVariant
+        },
+        tonalElevation = if (selected) 3.dp else 1.dp,
+        shadowElevation = if (selected) 3.dp else 1.dp,
+        modifier = modifier
+            .defaultMinSize(minHeight = 44.dp)
+            .padding(horizontal = 6.dp)
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 18.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Text(
+                text = option.displayName,
+                style = MaterialTheme.typography.labelLarge
+            )
+            if (selected) {
+                Icon(
+                    imageVector = Icons.Default.Check,
+                    contentDescription = null
+                )
             }
         }
     }

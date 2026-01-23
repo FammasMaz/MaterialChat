@@ -3,6 +3,7 @@ package com.materialchat.ui.screens.chat
 import com.materialchat.domain.model.AiModel
 import com.materialchat.domain.model.Attachment
 import com.materialchat.domain.model.Message
+import com.materialchat.domain.model.ReasoningEffort
 import com.materialchat.domain.model.StreamingState
 
 /**
@@ -31,10 +32,11 @@ sealed interface ChatUiState {
      * @property streamingState The current state of streaming response
      * @property availableModels The list of available models from the provider
      * @property isLoadingModels Whether models are currently being loaded
-     * @property showExportSheet Whether to show the export bottom sheet
-     * @property isExporting Whether an export operation is in progress
-     * @property hapticsEnabled Whether haptic feedback is enabled
-     */
+ * @property showExportSheet Whether to show the export bottom sheet
+ * @property isExporting Whether an export operation is in progress
+ * @property hapticsEnabled Whether haptic feedback is enabled
+ * @property reasoningEffort The reasoning effort setting for the next response
+ */
     data class Success(
         val conversationId: String,
         val conversationTitle: String,
@@ -49,7 +51,8 @@ sealed interface ChatUiState {
         val isLoadingModels: Boolean = false,
         val showExportSheet: Boolean = false,
         val isExporting: Boolean = false,
-        val hapticsEnabled: Boolean = true
+        val hapticsEnabled: Boolean = true,
+        val reasoningEffort: ReasoningEffort = ReasoningEffort.HIGH
     ) : ChatUiState {
         /**
          * Whether a message is currently streaming.

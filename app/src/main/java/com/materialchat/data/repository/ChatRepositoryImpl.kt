@@ -7,6 +7,7 @@ import com.materialchat.data.remote.api.StreamingEvent
 import com.materialchat.domain.model.AiModel
 import com.materialchat.domain.model.Message
 import com.materialchat.domain.model.Provider
+import com.materialchat.domain.model.ReasoningEffort
 import com.materialchat.domain.model.StreamingState
 import com.materialchat.domain.repository.ChatRepository
 import kotlinx.coroutines.CancellationException
@@ -40,6 +41,7 @@ class ChatRepositoryImpl @Inject constructor(
         provider: Provider,
         messages: List<Message>,
         model: String,
+        reasoningEffort: ReasoningEffort,
         systemPrompt: String?
     ): Flow<StreamingState> = flow {
         // Reset state for new message
@@ -67,7 +69,8 @@ class ChatRepositoryImpl @Inject constructor(
             messages = messages,
             model = model,
             apiKey = apiKey,
-            systemPrompt = systemPrompt
+            systemPrompt = systemPrompt,
+            reasoningEffort = reasoningEffort
         ).collect { event ->
             android.util.Log.d("ChatRepository", "Received event: $event")
             when (event) {

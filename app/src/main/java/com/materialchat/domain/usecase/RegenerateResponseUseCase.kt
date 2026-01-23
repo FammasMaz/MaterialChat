@@ -2,6 +2,7 @@ package com.materialchat.domain.usecase
 
 import com.materialchat.domain.model.Message
 import com.materialchat.domain.model.MessageRole
+import com.materialchat.domain.model.ReasoningEffort
 import com.materialchat.domain.model.StreamingState
 import com.materialchat.domain.repository.ChatRepository
 import com.materialchat.domain.repository.ConversationRepository
@@ -31,11 +32,13 @@ class RegenerateResponseUseCase @Inject constructor(
      *
      * @param conversationId The ID of the conversation to regenerate the response for
      * @param systemPrompt The system prompt to use for the conversation
+     * @param reasoningEffort The reasoning effort setting for compatible models
      * @return A Flow of StreamingState representing the response progress
      */
     operator fun invoke(
         conversationId: String,
-        systemPrompt: String
+        systemPrompt: String,
+        reasoningEffort: ReasoningEffort
     ): Flow<StreamingState> = flow {
         // Get the conversation and provider
         val conversation = conversationRepository.getConversation(conversationId)
@@ -79,6 +82,7 @@ class RegenerateResponseUseCase @Inject constructor(
             provider = provider,
             messages = updatedMessages,
             model = conversation.modelName,
+            reasoningEffort = reasoningEffort,
             systemPrompt = systemPrompt
         ).onEach { state ->
             when (state) {

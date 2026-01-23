@@ -6,6 +6,7 @@ import com.materialchat.domain.model.Attachment
 import com.materialchat.domain.model.Conversation
 import com.materialchat.domain.model.Message
 import com.materialchat.domain.model.MessageRole
+import com.materialchat.domain.model.ReasoningEffort
 import com.materialchat.domain.model.Provider
 import com.materialchat.domain.model.StreamingState
 import com.materialchat.domain.repository.ChatRepository
@@ -46,13 +47,15 @@ class SendMessageUseCase @Inject constructor(
      * @param userContent The content of the user's message
      * @param attachments Optional list of image attachments to include with the message
      * @param systemPrompt The system prompt to use for the conversation
+     * @param reasoningEffort The reasoning effort setting for compatible models
      * @return A Flow of StreamingState representing the response progress
      */
     operator fun invoke(
         conversationId: String,
         userContent: String,
         attachments: List<Attachment> = emptyList(),
-        systemPrompt: String
+        systemPrompt: String,
+        reasoningEffort: ReasoningEffort
     ): Flow<StreamingState> = flow {
         // Get the conversation and provider
         val conversation = conversationRepository.getConversation(conversationId)
@@ -95,6 +98,7 @@ class SendMessageUseCase @Inject constructor(
             provider = provider,
             messages = messages,
             model = conversation.modelName,
+            reasoningEffort = reasoningEffort,
             systemPrompt = systemPrompt
         ).onEach { state ->
             when (state) {

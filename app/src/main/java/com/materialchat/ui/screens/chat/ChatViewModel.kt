@@ -8,6 +8,7 @@ import com.materialchat.domain.model.AiModel
 import com.materialchat.domain.model.Attachment
 import com.materialchat.domain.model.Message
 import com.materialchat.domain.model.MessageRole
+import com.materialchat.domain.model.ReasoningEffort
 import com.materialchat.domain.model.StreamingState
 import com.materialchat.domain.usecase.ExportConversationUseCase
 import com.materialchat.domain.usecase.GetConversationsUseCase
@@ -61,11 +62,13 @@ class ChatViewModel @Inject constructor(
     private var streamingJob: Job? = null
     private var currentSystemPrompt: String = AppPreferences.DEFAULT_SYSTEM_PROMPT
     private var currentHapticsEnabled: Boolean = AppPreferences.DEFAULT_HAPTICS_ENABLED
+    private var currentReasoningEffort: ReasoningEffort = AppPreferences.DEFAULT_REASONING_EFFORT
 
     init {
         loadConversation()
         loadSystemPrompt()
         loadHapticsPreference()
+        loadReasoningEffort()
     }
 
     /**
@@ -135,6 +138,11 @@ class ChatViewModel @Inject constructor(
                         } else {
                             conversation.modelName
                         }
+                        val reasoningEffort = if (currentState is ChatUiState.Success) {
+                            currentState.reasoningEffort
+                        } else {
+                            currentReasoningEffort
+                        }
 
                         // Find the last assistant message index
                         val lastAssistantIndex = messages.indexOfLast {
@@ -164,7 +172,8 @@ class ChatViewModel @Inject constructor(
                             streamingState = streamingState,
                             availableModels = availableModels,
                             isLoadingModels = isLoadingModels,
-                            hapticsEnabled = currentHapticsEnabled
+                            hapticsEnabled = currentHapticsEnabled,
+                            reasoningEffort = reasoningEffort
                         )
 
                         // Only scroll to bottom when a NEW message is added, not during streaming updates
@@ -206,6 +215,21 @@ class ChatViewModel @Inject constructor(
                 val currentState = _uiState.value
                 if (currentState is ChatUiState.Success) {
                     _uiState.value = currentState.copy(hapticsEnabled = enabled)
+                }
+            }
+        }
+    }
+
+    /**
+     * Loads the reasoning effort preference and updates UI state when it changes.
+     */
+    private fun loadReasoningEffort() {
+        viewModelScope.launch {
+            appPreferences.reasoningEffort.collect { effort ->
+                currentReasoningEffort = effort
+                val currentState = _uiState.value
+                if (currentState is ChatUiState.Success) {
+                    _uiState.value = currentState.copy(reasoningEffort = effort)
                 }
             }
         }
@@ -318,7 +342,8 @@ class ChatViewModel @Inject constructor(
                     conversationId = conversationId,
                     userContent = messageContent,
                     attachments = attachments,
-                    systemPrompt = currentSystemPrompt
+                    systemPrompt = currentSystemPrompt,
+                    reasoningEffort = currentReasoningEffort
                 ).collect { state ->
                     updateStreamingState(state)
                 }
@@ -460,6 +485,20 @@ class ChatViewModel @Inject constructor(
     }
 
     /**
+     * Updates the reasoning effort preference.
+     */
+    fun updateReasoningEffort(effort: ReasoningEffort) {
+        currentReasoningEffort = effort
+        val currentState = _uiState.value
+        if (currentState is ChatUiState.Success) {
+            _uiState.value = currentState.copy(reasoningEffort = effort)
+        }
+        viewModelScope.launch {
+            appPreferences.setReasoningEffort(effort)
+        }
+    }
+
+    /**
      * Regenerates the last AI response.
      */
     fun regenerateResponse() {
@@ -473,7 +512,8 @@ class ChatViewModel @Inject constructor(
             try {
                 regenerateResponseUseCase(
                     conversationId = conversationId,
-                    systemPrompt = currentSystemPrompt
+                    systemPrompt = currentSystemPrompt,
+                    reasoningEffort = currentReasoningEffort
                 ).collect { state ->
                     updateStreamingState(state)
                 }

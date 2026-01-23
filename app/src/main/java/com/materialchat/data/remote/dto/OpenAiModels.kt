@@ -35,7 +35,7 @@ data class OpenAiChatRequest(
     @SerialName("max_tokens")
     val maxTokens: Int? = null,
     // Reasoning effort parameter for providers that support extended thinking
-    // Values: "low", "medium", "high" - used by LiteLLM proxy and compatible APIs
+    // Values: "none", "low", "medium", "high", "xhigh" - used by compatible APIs
     @SerialName("reasoning_effort")
     val reasoningEffort: String? = null
 )

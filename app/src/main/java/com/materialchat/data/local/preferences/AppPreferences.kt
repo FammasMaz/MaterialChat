@@ -8,6 +8,7 @@ import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.materialchat.domain.model.ReasoningEffort
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
@@ -38,6 +39,7 @@ class AppPreferences(private val context: Context) {
         val THEME_MODE = stringPreferencesKey("theme_mode")
         val DYNAMIC_COLOR_ENABLED = booleanPreferencesKey("dynamic_color_enabled")
         val HAPTICS_ENABLED = booleanPreferencesKey("haptics_enabled")
+        val REASONING_EFFORT = stringPreferencesKey("reasoning_effort")
         val FIRST_LAUNCH_COMPLETE = booleanPreferencesKey("first_launch_complete")
         val AI_GENERATED_TITLES_ENABLED = booleanPreferencesKey("ai_generated_titles_enabled")
         val TITLE_GENERATION_MODEL = stringPreferencesKey("title_generation_model")
@@ -64,6 +66,7 @@ class AppPreferences(private val context: Context) {
         const val DEFAULT_DYNAMIC_COLOR_ENABLED = true
         const val DEFAULT_HAPTICS_ENABLED = true
         const val DEFAULT_AI_GENERATED_TITLES_ENABLED = true
+        val DEFAULT_REASONING_EFFORT = ReasoningEffort.HIGH
     }
 
     // ========== System Prompt ==========
@@ -140,6 +143,24 @@ class AppPreferences(private val context: Context) {
     suspend fun setHapticsEnabled(enabled: Boolean) {
         dataStore.edit { preferences ->
             preferences[Keys.HAPTICS_ENABLED] = enabled
+        }
+    }
+
+    // ========== Reasoning Effort ==========
+
+    /**
+     * Get the reasoning effort setting as a Flow.
+     */
+    val reasoningEffort: Flow<ReasoningEffort> = dataStore.data.map { preferences ->
+        ReasoningEffort.fromStoredValue(preferences[Keys.REASONING_EFFORT])
+    }
+
+    /**
+     * Set the reasoning effort setting.
+     */
+    suspend fun setReasoningEffort(effort: ReasoningEffort) {
+        dataStore.edit { preferences ->
+            preferences[Keys.REASONING_EFFORT] = effort.name
         }
     }
 

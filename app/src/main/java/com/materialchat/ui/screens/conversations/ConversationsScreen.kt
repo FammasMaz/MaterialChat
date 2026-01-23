@@ -484,8 +484,8 @@ private fun NewChatFab(
                         animatedVisibilityScope = animatedVisibilityScope,
                         boundsTransform = { _, _ ->
                             spring(
-                                dampingRatio = 0.8f,
-                                stiffness = 380f
+                                dampingRatio = 0.65f,
+                                stiffness = 340f
                             )
                         }
                     )
