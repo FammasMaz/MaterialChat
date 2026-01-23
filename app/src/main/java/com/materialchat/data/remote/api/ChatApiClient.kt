@@ -134,6 +134,7 @@ class ChatApiClient(
 
         // Build HTTP request
         val url = "${normalizeBaseUrl(baseUrl)}/v1/chat/completions"
+        android.util.Log.d("ChatApiClient", "OpenAI streaming URL: $url")
         val httpRequest = Request.Builder()
             .url(url)
             .addHeader("Authorization", "Bearer $apiKey")
@@ -155,8 +156,10 @@ class ChatApiClient(
 
             override fun onResponse(call: Call, response: Response) {
                 response.use { resp ->
+                    android.util.Log.d("ChatApiClient", "OpenAI response code: ${resp.code}")
                     if (!resp.isSuccessful) {
                         val errorBody = resp.body?.string() ?: "Unknown error"
+                        android.util.Log.e("ChatApiClient", "OpenAI error response: $errorBody")
                         val errorMessage = parseErrorMessage(errorBody, resp.code)
                         trySend(StreamingEvent.fromHttpError(resp.code, errorMessage))
                         close()
@@ -502,10 +505,15 @@ class ChatApiClient(
         reader: BufferedReader,
         onEvent: (StreamingEvent) -> Unit
     ) {
+        var hasContent = false
+        var lastModel: String? = null
+
         reader.lineSequence().forEach { line ->
             if (isCancelled.get()) return
 
+            android.util.Log.d("ChatApiClient", "SSE line: $line")
             val event = sseEventParser.parseOpenAiEvent(line)
+            android.util.Log.d("ChatApiClient", "Parsed event: $event")
 
             when (event) {
                 is StreamingEvent.Done -> {
@@ -513,10 +521,13 @@ class ChatApiClient(
                     return
                 }
                 is StreamingEvent.Error -> {
+                    android.util.Log.e("ChatApiClient", "Stream error: ${event.message}")
                     onEvent(event)
                     return
                 }
                 is StreamingEvent.Content -> {
+                    hasContent = true
+                    android.util.Log.d("ChatApiClient", "Content chunk: '${event.content}'")
                     onEvent(event)
                 }
                 is StreamingEvent.Connected,
@@ -527,6 +538,13 @@ class ChatApiClient(
                     // Unknown line format, skip
                 }
             }
+        }
+
+        // If stream ended naturally without explicit Done (some APIs combine content+finish in one chunk)
+        // emit Done to properly finalize the message
+        if (hasContent && !isCancelled.get()) {
+            android.util.Log.d("ChatApiClient", "Stream ended, emitting implicit Done")
+            onEvent(StreamingEvent.Done(model = lastModel))
         }
     }
 

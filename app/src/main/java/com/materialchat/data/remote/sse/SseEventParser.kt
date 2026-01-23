@@ -109,6 +109,7 @@ class SseEventParser(
 
     /**
      * Parses an OpenAI stream chunk into a StreamingEvent.
+     * Handles APIs that may include content and finish_reason in the same chunk.
      */
     private fun parseOpenAiChunk(chunk: OpenAiStreamChunk): StreamingEvent {
         val choices = chunk.choices
@@ -118,9 +119,33 @@ class SseEventParser(
         }
 
         val choice = choices.first()
-
-        // Check for completion
+        val delta = choice.delta
+        val content = delta?.content
         val finishReason = choice.finishReason
+
+        // First, check if there's content to emit (even if finish_reason is also present)
+        // Some APIs (LiteLLM, etc.) send content and finish_reason in the same chunk
+        if (!content.isNullOrEmpty()) {
+            // If there's also a finish_reason, this is the final content chunk
+            // The caller will get Done on the next iteration when finish_reason is set
+            // but for APIs that combine them, we need to emit content first
+            return if (finishReason != null) {
+                // Combined final chunk: emit content with isFinal flag
+                // The stream will end after this since finish_reason is set
+                StreamingEvent.Content(
+                    content = content,
+                    isFirst = false
+                )
+            } else {
+                // Normal content chunk
+                StreamingEvent.Content(
+                    content = content,
+                    isFirst = false
+                )
+            }
+        }
+
+        // No content - check for completion signal
         if (finishReason != null) {
             return StreamingEvent.Done(
                 finishReason = finishReason,
@@ -128,26 +153,14 @@ class SseEventParser(
             )
         }
 
-        // Extract content from delta
-        val delta = choice.delta
-        val content = delta?.content
-
         // Role-only delta (first message) or empty delta
-        if (content == null) {
-            // This might be the first chunk with just role info
-            val role = delta?.role
-            if (role != null) {
-                // First chunk, return connected event
-                return StreamingEvent.Connected
-            }
-            return StreamingEvent.KeepAlive
+        val role = delta?.role
+        if (role != null) {
+            // First chunk, return connected event
+            return StreamingEvent.Connected
         }
 
-        // Return content chunk
-        return StreamingEvent.Content(
-            content = content,
-            isFirst = false
-        )
+        return StreamingEvent.KeepAlive
     }
 
     /**
