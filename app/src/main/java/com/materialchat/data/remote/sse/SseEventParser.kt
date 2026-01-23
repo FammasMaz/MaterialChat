@@ -110,6 +110,7 @@ class SseEventParser(
     /**
      * Parses an OpenAI stream chunk into a StreamingEvent.
      * Handles APIs that may include content and finish_reason in the same chunk.
+     * Also handles APIs that put content in message field instead of delta.
      */
     private fun parseOpenAiChunk(chunk: OpenAiStreamChunk): StreamingEvent {
         val choices = chunk.choices
@@ -120,29 +121,25 @@ class SseEventParser(
 
         val choice = choices.first()
         val delta = choice.delta
-        val content = delta?.content
+        val message = choice.message
         val finishReason = choice.finishReason
+
+        // Check for content in delta first (standard streaming format)
+        val deltaContent = delta?.content?.takeIf { it.isNotEmpty() }
+
+        // Fallback: check message.content (some APIs put content here instead of delta)
+        val messageContent = message?.content?.takeIf { it.isNotEmpty() }
+
+        // Use whichever has content
+        val content = deltaContent ?: messageContent
 
         // First, check if there's content to emit (even if finish_reason is also present)
         // Some APIs (LiteLLM, etc.) send content and finish_reason in the same chunk
         if (!content.isNullOrEmpty()) {
-            // If there's also a finish_reason, this is the final content chunk
-            // The caller will get Done on the next iteration when finish_reason is set
-            // but for APIs that combine them, we need to emit content first
-            return if (finishReason != null) {
-                // Combined final chunk: emit content with isFinal flag
-                // The stream will end after this since finish_reason is set
-                StreamingEvent.Content(
-                    content = content,
-                    isFirst = false
-                )
-            } else {
-                // Normal content chunk
-                StreamingEvent.Content(
-                    content = content,
-                    isFirst = false
-                )
-            }
+            return StreamingEvent.Content(
+                content = content,
+                isFirst = false
+            )
         }
 
         // No content - check for completion signal
