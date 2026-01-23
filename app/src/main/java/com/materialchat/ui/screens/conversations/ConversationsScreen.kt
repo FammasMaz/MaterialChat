@@ -47,7 +47,6 @@ import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Snackbar
@@ -58,7 +57,6 @@ import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.runtime.Composable
@@ -67,6 +65,7 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -74,14 +73,15 @@ import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.material3.LocalTextStyle
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.platform.LocalDensity
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.materialchat.ui.components.AnimatedExtendedFab
@@ -297,34 +297,65 @@ private fun ConversationsTopBar(
     onSearchClick: () -> Unit,
     onSettingsClick: () -> Unit
 ) {
-    LargeTopAppBar(
-        title = {
-            val collapseFraction = scrollBehavior.state.collapsedFraction.coerceIn(0f, 1f)
-            val baseStyle = LocalTextStyle.current
-            val largeTitleSize = MaterialTheme.typography.headlineLarge.fontSize
-            val isLargeSlot = baseStyle.fontSize >= largeTitleSize
-            val materialAlpha = if (isLargeSlot) {
-                (1f - collapseFraction * 1.2f).coerceIn(0f, 1f)
-            } else {
-                0f
-            }
-            val chatAlpha = if (isLargeSlot) {
-                (1f - collapseFraction * 0.85f).coerceIn(0f, 1f)
-            } else {
-                1f
-            }
-            val suffixAlpha = if (isLargeSlot) {
-                0f
-            } else {
-                ((collapseFraction - 0.2f) / 0.8f).coerceIn(0f, 1f)
-            }
+    val expandedHeight = 140.dp
+    val collapsedHeight = 72.dp
+    val collapseFraction = scrollBehavior.state.collapsedFraction.coerceIn(0f, 1f)
+    val barHeight = expandedHeight - (expandedHeight - collapsedHeight) * collapseFraction
+    val titleScale = 1f - 0.22f * collapseFraction
+    val titleTopPadding = 22.dp - (22.dp - 6.dp) * collapseFraction
+    val titleBottomPadding = 12.dp - (12.dp - 6.dp) * collapseFraction
+    val materialAlpha = (1f - collapseFraction * 1.25f).coerceIn(0f, 1f)
+    val suffixAlpha = ((collapseFraction - 0.2f) / 0.8f).coerceIn(0f, 1f)
 
-            Row(verticalAlignment = Alignment.Bottom) {
+    val density = LocalDensity.current
+    SideEffect {
+        scrollBehavior.state.heightOffsetLimit = with(density) {
+            (collapsedHeight - expandedHeight).toPx()
+        }
+    }
+
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = MaterialTheme.colorScheme.surfaceContainer
+    ) {
+        Column(
+            modifier = Modifier
+                .statusBarsPadding()
+                .height(barHeight)
+                .padding(horizontal = 16.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                IconButton(onClick = onSearchClick) {
+                    Icon(
+                        imageVector = Icons.Default.Search,
+                        contentDescription = "Search"
+                    )
+                }
+                IconButton(onClick = onSettingsClick) {
+                    Icon(
+                        imageVector = Icons.Outlined.Settings,
+                        contentDescription = "Settings"
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.height(titleTopPadding))
+            Row(
+                modifier = Modifier.graphicsLayer {
+                    scaleX = titleScale
+                    scaleY = titleScale
+                    transformOrigin = TransformOrigin(0f, 1f)
+                },
+                verticalAlignment = Alignment.Bottom
+            ) {
                 if (materialAlpha > 0.02f) {
                     Text(
                         text = "material",
                         modifier = Modifier.graphicsLayer { alpha = materialAlpha },
-                        style = baseStyle,
+                        style = MaterialTheme.typography.headlineLarge,
                         color = MaterialTheme.colorScheme.primary,
                         fontWeight = FontWeight.Bold,
                         fontStyle = FontStyle.Italic,
@@ -334,8 +365,7 @@ private fun ConversationsTopBar(
                 }
                 Text(
                     text = "Chat",
-                    modifier = Modifier.graphicsLayer { alpha = chatAlpha },
-                    style = baseStyle,
+                    style = MaterialTheme.typography.headlineLarge,
                     color = MaterialTheme.colorScheme.onSurface,
                     fontWeight = FontWeight.Medium,
                     maxLines = 1,
@@ -345,7 +375,7 @@ private fun ConversationsTopBar(
                     Text(
                         text = "s",
                         modifier = Modifier.graphicsLayer { alpha = suffixAlpha },
-                        style = baseStyle,
+                        style = MaterialTheme.typography.headlineLarge,
                         color = MaterialTheme.colorScheme.onSurface,
                         fontWeight = FontWeight.Medium,
                         maxLines = 1,
@@ -353,28 +383,9 @@ private fun ConversationsTopBar(
                     )
                 }
             }
-        },
-        actions = {
-            IconButton(onClick = onSearchClick) {
-                Icon(
-                    imageVector = Icons.Default.Search,
-                    contentDescription = "Search"
-                )
-            }
-            IconButton(onClick = onSettingsClick) {
-                Icon(
-                    imageVector = Icons.Outlined.Settings,
-                    contentDescription = "Settings"
-                )
-            }
-        },
-        scrollBehavior = scrollBehavior,
-        colors = TopAppBarDefaults.largeTopAppBarColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainer,
-            scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainer,
-            titleContentColor = MaterialTheme.colorScheme.onSurface
-        )
-    )
+            Spacer(modifier = Modifier.height(titleBottomPadding))
+        }
+    }
 }
 
 @OptIn(ExperimentalSharedTransitionApi::class)
