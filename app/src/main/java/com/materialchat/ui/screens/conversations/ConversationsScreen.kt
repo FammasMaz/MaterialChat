@@ -421,9 +421,7 @@ private fun ConversationsContent(
             bottomStart = 0.dp,
             bottomEnd = 0.dp
         ),
-        color = MaterialTheme.colorScheme.surfaceContainerLowest,
-        shadowElevation = 4.dp,
-        tonalElevation = 1.dp
+        color = MaterialTheme.colorScheme.surfaceContainerLow
     ) {
         Box(
             modifier = Modifier.fillMaxSize()
@@ -631,9 +629,7 @@ private fun SearchContent(
             bottomStart = 0.dp,
             bottomEnd = 0.dp
         ),
-        color = MaterialTheme.colorScheme.surfaceContainerLowest,
-        shadowElevation = 4.dp,
-        tonalElevation = 1.dp
+        color = MaterialTheme.colorScheme.surfaceContainerLow
     ) {
         when (searchState) {
             is SearchUiState.Idle -> {
