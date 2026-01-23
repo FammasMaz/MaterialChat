@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -44,8 +45,10 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -231,7 +234,7 @@ fun ChatScreen(
     Scaffold(
         modifier = Modifier
             .nestedScroll(scrollBehavior.nestedScrollConnection),
-        containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+        containerColor = MaterialTheme.colorScheme.surfaceContainer,
         contentWindowInsets = WindowInsets(0, 0, 0, 0), // Draw edge-to-edge
         topBar = {
             when (val state = uiState) {
@@ -411,17 +414,34 @@ private fun ChatContent(
     val imeBottom = WindowInsets.ime.getBottom(density)
     val navBottom = WindowInsets.navigationBars.getBottom(density)
     val imePadding = with(density) { (imeBottom - navBottom).coerceAtLeast(0).toDp() }
+    var autoScrollEnabled by remember { mutableStateOf(true) }
     var inputHeightPx by remember { mutableIntStateOf(0) }
+    val bottomThresholdPx = with(density) { 24.dp.toPx() }
     val isAtBottom by remember {
         derivedStateOf {
-            val totalItems = listState.layoutInfo.totalItemsCount
+            val layoutInfo = listState.layoutInfo
+            val totalItems = layoutInfo.totalItemsCount
             if (totalItems == 0) {
                 true
             } else {
-                val lastVisible = listState.layoutInfo.visibleItemsInfo.lastOrNull()
-                lastVisible == null || lastVisible.index >= totalItems - 1
+                val lastVisible = layoutInfo.visibleItemsInfo.lastOrNull() ?: return@derivedStateOf true
+                val lastIndex = totalItems - 1
+                if (lastVisible.index < lastIndex) {
+                    return@derivedStateOf false
+                }
+                val itemEnd = lastVisible.offset + lastVisible.size
+                val viewportEnd = layoutInfo.viewportEndOffset
+                itemEnd <= viewportEnd + bottomThresholdPx
             }
         }
+    }
+    LaunchedEffect(listState) {
+        snapshotFlow { listState.isScrollInProgress to isAtBottom }
+            .collect { (isScrolling, atBottom) ->
+                if (!isScrolling) {
+                    autoScrollEnabled = atBottom
+                }
+            }
     }
 
     // Track content lengths for haptic feedback during streaming
@@ -453,9 +473,32 @@ private fun ChatContent(
         }
     }
 
-    LaunchedEffect(state.streamingState, state.messages.size, inputHeightPx, isAtBottom) {
-        if (isAtBottom && state.messages.isNotEmpty()) {
-            listState.scrollToItem(state.messages.size - 1)
+    val lastMessage = state.messages.lastOrNull()?.message
+    val lastContentHash = lastMessage?.content?.hashCode() ?: 0
+    val lastThinkingHash = lastMessage?.thinkingContent?.hashCode() ?: 0
+    val lastAttachmentCount = lastMessage?.attachments?.size ?: 0
+
+    LaunchedEffect(
+        lastContentHash,
+        lastThinkingHash,
+        lastAttachmentCount,
+        state.messages.size,
+        inputHeightPx,
+        isAtBottom,
+        autoScrollEnabled
+    ) {
+        if (autoScrollEnabled && state.messages.isNotEmpty()) {
+            val lastIndex = state.messages.lastIndex
+            val layoutInfo = listState.layoutInfo
+            val lastVisible = layoutInfo.visibleItemsInfo.lastOrNull()
+            if (lastVisible == null || lastVisible.index < lastIndex) {
+                listState.scrollToItem(lastIndex)
+            } else {
+                val overflow = (lastVisible.offset + lastVisible.size) - layoutInfo.viewportEndOffset
+                if (overflow > 0) {
+                    listState.scrollBy(overflow.toFloat())
+                }
+            }
         }
     }
 
@@ -470,7 +513,7 @@ private fun ChatContent(
             bottomStart = 0.dp,
             bottomEnd = 0.dp
         ),
-        color = MaterialTheme.colorScheme.surfaceContainer
+        color = MaterialTheme.colorScheme.surfaceContainerLow
     ) {
         Column(
             modifier = Modifier
