@@ -26,6 +26,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -299,11 +300,13 @@ private fun ConversationsTopBar(
 ) {
     val expandedHeight = 140.dp
     val collapsedHeight = 72.dp
+    val iconRowHeight = 48.dp
     val collapseFraction = scrollBehavior.state.collapsedFraction.coerceIn(0f, 1f)
     val barHeight = expandedHeight - (expandedHeight - collapsedHeight) * collapseFraction
     val titleScale = 1f - 0.22f * collapseFraction
-    val titleTopPadding = 22.dp - (22.dp - 6.dp) * collapseFraction
-    val titleBottomPadding = 12.dp - (12.dp - 6.dp) * collapseFraction
+    val expandedTitleOffset = iconRowHeight + 20.dp
+    val collapsedTitleOffset = 6.dp
+    val titleOffset = expandedTitleOffset - (expandedTitleOffset - collapsedTitleOffset) * collapseFraction
     val materialAlpha = (1f - collapseFraction * 1.25f).coerceIn(0f, 1f)
     val suffixAlpha = ((collapseFraction - 0.2f) / 0.8f).coerceIn(0f, 1f)
 
@@ -318,14 +321,17 @@ private fun ConversationsTopBar(
         modifier = Modifier.fillMaxWidth(),
         color = MaterialTheme.colorScheme.surfaceContainer
     ) {
-        Column(
+        Box(
             modifier = Modifier
-                .statusBarsPadding()
                 .height(barHeight)
                 .padding(horizontal = 16.dp)
+                .statusBarsPadding()
         ) {
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .height(iconRowHeight)
+                    .fillMaxWidth()
+                    .align(Alignment.TopEnd),
                 horizontalArrangement = Arrangement.End,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -342,13 +348,15 @@ private fun ConversationsTopBar(
                     )
                 }
             }
-            Spacer(modifier = Modifier.height(titleTopPadding))
             Row(
-                modifier = Modifier.graphicsLayer {
-                    scaleX = titleScale
-                    scaleY = titleScale
-                    transformOrigin = TransformOrigin(0f, 1f)
-                },
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .offset(y = titleOffset)
+                    .graphicsLayer {
+                        scaleX = titleScale
+                        scaleY = titleScale
+                        transformOrigin = TransformOrigin(0f, 1f)
+                    },
                 verticalAlignment = Alignment.Bottom
             ) {
                 if (materialAlpha > 0.02f) {
@@ -383,7 +391,6 @@ private fun ConversationsTopBar(
                     )
                 }
             }
-            Spacer(modifier = Modifier.height(titleBottomPadding))
         }
     }
 }
