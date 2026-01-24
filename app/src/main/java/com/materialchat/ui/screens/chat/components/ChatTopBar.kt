@@ -1,15 +1,21 @@
 package com.materialchat.ui.screens.chat.components
 
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.MoreVert
@@ -21,6 +27,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
@@ -34,6 +41,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.materialchat.domain.model.AiModel
@@ -151,6 +159,11 @@ fun ChatTopBar(
                 Row(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
+                    val brand = remember(modelName) { resolveModelBrand(modelName) }
+                    if (brand != null) {
+                        ModelBrandBadge(brand = brand)
+                        Spacer(modifier = Modifier.width(8.dp))
+                    }
                     // Model picker dropdown - tappable model name
                     ModelPickerDropdown(
                         currentModel = modelName,
@@ -214,4 +227,48 @@ fun ChatTopBar(
         ),
         scrollBehavior = scrollBehavior
     )
+}
+
+private data class ModelBrand(
+    val name: String,
+    val symbol: String,
+    val color: Color
+)
+
+private fun resolveModelBrand(modelName: String): ModelBrand? {
+    if (modelName.isBlank()) return null
+    val normalized = modelName.lowercase()
+    return when {
+        "claude" in normalized -> ModelBrand("Anthropic", "A", Color(0xFFF97316))
+        "gpt" in normalized || "openai" in normalized -> ModelBrand("OpenAI", "O", Color(0xFF111827))
+        "gemini" in normalized -> ModelBrand("Google", "G", Color(0xFF4285F4))
+        "mistral" in normalized || "mixtral" in normalized -> ModelBrand("Mistral", "M", Color(0xFFF59E0B))
+        "llama" in normalized || "meta" in normalized -> ModelBrand("Meta", "M", Color(0xFF0EA5E9))
+        "deepseek" in normalized -> ModelBrand("DeepSeek", "D", Color(0xFF06B6D4))
+        "qwen" in normalized -> ModelBrand("Alibaba", "A", Color(0xFFEF4444))
+        "cohere" in normalized || "command" in normalized -> ModelBrand("Cohere", "C", Color(0xFF6366F1))
+        "perplexity" in normalized -> ModelBrand("Perplexity", "P", Color(0xFF7C3AED))
+        "grok" in normalized || "xai" in normalized -> ModelBrand("xAI", "x", Color(0xFF111827))
+        else -> null
+    }
+}
+
+@Composable
+private fun ModelBrandBadge(
+    brand: ModelBrand,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        shape = CircleShape,
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = modifier.size(24.dp)
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            Text(
+                text = brand.symbol,
+                style = MaterialTheme.typography.labelMedium
+            )
+        }
+    }
 }
