@@ -154,10 +154,14 @@ sealed interface SettingsEvent {
  * @property baseUrl Base URL for API requests
  * @property defaultModel Default model to use
  * @property apiKey API key (optional, required for OpenAI-compatible)
+ * @property hasExistingKey Whether the provider already has a saved API key
  * @property nameError Validation error for name field
  * @property baseUrlError Validation error for base URL field
  * @property defaultModelError Validation error for default model field
  * @property apiKeyError Validation error for API key field
+ * @property availableModels Models fetched from the provider
+ * @property isFetchingModels Whether model list is being fetched
+ * @property modelsError Error message from model fetch
  */
 data class ProviderFormState(
     val name: String = "",
@@ -165,10 +169,14 @@ data class ProviderFormState(
     val baseUrl: String = "",
     val defaultModel: String = "",
     val apiKey: String = "",
+    val hasExistingKey: Boolean = false,
     val nameError: String? = null,
     val baseUrlError: String? = null,
     val defaultModelError: String? = null,
-    val apiKeyError: String? = null
+    val apiKeyError: String? = null,
+    val availableModels: List<com.materialchat.domain.model.AiModel> = emptyList(),
+    val isFetchingModels: Boolean = false,
+    val modelsError: String? = null
 ) {
     /**
      * Whether the form has validation errors.
@@ -183,5 +191,5 @@ data class ProviderFormState(
     val canSubmit: Boolean
         get() = name.isNotBlank() && baseUrl.isNotBlank() &&
                 defaultModel.isNotBlank() && !hasErrors &&
-                (type != com.materialchat.domain.model.ProviderType.OPENAI_COMPATIBLE || apiKey.isNotBlank())
+                (type != com.materialchat.domain.model.ProviderType.OPENAI_COMPATIBLE || apiKey.isNotBlank() || hasExistingKey)
 }

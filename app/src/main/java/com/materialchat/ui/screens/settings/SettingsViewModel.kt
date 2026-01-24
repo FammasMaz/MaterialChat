@@ -177,12 +177,14 @@ class SettingsViewModel @Inject constructor(
     fun editProvider(provider: Provider) {
         val currentState = _uiState.value
         if (currentState is SettingsUiState.Success) {
+            val hasExistingKey = providerApiKeyStatus[provider.id] ?: false
             _formState.value = ProviderFormState(
                 name = provider.name,
                 type = provider.type,
                 baseUrl = provider.baseUrl,
                 defaultModel = provider.defaultModel,
-                apiKey = "" // Don't show existing API key
+                apiKey = "", // Don't show existing API key
+                hasExistingKey = hasExistingKey
             )
             _uiState.value = currentState.copy(
                 showAddProviderSheet = true,
@@ -202,6 +204,11 @@ class SettingsViewModel @Inject constructor(
         apiKey: String? = null
     ) {
         val current = _formState.value
+        val shouldResetModels = type != null || baseUrl != null || apiKey != null
+        val availableModels = if (shouldResetModels) emptyList() else current.availableModels
+        val isFetchingModels = if (shouldResetModels) false else current.isFetchingModels
+        val modelsError = if (shouldResetModels) null else current.modelsError
+
         _formState.value = current.copy(
             name = name ?: current.name,
             type = type ?: current.type,
@@ -212,8 +219,71 @@ class SettingsViewModel @Inject constructor(
             nameError = if (name != null) null else current.nameError,
             baseUrlError = if (baseUrl != null) null else current.baseUrlError,
             defaultModelError = if (defaultModel != null) null else current.defaultModelError,
-            apiKeyError = if (apiKey != null) null else current.apiKeyError
+            apiKeyError = if (apiKey != null) null else current.apiKeyError,
+            availableModels = availableModels,
+            isFetchingModels = isFetchingModels,
+            modelsError = modelsError
         )
+    }
+
+    fun fetchProviderModels() {
+        val currentState = _uiState.value
+        if (currentState !is SettingsUiState.Success) return
+
+        val currentFormState = _formState.value
+        if (currentFormState.baseUrl.isBlank()) {
+            viewModelScope.launch {
+                _events.emit(SettingsEvent.ShowSnackbar("Base URL is required to fetch models."))
+            }
+            return
+        }
+
+        if (currentFormState.type == ProviderType.OPENAI_COMPATIBLE) {
+            val hasExistingKey = currentState.editingProvider?.let {
+                providerApiKeyStatus[it.id] ?: false
+            } ?: false
+            val hasApiKey = currentFormState.apiKey.isNotBlank() || hasExistingKey
+            if (!hasApiKey) {
+                viewModelScope.launch {
+                    _events.emit(SettingsEvent.ShowSnackbar("API key is required to fetch models."))
+                }
+                return
+            }
+        }
+
+        if (currentFormState.isFetchingModels) return
+
+        _formState.value = currentFormState.copy(
+            isFetchingModels = true,
+            modelsError = null
+        )
+
+        viewModelScope.launch {
+            val result = manageProvidersUseCase.fetchModelsForConfig(
+                providerId = currentState.editingProvider?.id,
+                type = currentFormState.type,
+                baseUrl = currentFormState.baseUrl,
+                apiKey = currentFormState.apiKey.takeIf { it.isNotBlank() }
+            )
+
+            result.onSuccess { models ->
+                _formState.value = _formState.value.copy(
+                    availableModels = models.sortedBy { it.name },
+                    isFetchingModels = false,
+                    modelsError = null
+                )
+                if (models.isEmpty()) {
+                    _events.emit(SettingsEvent.ShowSnackbar("No models were returned by the provider."))
+                }
+            }.onFailure { error ->
+                val message = error.message ?: "Failed to fetch models."
+                _formState.value = _formState.value.copy(
+                    isFetchingModels = false,
+                    modelsError = message
+                )
+                _events.emit(SettingsEvent.ShowSnackbar(message))
+            }
+        }
     }
 
     /**

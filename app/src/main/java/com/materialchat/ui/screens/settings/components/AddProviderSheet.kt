@@ -46,6 +46,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.SheetState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -62,6 +63,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import com.materialchat.domain.model.Provider
 import com.materialchat.domain.model.ProviderType
+import com.materialchat.ui.screens.chat.components.ModelPickerDropdown
 import com.materialchat.ui.screens.settings.ProviderFormState
 import com.materialchat.ui.theme.CustomShapes
 
@@ -83,6 +85,7 @@ import com.materialchat.ui.theme.CustomShapes
  * @param isSaving Whether a save operation is in progress
  * @param onDismiss Callback when the sheet is dismissed
  * @param onFieldChange Callback when a form field changes
+ * @param onFetchModels Callback to fetch provider models
  * @param onSave Callback to save the provider
  */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -101,6 +104,7 @@ fun AddProviderSheet(
         defaultModel: String?,
         apiKey: String?
     ) -> Unit,
+    onFetchModels: () -> Unit,
     onSave: () -> Unit
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -121,6 +125,7 @@ fun AddProviderSheet(
                 isSaving = isSaving,
                 onDismiss = onDismiss,
                 onFieldChange = onFieldChange,
+                onFetchModels = onFetchModels,
                 onSave = onSave
             )
         }
@@ -141,6 +146,7 @@ private fun AddProviderSheetContent(
         defaultModel: String?,
         apiKey: String?
     ) -> Unit,
+    onFetchModels: () -> Unit,
     onSave: () -> Unit
 ) {
     val scrollState = rememberScrollState()
@@ -250,6 +256,49 @@ private fun AddProviderSheetContent(
             )
         )
 
+        Spacer(modifier = Modifier.height(12.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "Available Models",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            TextButton(
+                onClick = onFetchModels,
+                enabled = !formState.isFetchingModels && !isSaving
+            ) {
+                Text("Fetch")
+            }
+        }
+
+        ModelPickerDropdown(
+            currentModel = if (formState.defaultModel.isBlank()) {
+                "Select model"
+            } else {
+                formState.defaultModel
+            },
+            availableModels = formState.availableModels,
+            isLoadingModels = formState.isFetchingModels,
+            isStreaming = false,
+            onModelSelected = { model -> onFieldChange(null, null, null, model.name, null) },
+            onLoadModels = onFetchModels,
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        formState.modelsError?.let { message ->
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = message,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error
+            )
+        }
+
         // API Key (only for OpenAI-compatible providers)
         AnimatedVisibility(
             visible = formState.type == ProviderType.OPENAI_COMPATIBLE,
@@ -271,7 +320,11 @@ private fun AddProviderSheetContent(
                 FormTextField(
                     value = formState.apiKey,
                     onValueChange = { onFieldChange(null, null, null, null, it) },
-                    label = if (isEditing) "API Key (leave blank to keep existing)" else "API Key",
+                    label = if (isEditing && formState.hasExistingKey) {
+                        "API Key (leave blank to keep existing)"
+                    } else {
+                        "API Key"
+                    },
                     placeholder = "sk-...",
                     leadingIcon = Icons.Outlined.Key,
                     error = formState.apiKeyError,

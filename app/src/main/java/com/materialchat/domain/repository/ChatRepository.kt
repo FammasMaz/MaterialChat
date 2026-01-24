@@ -35,9 +35,13 @@ interface ChatRepository {
      * Fetches the list of available models from a provider.
      *
      * @param provider The AI provider to fetch models from
+     * @param apiKeyOverride Optional API key to use instead of stored key
      * @return A list of available AI models
      */
-    suspend fun fetchModels(provider: Provider): Result<List<AiModel>>
+    suspend fun fetchModels(
+        provider: Provider,
+        apiKeyOverride: String? = null
+    ): Result<List<AiModel>>
 
     /**
      * Cancels any ongoing streaming request.

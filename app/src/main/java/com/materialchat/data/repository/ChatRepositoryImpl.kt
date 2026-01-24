@@ -130,10 +130,13 @@ class ChatRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun fetchModels(provider: Provider): Result<List<AiModel>> {
+    override suspend fun fetchModels(
+        provider: Provider,
+        apiKeyOverride: String?
+    ): Result<List<AiModel>> {
         // Get API key if required
         val apiKey = if (provider.requiresApiKey) {
-            encryptedPreferences.getApiKey(provider.id)
+            apiKeyOverride ?: encryptedPreferences.getApiKey(provider.id)
         } else {
             null
         }

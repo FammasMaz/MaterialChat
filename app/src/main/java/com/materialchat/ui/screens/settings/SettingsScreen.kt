@@ -250,6 +250,7 @@ fun SettingsScreen(
                     apiKey = apiKey
                 )
             },
+            onFetchModels = { viewModel.fetchProviderModels() },
             onSave = { viewModel.saveProvider() }
         )
 

@@ -164,6 +164,43 @@ class ManageProvidersUseCase @Inject constructor(
     }
 
     /**
+     * Fetches available models for a provider configuration without saving it.
+     *
+     * @param providerId Optional provider ID to reuse a stored API key
+     * @param type The provider type
+     * @param baseUrl The base URL to query
+     * @param apiKey Optional API key override
+     * @return A Result containing the list of models or an error
+     */
+    suspend fun fetchModelsForConfig(
+        providerId: String?,
+        type: ProviderType,
+        baseUrl: String,
+        apiKey: String?
+    ): Result<List<AiModel>> {
+        val resolvedApiKey = if (type == ProviderType.OPENAI_COMPATIBLE) {
+            if (!apiKey.isNullOrBlank()) {
+                apiKey
+            } else {
+                providerId?.let { providerRepository.getApiKey(it) }
+            }
+        } else {
+            null
+        }
+
+        val tempProvider = Provider(
+            id = providerId ?: "temp-models-provider",
+            name = "Models Provider",
+            type = type,
+            baseUrl = baseUrl.trimEnd('/'),
+            defaultModel = "",
+            requiresApiKey = type == ProviderType.OPENAI_COMPATIBLE
+        )
+
+        return chatRepository.fetchModels(tempProvider, resolvedApiKey)
+    }
+
+    /**
      * Tests the connection to a provider.
      *
      * @param providerId The ID of the provider to test
