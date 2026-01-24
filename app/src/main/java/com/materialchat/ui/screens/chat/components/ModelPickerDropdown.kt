@@ -117,7 +117,7 @@ fun ModelPickerDropdown(
 }
 
 /**
- * The clickable button showing current model name.
+ * The clickable button showing current model name as a proper M3 Expressive pill.
  */
 @Composable
 private fun ModelButton(
@@ -128,47 +128,73 @@ private fun ModelButton(
     interactionSource: MutableInteractionSource,
     onClick: () -> Unit
 ) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
+    // M3 Expressive: Pill-shaped container with tertiary color for model selection
+    val containerColor by animateColorAsState(
+        targetValue = if (isExpanded) {
+            MaterialTheme.colorScheme.secondaryContainer
+        } else {
+            MaterialTheme.colorScheme.surfaceContainerHighest
+        },
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioNoBouncy,
+            stiffness = Spring.StiffnessMedium
+        ),
+        label = "modelButtonContainerColor"
+    )
+    val contentColor by animateColorAsState(
+        targetValue = if (isEnabled) {
+            if (isExpanded) {
+                MaterialTheme.colorScheme.onSecondaryContainer
+            } else {
+                MaterialTheme.colorScheme.onSurfaceVariant
+            }
+        } else {
+            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+        },
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioNoBouncy,
+            stiffness = Spring.StiffnessMedium
+        ),
+        label = "modelButtonContentColor"
+    )
+
+    Box(
         modifier = Modifier
             .scale(scale)
-            .clip(RoundedCornerShape(8.dp))
+            .clip(RoundedCornerShape(999.dp)) // Fully rounded pill shape
+            .background(containerColor)
             .clickable(
                 interactionSource = interactionSource,
                 indication = ripple(bounded = true),
                 enabled = isEnabled,
                 onClick = onClick
             )
-            .padding(horizontal = 4.dp, vertical = 2.dp)
+            .padding(horizontal = 10.dp, vertical = 4.dp)
     ) {
-        Text(
-            text = modelName.ifEmpty { "Select model" },
-            style = MaterialTheme.typography.bodySmall,
-            color = if (isEnabled) {
-                MaterialTheme.colorScheme.primary
-            } else {
-                MaterialTheme.colorScheme.onSurfaceVariant
-            },
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
-        )
+        Row(
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = modelName.ifEmpty { "Select model" },
+                style = MaterialTheme.typography.labelMedium,
+                color = contentColor,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
 
-        Spacer(modifier = Modifier.width(2.dp))
+            Spacer(modifier = Modifier.width(4.dp))
 
-        Icon(
-            imageVector = if (isExpanded) {
-                Icons.Default.KeyboardArrowUp
-            } else {
-                Icons.Default.KeyboardArrowDown
-            },
-            contentDescription = if (isExpanded) "Collapse" else "Expand",
-            modifier = Modifier.size(16.dp),
-            tint = if (isEnabled) {
-                MaterialTheme.colorScheme.primary
-            } else {
-                MaterialTheme.colorScheme.onSurfaceVariant
-            }
-        )
+            Icon(
+                imageVector = if (isExpanded) {
+                    Icons.Default.KeyboardArrowUp
+                } else {
+                    Icons.Default.KeyboardArrowDown
+                },
+                contentDescription = if (isExpanded) "Collapse" else "Expand",
+                modifier = Modifier.size(16.dp),
+                tint = contentColor
+            )
+        }
     }
 }
 

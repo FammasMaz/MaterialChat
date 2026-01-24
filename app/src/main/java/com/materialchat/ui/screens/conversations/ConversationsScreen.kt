@@ -131,14 +131,14 @@ fun ConversationsScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
-    
+
     // Shared list state for scroll detection (M3 Expressive FAB behavior)
     val conversationListState = rememberLazyListState()
-    
+
     // M3 Expressive: FAB expand/collapse with stable state
     // Start expanded, only update when USER actively scrolls (not data changes)
     var fabExpanded by rememberSaveable { mutableStateOf(true) }
-    
+
     // Only update FAB state during active user scrolling
     val isScrolling = conversationListState.isScrollInProgress
     LaunchedEffect(isScrolling, conversationListState.firstVisibleItemIndex) {
@@ -147,15 +147,15 @@ fun ConversationsScreen(
             fabExpanded = conversationListState.firstVisibleItemIndex == 0
         }
     }
-    
+
     // Always expand when at the very top (even after scroll stops)
     LaunchedEffect(conversationListState.firstVisibleItemIndex, conversationListState.firstVisibleItemScrollOffset) {
-        if (conversationListState.firstVisibleItemIndex == 0 && 
+        if (conversationListState.firstVisibleItemIndex == 0 &&
             conversationListState.firstVisibleItemScrollOffset < 20) {
             fabExpanded = true
         }
     }
-    
+
     // Search state
     var isSearchActive by remember { mutableStateOf(false) }
     val searchQuery by searchViewModel.searchQuery.collectAsStateWithLifecycle()
@@ -307,13 +307,9 @@ private fun ConversationsTopBar(
 ) {
     val expandedHeight = 140.dp
     val collapsedHeight = 72.dp
-    val iconRowHeight = 48.dp
     val collapseFraction = scrollBehavior.state.collapsedFraction.coerceIn(0f, 1f)
     val barHeight = expandedHeight - (expandedHeight - collapsedHeight) * collapseFraction
-    val expandedTitleOffset = iconRowHeight + 20.dp
-    val collapsedTitleOffset = 6.dp
-    val titleOffsetTarget = expandedTitleOffset -
-        (expandedTitleOffset - collapsedTitleOffset) * collapseFraction
+    
     val titleScaleTarget = 1f - 0.22f * collapseFraction
     val materialWidthTarget = (1f - collapseFraction * 1.25f).coerceIn(0f, 1f)
     val suffixWidthTarget = ((collapseFraction - 0.2f) / 0.8f).coerceIn(0f, 1f)
@@ -321,11 +317,7 @@ private fun ConversationsTopBar(
     val spatialDpSpec = ExpressiveMotion.Spatial.container<Dp>()
     val spatialFloatSpec = ExpressiveMotion.Spatial.container<Float>()
     val alphaFloatSpec = ExpressiveMotion.Effects.alpha<Float>()
-    val titleOffset by animateDpAsState(
-        targetValue = titleOffsetTarget,
-        animationSpec = spatialDpSpec,
-        label = "titleOffset"
-    )
+    
     val titleScale by animateFloatAsState(
         targetValue = titleScaleTarget,
         animationSpec = spatialFloatSpec,
@@ -370,37 +362,70 @@ private fun ConversationsTopBar(
                 .height(barHeight)
                 .padding(horizontal = 16.dp)
         ) {
+            // M3 Expressive: Icon button corner radius morphs from squircle to pill when collapsed
+            val iconCornerRadius by animateDpAsState(
+                targetValue = if (collapseFraction > 0.5f) 12.dp else 16.dp,
+                animationSpec = spatialDpSpec,
+                label = "iconCornerRadius"
+            )
+            
+            // Bottom padding for vertical centering in collapsed state (72dp height, 44dp buttons = 14dp padding)
+            val baseBottomPadding = 14.dp
+            // Icons get extra padding when expanded to position them higher
+            val iconExpandedExtraPadding = 10.dp
+            val iconBottomPadding = baseBottomPadding + iconExpandedExtraPadding * (1f - collapseFraction)
+
+            // Icons row - aligned to bottom right, positioned higher when expanded
             Row(
                 modifier = Modifier
-                    .height(iconRowHeight)
-                    .fillMaxWidth()
-                    .align(Alignment.TopEnd),
-                horizontalArrangement = Arrangement.End,
+                    .align(Alignment.BottomEnd)
+                    .padding(bottom = iconBottomPadding),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                IconButton(onClick = onSearchClick) {
-                    Icon(
-                        imageVector = Icons.Default.Search,
-                        contentDescription = "Search"
-                    )
+                // M3 Expressive: Enclosed icon buttons with surface container
+                Surface(
+                    onClick = onSearchClick,
+                    shape = RoundedCornerShape(iconCornerRadius),
+                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(44.dp)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = Icons.Default.Search,
+                            contentDescription = "Search"
+                        )
+                    }
                 }
-                IconButton(onClick = onSettingsClick) {
-                    Icon(
-                        imageVector = Icons.Outlined.Settings,
-                        contentDescription = "Settings"
-                    )
+                Surface(
+                    onClick = onSettingsClick,
+                    shape = RoundedCornerShape(iconCornerRadius),
+                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(44.dp)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = Icons.Outlined.Settings,
+                            contentDescription = "Settings"
+                        )
+                    }
                 }
             }
+            
+            // Title row - aligned to bottom left with fixed padding
             Row(
                 modifier = Modifier
-                    .align(Alignment.TopStart)
-                    .offset(y = titleOffset)
+                    .height(44.dp) // Same height as icon buttons for alignment
+                    .align(Alignment.BottomStart)
+                    .padding(bottom = baseBottomPadding)
                     .graphicsLayer {
                         scaleX = titleScale
                         scaleY = titleScale
-                        transformOrigin = TransformOrigin(0f, 1f)
+                        transformOrigin = TransformOrigin(0f, 0.5f)
                     },
-                verticalAlignment = Alignment.Bottom
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
                     text = "material",
@@ -493,7 +518,7 @@ private fun NewChatFab(
             } else {
                 Modifier
             }
-            
+
             AnimatedExtendedFab(
                 expanded = expanded,
                 onClick = {
@@ -506,7 +531,7 @@ private fun NewChatFab(
                         contentDescription = null
                     )
                 },
-                text = { 
+                text = {
                     Text(
                         text = "New Chat",
                         maxLines = 1,

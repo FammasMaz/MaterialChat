@@ -169,7 +169,7 @@ fun MessageInput(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            // Attach button - M3 circular, same height as text pill
+            // Attach button - M3 Expressive tertiary color for complementary accent
             Surface(
                 onClick = {
                     haptics.perform(HapticPattern.CLICK, hapticsEnabled)
@@ -177,7 +177,10 @@ fun MessageInput(
                 },
                 modifier = Modifier.size(48.dp),
                 shape = CircleShape,
-                color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                color = if (!isStreaming) 
+                    MaterialTheme.colorScheme.tertiaryContainer 
+                else 
+                    MaterialTheme.colorScheme.surfaceContainerHigh,
                 enabled = !isStreaming
             ) {
                 Box(
@@ -187,7 +190,10 @@ fun MessageInput(
                     Icon(
                         imageVector = Icons.Default.Add,
                         contentDescription = "Attach",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        tint = if (!isStreaming)
+                            MaterialTheme.colorScheme.onTertiaryContainer
+                        else
+                            MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
@@ -279,7 +285,9 @@ fun MessageInput(
                 modifier = Modifier.defaultMinSize(minHeight = 48.dp)
             )
 
-            // Send/Stop button - M3 circular, same height as text pill
+            // Send/Stop button - M3 Expressive with primary colors
+            // Uses secondaryContainer for send (complementary to tertiary attach button)
+            // Uses error container for stop (streaming cancel action)
             Surface(
                 onClick = {
                     if (isStreaming) {
@@ -292,10 +300,11 @@ fun MessageInput(
                 },
                 modifier = Modifier.size(48.dp),
                 shape = CircleShape,
-                color = if (canSend || isStreaming) 
-                    MaterialTheme.colorScheme.primaryContainer 
-                else 
-                    MaterialTheme.colorScheme.surfaceContainerHigh,
+                color = when {
+                    isStreaming -> MaterialTheme.colorScheme.errorContainer
+                    canSend -> MaterialTheme.colorScheme.primaryContainer
+                    else -> MaterialTheme.colorScheme.surfaceContainerHigh
+                },
                 enabled = canSend || isStreaming
             ) {
                 Box(
@@ -305,10 +314,11 @@ fun MessageInput(
                     Icon(
                         imageVector = if (isStreaming) Icons.Default.Close else Icons.AutoMirrored.Filled.Send,
                         contentDescription = if (isStreaming) "Stop" else "Send",
-                        tint = if (canSend || isStreaming)
-                            MaterialTheme.colorScheme.onPrimaryContainer
-                        else
-                            MaterialTheme.colorScheme.onSurfaceVariant
+                        tint = when {
+                            isStreaming -> MaterialTheme.colorScheme.onErrorContainer
+                            canSend -> MaterialTheme.colorScheme.onPrimaryContainer
+                            else -> MaterialTheme.colorScheme.onSurfaceVariant
+                        }
                     )
                 }
             }
@@ -399,8 +409,9 @@ private fun ReasoningEffortSelector(
         animationSpec = ExpressiveMotion.Spatial.scale(),
         label = "reasoningButtonScale"
     )
+    // M3 Expressive: Use secondary container for reasoning effort (distinct from tertiary attach and primary send)
     val baseContainerColor = if (isActive) {
-        MaterialTheme.colorScheme.primaryContainer
+        MaterialTheme.colorScheme.secondaryContainer
     } else {
         MaterialTheme.colorScheme.surfaceContainerHigh
     }
@@ -414,7 +425,7 @@ private fun ReasoningEffortSelector(
         label = "reasoningButtonColor"
     )
     val contentColor = if (isActive) {
-        MaterialTheme.colorScheme.onPrimaryContainer
+        MaterialTheme.colorScheme.onSecondaryContainer
     } else {
         MaterialTheme.colorScheme.onSurfaceVariant
     }
@@ -501,11 +512,13 @@ private fun ReasoningOptionPill(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    // M3 Expressive: Use tertiary container for unselected to create better contrast
+    // and primary container for selected state
     val containerColor by animateColorAsState(
         targetValue = if (selected) {
             MaterialTheme.colorScheme.primaryContainer
         } else {
-            MaterialTheme.colorScheme.surfaceContainerHigh
+            MaterialTheme.colorScheme.tertiaryContainer
         },
         animationSpec = ExpressiveMotion.SpringSpecs.ColorTransition,
         label = "reasoningPillColor"
@@ -514,7 +527,7 @@ private fun ReasoningOptionPill(
         targetValue = if (selected) {
             MaterialTheme.colorScheme.onPrimaryContainer
         } else {
-            MaterialTheme.colorScheme.onSurfaceVariant
+            MaterialTheme.colorScheme.onTertiaryContainer
         },
         animationSpec = ExpressiveMotion.SpringSpecs.ColorTransition,
         label = "reasoningPillContent"
@@ -525,8 +538,8 @@ private fun ReasoningOptionPill(
         shape = RoundedCornerShape(999.dp),
         color = containerColor,
         contentColor = contentColor,
-        tonalElevation = if (selected) 3.dp else 1.dp,
-        shadowElevation = if (selected) 3.dp else 1.dp,
+        tonalElevation = if (selected) 3.dp else 2.dp,
+        shadowElevation = if (selected) 4.dp else 2.dp,
         modifier = modifier
             .defaultMinSize(minHeight = 44.dp)
             .padding(horizontal = 6.dp)
