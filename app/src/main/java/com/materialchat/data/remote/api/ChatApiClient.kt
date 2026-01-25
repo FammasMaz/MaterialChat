@@ -51,6 +51,8 @@ class ChatApiClient(
     private val json: Json = Json {
         ignoreUnknownKeys = true
         encodeDefaults = true
+        isLenient = true
+        coerceInputValues = true
     },
     private val sseEventParser: SseEventParser = SseEventParser.default
 ) {
@@ -764,5 +766,5 @@ private data class ErrorWrapper(
 private data class ErrorDetail(
     val message: String? = null,
     val type: String? = null,
-    val code: String? = null
+    val code: kotlinx.serialization.json.JsonElement? = null
 )

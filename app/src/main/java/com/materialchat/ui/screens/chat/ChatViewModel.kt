@@ -371,6 +371,17 @@ class ChatViewModel @Inject constructor(
         val currentState = _uiState.value
         if (currentState is ChatUiState.Success) {
             _uiState.value = currentState.copy(streamingState = state)
+
+            // Show error message to user when streaming error occurs
+            if (state is StreamingState.Error) {
+                viewModelScope.launch {
+                    _events.emit(
+                        ChatEvent.ShowSnackbar(
+                            message = state.error?.message ?: "An error occurred"
+                        )
+                    )
+                }
+            }
         }
     }
 
