@@ -479,7 +479,7 @@ class ChatApiClient(
     ): Result<Boolean> = withContext(Dispatchers.IO) {
         try {
             val url = when (provider.type) {
-                ProviderType.OPENAI_COMPATIBLE -> "${normalizeBaseUrl(provider.baseUrl)}/v1/models"
+                ProviderType.OPENAI_COMPATIBLE -> buildModelsUrl(provider.baseUrl)
                 ProviderType.OLLAMA_NATIVE -> "${provider.baseUrl.trimEnd('/')}/api/tags"
             }
 
@@ -708,18 +708,34 @@ class ChatApiClient(
         private const val STREAMING_TIMEOUT_SECONDS = 120L
 
         /**
-         * Normalizes a base URL by removing trailing API version paths.
-         * This prevents duplication when the user includes /v1 in their base URL.
+         * Builds the models endpoint URL, handling various base URL formats.
          *
          * Examples:
-         * - "https://api.example.com/v1" -> "https://api.example.com"
-         * - "https://api.example.com/v1/" -> "https://api.example.com"
+         * - "https://api.openai.com" -> "https://api.openai.com/v1/models"
+         * - "https://api.openai.com/v1" -> "https://api.openai.com/v1/models"
+         * - "https://openrouter.ai/api/v1" -> "https://openrouter.ai/api/v1/models"
+         */
+        fun buildModelsUrl(baseUrl: String): String {
+            val trimmed = baseUrl.trimEnd('/')
+            return if (trimmed.endsWith("/v1")) {
+                "$trimmed/models"
+            } else {
+                "$trimmed/v1/models"
+            }
+        }
+
+        /**
+         * Normalizes a base URL for chat completions endpoint.
+         * Only removes /v1 suffix to prevent duplication when appending /v1/chat/completions.
+         *
+         * Examples:
+         * - "https://api.openai.com/v1" -> "https://api.openai.com"
+         * - "https://openrouter.ai/api/v1" -> "https://openrouter.ai/api"
          * - "https://api.example.com" -> "https://api.example.com"
          */
         fun normalizeBaseUrl(url: String): String {
             return url.trimEnd('/')
                 .removeSuffix("/v1")
-                .removeSuffix("/api")
                 .trimEnd('/')
         }
 

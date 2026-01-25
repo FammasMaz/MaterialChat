@@ -69,7 +69,7 @@ class ModelListApiClient(
         apiKey: String
     ): Result<List<AiModel>> = withContext(Dispatchers.IO) {
         try {
-            val url = "${ChatApiClient.normalizeBaseUrl(baseUrl)}/v1/models"
+            val url = ChatApiClient.buildModelsUrl(baseUrl)
 
             val request = Request.Builder()
                 .url(url)
@@ -93,6 +93,17 @@ class ModelListApiClient(
                 val body = resp.body?.string() ?: return@withContext Result.failure(
                     ApiException(code = -1, message = "Empty response body")
                 )
+
+                // Check if response is JSON (some providers return HTML error pages)
+                val contentType = resp.header("Content-Type") ?: ""
+                if (!contentType.contains("application/json") && body.trimStart().startsWith("<")) {
+                    return@withContext Result.failure(
+                        ApiException(
+                            code = resp.code,
+                            message = "Provider returned HTML instead of JSON. Check if the base URL is correct and the /v1/models endpoint is supported."
+                        )
+                    )
+                }
 
                 val modelsResponse = json.decodeFromString<OpenAiModelsResponse>(body)
 
@@ -162,6 +173,17 @@ class ModelListApiClient(
                 val body = resp.body?.string() ?: return@withContext Result.failure(
                     ApiException(code = -1, message = "Empty response body")
                 )
+
+                // Check if response is JSON (some servers return HTML error pages)
+                val contentType = resp.header("Content-Type") ?: ""
+                if (!contentType.contains("application/json") && body.trimStart().startsWith("<")) {
+                    return@withContext Result.failure(
+                        ApiException(
+                            code = resp.code,
+                            message = "Server returned HTML instead of JSON. Check if the Ollama server URL is correct and the /api/tags endpoint is accessible."
+                        )
+                    )
+                }
 
                 val modelsResponse = json.decodeFromString<OllamaModelsResponse>(body)
 

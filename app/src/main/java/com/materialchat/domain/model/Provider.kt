@@ -48,5 +48,18 @@ data class Provider(
             requiresApiKey = false,
             isActive = true
         )
+
+        /**
+         * Creates a default OpenRouter provider template.
+         */
+        fun openRouterTemplate(): Provider = Provider(
+            id = "openrouter-default",
+            name = "OpenRouter",
+            type = ProviderType.OPENAI_COMPATIBLE,
+            baseUrl = "https://openrouter.ai/api/v1",
+            defaultModel = "openai/gpt-4o",
+            requiresApiKey = true,
+            isActive = false
+        )
     }
 }
