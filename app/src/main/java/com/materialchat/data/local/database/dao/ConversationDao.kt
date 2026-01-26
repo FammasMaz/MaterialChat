@@ -44,14 +44,24 @@ interface ConversationDao {
 
     /**
      * Get all conversations as a Flow, ordered by updated_at (newest first).
+     * Only includes conversations that have at least one message.
      */
-    @Query("SELECT * FROM conversations ORDER BY updated_at DESC")
+    @Query("""
+        SELECT c.* FROM conversations c
+        WHERE EXISTS (SELECT 1 FROM messages m WHERE m.conversation_id = c.id)
+        ORDER BY c.updated_at DESC
+    """)
     fun getAllConversations(): Flow<List<ConversationEntity>>
 
     /**
      * Get all conversations as a one-shot list.
+     * Only includes conversations that have at least one message.
      */
-    @Query("SELECT * FROM conversations ORDER BY updated_at DESC")
+    @Query("""
+        SELECT c.* FROM conversations c
+        WHERE EXISTS (SELECT 1 FROM messages m WHERE m.conversation_id = c.id)
+        ORDER BY c.updated_at DESC
+    """)
     suspend fun getAllConversationsOnce(): List<ConversationEntity>
 
     /**
