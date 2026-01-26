@@ -61,9 +61,14 @@ class SettingsViewModel @Inject constructor(
                     appPreferences.aiGeneratedTitlesEnabled,
                     appPreferences.titleGenerationModel,
                     appPreferences.autoCheckUpdates,
-                    updateManager.updateState
-                ) { haptics, aiTitles, titleModel, autoCheck, updateState ->
-                    SettingsToggles(haptics, aiTitles, titleModel, autoCheck, updateState)
+                    combine(
+                        updateManager.updateState,
+                        appPreferences.rememberLastModel
+                    ) { updateState, rememberLastModel ->
+                        Pair(updateState, rememberLastModel)
+                    }
+                ) { haptics, aiTitles, titleModel, autoCheck, combined ->
+                    SettingsToggles(haptics, aiTitles, titleModel, autoCheck, combined.first, combined.second)
                 }
             ) { providers, systemPrompt, themeMode, dynamicColorEnabled, toggles ->
                 SettingsData(
@@ -75,7 +80,8 @@ class SettingsViewModel @Inject constructor(
                     aiGeneratedTitlesEnabled = toggles.aiTitles,
                     titleGenerationModel = toggles.titleModel,
                     autoCheckUpdates = toggles.autoCheck,
-                    updateState = toggles.updateState
+                    updateState = toggles.updateState,
+                    rememberLastModel = toggles.rememberLastModel
                 )
             }
                 .catch { e ->
@@ -106,6 +112,7 @@ class SettingsViewModel @Inject constructor(
                         hapticsEnabled = data.hapticsEnabled,
                         aiGeneratedTitlesEnabled = data.aiGeneratedTitlesEnabled,
                         titleGenerationModel = data.titleGenerationModel,
+                        rememberLastModelEnabled = data.rememberLastModel,
                         appVersion = updateManager.getCurrentVersion(),
                         autoCheckUpdates = data.autoCheckUpdates,
                         updateState = data.updateState,
@@ -562,6 +569,21 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Updates the remember last model setting.
+     */
+    fun updateRememberLastModelEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            try {
+                appPreferences.setRememberLastModel(enabled)
+            } catch (e: Exception) {
+                _events.emit(SettingsEvent.ShowSnackbar(
+                    message = "Failed to save remember model setting"
+                ))
+            }
+        }
+    }
+
     // ========== App Updates ==========
 
     /**
@@ -664,7 +686,8 @@ class SettingsViewModel @Inject constructor(
         val aiGeneratedTitlesEnabled: Boolean,
         val titleGenerationModel: String,
         val autoCheckUpdates: Boolean,
-        val updateState: com.materialchat.domain.model.UpdateState
+        val updateState: com.materialchat.domain.model.UpdateState,
+        val rememberLastModel: Boolean
     )
 
     /**
@@ -675,6 +698,7 @@ class SettingsViewModel @Inject constructor(
         val aiTitles: Boolean,
         val titleModel: String,
         val autoCheck: Boolean,
-        val updateState: com.materialchat.domain.model.UpdateState
+        val updateState: com.materialchat.domain.model.UpdateState,
+        val rememberLastModel: Boolean
     )
 }

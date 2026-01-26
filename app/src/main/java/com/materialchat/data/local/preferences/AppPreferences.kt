@@ -46,6 +46,8 @@ class AppPreferences(private val context: Context) {
         val AUTO_CHECK_UPDATES = booleanPreferencesKey("auto_check_updates")
         val LAST_UPDATE_CHECK = longPreferencesKey("last_update_check")
         val SKIPPED_UPDATE_VERSION = stringPreferencesKey("skipped_update_version")
+        val REMEMBER_LAST_MODEL = booleanPreferencesKey("remember_last_model")
+        val LAST_USED_MODEL = stringPreferencesKey("last_used_model")
     }
 
     /**
@@ -67,6 +69,7 @@ class AppPreferences(private val context: Context) {
         const val DEFAULT_HAPTICS_ENABLED = true
         const val DEFAULT_AI_GENERATED_TITLES_ENABLED = true
         val DEFAULT_REASONING_EFFORT = ReasoningEffort.HIGH
+        const val DEFAULT_REMEMBER_LAST_MODEL = true
     }
 
     // ========== System Prompt ==========
@@ -270,6 +273,42 @@ class AppPreferences(private val context: Context) {
     suspend fun setSkippedUpdateVersion(version: String) {
         dataStore.edit { preferences ->
             preferences[Keys.SKIPPED_UPDATE_VERSION] = version
+        }
+    }
+
+    // ========== Remember Last Model ==========
+
+    /**
+     * Get whether to remember the last used model for new chats as a Flow.
+     * When enabled, new conversations will use the last model the user selected.
+     */
+    val rememberLastModel: Flow<Boolean> = dataStore.data.map { preferences ->
+        preferences[Keys.REMEMBER_LAST_MODEL] ?: DEFAULT_REMEMBER_LAST_MODEL
+    }
+
+    /**
+     * Set whether to remember the last used model for new chats.
+     */
+    suspend fun setRememberLastModel(enabled: Boolean) {
+        dataStore.edit { preferences ->
+            preferences[Keys.REMEMBER_LAST_MODEL] = enabled
+        }
+    }
+
+    /**
+     * Get the last used model name as a Flow.
+     * Empty string means no model has been stored yet.
+     */
+    val lastUsedModel: Flow<String> = dataStore.data.map { preferences ->
+        preferences[Keys.LAST_USED_MODEL] ?: ""
+    }
+
+    /**
+     * Set the last used model name.
+     */
+    suspend fun setLastUsedModel(model: String) {
+        dataStore.edit { preferences ->
+            preferences[Keys.LAST_USED_MODEL] = model
         }
     }
 

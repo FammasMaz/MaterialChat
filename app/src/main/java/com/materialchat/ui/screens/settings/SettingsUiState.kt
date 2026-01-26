@@ -27,6 +27,7 @@ sealed interface SettingsUiState {
      * @property hapticsEnabled Whether haptic feedback is enabled
      * @property aiGeneratedTitlesEnabled Whether AI-generated conversation titles are enabled
      * @property titleGenerationModel Custom model for title generation (empty = use conversation model)
+     * @property rememberLastModelEnabled Whether to use the last used model for new chats
      * @property appVersion Current app version for display
      * @property autoCheckUpdates Whether automatic update checking is enabled
      * @property updateState Current state of the update system
@@ -44,6 +45,7 @@ sealed interface SettingsUiState {
         val hapticsEnabled: Boolean = true,
         val aiGeneratedTitlesEnabled: Boolean = true,
         val titleGenerationModel: String = "",
+        val rememberLastModelEnabled: Boolean = true,
         val appVersion: String = "",
         val autoCheckUpdates: Boolean = true,
         val updateState: UpdateState = UpdateState.Idle,

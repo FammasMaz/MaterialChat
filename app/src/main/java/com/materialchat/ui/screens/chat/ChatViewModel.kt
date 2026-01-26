@@ -484,6 +484,11 @@ class ChatViewModel @Inject constructor(
                     _uiState.value = currentState.copy(modelName = model.id)
                 }
 
+                // Save as last used model if the setting is enabled
+                if (appPreferences.rememberLastModel.first()) {
+                    appPreferences.setLastUsedModel(model.id)
+                }
+
                 _events.emit(ChatEvent.ModelChanged(model.name))
             } catch (e: Exception) {
                 _events.emit(

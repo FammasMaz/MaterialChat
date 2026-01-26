@@ -223,6 +223,7 @@ fun SettingsScreen(
             onHapticsChange = { viewModel.updateHapticsEnabled(it) },
             onAiGeneratedTitlesChange = { viewModel.updateAiGeneratedTitlesEnabled(it) },
             onTitleGenerationModelChange = { viewModel.updateTitleGenerationModel(it) },
+            onRememberLastModelChange = { viewModel.updateRememberLastModelEnabled(it) },
             onAutoCheckUpdatesChange = { viewModel.updateAutoCheckUpdates(it) },
             onCheckForUpdates = { viewModel.checkForUpdates() },
             onDownloadUpdate = { viewModel.downloadUpdate(it) },
@@ -282,6 +283,7 @@ private fun SettingsContent(
     onHapticsChange: (Boolean) -> Unit,
     onAiGeneratedTitlesChange: (Boolean) -> Unit,
     onTitleGenerationModelChange: (String) -> Unit,
+    onRememberLastModelChange: (Boolean) -> Unit,
     onAutoCheckUpdatesChange: (Boolean) -> Unit,
     onCheckForUpdates: () -> Unit,
     onDownloadUpdate: (AppUpdate) -> Unit,
@@ -313,6 +315,7 @@ private fun SettingsContent(
                     onHapticsChange = onHapticsChange,
                     onAiGeneratedTitlesChange = onAiGeneratedTitlesChange,
                     onTitleGenerationModelChange = onTitleGenerationModelChange,
+                    onRememberLastModelChange = onRememberLastModelChange,
                     onAutoCheckUpdatesChange = onAutoCheckUpdatesChange,
                     onCheckForUpdates = onCheckForUpdates,
                     onDownloadUpdate = onDownloadUpdate,
@@ -358,6 +361,7 @@ private fun SuccessContent(
     onHapticsChange: (Boolean) -> Unit,
     onAiGeneratedTitlesChange: (Boolean) -> Unit,
     onTitleGenerationModelChange: (String) -> Unit,
+    onRememberLastModelChange: (Boolean) -> Unit,
     onAutoCheckUpdatesChange: (Boolean) -> Unit,
     onCheckForUpdates: () -> Unit,
     onDownloadUpdate: (AppUpdate) -> Unit,
@@ -441,6 +445,13 @@ private fun SuccessContent(
         // Chat Section
         item {
             SectionHeader(title = "Chat")
+        }
+
+        item {
+            RememberLastModelToggle(
+                enabled = uiState.rememberLastModelEnabled,
+                onToggle = onRememberLastModelChange
+            )
         }
 
         item {
@@ -695,6 +706,58 @@ private fun HapticsToggle(
                     haptics.perform(HapticPattern.TOGGLE, enabled = newValue)
                     onToggle(newValue)
                 }
+            )
+        }
+    }
+}
+
+@Composable
+private fun RememberLastModelToggle(
+    enabled: Boolean,
+    onToggle: (Boolean) -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+        ),
+        shape = RoundedCornerShape(20.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.weight(1f)
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.AutoAwesome,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(24.dp)
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                Column {
+                    Text(
+                        text = "Remember Last Model",
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = "New chats use your last selected model",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            Switch(
+                checked = enabled,
+                onCheckedChange = onToggle
             )
         }
     }

@@ -1,9 +1,11 @@
 package com.materialchat.domain.usecase
 
+import com.materialchat.data.local.preferences.AppPreferences
 import com.materialchat.domain.model.Conversation
 import com.materialchat.domain.model.Provider
 import com.materialchat.domain.repository.ConversationRepository
 import com.materialchat.domain.repository.ProviderRepository
+import kotlinx.coroutines.flow.first
 import javax.inject.Inject
 
 /**
@@ -13,10 +15,12 @@ import javax.inject.Inject
  * - Creating a conversation with the active provider
  * - Creating a conversation with a specific provider
  * - Setting default values for new conversations
+ * - Using the last used model if the setting is enabled
  */
 class CreateConversationUseCase @Inject constructor(
     private val conversationRepository: ConversationRepository,
-    private val providerRepository: ProviderRepository
+    private val providerRepository: ProviderRepository,
+    private val appPreferences: AppPreferences
 ) {
     /**
      * Creates a new conversation using the active provider.
@@ -67,13 +71,23 @@ class CreateConversationUseCase @Inject constructor(
     }
 
     /**
-     * Creates a conversation with the given provider using its default model.
+     * Creates a conversation with the given provider.
+     * Uses the last used model if the setting is enabled and a model was previously used,
+     * otherwise falls back to the provider's default model.
      */
     private suspend fun createWithProvider(provider: Provider): String {
+        // Determine which model to use
+        val modelToUse = if (appPreferences.rememberLastModel.first()) {
+            val lastModel = appPreferences.lastUsedModel.first()
+            if (lastModel.isNotBlank()) lastModel else provider.defaultModel
+        } else {
+            provider.defaultModel
+        }
+
         val conversation = Conversation(
             title = Conversation.generateDefaultTitle(),
             providerId = provider.id,
-            modelName = provider.defaultModel
+            modelName = modelToUse
         )
 
         return conversationRepository.createConversation(conversation)
