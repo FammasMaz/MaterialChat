@@ -550,6 +550,7 @@ private fun ChatContent(
                 reasoningEffort = reasoningEffort,
                 onReasoningEffortChange = onReasoningEffortChange,
                 hapticsEnabled = state.hapticsEnabled,
+                shouldAutoFocus = state.messages.isEmpty(),
                 modifier = Modifier.onSizeChanged { inputHeightPx = it.height }
             )
         }

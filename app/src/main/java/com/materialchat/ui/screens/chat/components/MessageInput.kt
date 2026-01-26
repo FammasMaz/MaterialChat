@@ -67,11 +67,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
@@ -131,10 +134,25 @@ fun MessageInput(
     reasoningEffort: ReasoningEffort = ReasoningEffort.HIGH,
     onReasoningEffortChange: (ReasoningEffort) -> Unit = {},
     modifier: Modifier = Modifier,
-    hapticsEnabled: Boolean = true
+    hapticsEnabled: Boolean = true,
+    shouldAutoFocus: Boolean = false
 ) {
     val haptics = rememberHapticFeedback()
     val textScrollState = rememberScrollState()
+    val focusRequester = remember { FocusRequester() }
+    val keyboardController = LocalSoftwareKeyboardController.current
+
+    // Auto-focus after shared element animation completes for new chats
+    // Delay allows the FAB-to-input morph animation to finish smoothly
+    LaunchedEffect(shouldAutoFocus) {
+        if (shouldAutoFocus) {
+            // Wait for shared element animation to complete
+            // Spring animation with dampingRatio=0.65, stiffness=340 settles in ~400ms
+            delay(420L)
+            focusRequester.requestFocus()
+            keyboardController?.show()
+        }
+    }
 
     LaunchedEffect(inputText) {
         if (textScrollState.maxValue > 0) {
@@ -242,7 +260,8 @@ fun MessageInput(
                     modifier = Modifier
                         .fillMaxWidth()
                         .heightIn(min = 48.dp, max = 160.dp)
-                        .verticalScroll(textScrollState),
+                        .verticalScroll(textScrollState)
+                        .focusRequester(focusRequester),
                     textStyle = MaterialTheme.typography.bodyLarge.copy(
                         color = MaterialTheme.colorScheme.onSurface
                     ),
