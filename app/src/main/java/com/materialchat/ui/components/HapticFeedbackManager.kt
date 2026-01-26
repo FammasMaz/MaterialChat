@@ -207,9 +207,23 @@ class HapticFeedbackManager(
      * Medium feedback for long press actions.
      */
     private fun performLongPress() {
-        // API 34+: Use native LONG_PRESS constant via View
+        // API 34+: Use native LONG_PRESS constant via View with flags to bypass settings
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE && view != null) {
-            view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+            @Suppress("DEPRECATION")
+            val success = view.performHapticFeedback(
+                HapticFeedbackConstants.LONG_PRESS,
+                HapticFeedbackConstants.FLAG_IGNORE_VIEW_SETTING
+            )
+            // Fallback to Vibrator API if View haptic fails (common on Android 15+)
+            if (!success) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    vibrator?.vibrate(
+                        VibrationEffect.createPredefined(VibrationEffect.EFFECT_HEAVY_CLICK)
+                    )
+                } else {
+                    hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                }
+            }
         } else {
             hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
         }
@@ -250,9 +264,23 @@ class HapticFeedbackManager(
      */
     private fun performConfirm() {
         when {
-            // API 34+: Native CONFIRM haptic
+            // API 34+: Native CONFIRM haptic with fallback
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE && view != null -> {
-                view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                @Suppress("DEPRECATION")
+                val success = view.performHapticFeedback(
+                    HapticFeedbackConstants.CONFIRM,
+                    HapticFeedbackConstants.FLAG_IGNORE_VIEW_SETTING
+                )
+                // Fallback to Vibrator API if View haptic fails
+                if (!success && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R &&
+                    supportedPrimitives.contains(VibrationEffect.Composition.PRIMITIVE_QUICK_RISE)) {
+                    vibrator?.vibrate(
+                        VibrationEffect.startComposition()
+                            .addPrimitive(VibrationEffect.Composition.PRIMITIVE_QUICK_RISE, 0.5f)
+                            .addPrimitive(VibrationEffect.Composition.PRIMITIVE_TICK, 0.8f, 50)
+                            .compose()
+                    )
+                }
             }
             // API 30+: Use composition with rising effect for "success" feel
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.R &&
@@ -284,9 +312,23 @@ class HapticFeedbackManager(
      */
     private fun performReject() {
         when {
-            // API 34+: Native REJECT haptic
+            // API 34+: Native REJECT haptic with fallback
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE && view != null -> {
-                view.performHapticFeedback(HapticFeedbackConstants.REJECT)
+                @Suppress("DEPRECATION")
+                val success = view.performHapticFeedback(
+                    HapticFeedbackConstants.REJECT,
+                    HapticFeedbackConstants.FLAG_IGNORE_VIEW_SETTING
+                )
+                // Fallback to Vibrator API if View haptic fails
+                if (!success && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R &&
+                    supportedPrimitives.contains(VibrationEffect.Composition.PRIMITIVE_CLICK)) {
+                    vibrator?.vibrate(
+                        VibrationEffect.startComposition()
+                            .addPrimitive(VibrationEffect.Composition.PRIMITIVE_CLICK, 0.7f)
+                            .addPrimitive(VibrationEffect.Composition.PRIMITIVE_CLICK, 0.9f, 60)
+                            .compose()
+                    )
+                }
             }
             // API 30+: Use double CLICK for crisp "error" feel
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.R &&
@@ -347,9 +389,22 @@ class HapticFeedbackManager(
      */
     private fun performGestureStart() {
         when {
-            // API 34+: Native GESTURE_START
+            // API 34+: Native GESTURE_START with fallback
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE && view != null -> {
-                view.performHapticFeedback(HapticFeedbackConstants.GESTURE_START)
+                @Suppress("DEPRECATION")
+                val success = view.performHapticFeedback(
+                    HapticFeedbackConstants.GESTURE_START,
+                    HapticFeedbackConstants.FLAG_IGNORE_VIEW_SETTING
+                )
+                // Fallback to Vibrator API if View haptic fails
+                if (!success && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R &&
+                    supportedPrimitives.contains(VibrationEffect.Composition.PRIMITIVE_SLOW_RISE)) {
+                    vibrator?.vibrate(
+                        VibrationEffect.startComposition()
+                            .addPrimitive(VibrationEffect.Composition.PRIMITIVE_SLOW_RISE, 0.4f)
+                            .compose()
+                    )
+                }
             }
             // API 30+: Use SLOW_RISE for anticipation feel
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.R &&
@@ -378,9 +433,22 @@ class HapticFeedbackManager(
      */
     private fun performGestureEnd() {
         when {
-            // API 34+: Native GESTURE_END
+            // API 34+: Native GESTURE_END with fallback
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE && view != null -> {
-                view.performHapticFeedback(HapticFeedbackConstants.GESTURE_END)
+                @Suppress("DEPRECATION")
+                val success = view.performHapticFeedback(
+                    HapticFeedbackConstants.GESTURE_END,
+                    HapticFeedbackConstants.FLAG_IGNORE_VIEW_SETTING
+                )
+                // Fallback to Vibrator API if View haptic fails
+                if (!success && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R &&
+                    supportedPrimitives.contains(VibrationEffect.Composition.PRIMITIVE_QUICK_FALL)) {
+                    vibrator?.vibrate(
+                        VibrationEffect.startComposition()
+                            .addPrimitive(VibrationEffect.Composition.PRIMITIVE_QUICK_FALL, 0.5f)
+                            .compose()
+                    )
+                }
             }
             // API 30+: Use QUICK_FALL for completion feel
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.R &&
@@ -446,14 +514,30 @@ class HapticFeedbackManager(
      */
     private fun performKeyboardTap() {
         when {
-            // API 34+: Use KEYBOARD_PRESS via View
+            // API 34+: Use KEYBOARD_PRESS via View with fallback
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE && view != null -> {
-                view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_PRESS)
+                @Suppress("DEPRECATION")
+                val success = view.performHapticFeedback(
+                    HapticFeedbackConstants.KEYBOARD_PRESS,
+                    HapticFeedbackConstants.FLAG_IGNORE_VIEW_SETTING
+                )
+                // Fallback to Vibrator API if View haptic fails
+                if (!success && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R &&
+                    supportedPrimitives.contains(VibrationEffect.Composition.PRIMITIVE_TICK)) {
+                    vibrator?.vibrate(
+                        VibrationEffect.startComposition()
+                            .addPrimitive(VibrationEffect.Composition.PRIMITIVE_TICK, 0.4f)
+                            .compose()
+                    )
+                }
             }
-            // API 27+: Use KEYBOARD_PRESS via View
+            // API 27+: Use KEYBOARD_TAP via View
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1 && view != null -> {
                 @Suppress("DEPRECATION")
-                view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+                view.performHapticFeedback(
+                    HapticFeedbackConstants.KEYBOARD_TAP,
+                    HapticFeedbackConstants.FLAG_IGNORE_VIEW_SETTING
+                )
             }
             // Fallback to light tick
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.R &&
@@ -476,9 +560,23 @@ class HapticFeedbackManager(
      */
     private fun performToggle() {
         when {
-            // API 34+: Use TOGGLE_ON via View (simulates toggle state change)
+            // API 34+: Use CONFIRM via View (simulates toggle state change) with fallback
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE && view != null -> {
-                view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                @Suppress("DEPRECATION")
+                val success = view.performHapticFeedback(
+                    HapticFeedbackConstants.CONFIRM,
+                    HapticFeedbackConstants.FLAG_IGNORE_VIEW_SETTING
+                )
+                // Fallback to Vibrator API if View haptic fails
+                if (!success && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R &&
+                    supportedPrimitives.contains(VibrationEffect.Composition.PRIMITIVE_CLICK)) {
+                    vibrator?.vibrate(
+                        VibrationEffect.startComposition()
+                            .addPrimitive(VibrationEffect.Composition.PRIMITIVE_CLICK, 0.6f)
+                            .addPrimitive(VibrationEffect.Composition.PRIMITIVE_TICK, 0.3f, 30)
+                            .compose()
+                    )
+                }
             }
             // API 30+: Use composition for snappy toggle feel
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.R &&
