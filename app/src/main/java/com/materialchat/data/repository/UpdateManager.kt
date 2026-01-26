@@ -16,8 +16,10 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import ru.solrudev.ackpine.installer.InstallFailure
 import ru.solrudev.ackpine.installer.PackageInstaller
 import ru.solrudev.ackpine.installer.createSession
+import ru.solrudev.ackpine.session.Session
 import ru.solrudev.ackpine.session.await
 import ru.solrudev.ackpine.session.parameters.Confirmation
 import java.io.File
@@ -201,12 +203,41 @@ class UpdateManager @Inject constructor(
                 name = "MaterialChat ${currentState.update.versionName}"
             }
 
-            // Commit the session - this will show the system installer dialog
-            session.commit()
+            // Await the session to actually trigger and wait for installation
+            when (val result = session.await()) {
+                is Session.State.Succeeded -> {
+                    // Installation succeeded, reset state
+                    _updateState.value = UpdateState.Idle
+                }
+                is Session.State.Failed -> {
+                    // Check if it was cancelled or failed
+                    val failure = result.failure
+                    val message = when (failure) {
+                        is InstallFailure.Aborted -> "Installation was cancelled"
+                        is InstallFailure.Blocked -> "Installation was blocked"
+                        is InstallFailure.Conflict -> "Package conflict detected"
+                        is InstallFailure.Incompatible -> "Package is incompatible with this device"
+                        is InstallFailure.Invalid -> "Invalid APK file"
+                        is InstallFailure.Storage -> "Not enough storage space"
+                        is InstallFailure.Timeout -> "Installation timed out"
+                        is InstallFailure.Exceptional -> failure.exception.message ?: "Installation failed"
+                        else -> "Installation failed"
+                    }
 
-            // Reset state after initiating installation
-            // The system will handle the actual installation UI
-            _updateState.value = UpdateState.Idle
+                    // If aborted (cancelled by user), go back to ready state
+                    if (failure is InstallFailure.Aborted) {
+                        _updateState.value = UpdateState.ReadyToInstall(
+                            update = currentState.update,
+                            apkPath = currentState.apkPath
+                        )
+                    } else {
+                        _updateState.value = UpdateState.Error(
+                            message = message,
+                            canRetry = true
+                        )
+                    }
+                }
+            }
         } catch (e: Exception) {
             _updateState.value = UpdateState.Error(
                 message = e.message ?: "Installation failed",
