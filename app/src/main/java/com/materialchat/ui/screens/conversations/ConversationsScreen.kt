@@ -39,6 +39,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.outlined.ChatBubbleOutline
@@ -529,7 +530,7 @@ private fun NewChatFab(
                 },
                 icon = {
                     Icon(
-                        imageVector = Icons.Default.Add,
+                        imageVector = Icons.AutoMirrored.Filled.Chat,
                         contentDescription = null
                     )
                 },
