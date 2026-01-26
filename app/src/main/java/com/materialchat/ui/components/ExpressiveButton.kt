@@ -85,8 +85,9 @@ fun ExpressiveButton(
     )
 
     // Animate corner radius on press with SPATIAL spring (shape morph effect)
+    // M3 Expressive: corners INCREASE on press ("squish" effect)
     val cornerRadius by animateDpAsState(
-        targetValue = if (isPressed) 12.dp else 20.dp,
+        targetValue = if (isPressed) 24.dp else 20.dp,
         animationSpec = ExpressiveMotion.Spatial.shapeMorph(),
         label = "cornerRadius"
     )
@@ -314,8 +315,9 @@ fun ExpressiveActionButton(
     )
 
     // M3 Expressive SPATIAL spring for shape morph
+    // Corners INCREASE on press for "squish" effect
     val cornerRadius by animateDpAsState(
-        targetValue = if (isPressed) 12.dp else 8.dp,
+        targetValue = if (isPressed) 16.dp else 12.dp,
         animationSpec = ExpressiveMotion.Spatial.shapeMorph(),
         label = "actionButtonCornerRadius"
     )
@@ -323,7 +325,7 @@ fun ExpressiveActionButton(
     Surface(
         onClick = onClick,
         modifier = modifier
-            .size(32.dp)
+            .size(48.dp) // M3 Expressive: 48dp minimum touch target
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
@@ -341,7 +343,7 @@ fun ExpressiveActionButton(
             Icon(
                 imageVector = icon,
                 contentDescription = contentDescription,
-                modifier = Modifier.size(16.dp)
+                modifier = Modifier.size(20.dp) // Slightly larger icon for 48dp container
             )
         }
     }
@@ -377,8 +379,9 @@ fun ExpressiveFab(
     )
 
     // M3 Expressive SPATIAL spring for shape morph
+    // FAB: 56dp container uses 16dp corners (normal) → 20dp corners (pressed - "squish" effect)
     val cornerRadius by animateDpAsState(
-        targetValue = if (isPressed) 20.dp else 28.dp,
+        targetValue = if (isPressed) 20.dp else 16.dp,
         animationSpec = ExpressiveMotion.Spatial.shapeMorph(),
         label = "fabCornerRadius"
     )
@@ -481,8 +484,9 @@ fun AnimatedExtendedFab(
     )
 
     // M3 Expressive SPATIAL spring for corner radius morph
+    // FAB: 56dp container uses 16dp corners (normal) → 12dp corners (pressed)
     val cornerRadius by animateDpAsState(
-        targetValue = if (isPressed) 20.dp else 28.dp,
+        targetValue = if (isPressed) 12.dp else 16.dp,
         animationSpec = ExpressiveMotion.Spatial.shapeMorph(),
         label = "fabCornerRadius"
     )

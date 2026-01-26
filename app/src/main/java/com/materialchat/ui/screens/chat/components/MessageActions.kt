@@ -142,7 +142,7 @@ private fun ActionButton(
             isPressed = false
         },
         modifier = modifier
-            .size(32.dp)
+            .size(48.dp) // M3 Expressive: 48dp minimum touch target
             .scale(scale),
         colors = IconButtonDefaults.iconButtonColors(
             containerColor = Color.Transparent,
@@ -152,7 +152,7 @@ private fun ActionButton(
         Icon(
             imageVector = icon,
             contentDescription = contentDescription,
-            modifier = Modifier.size(16.dp)
+            modifier = Modifier.size(20.dp) // Slightly larger icon for 48dp container
         )
     }
 }

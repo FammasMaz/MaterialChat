@@ -34,25 +34,25 @@ object ExpressiveMotion {
      * CAN overshoot and bounce - creates playful feel
      */
     object Spatial {
-        
+
         /**
          * Default spatial spring for most interactions.
-         * Balanced bounce with good responsiveness.
+         * M3 Expressive standard: dampingRatio=0.6, stiffness=380
          */
         fun <T> default(): SpringSpec<T> = spring(
-            dampingRatio = 0.7f,
-            stiffness = 400f
+            dampingRatio = 0.6f,
+            stiffness = 380f
         )
-        
+
         /**
          * Shape morphing spring for corner radius changes.
          * Noticeable bounce for playful shape transformations.
          */
         fun <T> shapeMorph(): SpringSpec<T> = spring(
-            dampingRatio = 0.65f,
+            dampingRatio = 0.6f,
             stiffness = 500f
         )
-        
+
         /**
          * Scale spring for button press animations.
          * Bouncy feedback on press/release.
@@ -61,56 +61,56 @@ object ExpressiveMotion {
             dampingRatio = 0.6f,
             stiffness = 600f
         )
-        
+
         /**
          * Container spring for large movements like screen transitions.
-         * Smoother but still has subtle life.
+         * M3 Expressive standard spatial.
          */
         fun <T> container(): SpringSpec<T> = spring(
-            dampingRatio = 0.8f,
-            stiffness = 300f
+            dampingRatio = 0.6f,
+            stiffness = 380f
         )
-        
+
         /**
          * Playful spring for hero moments like FAB animations.
-         * Very bouncy for delightful interactions.
+         * Very bouncy for delightful interactions (M3 Expressive).
          */
         fun <T> playful(): SpringSpec<T> = spring(
             dampingRatio = 0.5f,
             stiffness = 400f
         )
-        
+
         /**
          * FAB expand/collapse spring.
          * Bouncy width animation for scroll behavior.
          */
         fun <T> fabExpand(): SpringSpec<T> = spring(
-            dampingRatio = 0.7f,
-            stiffness = 400f
-        )
-        
-        /**
-         * Shared element transition spring.
-         * Smooth but lively for container transforms.
-         */
-        fun <T> sharedElement(): SpringSpec<T> = spring(
-            dampingRatio = 0.8f,
+            dampingRatio = 0.6f,
             stiffness = 380f
         )
-        
+
+        /**
+         * Shared element transition spring.
+         * M3 Expressive standard for container transforms.
+         */
+        fun <T> sharedElement(): SpringSpec<T> = spring(
+            dampingRatio = 0.6f,
+            stiffness = 380f
+        )
+
         /**
          * Message entrance slide spring.
          */
         fun <T> messageEntrance(): SpringSpec<T> = spring(
-            dampingRatio = 0.7f,
-            stiffness = 400f
+            dampingRatio = 0.6f,
+            stiffness = 380f
         )
-        
+
         /**
          * List item press spring.
          */
         fun <T> listItemPress(): SpringSpec<T> = spring(
-            dampingRatio = 0.65f,
+            dampingRatio = 0.6f,
             stiffness = 500f
         )
     }
@@ -292,11 +292,9 @@ object MaterialChatMotion {
 
         /**
          * Enter animation for content appearing.
+         * Uses spring physics for M3 Expressive spatial animations.
          */
-        val Enter = tween<Float>(
-            durationMillis = StandardDuration,
-            easing = LinearOutSlowInEasing
-        )
+        fun <T> Enter(): SpringSpec<T> = ExpressiveMotion.Spatial.container()
 
         /**
          * Exit animation for content disappearing.
@@ -316,11 +314,9 @@ object MaterialChatMotion {
 
         /**
          * Screen transition animation.
+         * Uses spring physics for M3 Expressive spatial animations.
          */
-        val ScreenTransition = tween<Float>(
-            durationMillis = StandardDuration,
-            easing = CubicBezierEasing(0.4f, 0.0f, 0.2f, 1.0f)
-        )
+        fun <T> ScreenTransition(): SpringSpec<T> = ExpressiveMotion.Spatial.container()
     }
 
     /**

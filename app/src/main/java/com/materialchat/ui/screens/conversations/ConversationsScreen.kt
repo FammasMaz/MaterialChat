@@ -59,6 +59,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.TopAppBarScrollBehavior
@@ -369,8 +370,8 @@ private fun ConversationsTopBar(
                 label = "iconCornerRadius"
             )
             
-            // Bottom padding for vertical centering in collapsed state (72dp height, 44dp buttons = 14dp padding)
-            val baseBottomPadding = 14.dp
+            // Bottom padding for vertical centering in collapsed state (72dp height, 48dp buttons = 12dp padding)
+            val baseBottomPadding = 12.dp
             // Icons get extra padding when expanded to position them higher
             val iconExpandedExtraPadding = 10.dp
             val iconBottomPadding = baseBottomPadding + iconExpandedExtraPadding * (1f - collapseFraction)
@@ -384,12 +385,13 @@ private fun ConversationsTopBar(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 // M3 Expressive: Enclosed icon buttons with surface container
+                // 48dp minimum touch target per M3 accessibility requirements
                 Surface(
                     onClick = onSearchClick,
                     shape = RoundedCornerShape(iconCornerRadius),
                     color = MaterialTheme.colorScheme.surfaceContainerHigh,
                     contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(44.dp)
+                    modifier = Modifier.size(48.dp)
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Icon(
@@ -403,7 +405,7 @@ private fun ConversationsTopBar(
                     shape = RoundedCornerShape(iconCornerRadius),
                     color = MaterialTheme.colorScheme.surfaceContainerHigh,
                     contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(44.dp)
+                    modifier = Modifier.size(48.dp)
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Icon(
@@ -663,7 +665,7 @@ private fun EmptyContent(
         if (!hasActiveProvider) {
             Spacer(modifier = Modifier.height(16.dp))
 
-            TextButton(onClick = onNavigateToSettings) {
+            FilledTonalButton(onClick = onNavigateToSettings) {
                 Text("Go to Settings")
             }
         }

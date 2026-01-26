@@ -71,7 +71,7 @@ fun ExportBottomSheet(
             },
             sheetState = sheetState,
             shape = CustomShapes.BottomSheet,
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
             contentColor = MaterialTheme.colorScheme.onSurface,
             dragHandle = {
                 Surface(

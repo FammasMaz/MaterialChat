@@ -17,20 +17,20 @@ import androidx.compose.ui.unit.dp
  * Uses larger corner radii for the playful, friendly aesthetic.
  */
 val MaterialChatShapes = Shapes(
-    // Extra small - chips, small badges
-    extraSmall = RoundedCornerShape(12.dp),
+    // Extra small - chips, small badges (M3 Expressive: 4dp)
+    extraSmall = RoundedCornerShape(4.dp),
 
-    // Small - buttons, text fields
-    small = RoundedCornerShape(16.dp),
+    // Small - buttons, text fields (M3 Expressive: 8dp)
+    small = RoundedCornerShape(8.dp),
 
-    // Medium - cards, dialogs
-    medium = RoundedCornerShape(24.dp),
+    // Medium - cards, dialogs (M3 Expressive: 12dp)
+    medium = RoundedCornerShape(12.dp),
 
-    // Large - bottom sheets, navigation drawers
-    large = RoundedCornerShape(32.dp),
+    // Large - bottom sheets, navigation drawers (M3 Expressive: 16dp)
+    large = RoundedCornerShape(16.dp),
 
-    // Extra large - full-screen dialogs
-    extraLarge = RoundedCornerShape(40.dp)
+    // Extra large - full-screen dialogs, hero containers (M3 Expressive: 28dp)
+    extraLarge = RoundedCornerShape(28.dp)
 )
 
 /**
@@ -43,10 +43,10 @@ object MessageBubbleShapes {
      * Very rounded with a small corner on top-right to indicate origin.
      */
     val UserBubble = RoundedCornerShape(
-        topStart = 24.dp,
+        topStart = 28.dp,
         topEnd = 8.dp,
-        bottomStart = 24.dp,
-        bottomEnd = 24.dp
+        bottomStart = 28.dp,
+        bottomEnd = 28.dp
     )
 
     /**
@@ -55,9 +55,9 @@ object MessageBubbleShapes {
      */
     val AssistantBubble = RoundedCornerShape(
         topStart = 8.dp,
-        topEnd = 24.dp,
-        bottomStart = 24.dp,
-        bottomEnd = 24.dp
+        topEnd = 28.dp,
+        bottomStart = 28.dp,
+        bottomEnd = 28.dp
     )
 
     /**
@@ -111,21 +111,21 @@ object MessageBubbleShapes {
  */
 object CustomShapes {
     /**
-     * Shape for FAB (Floating Action Button) - pill-like per M3 Expressive.
-     * 28dp corners for the friendly, modern look.
+     * Shape for FAB (Floating Action Button) - M3 Expressive spec.
+     * 16dp corners for standard FAB (56dp container).
      */
-    val Fab = RoundedCornerShape(28.dp)
+    val Fab = RoundedCornerShape(16.dp)
 
     /**
-     * Extended FAB shape - pill-like per M3 Expressive.
-     * 28dp corners matching standard FAB.
+     * Extended FAB shape - M3 Expressive spec.
+     * 16dp corners matching standard FAB.
      */
-    val ExtendedFab = RoundedCornerShape(28.dp)
-    
+    val ExtendedFab = RoundedCornerShape(16.dp)
+
     /**
      * FAB shape when pressed - slightly less rounded for shape morphing.
      */
-    val FabPressed = RoundedCornerShape(20.dp)
+    val FabPressed = RoundedCornerShape(12.dp)
 
     /**
      * Shape for bottom sheets - very rounded top corners.
@@ -158,9 +158,9 @@ object CustomShapes {
     val Button = RoundedCornerShape(20.dp)
     
     /**
-     * Button shape when pressed - morphs to smaller radius.
+     * Button shape when pressed - morphs to larger radius (M3 Expressive "squish" effect).
      */
-    val ButtonPressed = RoundedCornerShape(12.dp)
+    val ButtonPressed = RoundedCornerShape(24.dp)
 
     /**
      * Shape for the message input field container - matches FAB for consistency.
