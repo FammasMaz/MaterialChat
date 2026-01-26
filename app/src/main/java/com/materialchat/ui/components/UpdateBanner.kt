@@ -266,14 +266,13 @@ private fun DownloadingBannerContent(
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        LinearProgressIndicator(
-            progress = { animatedProgress },
+        M3ExpressiveDeterminateProgress(
+            progress = animatedProgress,
             modifier = Modifier
                 .fillMaxWidth()
                 .height(6.dp),
             color = MaterialTheme.colorScheme.primary,
-            trackColor = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.2f),
-            strokeCap = androidx.compose.ui.graphics.StrokeCap.Round
+            trackColor = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.2f)
         )
     }
 }

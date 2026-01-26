@@ -525,10 +525,8 @@ private fun SaveButton(
         shape = RoundedCornerShape(20.dp)
     ) {
         if (isSaving) {
-            CircularProgressIndicator(
-                modifier = Modifier.size(20.dp),
-                color = MaterialTheme.colorScheme.onPrimary,
-                strokeWidth = 2.dp
+            com.materialchat.ui.components.M3ExpressiveInlineLoading(
+                color = MaterialTheme.colorScheme.onPrimary
             )
             Spacer(modifier = Modifier.width(8.dp))
         }

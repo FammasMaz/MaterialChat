@@ -138,8 +138,8 @@ private fun ExportBottomSheetContent(
                     .padding(vertical = 24.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(24.dp),
+                com.materialchat.ui.components.M3ExpressiveCircularProgress(
+                    size = 24.dp,
                     strokeWidth = 2.dp,
                     color = MaterialTheme.colorScheme.primary
                 )

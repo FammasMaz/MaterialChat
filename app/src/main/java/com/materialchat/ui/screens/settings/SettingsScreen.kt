@@ -337,8 +337,9 @@ private fun LoadingContent() {
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
     ) {
-        CircularProgressIndicator(
-            color = MaterialTheme.colorScheme.primary
+        com.materialchat.ui.components.M3ExpressiveLoadingIndicator(
+            color = MaterialTheme.colorScheme.primary,
+            size = 48.dp
         )
     }
 }
@@ -1060,16 +1061,17 @@ private fun AboutSection(
 
                     when (updateState) {
                         is UpdateState.Checking -> {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(24.dp),
-                                strokeWidth = 2.dp
+                            com.materialchat.ui.components.M3ExpressiveCircularProgress(
+                                size = 24.dp,
+                                strokeWidth = 2.dp,
+                                color = MaterialTheme.colorScheme.primary
                             )
                         }
                         is UpdateState.Downloading -> {
-                            CircularProgressIndicator(
-                                progress = { updateState.progress },
-                                modifier = Modifier.size(24.dp),
-                                strokeWidth = 2.dp
+                            com.materialchat.ui.components.M3ExpressiveCircularProgress(
+                                size = 24.dp,
+                                strokeWidth = 2.dp,
+                                color = MaterialTheme.colorScheme.primary
                             )
                         }
                         else -> {

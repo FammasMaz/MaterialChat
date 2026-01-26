@@ -45,7 +45,6 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.outlined.ChatBubbleOutline
 import androidx.compose.material.icons.outlined.SearchOff
 import androidx.compose.material.icons.outlined.Settings
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FloatingActionButtonDefaults
@@ -613,8 +612,9 @@ private fun LoadingContent() {
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
     ) {
-        CircularProgressIndicator(
-            color = MaterialTheme.colorScheme.primary
+        com.materialchat.ui.components.M3ExpressiveLoadingIndicator(
+            color = MaterialTheme.colorScheme.primary,
+            size = 48.dp
         )
     }
 }
@@ -867,8 +867,9 @@ private fun SearchLoadingContent() {
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
     ) {
-        CircularProgressIndicator(
-            color = MaterialTheme.colorScheme.primary
+        com.materialchat.ui.components.M3ExpressiveLoadingIndicator(
+            color = MaterialTheme.colorScheme.primary,
+            size = 48.dp
         )
     }
 }

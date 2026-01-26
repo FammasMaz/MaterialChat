@@ -342,8 +342,9 @@ private fun LoadingContent(paddingValues: PaddingValues) {
             .padding(paddingValues),
         contentAlignment = Alignment.Center
     ) {
-        CircularProgressIndicator(
-            color = MaterialTheme.colorScheme.primary
+        com.materialchat.ui.components.M3ExpressiveLoadingIndicator(
+            color = MaterialTheme.colorScheme.primary,
+            size = 48.dp
         )
     }
 }
