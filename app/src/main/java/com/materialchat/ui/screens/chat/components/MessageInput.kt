@@ -85,6 +85,7 @@ import coil.request.ImageRequest
 import com.materialchat.domain.model.Attachment
 import com.materialchat.domain.model.ReasoningEffort
 import com.materialchat.ui.components.HapticPattern
+import com.materialchat.ui.components.MorphingSendButton
 import com.materialchat.ui.components.rememberHapticFeedback
 import com.materialchat.ui.navigation.LocalAnimatedVisibilityScope
 import com.materialchat.ui.navigation.LocalSharedTransitionScope
@@ -305,43 +306,21 @@ fun MessageInput(
                 modifier = Modifier.defaultMinSize(minHeight = 48.dp)
             )
 
-            // Send/Stop button - M3 Expressive with primary colors
-            // Uses secondaryContainer for send (complementary to tertiary attach button)
-            // Uses error container for stop (streaming cancel action)
-            Surface(
-                onClick = {
-                    if (isStreaming) {
-                        haptics.perform(HapticPattern.CONFIRM, hapticsEnabled)
-                        onCancel()
-                    } else if (canSend) {
-                        haptics.perform(HapticPattern.CLICK, hapticsEnabled)
-                        onSend()
-                    }
+            // M3 Expressive Morphing Send Button
+            // Morphs into a shape-shifting loading indicator when streaming
+            MorphingSendButton(
+                isStreaming = isStreaming,
+                canSend = canSend,
+                onSend = {
+                    haptics.perform(HapticPattern.CLICK, hapticsEnabled)
+                    onSend()
                 },
-                modifier = Modifier.size(48.dp),
-                shape = CircleShape,
-                color = when {
-                    isStreaming -> MaterialTheme.colorScheme.errorContainer
-                    canSend -> MaterialTheme.colorScheme.primaryContainer
-                    else -> MaterialTheme.colorScheme.surfaceContainerHigh
+                onCancel = {
+                    haptics.perform(HapticPattern.CONFIRM, hapticsEnabled)
+                    onCancel()
                 },
-                enabled = canSend || isStreaming
-            ) {
-                Box(
-                    contentAlignment = Alignment.Center,
-                    modifier = Modifier.fillMaxSize()
-                ) {
-                    Icon(
-                        imageVector = if (isStreaming) Icons.Default.Close else Icons.AutoMirrored.Filled.Send,
-                        contentDescription = if (isStreaming) "Stop" else "Send",
-                        tint = when {
-                            isStreaming -> MaterialTheme.colorScheme.onErrorContainer
-                            canSend -> MaterialTheme.colorScheme.onPrimaryContainer
-                            else -> MaterialTheme.colorScheme.onSurfaceVariant
-                        }
-                    )
-                }
-            }
+                modifier = Modifier.size(48.dp)
+            )
         }
     }
 }

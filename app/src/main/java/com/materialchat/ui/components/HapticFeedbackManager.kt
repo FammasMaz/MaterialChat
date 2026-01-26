@@ -62,7 +62,10 @@ enum class HapticPattern {
     THINKING_TICK,
 
     /** Slightly more pronounced tick for AI content chunks - crisp but not intrusive */
-    CONTENT_TICK
+    CONTENT_TICK,
+
+    /** Subtle morph transition feedback for M3 Expressive shape morphing animations */
+    MORPH_TRANSITION
 }
 
 /**
@@ -168,6 +171,7 @@ class HapticFeedbackManager(
             HapticPattern.TOGGLE -> performToggle()
             HapticPattern.THINKING_TICK -> performThinkingTick()
             HapticPattern.CONTENT_TICK -> performContentTick()
+            HapticPattern.MORPH_TRANSITION -> performMorphTransition()
         }
     }
 
@@ -550,6 +554,44 @@ class HapticFeedbackManager(
                 vibrator?.vibrate(
                     VibrationEffect.startComposition()
                         .addPrimitive(VibrationEffect.Composition.PRIMITIVE_TICK, 0.4f)
+                        .compose()
+                )
+            }
+            // API 29+: Use EFFECT_TICK
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q -> {
+                vibrator?.vibrate(
+                    VibrationEffect.createPredefined(VibrationEffect.EFFECT_TICK)
+                )
+            }
+            // Fallback
+            else -> {
+                hapticFeedback.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+            }
+        }
+    }
+
+    /**
+     * Subtle morph transition feedback for M3 Expressive shape morphing animations.
+     * Uses PRIMITIVE_QUICK_RISE at low intensity for a smooth "transformation" feel.
+     * Triggered once when entering loading/morphing state.
+     */
+    private fun performMorphTransition() {
+        when {
+            // API 30+: Use QUICK_RISE for a subtle "building up" feel
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.R &&
+                supportedPrimitives.contains(VibrationEffect.Composition.PRIMITIVE_QUICK_RISE) -> {
+                vibrator?.vibrate(
+                    VibrationEffect.startComposition()
+                        .addPrimitive(VibrationEffect.Composition.PRIMITIVE_QUICK_RISE, 0.3f)
+                        .compose()
+                )
+            }
+            // API 30+ fallback: Use TICK at low intensity
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.R &&
+                supportedPrimitives.contains(VibrationEffect.Composition.PRIMITIVE_TICK) -> {
+                vibrator?.vibrate(
+                    VibrationEffect.startComposition()
+                        .addPrimitive(VibrationEffect.Composition.PRIMITIVE_TICK, 0.25f)
                         .compose()
                 )
             }

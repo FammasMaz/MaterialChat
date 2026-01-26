@@ -1,31 +1,50 @@
 package com.materialchat.ui.components
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.EaseInOutCubic
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -35,8 +54,12 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.materialchat.ui.theme.ExpressiveMotion
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.PI
@@ -148,7 +171,7 @@ fun M3ExpressiveLoadingIndicator(
 }
 
 /**
- * Draws a filled morphing shape with smooth bezier curves.
+ * Draws a filled morphing shape with smooth M3 Expressive cubic bezier curves.
  * Creates soft, rounded shapes like M3 "soft-burst" and "cookie" styles.
  */
 private fun DrawScope.drawMorphingShape(
@@ -178,42 +201,39 @@ private fun DrawScope.drawMorphingShape(
         vertices.add(Pair(x, y))
     }
 
-    // Draw smooth curves using quadratic bezier
-    // Start at first vertex
-    val firstVertex = vertices[0]
-    path.moveTo(firstVertex.first, firstVertex.second)
+    // M3 Expressive: Use high smoothing for soft, rounded corners
+    // Higher values = rounder, softer shapes (0.75-0.85 is ideal for M3)
+    val smoothing = if (isStarShape) 0.75f else 0.8f
 
+    // Calculate midpoints for smooth curve starting
+    val firstMidX = (vertices[0].first + vertices[1].first) / 2
+    val firstMidY = (vertices[0].second + vertices[1].second) / 2
+    path.moveTo(firstMidX, firstMidY)
+
+    // Draw smooth curves using cubic bezier for M3 Expressive soft curves
     for (i in vertices.indices) {
-        val current = vertices[i]
-        val next = vertices[(i + 1) % vertices.size]
-        val afterNext = vertices[(i + 2) % vertices.size]
+        val current = vertices[(i + 1) % vertices.size]
+        val next = vertices[(i + 2) % vertices.size]
 
-        // Calculate control point and end point for smooth curve
-        // Use midpoint approach for smooth transitions
-        val midX = (current.first + next.first) / 2
-        val midY = (current.second + next.second) / 2
-        val nextMidX = (next.first + afterNext.first) / 2
-        val nextMidY = (next.second + afterNext.second) / 2
+        // Current midpoint (where we are)
+        val currentMidX = (vertices[i].first + current.first) / 2
+        val currentMidY = (vertices[i].second + current.second) / 2
 
-        // Smoothing factor - higher = rounder curves
-        val smoothing = if (isStarShape) 0.5f else 0.3f
+        // Next midpoint (where we're going)
+        val nextMidX = (current.first + next.first) / 2
+        val nextMidY = (current.second + next.second) / 2
 
-        // Blend towards the control point
-        val controlX = next.first
-        val controlY = next.second
-        val endX = lerp(next.first, nextMidX, smoothing)
-        val endY = lerp(next.second, nextMidY, smoothing)
+        // Control points - lerp between midpoint and vertex for smoothness
+        val cp1x = lerp(currentMidX, current.first, smoothing)
+        val cp1y = lerp(currentMidY, current.second, smoothing)
+        val cp2x = lerp(nextMidX, current.first, smoothing)
+        val cp2y = lerp(nextMidY, current.second, smoothing)
 
-        path.quadraticBezierTo(controlX, controlY, endX, endY)
+        path.cubicTo(cp1x, cp1y, cp2x, cp2y, nextMidX, nextMidY)
     }
 
     path.close()
-
-    // Draw filled shape
-    drawPath(
-        path = path,
-        color = color
-    )
+    drawPath(path = path, color = color)
 }
 
 private fun lerp(start: Float, end: Float, fraction: Float): Float {
@@ -494,6 +514,326 @@ fun M3ExpressiveFullscreenLoading(
             size = 64.dp
         )
     }
+}
+
+/**
+ * M3 Expressive Morphing Send Button.
+ *
+ * A send button that morphs into an animated loading indicator when streaming.
+ * Follows Material 3 Expressive design guidelines with:
+ * - Shape morphing animation (soft-burst → pentagon → hexagon → circle)
+ * - Slow rotation during loading
+ * - Container pulse for "breathing" effect
+ * - Spring-based transitions between states
+ * - Haptic feedback integration
+ *
+ * States:
+ * - IDLE: Disabled, grayed out send icon
+ * - READY: Enabled, colored send icon
+ * - LOADING: Animated shape-morphing indicator
+ * - STOP: Error container with close icon (during loading, tap to cancel)
+ *
+ * @param isStreaming Whether the AI is currently streaming a response
+ * @param canSend Whether the send action is available
+ * @param onSend Callback when send button is tapped
+ * @param onCancel Callback when stop button is tapped during streaming
+ * @param modifier Modifier for the button
+ * @param size Size of the button (default 48.dp for M3 touch target)
+ */
+@Composable
+fun MorphingSendButton(
+    isStreaming: Boolean,
+    canSend: Boolean,
+    onSend: () -> Unit,
+    onCancel: () -> Unit,
+    modifier: Modifier = Modifier,
+    size: Dp = 48.dp
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+
+    // Container color animation (Effects spring - no overshoot)
+    val containerColor = when {
+        isStreaming -> MaterialTheme.colorScheme.primaryContainer
+        canSend -> MaterialTheme.colorScheme.primaryContainer
+        else -> MaterialTheme.colorScheme.surfaceContainerHigh
+    }
+
+    val contentColor = when {
+        isStreaming -> MaterialTheme.colorScheme.primary
+        canSend -> MaterialTheme.colorScheme.onPrimaryContainer
+        else -> MaterialTheme.colorScheme.onSurfaceVariant
+    }
+
+    // M3 Expressive spring-based alpha transitions
+    val iconAlpha by animateFloatAsState(
+        targetValue = if (isStreaming) 0f else 1f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioNoBouncy,
+            stiffness = Spring.StiffnessMediumLow
+        ),
+        label = "iconAlpha"
+    )
+
+    val shapeAlpha by animateFloatAsState(
+        targetValue = if (isStreaming) 1f else 0f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioNoBouncy,
+            stiffness = Spring.StiffnessMediumLow
+        ),
+        label = "shapeAlpha"
+    )
+
+    // M3 Expressive scale animation for icon/shape transitions (spatial spring with bounce)
+    val iconScale by animateFloatAsState(
+        targetValue = if (isStreaming) 0.6f else 1f,
+        animationSpec = ExpressiveMotion.Spatial.scale(),
+        label = "iconScale"
+    )
+
+    val shapeScale by animateFloatAsState(
+        targetValue = if (isStreaming) 1f else 0.6f,
+        animationSpec = ExpressiveMotion.Spatial.playful(),
+        label = "shapeScale"
+    )
+
+    // Press scale animation (Spatial spring - with bounce)
+    val pressScale by animateFloatAsState(
+        targetValue = if (isPressed) 0.92f else 1f,
+        animationSpec = ExpressiveMotion.Spatial.scale(),
+        label = "pressScale"
+    )
+
+    // Container pulse animation during streaming
+    val infiniteTransition = rememberInfiniteTransition(label = "morphingSendButtonTransition")
+    val pulseScale by infiniteTransition.animateFloat(
+        initialValue = 1f,
+        targetValue = 1.04f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 1200, easing = EaseInOutCubic),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "pulseScale"
+    )
+
+    // Shape morph progress (0-4 for full cycle through shapes)
+    val morphProgress by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 4f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 2800, easing = EaseInOutCubic),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "morphProgress"
+    )
+
+    // Rotation animation
+    val rotation by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 360f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 3000, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "rotation"
+    )
+
+    // Accessibility description
+    val semanticsDescription = when {
+        isStreaming -> "Loading, tap to stop"
+        canSend -> "Send message"
+        else -> "Send message, disabled"
+    }
+
+    // Apply combined scale (press + pulse when streaming)
+    val combinedScale = if (isStreaming) {
+        pressScale * pulseScale
+    } else {
+        pressScale
+    }
+
+    Surface(
+        onClick = {
+            if (isStreaming) {
+                onCancel()
+            } else if (canSend) {
+                onSend()
+            }
+        },
+        modifier = modifier
+            .size(size)
+            .graphicsLayer {
+                scaleX = combinedScale
+                scaleY = combinedScale
+            }
+            .semantics { contentDescription = semanticsDescription },
+        shape = CircleShape,
+        color = containerColor,
+        enabled = canSend || isStreaming,
+        interactionSource = interactionSource
+    ) {
+        // Use Box with fixed size for consistent centering
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier.fillMaxSize()
+        ) {
+            // Both icon and shape use graphicsLayer for transforms - no layout changes
+            // This ensures perfectly smooth M3 Expressive spring transitions
+
+            // Morphing shape (visible when streaming)
+            Box(
+                modifier = Modifier
+                    .size(24.dp)
+                    .graphicsLayer {
+                        alpha = shapeAlpha
+                        scaleX = shapeScale
+                        scaleY = shapeScale
+                    },
+                contentAlignment = Alignment.Center
+            ) {
+                Canvas(modifier = Modifier.fillMaxSize()) {
+                    val centerX = this.size.width / 2
+                    val centerY = this.size.height / 2
+                    val radius = minOf(this.size.width, this.size.height) / 2
+
+                    rotate(rotation) {
+                        val normalizedProgress = morphProgress % 4f
+                        val (points, innerRadiusRatio) = calculateMorphParams(normalizedProgress)
+
+                        drawMorphingShapeFilled(
+                            centerX = centerX,
+                            centerY = centerY,
+                            outerRadius = radius,
+                            innerRadiusRatio = innerRadiusRatio,
+                            points = points.toInt().coerceAtLeast(3),
+                            color = contentColor
+                        )
+                    }
+                }
+
+                // Small close icon overlay
+                Icon(
+                    imageVector = Icons.Default.Close,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.5f),
+                    modifier = Modifier.size(12.dp)
+                )
+            }
+
+            // Send icon (visible when not streaming)
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.Send,
+                contentDescription = null,
+                tint = contentColor,
+                modifier = Modifier
+                    .size(24.dp)
+                    .graphicsLayer {
+                        alpha = iconAlpha
+                        scaleX = iconScale
+                        scaleY = iconScale
+                    }
+            )
+        }
+    }
+}
+
+/**
+ * Calculate morph parameters for the shape animation.
+ * Progress goes through: soft-burst → pentagon → hexagon → circle → soft-burst
+ */
+private fun calculateMorphParams(progress: Float): Pair<Float, Float> {
+    return when {
+        progress < 1f -> {
+            // Soft-burst (10 points, star) → Pentagon (5 points, solid)
+            val t = progress
+            val points = lerp(10f, 5f, t)
+            val innerRatio = lerp(0.55f, 1f, t)
+            Pair(points, innerRatio)
+        }
+        progress < 2f -> {
+            // Pentagon → Hexagon
+            val t = progress - 1f
+            val points = lerp(5f, 6f, t)
+            Pair(points, 1f)
+        }
+        progress < 3f -> {
+            // Hexagon → Circle (many points)
+            val t = progress - 2f
+            val points = lerp(6f, 24f, t)
+            Pair(points, 1f)
+        }
+        else -> {
+            // Circle → Soft-burst
+            val t = progress - 3f
+            val points = lerp(24f, 10f, t)
+            val innerRatio = lerp(1f, 0.55f, t)
+            Pair(points, innerRatio)
+        }
+    }
+}
+
+/**
+ * Draws a filled morphing shape with smooth M3 Expressive cubic bezier curves.
+ * Uses high smoothing factors for soft, rounded corners as per M3 design guidelines.
+ */
+private fun DrawScope.drawMorphingShapeFilled(
+    centerX: Float,
+    centerY: Float,
+    outerRadius: Float,
+    innerRadiusRatio: Float,
+    points: Int,
+    color: Color
+) {
+    val path = Path()
+    val innerRadius = outerRadius * innerRadiusRatio
+
+    val isStarShape = innerRadiusRatio < 0.99f
+    val totalPoints = if (isStarShape) points * 2 else points
+    val angleStep = (2 * PI / totalPoints).toFloat()
+
+    // Calculate all vertex positions
+    val vertices = mutableListOf<Pair<Float, Float>>()
+    for (i in 0 until totalPoints) {
+        val angle = (i * angleStep) - (PI / 2).toFloat()
+        val r = if (isStarShape && i % 2 == 1) innerRadius else outerRadius
+        val x = centerX + r * cos(angle)
+        val y = centerY + r * sin(angle)
+        vertices.add(Pair(x, y))
+    }
+
+    // M3 Expressive: Use high smoothing for soft, rounded corners
+    // Higher values = rounder, softer shapes (0.75-0.85 is ideal for M3)
+    val smoothing = if (isStarShape) 0.75f else 0.8f
+
+    // Calculate midpoints for smooth curve starting
+    val firstMidX = (vertices[0].first + vertices[1].first) / 2
+    val firstMidY = (vertices[0].second + vertices[1].second) / 2
+    path.moveTo(firstMidX, firstMidY)
+
+    // Draw smooth curves using cubic bezier for M3 Expressive soft curves
+    for (i in vertices.indices) {
+        val current = vertices[(i + 1) % vertices.size]
+        val next = vertices[(i + 2) % vertices.size]
+
+        // Current midpoint (where we are)
+        val currentMidX = (vertices[i].first + current.first) / 2
+        val currentMidY = (vertices[i].second + current.second) / 2
+
+        // Next midpoint (where we're going)
+        val nextMidX = (current.first + next.first) / 2
+        val nextMidY = (current.second + next.second) / 2
+
+        // Control points - lerp between midpoint and vertex for smoothness
+        val cp1x = lerp(currentMidX, current.first, smoothing)
+        val cp1y = lerp(currentMidY, current.second, smoothing)
+        val cp2x = lerp(nextMidX, current.first, smoothing)
+        val cp2y = lerp(nextMidY, current.second, smoothing)
+
+        path.cubicTo(cp1x, cp1y, cp2x, cp2y, nextMidX, nextMidY)
+    }
+
+    path.close()
+    drawPath(path = path, color = color)
 }
 
 // Legacy compatibility aliases

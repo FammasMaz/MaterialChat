@@ -172,13 +172,7 @@ fun ChatTopBar(
                         onModelSelected = onModelSelected,
                         onLoadModels = onLoadModels
                     )
-                    if (isStreaming) {
-                        Spacer(modifier = Modifier.width(8.dp))
-                        M3StreamingShapeIndicator(
-                            size = 16.dp,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                    }
+                    // Streaming indicator removed - now shown in the morphing send button
                 }
             }
         },

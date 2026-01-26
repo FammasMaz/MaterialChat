@@ -225,25 +225,35 @@ private fun DrawScope.drawMorphingShape(
         vertices.add(Pair(x, y))
     }
 
-    // Draw smooth curves using quadratic bezier
-    val firstVertex = vertices[0]
-    path.moveTo(firstVertex.first, firstVertex.second)
+    // M3 Expressive: Use high smoothing for soft, rounded corners
+    // Higher values = rounder, softer shapes (0.75-0.85 is ideal for M3)
+    val smoothing = if (isStarShape) 0.75f else 0.8f
 
+    // Calculate midpoints for smooth curve starting
+    val firstMidX = (vertices[0].first + vertices[1].first) / 2
+    val firstMidY = (vertices[0].second + vertices[1].second) / 2
+    path.moveTo(firstMidX, firstMidY)
+
+    // Draw smooth curves using cubic bezier for M3 Expressive soft curves
     for (i in vertices.indices) {
-        val next = vertices[(i + 1) % vertices.size]
-        val afterNext = vertices[(i + 2) % vertices.size]
+        val current = vertices[(i + 1) % vertices.size]
+        val next = vertices[(i + 2) % vertices.size]
 
-        val nextMidX = (next.first + afterNext.first) / 2
-        val nextMidY = (next.second + afterNext.second) / 2
+        // Current midpoint (where we are)
+        val currentMidX = (vertices[i].first + current.first) / 2
+        val currentMidY = (vertices[i].second + current.second) / 2
 
-        val smoothing = if (isStarShape) 0.5f else 0.3f
+        // Next midpoint (where we're going)
+        val nextMidX = (current.first + next.first) / 2
+        val nextMidY = (current.second + next.second) / 2
 
-        val controlX = next.first
-        val controlY = next.second
-        val endX = lerp(next.first, nextMidX, smoothing)
-        val endY = lerp(next.second, nextMidY, smoothing)
+        // Control points - lerp between midpoint and vertex for smoothness
+        val cp1x = lerp(currentMidX, current.first, smoothing)
+        val cp1y = lerp(currentMidY, current.second, smoothing)
+        val cp2x = lerp(nextMidX, current.first, smoothing)
+        val cp2y = lerp(nextMidY, current.second, smoothing)
 
-        path.quadraticBezierTo(controlX, controlY, endX, endY)
+        path.cubicTo(cp1x, cp1y, cp2x, cp2y, nextMidX, nextMidY)
     }
 
     path.close()
