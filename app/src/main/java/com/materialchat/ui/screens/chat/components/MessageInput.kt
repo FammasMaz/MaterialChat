@@ -29,6 +29,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentWidth
@@ -541,7 +542,7 @@ private fun ReasoningOptionPill(
         tonalElevation = if (selected) 3.dp else 2.dp,
         shadowElevation = if (selected) 4.dp else 2.dp,
         modifier = modifier
-            .defaultMinSize(minHeight = 44.dp)
+            .defaultMinSize(minHeight = 48.dp)
             .padding(horizontal = 6.dp)
     ) {
         Row(
@@ -626,22 +627,29 @@ private fun AttachmentPreviewItem(
                 .align(Alignment.BottomStart)
         )
 
-        // Remove button
+        // Remove button - 48dp touch target with 24dp visual
         Box(
             modifier = Modifier
-                .size(24.dp)
+                .size(48.dp)
                 .align(Alignment.TopEnd)
-                .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.errorContainer)
+                .offset(x = 12.dp, y = (-12).dp)
                 .clickable { onRemove() },
             contentAlignment = Alignment.Center
         ) {
-            Icon(
-                imageVector = Icons.Default.Close,
-                contentDescription = "Remove attachment",
-                tint = MaterialTheme.colorScheme.onErrorContainer,
-                modifier = Modifier.size(16.dp)
-            )
+            Box(
+                modifier = Modifier
+                    .size(24.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.errorContainer),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Close,
+                    contentDescription = "Remove attachment",
+                    tint = MaterialTheme.colorScheme.onErrorContainer,
+                    modifier = Modifier.size(16.dp)
+                )
+            }
         }
     }
 }

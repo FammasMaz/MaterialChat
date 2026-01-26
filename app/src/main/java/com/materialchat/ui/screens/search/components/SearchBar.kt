@@ -1,6 +1,8 @@
 package com.materialchat.ui.screens.search.components
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -87,8 +89,12 @@ fun ChatSearchBar(
         trailingIcon = {
             AnimatedVisibility(
                 visible = query.isNotEmpty(),
-                enter = fadeIn(),
-                exit = fadeOut()
+                enter = fadeIn(
+                    animationSpec = spring(stiffness = Spring.StiffnessMediumLow)
+                ),
+                exit = fadeOut(
+                    animationSpec = spring(stiffness = Spring.StiffnessMedium)
+                )
             ) {
                 IconButton(onClick = onClear) {
                     Icon(

@@ -95,14 +95,14 @@ fun ChatTopBar(
     // Animate title reveal when title changes (excluding initial "New Chat")
     LaunchedEffect(title) {
         if (title != previousTitle && previousTitle == "New Chat" && title != "New Chat") {
-            // New AI-generated title - animate reveal
+            // New AI-generated title - animate reveal using M3 Expressive spring physics
             displayedTitle = title
             revealProgress.snapTo(0f)
             revealProgress.animateTo(
                 targetValue = 1f,
-                animationSpec = tween(
-                    durationMillis = title.length * 30 + 200, // Dynamic duration based on title length
-                    easing = androidx.compose.animation.core.FastOutSlowInEasing
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                    stiffness = 200f // Lower stiffness for smooth character reveal
                 )
             )
         } else {

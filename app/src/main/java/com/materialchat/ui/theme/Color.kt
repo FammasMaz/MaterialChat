@@ -156,6 +156,7 @@ object ChatColors {
         @Composable get() = MaterialTheme.colorScheme.onTertiaryContainer
 }
 
-// Code block colors (these can remain static as they're for code highlighting)
-val CodeBlockBackgroundLight = Color(0xFFF5F5F5)
-val CodeBlockBackgroundDark = Color(0xFF1E1E1E)
+// Code block colors - derive from M3 surface tokens for consistency
+// Light: surfaceContainerLow, Dark: surfaceContainerHighest equivalent
+val CodeBlockBackgroundLight = SurfaceContainerLowLight
+val CodeBlockBackgroundDark = SurfaceContainerHighestDark

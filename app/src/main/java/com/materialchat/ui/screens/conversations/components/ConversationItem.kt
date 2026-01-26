@@ -30,6 +30,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.unit.dp
 import com.materialchat.ui.screens.conversations.ConversationUiItem
@@ -67,10 +68,11 @@ fun ConversationItem(
         label = "scale"
     )
 
-    // Background color animation
+    // Background color animation - uses 10% onSurface overlay for pressed state per M3 Expressive
+    val pressedOverlay = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.10f)
     val backgroundColor by animateColorAsState(
         targetValue = if (isPressed) {
-            MaterialTheme.colorScheme.surfaceContainerHigh
+            MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 1f).compositeOver(pressedOverlay)
         } else {
             MaterialTheme.colorScheme.surfaceContainer
         },
