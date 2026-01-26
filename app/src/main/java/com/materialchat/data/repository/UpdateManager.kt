@@ -221,11 +221,19 @@ class UpdateManager @Inject constructor(
                         is InstallFailure.Storage -> "Not enough storage space"
                         is InstallFailure.Timeout -> "Installation timed out"
                         is InstallFailure.Exceptional -> failure.exception.message ?: "Installation failed"
+                        is InstallFailure.Generic -> failure.message ?: "Installation failed"
                         else -> "Installation failed"
                     }
 
-                    // If aborted (cancelled by user), go back to ready state
-                    if (failure is InstallFailure.Aborted) {
+                    // For Aborted, Blocked, Timeout, and Generic failures, go back to ready state
+                    // These can occur when Play Protect shows its "Analyze app" dialog,
+                    // which temporarily interrupts the installation flow
+                    val isRetryableFailure = failure is InstallFailure.Aborted ||
+                            failure is InstallFailure.Blocked ||
+                            failure is InstallFailure.Timeout ||
+                            failure is InstallFailure.Generic
+
+                    if (isRetryableFailure) {
                         _updateState.value = UpdateState.ReadyToInstall(
                             update = currentState.update,
                             apkPath = currentState.apkPath
