@@ -42,9 +42,6 @@ class SettingsViewModel @Inject constructor(
     private val _formState = MutableStateFlow(ProviderFormState())
     val formState: StateFlow<ProviderFormState> = _formState.asStateFlow()
 
-    // Track API key status for providers
-    private val providerApiKeyStatus = mutableMapOf<String, Boolean>()
-
     init {
         observeSettings()
     }
@@ -87,19 +84,16 @@ class SettingsViewModel @Inject constructor(
                     )
                 }
                 .collect { data ->
-                    // Check API key status for each provider
-                    data.providers.forEach { provider ->
-                        if (!providerApiKeyStatus.containsKey(provider.id)) {
-                            val hasKey = manageProvidersUseCase.hasApiKey(provider.id)
-                            providerApiKeyStatus[provider.id] = hasKey
-                        }
+                    // Always fetch fresh API key status for each provider
+                    val apiKeyStatusMap = data.providers.associate { provider ->
+                        provider.id to manageProvidersUseCase.hasApiKey(provider.id)
                     }
 
                     val currentState = _uiState.value
                     val providerUiItems = data.providers.map { provider ->
                         ProviderUiItem(
                             provider = provider,
-                            hasApiKey = providerApiKeyStatus[provider.id] ?: false
+                            hasApiKey = apiKeyStatusMap[provider.id] ?: false
                         )
                     }
 
@@ -177,7 +171,9 @@ class SettingsViewModel @Inject constructor(
     fun editProvider(provider: Provider) {
         val currentState = _uiState.value
         if (currentState is SettingsUiState.Success) {
-            val hasExistingKey = providerApiKeyStatus[provider.id] ?: false
+            // Get fresh API key status from the provider list
+            val hasExistingKey = currentState.providers
+                .find { it.provider.id == provider.id }?.hasApiKey ?: false
             _formState.value = ProviderFormState(
                 name = provider.name,
                 type = provider.type,
@@ -239,8 +235,8 @@ class SettingsViewModel @Inject constructor(
         }
 
         if (currentFormState.type == ProviderType.OPENAI_COMPATIBLE) {
-            val hasExistingKey = currentState.editingProvider?.let {
-                providerApiKeyStatus[it.id] ?: false
+            val hasExistingKey = currentState.editingProvider?.let { provider ->
+                currentState.providers.find { it.provider.id == provider.id }?.hasApiKey
             } ?: false
             val hasApiKey = currentFormState.apiKey.isNotBlank() || hasExistingKey
             if (!hasApiKey) {
@@ -325,8 +321,8 @@ class SettingsViewModel @Inject constructor(
 
         if (form.type == ProviderType.OPENAI_COMPATIBLE) {
             val editingProvider = currentState.editingProvider
-            val hasExistingKey = editingProvider?.let {
-                providerApiKeyStatus[it.id] ?: false
+            val hasExistingKey = editingProvider?.let { provider ->
+                currentState.providers.find { it.provider.id == provider.id }?.hasApiKey
             } ?: false
 
             if (form.apiKey.isBlank() && !hasExistingKey) {
@@ -432,7 +428,6 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 manageProvidersUseCase.deleteProvider(provider.id)
-                providerApiKeyStatus.remove(provider.id)
                 hideDeleteConfirmation()
                 _events.emit(SettingsEvent.ProviderDeleted(provider.name))
             } catch (e: Exception) {
