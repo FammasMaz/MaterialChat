@@ -684,8 +684,22 @@ class ChatApiClient(
         return try {
             // Try to parse as JSON error
             val errorResponse = json.decodeFromString<ErrorWrapper>(errorBody)
-            errorResponse.error?.message
-                ?: errorResponse.error?.toString()
+
+            // First, try to extract nested error from metadata.raw (OpenRouter style)
+            val nestedMessage = errorResponse.error?.metadata?.raw?.let { rawJson ->
+                try {
+                    val nestedError = json.decodeFromString<ErrorWrapper>(rawJson)
+                    nestedError.error?.message
+                } catch (e: Exception) {
+                    null
+                }
+            }
+
+            // Use nested message if available, otherwise use top-level message
+            nestedMessage
+                ?: errorResponse.error?.message?.takeIf { it != "Provider returned error" }
+                ?: errorResponse.error?.message
+                ?: errorResponse.message
                 ?: "HTTP $statusCode: $errorBody"
         } catch (e: Exception) {
             "HTTP $statusCode: $errorBody"
@@ -766,5 +780,13 @@ private data class ErrorWrapper(
 private data class ErrorDetail(
     val message: String? = null,
     val type: String? = null,
-    val code: kotlinx.serialization.json.JsonElement? = null
+    val code: kotlinx.serialization.json.JsonElement? = null,
+    val metadata: ErrorMetadata? = null
+)
+
+@kotlinx.serialization.Serializable
+private data class ErrorMetadata(
+    val raw: String? = null,
+    @kotlinx.serialization.SerialName("provider_name")
+    val providerName: String? = null
 )
