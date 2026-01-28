@@ -30,7 +30,7 @@ import com.materialchat.data.local.database.entity.ProviderEntity
         ConversationEntity::class,
         MessageEntity::class
     ],
-    version = 4,
+    version = 5,
     exportSchema = true
 )
 abstract class MaterialChatDatabase : RoomDatabase() {
@@ -75,6 +75,16 @@ abstract class MaterialChatDatabase : RoomDatabase() {
         }
 
         /**
+         * Migration from version 4 to 5: Add parent_id column for conversation branching.
+         */
+        private val MIGRATION_4_5 = object : Migration(4, 5) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE conversations ADD COLUMN parent_id TEXT DEFAULT NULL")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_conversations_parent_id ON conversations(parent_id)")
+            }
+        }
+
+        /**
          * Get the singleton database instance.
          *
          * Uses double-checked locking to ensure thread-safe lazy initialization.
@@ -91,7 +101,7 @@ abstract class MaterialChatDatabase : RoomDatabase() {
                 MaterialChatDatabase::class.java,
                 DATABASE_NAME
             )
-                .addMigrations(MIGRATION_2_3, MIGRATION_3_4)
+                .addMigrations(MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
                 .fallbackToDestructiveMigration()
                 .build()
         }

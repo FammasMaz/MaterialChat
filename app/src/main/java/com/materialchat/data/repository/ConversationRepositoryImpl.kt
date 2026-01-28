@@ -335,6 +335,28 @@ class ConversationRepositoryImpl @Inject constructor(
             if (end < content.length) append("...")
         }
     }
+
+    // ========== Branch Operations ==========
+
+    override fun observeRootConversations(): Flow<List<Conversation>> {
+        return conversationDao.getRootConversations().map { entities ->
+            entities.toConversationDomainList()
+        }
+    }
+
+    override fun observeBranches(parentId: String): Flow<List<Conversation>> {
+        return conversationDao.getBranchesForConversation(parentId).map { entities ->
+            entities.toConversationDomainList()
+        }
+    }
+
+    override suspend fun getBranches(parentId: String): List<Conversation> {
+        return conversationDao.getBranchesForConversationOnce(parentId).toConversationDomainList()
+    }
+
+    override suspend fun getBranchCount(parentId: String): Int {
+        return conversationDao.getBranchCount(parentId)
+    }
 }
 
 /**

@@ -29,13 +29,15 @@ sealed interface ConversationsUiState {
     /**
      * Success state with a list of conversations.
      *
-     * @property conversations The list of conversations to display
+     * @property conversations The list of conversations to display (flat list for compatibility)
+     * @property conversationGroups The grouped list of conversations with branches
      * @property activeProvider The currently active provider, if any
      * @property deletedConversation Temporarily holds a deleted conversation for undo functionality
      * @property hapticsEnabled Whether haptic feedback is enabled
      */
     data class Success(
         val conversations: List<ConversationUiItem>,
+        val conversationGroups: List<ConversationGroupUiItem> = emptyList(),
         val activeProvider: Provider? = null,
         val deletedConversation: Conversation? = null,
         val hapticsEnabled: Boolean = true

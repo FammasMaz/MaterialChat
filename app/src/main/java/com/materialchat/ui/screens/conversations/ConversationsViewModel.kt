@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.materialchat.data.local.preferences.AppPreferences
 import com.materialchat.domain.model.Conversation
 import com.materialchat.domain.model.Provider
+import com.materialchat.domain.repository.ConversationRepository
 import com.materialchat.domain.usecase.CreateConversationUseCase
 import com.materialchat.domain.usecase.GetConversationsUseCase
 import com.materialchat.domain.usecase.ManageProvidersUseCase
@@ -27,12 +28,14 @@ import javax.inject.Inject
  * ViewModel for the Conversations screen.
  *
  * Manages the list of conversations and handles user interactions.
+ * Supports branch grouping where branches are displayed under their parent conversations.
  */
 @HiltViewModel
 class ConversationsViewModel @Inject constructor(
     private val getConversationsUseCase: GetConversationsUseCase,
     private val createConversationUseCase: CreateConversationUseCase,
     private val manageProvidersUseCase: ManageProvidersUseCase,
+    private val conversationRepository: ConversationRepository,
     private val appPreferences: AppPreferences
 ) : ViewModel() {
 
@@ -41,6 +44,9 @@ class ConversationsViewModel @Inject constructor(
 
     private val _events = MutableSharedFlow<ConversationsEvent>()
     val events: SharedFlow<ConversationsEvent> = _events.asSharedFlow()
+
+    // Track expanded conversation groups by parent ID
+    private val _expandedGroupIds = MutableStateFlow<Set<String>>(emptySet())
 
     // Track multiple pending deletions: conversation ID -> delete job
     private val pendingDeletions = mutableMapOf<String, Job>()
@@ -55,16 +61,18 @@ class ConversationsViewModel @Inject constructor(
 
     /**
      * Observes conversations and provider changes to update the UI state.
+     * Groups root conversations with their branches.
      */
     private fun observeConversations() {
         viewModelScope.launch {
             combine(
                 getConversationsUseCase.observeConversations(),
                 manageProvidersUseCase.observeProviders(),
-                appPreferences.hapticsEnabled
-            ) { conversations, providers, hapticsEnabled ->
+                appPreferences.hapticsEnabled,
+                _expandedGroupIds
+            ) { conversations, providers, hapticsEnabled, expandedIds ->
                 val activeProvider = providers.find { it.isActive }
-                ConversationsData(conversations, providers, activeProvider, hapticsEnabled)
+                ConversationsData(conversations, providers, activeProvider, hapticsEnabled, expandedIds)
             }
                 .catch { e ->
                     _uiState.value = ConversationsUiState.Error(
@@ -79,17 +87,36 @@ class ConversationsViewModel @Inject constructor(
                         data.conversations
                     }
 
-                    _uiState.value = if (filteredConversations.isEmpty()) {
+                    // Separate root conversations and branches
+                    val (branches, roots) = filteredConversations.partition { it.isBranch }
+
+                    // Build a map of parent ID to branches
+                    val branchMap = branches.groupBy { it.parentId!! }
+
+                    // Create grouped structure
+                    val groups = roots.map { root ->
+                        val rootUiItem = root.toUiItem(data.providers)
+                        val branchUiItems = branchMap[root.id]?.map { it.toUiItem(data.providers) } ?: emptyList()
+
+                        ConversationGroupUiItem(
+                            parent = rootUiItem,
+                            branches = branchUiItems,
+                            isExpanded = root.id in data.expandedIds
+                        )
+                    }
+
+                    // Also create flat list for compatibility
+                    val flatList = roots.map { it.toUiItem(data.providers) }
+
+                    _uiState.value = if (groups.isEmpty()) {
                         ConversationsUiState.Empty(
                             hasActiveProvider = data.activeProvider != null,
                             hapticsEnabled = data.hapticsEnabled
                         )
                     } else {
-                        val uiItems = filteredConversations.map { conversation ->
-                            conversation.toUiItem(data.providers)
-                        }
                         ConversationsUiState.Success(
-                            conversations = uiItems,
+                            conversations = flatList,
+                            conversationGroups = groups,
                             activeProvider = data.activeProvider,
                             deletedConversation = lastDeletedConversation,
                             hapticsEnabled = data.hapticsEnabled
@@ -106,8 +133,23 @@ class ConversationsViewModel @Inject constructor(
         val conversations: List<Conversation>,
         val providers: List<Provider>,
         val activeProvider: Provider?,
-        val hapticsEnabled: Boolean
+        val hapticsEnabled: Boolean,
+        val expandedIds: Set<String>
     )
+
+    /**
+     * Toggles the expanded state of a conversation group.
+     *
+     * @param parentId The ID of the parent conversation
+     */
+    fun toggleGroupExpanded(parentId: String) {
+        val currentExpanded = _expandedGroupIds.value
+        _expandedGroupIds.value = if (parentId in currentExpanded) {
+            currentExpanded - parentId
+        } else {
+            currentExpanded + parentId
+        }
+    }
 
     /**
      * Creates a new conversation and navigates to it.
@@ -166,10 +208,17 @@ class ConversationsViewModel @Inject constructor(
         // Update state to remove the conversation visually
         val currentState = _uiState.value
         if (currentState is ConversationsUiState.Success) {
+            val updatedGroups = currentState.conversationGroups.filter {
+                it.parent.conversation.id !in pendingDeleteIds
+            }.map { group ->
+                group.copy(
+                    branches = group.branches.filter { it.conversation.id !in pendingDeleteIds }
+                )
+            }
             val updatedConversations = currentState.conversations.filter {
                 it.conversation.id !in pendingDeleteIds
             }
-            _uiState.value = if (updatedConversations.isEmpty()) {
+            _uiState.value = if (updatedGroups.isEmpty()) {
                 ConversationsUiState.Empty(
                     hasActiveProvider = currentState.activeProvider != null,
                     hapticsEnabled = currentState.hapticsEnabled
@@ -177,6 +226,7 @@ class ConversationsViewModel @Inject constructor(
             } else {
                 currentState.copy(
                     conversations = updatedConversations,
+                    conversationGroups = updatedGroups,
                     deletedConversation = conversation
                 )
             }

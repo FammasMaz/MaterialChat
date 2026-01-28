@@ -133,4 +133,57 @@ interface ConversationDao {
      */
     @Query("SELECT * FROM conversations WHERE title LIKE '%' || :query || '%' COLLATE NOCASE ORDER BY updated_at DESC LIMIT :limit")
     suspend fun searchConversationsByTitle(query: String, limit: Int): List<ConversationEntity>
+
+    // ========== Branch Operations ==========
+
+    /**
+     * Get all root conversations (conversations without a parent) as a Flow.
+     * Only includes conversations that have at least one message.
+     */
+    @Query("""
+        SELECT c.* FROM conversations c
+        WHERE c.parent_id IS NULL
+        AND EXISTS (SELECT 1 FROM messages m WHERE m.conversation_id = c.id)
+        ORDER BY c.updated_at DESC
+    """)
+    fun getRootConversations(): Flow<List<ConversationEntity>>
+
+    /**
+     * Get all branches for a specific parent conversation.
+     * Ordered by most recently updated first.
+     */
+    @Query("""
+        SELECT * FROM conversations
+        WHERE parent_id = :parentId
+        ORDER BY updated_at DESC
+    """)
+    fun getBranchesForConversation(parentId: String): Flow<List<ConversationEntity>>
+
+    /**
+     * Get all branches for a specific parent conversation (one-shot).
+     */
+    @Query("""
+        SELECT * FROM conversations
+        WHERE parent_id = :parentId
+        ORDER BY updated_at DESC
+    """)
+    suspend fun getBranchesForConversationOnce(parentId: String): List<ConversationEntity>
+
+    /**
+     * Get branch count for a specific parent conversation.
+     */
+    @Query("SELECT COUNT(*) FROM conversations WHERE parent_id = :parentId")
+    suspend fun getBranchCount(parentId: String): Int
+
+    /**
+     * Get all root conversations with their branch counts.
+     * Returns a Flow of root conversations.
+     */
+    @Query("""
+        SELECT c.* FROM conversations c
+        WHERE c.parent_id IS NULL
+        AND EXISTS (SELECT 1 FROM messages m WHERE m.conversation_id = c.id)
+        ORDER BY c.updated_at DESC
+    """)
+    fun getRootConversationsWithBranches(): Flow<List<ConversationEntity>>
 }

@@ -70,6 +70,7 @@ fun Conversation.toEntity(): ConversationEntity = ConversationEntity(
     icon = icon,
     providerId = providerId,
     modelName = modelName,
+    parentId = parentId,
     createdAt = createdAt,
     updatedAt = updatedAt
 )
@@ -85,6 +86,7 @@ fun ConversationEntity.toDomain(): Conversation = Conversation(
     icon = icon,
     providerId = providerId ?: "",
     modelName = modelName,
+    parentId = parentId,
     createdAt = createdAt,
     updatedAt = updatedAt
 )

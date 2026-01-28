@@ -1,6 +1,7 @@
 package com.materialchat.ui.screens.conversations.components
 
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
@@ -16,6 +17,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Chat
 import androidx.compose.material3.Icon
@@ -32,19 +34,28 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.materialchat.ui.screens.conversations.ConversationUiItem
 import com.materialchat.ui.theme.CustomShapes
-import com.materialchat.ui.theme.MaterialChatMotion
 
 /**
- * A single conversation item in the conversations list.
+ * M3 Expressive conversation item in the conversations list.
  *
- * Displays the conversation title, provider name, model, and last update time.
- * Features Material 3 Expressive animations on press.
+ * Design specifications per M3 Expressive:
+ * - Uses `surfaceContainer` for container (medium emphasis)
+ * - Uses `primaryContainer` for provider badge
+ * - Uses `outlineVariant` for dividers
+ * - Shape morphing on press: resting → less rounded when pressed
+ * - 48dp+ minimum touch target (row height)
+ * - Spring-based animations:
+ *   - Spatial (scale, shape): damping=0.6, stiffness=500 (fast)
+ *   - Effects (color): damping=1.0, stiffness=300 (no overshoot)
  *
  * @param conversationItem The conversation data to display
  * @param onClick Callback when the item is clicked
+ * @param shape Shape for the item (used for corner calculation)
+ * @param showDivider Whether to show a divider below this item
  * @param modifier Modifier for the item
  */
 @Composable
@@ -58,25 +69,45 @@ fun ConversationItem(
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
 
-    // Material 3 Expressive press animation
+    // M3 Expressive spring specs
+    // Spatial: Can overshoot (damping < 1) - for scale, shape
+    val spatialSpring = spring<Float>(
+        dampingRatio = 0.6f,
+        stiffness = 500f // Fast for small components
+    )
+    // Effects: No overshoot (damping = 1) - for color
+    val effectsSpring = spring<Float>(
+        dampingRatio = 1.0f,
+        stiffness = 300f
+    )
+
+    // Scale animation - spatial spring
     val scale by animateFloatAsState(
-        targetValue = if (isPressed) MaterialChatMotion.Scales.Pressed else MaterialChatMotion.Scales.Normal,
-        animationSpec = spring(
-            dampingRatio = MaterialChatMotion.Springs.ScalePress.dampingRatio,
-            stiffness = MaterialChatMotion.Springs.ScalePress.stiffness
-        ),
+        targetValue = if (isPressed) 0.98f else 1f,
+        animationSpec = spatialSpring,
         label = "scale"
     )
 
-    // Background color animation - uses 10% onSurface overlay for pressed state per M3 Expressive
-    val pressedOverlay = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.10f)
+    // Shape morphing - M3 Expressive: pressed = less rounded
+    // This is applied as a visual effect, the actual shape is passed in
+    val shapeMorphFactor by animateFloatAsState(
+        targetValue = if (isPressed) 0.7f else 1f,
+        animationSpec = spatialSpring,
+        label = "shapeMorph"
+    )
+
+    // Background color animation - effects spring (no overshoot)
+    val pressedOverlay = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)
     val backgroundColor by animateColorAsState(
         targetValue = if (isPressed) {
-            MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 1f).compositeOver(pressedOverlay)
+            pressedOverlay.compositeOver(MaterialTheme.colorScheme.surfaceContainer)
         } else {
             MaterialTheme.colorScheme.surfaceContainer
         },
-        animationSpec = spring(),
+        animationSpec = spring(
+            dampingRatio = 1.0f,
+            stiffness = 300f
+        ),
         label = "backgroundColor"
     )
 
@@ -97,7 +128,7 @@ fun ConversationItem(
                 .padding(horizontal = 16.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Chat icon or emoji
+            // Chat icon or emoji - 40dp for visual prominence
             if (conversationItem.conversation.icon != null) {
                 // Display AI-generated emoji
                 Text(
@@ -106,7 +137,7 @@ fun ConversationItem(
                     modifier = Modifier.size(40.dp)
                 )
             } else {
-                // Fallback to chat icon
+                // Fallback to chat icon - uses primary color
                 Icon(
                     imageVector = Icons.AutoMirrored.Outlined.Chat,
                     contentDescription = null,
@@ -122,7 +153,7 @@ fun ConversationItem(
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                // Title
+                // Title - M3 titleMedium
                 Text(
                     text = conversationItem.conversation.title,
                     style = MaterialTheme.typography.titleMedium,
@@ -136,18 +167,18 @@ fun ConversationItem(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Provider name with badge style
+                    // Provider name badge - M3: primaryContainer with pill shape
                     Text(
                         text = conversationItem.providerName,
                         style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.primary,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
                         modifier = Modifier
-                            .clip(CustomShapes.Pill)
-                            .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f))
+                            .clip(RoundedCornerShape(50)) // M3: full (pill)
+                            .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f))
                             .padding(horizontal = 8.dp, vertical = 2.dp)
                     )
 
-                    // Model name
+                    // Model name - uses onSurfaceVariant
                     Text(
                         text = conversationItem.conversation.modelName,
                         style = MaterialTheme.typography.bodySmall,
@@ -173,7 +204,7 @@ fun ConversationItem(
 
             Spacer(modifier = Modifier.width(8.dp))
 
-            // Relative time
+            // Relative time - M3: labelSmall, onSurfaceVariant
             Text(
                 text = conversationItem.relativeTime,
                 style = MaterialTheme.typography.labelSmall,
@@ -181,13 +212,14 @@ fun ConversationItem(
             )
         }
 
+        // Divider - M3: outlineVariant for subtle separation
         if (showDivider) {
             Spacer(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(start = 72.dp, end = 16.dp)
                     .height(1.dp)
-                    .background(MaterialTheme.colorScheme.surfaceContainerLow)
+                    .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
             )
         }
     }

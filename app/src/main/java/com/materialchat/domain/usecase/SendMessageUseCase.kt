@@ -186,24 +186,39 @@ class SendMessageUseCase @Inject constructor(
     /**
      * Updates the conversation title based on the first message exchange.
      * Uses AI-generated title if enabled, otherwise falls back to truncation.
+     * For branches, uses a specialized prompt that focuses on what makes the branch different.
      */
     private suspend fun updateConversationTitleIfNeeded(
         conversation: Conversation,
         userContent: String,
         assistantResponse: String
     ) {
-        if (conversation.title == Conversation.generateDefaultTitle()) {
+        // For new conversations: title is "New Chat"
+        // For branches: title is "New Branch"
+        val needsTitle = conversation.title == Conversation.generateDefaultTitle() ||
+                         conversation.title == Conversation.generateDefaultBranchTitle()
+
+        if (needsTitle) {
             // Check if AI-generated titles are enabled
             val aiTitlesEnabled = appPreferences.aiGeneratedTitlesEnabled.first()
 
             if (aiTitlesEnabled && assistantResponse.isNotBlank()) {
                 // Launch non-blocking AI title generation in application scope
                 applicationScope.launch {
-                    generateConversationTitleUseCase(
-                        conversationId = conversation.id,
-                        userMessage = userContent,
-                        assistantResponse = assistantResponse
-                    )
+                    if (conversation.isBranch) {
+                        // For branches, use specialized title generation
+                        generateBranchTitle(
+                            conversationId = conversation.id,
+                            userMessage = userContent,
+                            assistantResponse = assistantResponse
+                        )
+                    } else {
+                        generateConversationTitleUseCase(
+                            conversationId = conversation.id,
+                            userMessage = userContent,
+                            assistantResponse = assistantResponse
+                        )
+                    }
                 }
             } else {
                 // Fall back to simple truncation
@@ -212,6 +227,121 @@ class SendMessageUseCase @Inject constructor(
             }
         }
     }
+
+    /**
+     * Generates a specialized title for branch conversations.
+     * The title focuses on what makes this branch different from the original.
+     */
+    private suspend fun generateBranchTitle(
+        conversationId: String,
+        userMessage: String,
+        assistantResponse: String
+    ) {
+        try {
+            val conversation = conversationRepository.getConversation(conversationId) ?: return
+
+            val provider = providerRepository.getProvider(conversation.providerId) ?: return
+
+            // Check if a custom model is configured for title generation
+            val customModel = appPreferences.titleGenerationModel.first()
+            val modelToUse = if (customModel.isNotBlank()) customModel else conversation.modelName
+
+            val prompt = buildBranchTitlePrompt(userMessage, assistantResponse)
+
+            val result = chatRepository.generateSimpleCompletion(
+                provider = provider,
+                prompt = prompt,
+                model = modelToUse
+            )
+
+            result.onSuccess { generatedResponse ->
+                val parsed = parseBranchTitleResponse(generatedResponse)
+                conversationRepository.updateConversationTitleAndIcon(
+                    conversationId,
+                    parsed.title,
+                    parsed.icon
+                )
+            }.onFailure {
+                // Fall back to simple truncation
+                val fallbackTitle = generateTitleFromMessage(userMessage)
+                conversationRepository.updateConversationTitle(conversationId, fallbackTitle)
+            }
+        } catch (e: Exception) {
+            val fallbackTitle = generateTitleFromMessage(userMessage)
+            try {
+                conversationRepository.updateConversationTitle(conversationId, fallbackTitle)
+            } catch (_: Exception) { }
+        }
+    }
+
+    /**
+     * Builds the prompt for generating a branch title.
+     */
+    private fun buildBranchTitlePrompt(userMessage: String, assistantResponse: String): String {
+        val truncatedUser = userMessage.take(500)
+        val truncatedAssistant = assistantResponse.take(500)
+
+        return "Generate a single emoji and a concise title (maximum 6 words) for this conversation branch. " +
+            "The title should capture what makes this branch different - the new direction or topic explored. " +
+            "Focus on the NEW content, not the original conversation. " +
+            "Format: [emoji] [title] - for example: 🔀 Alternative API approach\n" +
+            "Only respond with the emoji and title, no quotes, no explanation, no punctuation at the end.\n\n" +
+            "New user message: $truncatedUser\n\n" +
+            "Assistant response: $truncatedAssistant\n\n" +
+            "Response:"
+    }
+
+    /**
+     * Parses the AI response to extract emoji and title for a branch.
+     */
+    private fun parseBranchTitleResponse(response: String): BranchTitleResult {
+        val trimmed = response
+            .trim()
+            .removeSurrounding("\"")
+            .removeSurrounding("'")
+            .replace(Regex("^(Response|Title):\\s*", RegexOption.IGNORE_CASE), "")
+            .trim()
+
+        // Regex to match emoji at the start
+        val emojiPattern = Regex(
+            "^[\\p{So}\\p{Cs}\\u200D\\uFE0F\\u2600-\\u26FF\\u2700-\\u27BF]+"
+        )
+        val emojiMatch = emojiPattern.find(trimmed)
+
+        return if (emojiMatch != null && emojiMatch.range.first == 0) {
+            val emoji = emojiMatch.value
+            val titlePart = trimmed.substring(emojiMatch.range.last + 1).trim()
+            val cleanedTitle = cleanBranchTitle(titlePart)
+            BranchTitleResult(title = cleanedTitle, icon = emoji)
+        } else {
+            BranchTitleResult(title = cleanBranchTitle(trimmed), icon = null)
+        }
+    }
+
+    private fun cleanBranchTitle(title: String): String {
+        var cleaned = title
+            .trim()
+            .removeSurrounding("\"")
+            .removeSurrounding("'")
+            .replace(Regex("^Title:\\s*", RegexOption.IGNORE_CASE), "")
+            .replace(Regex("[.!?]+$"), "")
+            .replace("\n", " ")
+            .replace(Regex("\\s+"), " ")
+            .trim()
+
+        val words = cleaned.split(" ")
+        if (words.size > 6) {
+            cleaned = words.take(6).joinToString(" ")
+        }
+
+        if (cleaned.length > 60) {
+            cleaned = cleaned.take(57) + "..."
+        }
+
+        return cleaned.ifBlank { "Branch" }
+    }
+
+    private data class BranchTitleResult(val title: String, val icon: String?)
 
     /**
      * Generates a title from the user's first message.

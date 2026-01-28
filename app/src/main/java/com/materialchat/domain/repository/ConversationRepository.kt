@@ -187,4 +187,37 @@ interface ConversationRepository {
      * @return List of search results ordered by relevance (title matches first)
      */
     suspend fun searchConversations(query: SearchQuery): List<SearchResult>
+
+    // ========== Branch Operations ==========
+
+    /**
+     * Observes all root conversations (conversations without a parent).
+     *
+     * @return A Flow emitting the list of root conversations whenever it changes
+     */
+    fun observeRootConversations(): Flow<List<Conversation>>
+
+    /**
+     * Observes all branches for a specific parent conversation.
+     *
+     * @param parentId The ID of the parent conversation
+     * @return A Flow emitting the list of branches whenever it changes
+     */
+    fun observeBranches(parentId: String): Flow<List<Conversation>>
+
+    /**
+     * Gets all branches for a specific parent conversation.
+     *
+     * @param parentId The ID of the parent conversation
+     * @return The list of branch conversations
+     */
+    suspend fun getBranches(parentId: String): List<Conversation>
+
+    /**
+     * Gets the branch count for a specific parent conversation.
+     *
+     * @param parentId The ID of the parent conversation
+     * @return The number of branches
+     */
+    suspend fun getBranchCount(parentId: String): Int
 }

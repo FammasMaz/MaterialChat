@@ -21,11 +21,18 @@ import androidx.room.PrimaryKey
             parentColumns = ["id"],
             childColumns = ["provider_id"],
             onDelete = ForeignKey.SET_NULL
+        ),
+        ForeignKey(
+            entity = ConversationEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["parent_id"],
+            onDelete = ForeignKey.CASCADE
         )
     ],
     indices = [
         Index(value = ["provider_id"]),
-        Index(value = ["updated_at"])
+        Index(value = ["updated_at"]),
+        Index(value = ["parent_id"])
     ]
 )
 data class ConversationEntity(
@@ -44,6 +51,9 @@ data class ConversationEntity(
 
     @ColumnInfo(name = "model_name")
     val modelName: String,
+
+    @ColumnInfo(name = "parent_id", defaultValue = "NULL")
+    val parentId: String? = null,
 
     @ColumnInfo(name = "created_at")
     val createdAt: Long,

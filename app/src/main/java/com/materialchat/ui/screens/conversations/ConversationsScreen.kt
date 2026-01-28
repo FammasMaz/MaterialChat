@@ -95,6 +95,7 @@ import com.materialchat.ui.components.AnimatedExtendedFab
 import com.materialchat.ui.components.HapticPattern
 import com.materialchat.ui.components.rememberHapticFeedback
 import com.materialchat.ui.screens.conversations.components.ConversationItem
+import com.materialchat.ui.screens.conversations.components.ExpandableConversationGroup
 import com.materialchat.ui.screens.conversations.components.SwipeToDeleteBox
 import com.materialchat.ui.screens.conversations.components.SwipeCornerSpec
 import com.materialchat.ui.screens.search.SearchUiState
@@ -293,7 +294,8 @@ fun ConversationsScreen(
                 onConversationClick = { viewModel.openConversation(it) },
                 onConversationDelete = { viewModel.deleteConversation(it) },
                 onRetry = { viewModel.retry() },
-                onNavigateToSettings = { viewModel.navigateToSettings() }
+                onNavigateToSettings = { viewModel.navigateToSettings() },
+                onToggleGroupExpanded = { viewModel.toggleGroupExpanded(it) }
             )
         }
     }
@@ -557,7 +559,8 @@ private fun ConversationsContent(
     onConversationClick: (String) -> Unit,
     onConversationDelete: (com.materialchat.domain.model.Conversation) -> Unit,
     onRetry: () -> Unit,
-    onNavigateToSettings: () -> Unit
+    onNavigateToSettings: () -> Unit,
+    onToggleGroupExpanded: (String) -> Unit = {}
 ) {
     // M3 Expressive: Rounded container wrapping main content
     // Fill entire screen and use content padding inside
@@ -587,13 +590,24 @@ private fun ConversationsContent(
                     )
                 }
                 is ConversationsUiState.Success -> {
-                    ConversationList(
-                        conversations = uiState.conversations,
-                        listState = listState,
-                        onConversationClick = onConversationClick,
-                        onConversationDelete = onConversationDelete,
-                        hapticsEnabled = uiState.hapticsEnabled
-                    )
+                    if (uiState.conversationGroups.isNotEmpty()) {
+                        GroupedConversationList(
+                            groups = uiState.conversationGroups,
+                            listState = listState,
+                            onConversationClick = onConversationClick,
+                            onConversationDelete = onConversationDelete,
+                            onToggleGroupExpanded = onToggleGroupExpanded,
+                            hapticsEnabled = uiState.hapticsEnabled
+                        )
+                    } else {
+                        ConversationList(
+                            conversations = uiState.conversations,
+                            listState = listState,
+                            onConversationClick = onConversationClick,
+                            onConversationDelete = onConversationDelete,
+                            hapticsEnabled = uiState.hapticsEnabled
+                        )
+                    }
                 }
                 is ConversationsUiState.Error -> {
                     ErrorContent(
@@ -740,6 +754,64 @@ private fun ConversationList(
                     showDivider = !isLast
                 )
             }
+        }
+    }
+}
+
+/**
+ * Displays a grouped list of conversations with expandable branch sections.
+ * Uses M3 Expressive animations for expand/collapse.
+ */
+@Composable
+private fun GroupedConversationList(
+    groups: List<ConversationGroupUiItem>,
+    listState: androidx.compose.foundation.lazy.LazyListState,
+    onConversationClick: (String) -> Unit,
+    onConversationDelete: (com.materialchat.domain.model.Conversation) -> Unit,
+    onToggleGroupExpanded: (String) -> Unit,
+    hapticsEnabled: Boolean = true
+) {
+    val cornerRadius = 20.dp
+
+    LazyColumn(
+        state = listState,
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(
+            start = 16.dp,
+            end = 16.dp,
+            top = 16.dp,
+            bottom = 88.dp // Extra padding for FAB
+        ),
+        verticalArrangement = Arrangement.spacedBy(0.dp)
+    ) {
+        itemsIndexed(
+            items = groups,
+            key = { _, group -> group.parent.conversation.id }
+        ) { index, group ->
+            val isFirst = index == 0
+            val isLast = index == groups.lastIndex
+
+            ExpandableConversationGroup(
+                group = group,
+                onParentClick = onConversationClick,
+                onBranchClick = onConversationClick,
+                onExpandToggle = onToggleGroupExpanded,
+                onDelete = onConversationDelete,
+                cornerRadius = cornerRadius,
+                isFirst = isFirst,
+                isLast = isLast,
+                hapticsEnabled = hapticsEnabled,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .animateItem(
+                        fadeInSpec = spring(stiffness = Spring.StiffnessMediumLow),
+                        fadeOutSpec = spring(stiffness = Spring.StiffnessMediumLow),
+                        placementSpec = spring(
+                            dampingRatio = Spring.DampingRatioMediumBouncy,
+                            stiffness = Spring.StiffnessMediumLow
+                        )
+                    )
+            )
         }
     }
 }

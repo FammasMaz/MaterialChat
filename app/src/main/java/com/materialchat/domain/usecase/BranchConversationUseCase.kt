@@ -12,6 +12,11 @@ import javax.inject.Inject
  * Creates a new conversation containing all messages up to and including
  * the specified message, enabling exploration of alternative paths
  * without losing the original thread.
+ *
+ * The branch is linked to its parent via the parentId field and starts
+ * with a temporary "New Branch" title. When the user sends the first new
+ * message in the branch, an AI-generated title will be created based on
+ * what makes this branch different from the original.
  */
 class BranchConversationUseCase @Inject constructor(
     private val conversationRepository: ConversationRepository
@@ -44,16 +49,18 @@ class BranchConversationUseCase @Inject constructor(
         // Get messages up to and including the target
         val messagesToCopy = sourceMessages.subList(0, targetIndex + 1)
 
-        // Generate branch title
-        val branchTitle = generateBranchTitle(sourceConversation.title)
+        // Determine the parent ID - if source is already a branch, use its parent
+        // Otherwise, the source becomes the parent
+        val parentId = sourceConversation.parentId ?: sourceConversation.id
 
-        // Create the new conversation
+        // Create the new conversation with parentId set and temporary title
         val newConversation = Conversation(
             id = UUID.randomUUID().toString(),
-            title = branchTitle,
-            icon = sourceConversation.icon,
+            title = Conversation.generateDefaultBranchTitle(),
+            icon = null, // AI will generate new icon based on branch content
             providerId = sourceConversation.providerId,
-            modelName = sourceConversation.modelName
+            modelName = sourceConversation.modelName,
+            parentId = parentId
         )
 
         val newConversationId = conversationRepository.createConversation(newConversation)
@@ -74,24 +81,5 @@ class BranchConversationUseCase @Inject constructor(
         }
 
         return newConversationId
-    }
-
-    /**
-     * Generates a branch title based on the original title.
-     * Handles titles that are already branches (e.g., "Chat (Branch)" -> "Chat (Branch 2)").
-     */
-    private fun generateBranchTitle(originalTitle: String): String {
-        val branchPattern = Regex("""^(.+?)\s*\(Branch(?:\s+(\d+))?\)$""")
-        val match = branchPattern.matchEntire(originalTitle)
-
-        return if (match != null) {
-            // Already a branch, increment the number
-            val baseTitle = match.groupValues[1].trim()
-            val currentNumber = match.groupValues[2].toIntOrNull() ?: 1
-            "$baseTitle (Branch ${currentNumber + 1})"
-        } else {
-            // First branch
-            "$originalTitle (Branch)"
-        }
     }
 }
