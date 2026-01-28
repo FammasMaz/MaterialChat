@@ -52,6 +52,9 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
@@ -423,6 +426,24 @@ private fun ChatContent(
     var autoScrollEnabled by remember { mutableStateOf(true) }
     var inputHeightPx by remember { mutableIntStateOf(0) }
     val bottomThresholdPx = with(density) { 24.dp.toPx() }
+
+    // Fix 1: Visual buffer during streaming (8dp)
+    val scrollBufferPx = with(density) { 8.dp.toPx() }
+    // Fix 2: Larger buffer for action buttons when streaming ends (~56dp)
+    val actionButtonHeightPx = with(density) { 56.dp.toPx() }
+
+    // Fix 3: NestedScrollConnection to detect upward scroll gestures immediately
+    val autoScrollConnection = remember {
+        object : NestedScrollConnection {
+            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                // User scrolling UP (positive y in scroll coordinates means upward gesture)
+                if (source == NestedScrollSource.UserInput && available.y > 0) {
+                    autoScrollEnabled = false
+                }
+                return Offset.Zero  // Don't consume scroll, just observe
+            }
+        }
+    }
     val isAtBottom by remember {
         derivedStateOf {
             val layoutInfo = listState.layoutInfo
@@ -441,11 +462,12 @@ private fun ChatContent(
             }
         }
     }
+    // Only re-enable auto-scroll when user returns to bottom (after scroll stops)
     LaunchedEffect(listState) {
         snapshotFlow { listState.isScrollInProgress to isAtBottom }
             .collect { (isScrolling, atBottom) ->
-                if (!isScrolling) {
-                    autoScrollEnabled = atBottom
+                if (!isScrolling && atBottom) {
+                    autoScrollEnabled = true
                 }
             }
     }
@@ -483,6 +505,8 @@ private fun ChatContent(
     val lastContentHash = lastMessage?.content?.hashCode() ?: 0
     val lastThinkingHash = lastMessage?.thinkingContent?.hashCode() ?: 0
     val lastAttachmentCount = lastMessage?.attachments?.size ?: 0
+    // Fix 2: Track streaming state to scroll when it ends (to reveal action buttons)
+    val isLastMessageStreaming = lastMessage?.isStreaming ?: false
 
     LaunchedEffect(
         lastContentHash,
@@ -491,7 +515,8 @@ private fun ChatContent(
         state.messages.size,
         inputHeightPx,
         isAtBottom,
-        autoScrollEnabled
+        autoScrollEnabled,
+        isLastMessageStreaming  // NEW KEY: triggers scroll when streaming ends
     ) {
         if (autoScrollEnabled && state.messages.isNotEmpty()) {
             val lastIndex = state.messages.lastIndex
@@ -500,7 +525,11 @@ private fun ChatContent(
             if (lastVisible == null || lastVisible.index < lastIndex) {
                 listState.scrollToItem(lastIndex)
             } else {
-                val overflow = (lastVisible.offset + lastVisible.size) - layoutInfo.viewportEndOffset
+                // Fix 1 & 2: Use appropriate buffer based on streaming state
+                // - During streaming: small buffer (8dp) to prevent bottom cutoff
+                // - After streaming ends: larger buffer (~56dp) to reveal action buttons
+                val buffer = if (isLastMessageStreaming) scrollBufferPx else actionButtonHeightPx
+                val overflow = (lastVisible.offset + lastVisible.size) - layoutInfo.viewportEndOffset + buffer
                 if (overflow > 0) {
                     listState.scrollBy(overflow.toFloat())
                 }
@@ -521,10 +550,12 @@ private fun ChatContent(
         ),
         color = MaterialTheme.colorScheme.surfaceContainerLow
     ) {
+        // Fix 3: Apply nestedScroll to detect upward scroll gestures immediately
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(bottom = imePadding)
+                .nestedScroll(autoScrollConnection)
         ) {
             // Message list
             MessageList(
