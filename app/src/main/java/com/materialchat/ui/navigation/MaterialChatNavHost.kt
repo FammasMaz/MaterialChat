@@ -157,7 +157,11 @@ fun MaterialChatNavHost(
                     LocalAnimatedVisibilityScope provides this@composable
                 ) {
                     ChatScreen(
-                        onNavigateBack = { navController.popBackStack() }
+                        onNavigateBack = { navController.popBackStack() },
+                        onNavigateToBranch = { newId ->
+                            navController.popBackStack()
+                            navController.navigate(Screen.Chat.createRoute(newId))
+                        }
                     )
                 }
             }

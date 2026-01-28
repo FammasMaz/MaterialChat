@@ -171,4 +171,11 @@ sealed interface ChatEvent {
      * Scroll to the bottom of the message list.
      */
     data object ScrollToBottom : ChatEvent
+
+    /**
+     * Navigate to a branched conversation.
+     *
+     * @property conversationId The ID of the new branched conversation
+     */
+    data class NavigateToBranch(val conversationId: String) : ChatEvent
 }

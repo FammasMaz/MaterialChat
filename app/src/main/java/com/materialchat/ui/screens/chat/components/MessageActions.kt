@@ -11,6 +11,7 @@ import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.CallSplit
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Icon
@@ -30,11 +31,12 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 
 /**
- * Action buttons for chat messages (copy, regenerate).
+ * Action buttons for chat messages (copy, regenerate, branch).
  *
  * This component provides quick actions for messages following Material 3 Expressive design:
  * - Copy button: Copies message content to clipboard (available for all messages)
  * - Regenerate button: Regenerates the AI response (only for last assistant message)
+ * - Branch button: Creates a new conversation branch from this message
  *
  * Features:
  * - Animated visibility with scale and fade transitions
@@ -43,16 +45,20 @@ import androidx.compose.ui.unit.dp
  *
  * @param showCopy Whether to show the copy button
  * @param showRegenerate Whether to show the regenerate button
+ * @param showBranch Whether to show the branch button
  * @param onCopy Callback when copy button is clicked
  * @param onRegenerate Callback when regenerate button is clicked
+ * @param onBranch Callback when branch button is clicked
  * @param modifier Modifier for the action row
  */
 @Composable
 fun MessageActions(
     showCopy: Boolean = true,
     showRegenerate: Boolean = false,
+    showBranch: Boolean = false,
     onCopy: () -> Unit,
     onRegenerate: (() -> Unit)? = null,
+    onBranch: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     Row(
@@ -79,6 +85,29 @@ fun MessageActions(
                 icon = Icons.Default.ContentCopy,
                 contentDescription = "Copy message",
                 onClick = onCopy
+            )
+        }
+
+        // Branch button
+        AnimatedVisibility(
+            visible = showBranch && onBranch != null,
+            enter = fadeIn(
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                    stiffness = Spring.StiffnessMedium
+                )
+            ) + scaleIn(
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                    stiffness = Spring.StiffnessMedium
+                )
+            ),
+            exit = fadeOut() + scaleOut()
+        ) {
+            ActionButton(
+                icon = Icons.AutoMirrored.Outlined.CallSplit,
+                contentDescription = "Branch conversation",
+                onClick = { onBranch?.invoke() }
             )
         }
 
@@ -162,20 +191,26 @@ private fun ActionButton(
  *
  * @param isUser Whether this is a user message (affects alignment)
  * @param showRegenerate Whether to show the regenerate button
+ * @param showBranch Whether to show the branch button
  * @param onCopy Callback when copy button is clicked
  * @param onRegenerate Optional callback when regenerate button is clicked
+ * @param onBranch Optional callback when branch button is clicked
  */
 @Composable
 fun CompactMessageActions(
     isUser: Boolean,
     showRegenerate: Boolean,
+    showBranch: Boolean,
     onCopy: () -> Unit,
-    onRegenerate: (() -> Unit)?
+    onRegenerate: (() -> Unit)?,
+    onBranch: (() -> Unit)?
 ) {
     MessageActions(
         showCopy = true,
         showRegenerate = showRegenerate && onRegenerate != null,
+        showBranch = showBranch && onBranch != null,
         onCopy = onCopy,
-        onRegenerate = onRegenerate
+        onRegenerate = onRegenerate,
+        onBranch = onBranch
     )
 }

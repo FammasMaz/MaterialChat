@@ -11,6 +11,7 @@ import com.materialchat.domain.model.MessageRole
 import com.materialchat.domain.model.ReasoningEffort
 import com.materialchat.domain.model.StreamingState
 import com.materialchat.domain.usecase.ExportConversationUseCase
+import com.materialchat.domain.usecase.BranchConversationUseCase
 import com.materialchat.domain.usecase.GetConversationsUseCase
 import com.materialchat.domain.usecase.ManageProvidersUseCase
 import com.materialchat.domain.usecase.RegenerateResponseUseCase
@@ -45,6 +46,7 @@ class ChatViewModel @Inject constructor(
     private val sendMessageUseCase: SendMessageUseCase,
     private val regenerateResponseUseCase: RegenerateResponseUseCase,
     private val exportConversationUseCase: ExportConversationUseCase,
+    private val branchConversationUseCase: BranchConversationUseCase,
     private val manageProvidersUseCase: ManageProvidersUseCase,
     private val appPreferences: AppPreferences
 ) : ViewModel() {
@@ -544,6 +546,34 @@ class ChatViewModel @Inject constructor(
                 _events.emit(
                     ChatEvent.ShowSnackbar(
                         message = e.message ?: "Failed to regenerate response"
+                    )
+                )
+            }
+        }
+    }
+
+    /**
+     * Creates a branch from the conversation at the specified message.
+     * The branch includes all messages up to and including the target message.
+     *
+     * @param messageId The ID of the message to branch from
+     */
+    fun branchFromMessage(messageId: String) {
+        val currentState = _uiState.value
+        if (currentState !is ChatUiState.Success) return
+        if (currentState.isStreaming) return
+
+        viewModelScope.launch {
+            try {
+                val newConversationId = branchConversationUseCase(
+                    sourceConversationId = conversationId,
+                    upToMessageId = messageId
+                )
+                _events.emit(ChatEvent.NavigateToBranch(newConversationId))
+            } catch (e: Exception) {
+                _events.emit(
+                    ChatEvent.ShowSnackbar(
+                        message = e.message ?: "Failed to create branch"
                     )
                 )
             }

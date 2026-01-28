@@ -109,14 +109,17 @@ private const val MAX_ATTACHMENTS = 4
  * - Model picker in top bar
  * - Export functionality
  * - Image attachment support
+ * - Branch conversation from any message
  *
  * @param onNavigateBack Callback to navigate back to conversations
+ * @param onNavigateToBranch Callback to navigate to a branched conversation
  * @param viewModel The ViewModel for this screen
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChatScreen(
     onNavigateBack: () -> Unit,
+    onNavigateToBranch: (String) -> Unit = {},
     viewModel: ChatViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -125,6 +128,7 @@ fun ChatScreen(
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
     val context = LocalContext.current
+    val haptics = rememberHapticFeedback()
 
     // Image picker launcher
     val imagePickerLauncher = rememberLauncherForActivityResult(
@@ -229,6 +233,18 @@ fun ChatScreen(
                         }
                     }
                 }
+                is ChatEvent.NavigateToBranch -> {
+                    // Haptic feedback for successful branch
+                    val currentState = uiState
+                    val hapticsEnabled = (currentState as? ChatUiState.Success)?.hapticsEnabled ?: true
+                    if (hapticsEnabled) {
+                        haptics.perform(HapticPattern.CONFIRM, true)
+                    }
+                    coroutineScope.launch {
+                        snackbarHostState.showSnackbar("Conversation branched")
+                    }
+                    onNavigateToBranch(event.conversationId)
+                }
             }
         }
     }
@@ -312,6 +328,7 @@ fun ChatScreen(
                         viewModel.copyMessage(content)
                     },
                     onRegenerateResponse = { viewModel.regenerateResponse() },
+                    onBranchFromMessage = { messageId -> viewModel.branchFromMessage(messageId) },
                     onAttachImage = {
                         imagePickerLauncher.launch(
                             PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
@@ -413,6 +430,7 @@ private fun ChatContent(
     onCancelStreaming: () -> Unit,
     onCopyMessage: (String) -> Unit,
     onRegenerateResponse: () -> Unit,
+    onBranchFromMessage: (String) -> Unit,
     onAttachImage: () -> Unit,
     onRemoveAttachment: (Attachment) -> Unit,
     reasoningEffort: ReasoningEffort,
@@ -563,6 +581,7 @@ private fun ChatContent(
                 listState = listState,
                 onCopyMessage = onCopyMessage,
                 onRegenerateResponse = onRegenerateResponse,
+                onBranchFromMessage = onBranchFromMessage,
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxWidth()
@@ -598,6 +617,7 @@ private fun MessageList(
     listState: androidx.compose.foundation.lazy.LazyListState,
     onCopyMessage: (String) -> Unit,
     onRegenerateResponse: () -> Unit,
+    onBranchFromMessage: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     LazyColumn(
@@ -627,6 +647,11 @@ private fun MessageList(
                 onCopy = { onCopyMessage(messageItem.message.content) },
                 onRegenerate = if (messageItem.isLastAssistantMessage && !messageItem.message.isStreaming) {
                     { onRegenerateResponse() }
+                } else {
+                    null
+                },
+                onBranch = if (!messageItem.message.isStreaming) {
+                    { onBranchFromMessage(messageItem.message.id) }
                 } else {
                     null
                 },

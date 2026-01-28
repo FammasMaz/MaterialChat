@@ -64,12 +64,13 @@ import com.materialchat.ui.theme.MessageBubbleShapes
  * - Different styles for user, assistant, and system messages
  * - Directional corner styling (user: square top-right, assistant: square top-left)
  * - Animated content size for streaming messages
- * - Copy and regenerate action buttons
+ * - Copy, regenerate, and branch action buttons
  * - Streaming indicator for in-progress responses
  *
  * @param messageItem The message UI item containing message data and display flags
  * @param onCopy Callback when copy button is clicked
  * @param onRegenerate Optional callback when regenerate button is clicked (only for last assistant message)
+ * @param onBranch Optional callback when branch button is clicked
  * @param modifier Modifier for the bubble container
  */
 @Composable
@@ -77,6 +78,7 @@ fun MessageBubble(
     messageItem: MessageUiItem,
     onCopy: () -> Unit,
     onRegenerate: (() -> Unit)? = null,
+    onBranch: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val message = messageItem.message
@@ -164,14 +166,16 @@ fun MessageBubble(
                 }
             }
 
-            // Action buttons (copy, regenerate)
+            // Action buttons (copy, branch, regenerate)
             if (messageItem.showActions && message.content.isNotEmpty() && !message.isStreaming) {
                 Spacer(modifier = Modifier.height(4.dp))
                 MessageActions(
                     showCopy = true,
                     showRegenerate = messageItem.isLastAssistantMessage && onRegenerate != null,
+                    showBranch = onBranch != null,
                     onCopy = onCopy,
-                    onRegenerate = onRegenerate
+                    onRegenerate = onRegenerate,
+                    onBranch = onBranch
                 )
             }
         }
