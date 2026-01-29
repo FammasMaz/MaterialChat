@@ -8,6 +8,7 @@ import com.materialchat.domain.repository.ChatRepository
 import com.materialchat.domain.repository.ConversationRepository
 import com.materialchat.domain.repository.ProviderRepository
 import com.materialchat.domain.usecase.CreateConversationUseCase
+import com.materialchat.domain.usecase.GenerateConversationTitleUseCase
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.EntryPoint
@@ -56,4 +57,5 @@ interface AssistantEntryPoint {
     fun appPreferences(): AppPreferences
     fun createConversationUseCase(): CreateConversationUseCase
     fun conversationRepository(): ConversationRepository
+    fun generateConversationTitleUseCase(): GenerateConversationTitleUseCase
 }

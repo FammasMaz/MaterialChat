@@ -1,133 +1,197 @@
 package com.materialchat.assistant.ui.components
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.FilledTonalButton
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.unit.dp
-import com.materialchat.ui.components.M3ExpressivePulsingDots
+import com.materialchat.assistant.ui.AssistantMessage
+import com.materialchat.domain.model.MessageRole
 import com.materialchat.ui.components.MarkdownText
-import com.materialchat.ui.theme.ExpressiveMotion
+import com.materialchat.ui.screens.chat.components.TypingIndicator
+import com.materialchat.ui.screens.chat.components.M3StreamingDots
+import com.materialchat.ui.theme.MessageBubbleShapes
 
 /**
  * M3 Expressive response card for the assistant overlay.
  *
- * Displays the AI's response with:
- * - Streaming text with markdown formatting
- * - Loading indicator during processing
- * - Always-visible "Continue in App" action when content exists
- * - Max height constraint for long responses
+ * 100% compliant with main chat interface patterns:
+ * - Uses MessageBubbleShapes from theme (asymmetric corners)
+ * - Uses TypingIndicator (M3TripleShapeIndicator) for loading
+ * - lerp color blending for depth
+ * - Bouncy spring animations for content size changes
+ * - Auto-scroll to newest message
+ * - bodyLarge typography for readability
  *
- * @param userQuery The user's original query
- * @param response The AI's response (streaming or complete)
- * @param isLoading Whether the response is still loading
- * @param isStreaming Whether the response is currently streaming
+ * @param messages The list of messages in the conversation
+ * @param isLoading Whether a response is still loading
  * @param onOpenInApp Callback to open the conversation in the main app
  * @param modifier Modifier for the card
  */
 @Composable
 fun AssistantResponseCard(
-    userQuery: String,
-    response: String,
+    messages: List<AssistantMessage>,
     isLoading: Boolean,
-    isStreaming: Boolean,
     onOpenInApp: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val alpha by animateFloatAsState(
-        targetValue = if (response.isNotEmpty() || isLoading) 1f else 0f,
-        animationSpec = ExpressiveMotion.Effects.alpha(),
-        label = "cardAlpha"
-    )
+    val listState = rememberLazyListState()
 
-    AnimatedVisibility(
-        visible = response.isNotEmpty() || isLoading,
-        enter = fadeIn(animationSpec = ExpressiveMotion.Effects.alpha()) +
-                slideInVertically(
-                    animationSpec = ExpressiveMotion.Spatial.default(),
-                    initialOffsetY = { it / 4 }
-                ),
-        exit = fadeOut(animationSpec = ExpressiveMotion.Effects.alpha()) +
-                slideOutVertically(
-                    animationSpec = ExpressiveMotion.Spatial.default(),
-                    targetOffsetY = { it / 4 }
-                )
+    // Auto-scroll to bottom when messages change (matches main chat)
+    LaunchedEffect(messages.size, messages.lastOrNull()?.content) {
+        if (messages.isNotEmpty()) {
+            listState.animateScrollToItem(messages.size - 1)
+        }
+    }
+
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        Card(
-            modifier = modifier
+        // Message list with auto-scroll
+        LazyColumn(
+            state = listState,
+            modifier = Modifier
                 .fillMaxWidth()
-                .heightIn(max = 400.dp) // M3 Expressive: Constrain height for long responses
-                .alpha(alpha),
-            shape = RoundedCornerShape(28.dp), // M3 Expressive: Large rounded corners
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
-            ),
-            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                .weight(1f, fill = false),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            items(
+                items = messages,
+                key = { "${it.role}_${it.content.hashCode()}_${messages.indexOf(it)}" }
+            ) { message ->
+                when (message.role) {
+                    MessageRole.USER -> UserQueryBubble(query = message.content)
+                    MessageRole.ASSISTANT -> AssistantBubble(
+                        response = message.content,
+                        isStreaming = message.isStreaming
+                    )
+                    else -> {} // System messages not shown in assistant overlay
+                }
+            }
+
+            // Show loading indicator at the end if loading and no streaming message
+            if (isLoading && (messages.isEmpty() || messages.lastOrNull()?.role != MessageRole.ASSISTANT)) {
+                item {
+                    AssistantLoadingBubble()
+                }
+            }
+        }
+
+        // Continue in App button (always visible when there are messages)
+        if (messages.isNotEmpty()) {
+            ContinueInAppButton(onClick = onOpenInApp)
+        }
+    }
+}
+
+/**
+ * User query bubble - right-aligned with user colors.
+ * Uses MessageBubbleShapes.UserBubble from theme for 100% compliance.
+ */
+@Composable
+private fun UserQueryBubble(query: String) {
+    val configuration = LocalConfiguration.current
+    val maxBubbleWidth = (configuration.screenWidthDp * 0.82f).dp
+
+    // Color blending matching MessageBubble.kt exactly
+    val surfaceBase = MaterialTheme.colorScheme.surfaceContainer
+    val userBubbleColor = lerp(surfaceBase, MaterialTheme.colorScheme.primaryContainer, 0.75f)
+
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.End  // Right-aligned
+    ) {
+        Surface(
+            modifier = Modifier.widthIn(min = 40.dp, max = maxBubbleWidth),
+            shape = MessageBubbleShapes.UserBubble,  // Theme shape: 28dp/8dp/28dp/28dp
+            color = userBubbleColor,
+            tonalElevation = 0.dp
+        ) {
+            Text(
+                text = query,
+                style = MaterialTheme.typography.bodyLarge,  // Matches main chat
+                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp)
+            )
+        }
+    }
+}
+
+/**
+ * Assistant response bubble - left-aligned with assistant colors.
+ * Uses MessageBubbleShapes.AssistantBubble from theme for 100% compliance.
+ */
+@Composable
+private fun AssistantBubble(
+    response: String,
+    isStreaming: Boolean
+) {
+    val configuration = LocalConfiguration.current
+    val maxBubbleWidth = (configuration.screenWidthDp * 0.82f).dp
+
+    // Color blending matching MessageBubble.kt exactly
+    val surfaceBase = MaterialTheme.colorScheme.surfaceContainer
+    val assistantBubbleColor = lerp(surfaceBase, MaterialTheme.colorScheme.surfaceContainerHigh, 0.7f)
+
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.Start  // Left-aligned
+    ) {
+        Surface(
+            modifier = Modifier
+                .widthIn(min = 40.dp, max = maxBubbleWidth)
+                .animateContentSize(
+                    animationSpec = spring(
+                        dampingRatio = Spring.DampingRatioMediumBouncy,
+                        stiffness = Spring.StiffnessMediumLow  // Matches main chat
+                    )
+                ),
+            shape = MessageBubbleShapes.AssistantBubble,  // Theme shape: 8dp/28dp/28dp/28dp
+            color = assistantBubbleColor,
+            tonalElevation = 0.dp
         ) {
             Column(
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                // Scrollable content area
-                Column(
-                    modifier = Modifier
-                        .weight(1f, fill = false)
-                        .verticalScroll(rememberScrollState())
-                        .padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    // User query
-                    if (userQuery.isNotEmpty()) {
-                        UserQuerySection(query = userQuery)
-                    }
-
-                    // Response content or loading
-                    if (isLoading && response.isEmpty()) {
-                        LoadingSection()
-                    } else if (response.isNotEmpty()) {
-                        ResponseSection(
-                            response = response,
-                            isStreaming = isStreaming
-                        )
-                    }
+                if (response.isNotEmpty()) {
+                    MarkdownText(
+                        markdown = response,
+                        textColor = MaterialTheme.colorScheme.onSurface,
+                        style = MaterialTheme.typography.bodyLarge  // Matches main chat
+                    )
                 }
 
-                // ALWAYS visible action bar when there's a query (M3 Expressive prominent button)
-                if (userQuery.isNotEmpty()) {
-                    ActionBar(
-                        onOpenInApp = onOpenInApp,
-                        isLoading = isLoading && response.isEmpty()
+                // Streaming indicator using M3StreamingDots (matches main chat)
+                if (isStreaming) {
+                    M3StreamingDots(
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                        dotSize = 7.dp,
+                        dotSpacing = 4.dp
                     )
                 }
             }
@@ -135,66 +199,34 @@ fun AssistantResponseCard(
     }
 }
 
+/**
+ * Loading bubble shown while waiting for assistant response.
+ * Uses TypingIndicator (M3TripleShapeIndicator) for 100% compliance.
+ */
 @Composable
-private fun UserQuerySection(query: String) {
-    Column(
-        modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(4.dp)
-    ) {
-        Text(
-            text = "You asked",
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        Text(
-            text = query,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurface
-        )
-    }
-}
+private fun AssistantLoadingBubble() {
+    val surfaceBase = MaterialTheme.colorScheme.surfaceContainer
+    val assistantBubbleColor = lerp(surfaceBase, MaterialTheme.colorScheme.surfaceContainerHigh, 0.7f)
 
-@Composable
-private fun LoadingSection() {
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 16.dp),
-        horizontalArrangement = Arrangement.Center,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        M3ExpressivePulsingDots(
-            color = MaterialTheme.colorScheme.primary,
-            dotSize = 8.dp
-        )
-    }
-}
-
-@Composable
-private fun ResponseSection(
-    response: String,
-    isStreaming: Boolean
-) {
-    Column(
         modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+        horizontalArrangement = Arrangement.Start
     ) {
-        // Response with markdown rendering
-        MarkdownText(
-            markdown = response,
-            textColor = MaterialTheme.colorScheme.onSurface,
-            style = MaterialTheme.typography.bodyMedium
-        )
-
-        // Streaming indicator
-        if (isStreaming) {
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically
+        Surface(
+            modifier = Modifier.widthIn(min = 80.dp),
+            shape = MessageBubbleShapes.AssistantBubble,  // Theme shape
+            color = assistantBubbleColor,
+            tonalElevation = 0.dp
+        ) {
+            Box(
+                modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+                contentAlignment = Alignment.Center
             ) {
-                M3ExpressivePulsingDots(
-                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f),
-                    dotSize = 4.dp
+                // M3 Expressive TypingIndicator with shape morphing (matches main chat)
+                TypingIndicator(
+                    dotSize = 8.dp,
+                    dotSpacing = 3.dp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
@@ -202,76 +234,37 @@ private fun ResponseSection(
 }
 
 /**
- * M3 Expressive action bar with prominent "Continue in App" button.
- * Always visible when content exists - not just after streaming completes.
+ * Compact continue button styled as chip.
  */
 @Composable
-private fun ActionBar(
-    onOpenInApp: () -> Unit,
-    isLoading: Boolean
-) {
-    Surface(
-        color = MaterialTheme.colorScheme.surfaceContainerHighest,
-        shape = RoundedCornerShape(
-            topStart = 0.dp,
-            topEnd = 0.dp,
-            bottomStart = 28.dp,
-            bottomEnd = 28.dp
-        )
+private fun ContinueInAppButton(onClick: () -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.End
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp),
-            horizontalArrangement = Arrangement.End,
-            verticalAlignment = Alignment.CenterVertically
+        Surface(
+            onClick = onClick,
+            shape = MaterialTheme.shapes.medium,  // 12dp from theme
+            color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f),
+            modifier = Modifier.height(32.dp)
         ) {
-            // M3 Expressive: Prominent FilledTonalButton with pill shape
-            FilledTonalButton(
-                onClick = onOpenInApp,
-                enabled = !isLoading,
-                shape = RoundedCornerShape(28.dp), // M3 Expressive pill shape
-                colors = ButtonDefaults.filledTonalButtonColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                ),
-                modifier = Modifier.heightIn(min = 48.dp) // M3 48dp minimum touch target
+            Row(
+                modifier = Modifier.padding(horizontal = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.OpenInNew,
                     contentDescription = null,
-                    modifier = Modifier.size(18.dp)
+                    modifier = Modifier.size(14.dp),
+                    tint = MaterialTheme.colorScheme.onPrimaryContainer
                 )
-                Spacer(Modifier.width(8.dp))
                 Text(
                     text = "Continue in App",
-                    style = MaterialTheme.typography.labelLarge
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer
                 )
             }
         }
-    }
-}
-
-/**
- * Compact response bubble for quick answers.
- */
-@Composable
-fun QuickResponseBubble(
-    response: String,
-    modifier: Modifier = Modifier,
-    backgroundColor: Color = MaterialTheme.colorScheme.primaryContainer,
-    textColor: Color = MaterialTheme.colorScheme.onPrimaryContainer
-) {
-    Surface(
-        modifier = modifier,
-        shape = RoundedCornerShape(20.dp),
-        color = backgroundColor
-    ) {
-        Text(
-            text = response,
-            style = MaterialTheme.typography.bodyMedium,
-            color = textColor,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
-        )
     }
 }

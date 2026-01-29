@@ -19,6 +19,8 @@ import com.materialchat.domain.repository.ChatRepository
 import com.materialchat.domain.repository.ConversationRepository
 import com.materialchat.domain.repository.ProviderRepository
 import com.materialchat.domain.usecase.CreateConversationUseCase
+import com.materialchat.domain.usecase.GenerateConversationTitleUseCase
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -50,7 +52,9 @@ class AssistantViewModel(
     private val providerRepository: ProviderRepository,
     private val appPreferences: AppPreferences,
     private val createConversationUseCase: CreateConversationUseCase,
-    private val conversationRepository: ConversationRepository
+    private val conversationRepository: ConversationRepository,
+    private val generateConversationTitleUseCase: GenerateConversationTitleUseCase,
+    private val applicationScope: CoroutineScope
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(AssistantUiState())
@@ -68,12 +72,24 @@ class AssistantViewModel(
     private val _pendingAttachments = MutableStateFlow<List<Attachment>>(emptyList())
     val pendingAttachments: StateFlow<List<Attachment>> = _pendingAttachments.asStateFlow()
 
+    /** Message history for display in the overlay */
+    private val _messages = MutableStateFlow<List<AssistantMessage>>(emptyList())
+    val messages: StateFlow<List<AssistantMessage>> = _messages.asStateFlow()
+
     private var streamingJob: Job? = null
     private var voiceInputJob: Job? = null
     private var ttsJob: Job? = null
 
     /** The persistent conversation ID - created on first query */
     private var currentConversationId: String? = null
+
+    /** Timestamp of last activity for auto-reset after 1 minute */
+    private var lastActivityTimestamp: Long = System.currentTimeMillis()
+
+    /** Timeout in milliseconds (1 minute) */
+    private companion object {
+        const val SESSION_TIMEOUT_MS = 60_000L
+    }
 
     init {
         // Initialize TTS
@@ -112,10 +128,50 @@ class AssistantViewModel(
     }
 
     /**
+     * Called when the overlay is shown. Checks for session timeout and resets if needed.
+     */
+    fun onOverlayShown() {
+        val now = System.currentTimeMillis()
+        val timeSinceLastActivity = now - lastActivityTimestamp
+
+        // Auto-reset if more than 1 minute has passed
+        if (timeSinceLastActivity > SESSION_TIMEOUT_MS && _messages.value.isNotEmpty()) {
+            startNewChat()
+        }
+
+        // Update last activity
+        lastActivityTimestamp = now
+    }
+
+    /**
+     * Start a new chat session, clearing all messages.
+     */
+    fun startNewChat() {
+        cancelStreaming()
+        stopSpeaking()
+        currentConversationId = null
+        _pendingAttachments.value = emptyList()
+        _messages.value = emptyList()
+        _uiState.update {
+            it.copy(
+                textInput = "",
+                userQuery = "",
+                response = "",
+                isLoading = false,
+                isStreaming = false,
+                error = null
+            )
+        }
+        _voiceState.value = VoiceState.Idle
+        lastActivityTimestamp = System.currentTimeMillis()
+    }
+
+    /**
      * Update the text input.
      */
     fun updateTextInput(text: String) {
         _uiState.update { it.copy(textInput = text) }
+        lastActivityTimestamp = System.currentTimeMillis()
     }
 
     /**
@@ -174,6 +230,9 @@ class AssistantViewModel(
         val trimmedQuery = query.trim()
         val attachments = _pendingAttachments.value
 
+        // Add user message to the message list
+        _messages.update { it + AssistantMessage(role = MessageRole.USER, content = trimmedQuery) }
+
         _uiState.update {
             it.copy(
                 textInput = "",
@@ -185,6 +244,7 @@ class AssistantViewModel(
         }
         _pendingAttachments.value = emptyList()
         _voiceState.value = VoiceState.Thinking(trimmedQuery)
+        lastActivityTimestamp = System.currentTimeMillis()
 
         streamingJob?.cancel()
         streamingJob = viewModelScope.launch {
@@ -248,6 +308,8 @@ class AssistantViewModel(
                                     isStreaming = true
                                 )
                             }
+                            // Update streaming response in message list
+                            updateStreamingResponse(state.content)
                         }
                         is StreamingState.Completed -> {
                             _voiceState.value = VoiceState.Complete(
@@ -262,6 +324,10 @@ class AssistantViewModel(
                                 )
                             }
 
+                            // Finalize assistant message in message list
+                            finalizeAssistantResponse(state.finalContent)
+                            lastActivityTimestamp = System.currentTimeMillis()
+
                             // Save assistant message to database
                             val assistantMessage = Message(
                                 conversationId = conversationId,
@@ -269,6 +335,15 @@ class AssistantViewModel(
                                 content = state.finalContent
                             )
                             conversationRepository.addMessage(assistantMessage)
+
+                            // Trigger title generation (non-blocking)
+                            applicationScope.launch {
+                                generateTitleIfNeeded(
+                                    conversationId = conversationId,
+                                    userMessage = trimmedQuery,
+                                    assistantResponse = state.finalContent
+                                )
+                            }
 
                             // Speak the response if TTS is enabled
                             speakResponseIfEnabled(state.finalContent)
@@ -343,6 +418,63 @@ class AssistantViewModel(
     }
 
     /**
+     * Update the streaming response in the message list.
+     * Adds or updates the assistant message as it streams.
+     */
+    private fun updateStreamingResponse(content: String) {
+        _messages.update { messages ->
+            val lastMessage = messages.lastOrNull()
+            if (lastMessage?.role == MessageRole.ASSISTANT && lastMessage.isStreaming) {
+                // Update existing streaming message
+                messages.dropLast(1) + lastMessage.copy(content = content)
+            } else {
+                // Add new streaming assistant message
+                messages + AssistantMessage(
+                    role = MessageRole.ASSISTANT,
+                    content = content,
+                    isStreaming = true
+                )
+            }
+        }
+    }
+
+    /**
+     * Finalize the assistant response in the message list.
+     */
+    private fun finalizeAssistantResponse(content: String) {
+        _messages.update { messages ->
+            val lastMessage = messages.lastOrNull()
+            if (lastMessage?.role == MessageRole.ASSISTANT) {
+                messages.dropLast(1) + lastMessage.copy(content = content, isStreaming = false)
+            } else {
+                messages + AssistantMessage(role = MessageRole.ASSISTANT, content = content)
+            }
+        }
+    }
+
+    /**
+     * Generate conversation title if it's still "New Chat".
+     */
+    private suspend fun generateTitleIfNeeded(
+        conversationId: String,
+        userMessage: String,
+        assistantResponse: String
+    ) {
+        try {
+            val conversation = conversationRepository.getConversation(conversationId)
+            if (conversation?.title == "New Chat") {
+                generateConversationTitleUseCase(
+                    conversationId = conversationId,
+                    userMessage = userMessage,
+                    assistantResponse = assistantResponse
+                )
+            }
+        } catch (_: Exception) {
+            // Silent failure - title generation is non-critical
+        }
+    }
+
+    /**
      * Handle errors.
      */
     private fun handleError(message: String) {
@@ -357,13 +489,12 @@ class AssistantViewModel(
     }
 
     /**
-     * Clear the current conversation.
+     * Clear the current conversation (used when dismissing).
+     * Note: This clears state but does NOT reset messages - use startNewChat() for that.
      */
     fun clearConversation() {
         cancelStreaming()
         stopSpeaking()
-        currentConversationId = null
-        _pendingAttachments.value = emptyList()
         _uiState.update {
             it.copy(
                 textInput = "",
@@ -442,3 +573,12 @@ sealed class AssistantEvent {
     data class OpenInApp(val conversationId: String?) : AssistantEvent()
     data object Dismiss : AssistantEvent()
 }
+
+/**
+ * A message in the assistant conversation for display purposes.
+ */
+data class AssistantMessage(
+    val role: MessageRole,
+    val content: String,
+    val isStreaming: Boolean = false
+)

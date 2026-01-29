@@ -28,6 +28,9 @@ import com.materialchat.assistant.di.AssistantEntryPoint
 import com.materialchat.assistant.ui.AssistantOverlay
 import com.materialchat.assistant.ui.AssistantViewModel
 import dagger.hilt.android.EntryPointAccessors
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 
 /**
  * Voice interaction session that handles individual assistant invocations.
@@ -98,7 +101,9 @@ class MaterialChatVoiceInteractionSession(
             providerRepository = entryPoint.providerRepository(),
             appPreferences = entryPoint.appPreferences(),
             createConversationUseCase = entryPoint.createConversationUseCase(),
-            conversationRepository = entryPoint.conversationRepository()
+            conversationRepository = entryPoint.conversationRepository(),
+            generateConversationTitleUseCase = entryPoint.generateConversationTitleUseCase(),
+            applicationScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
         )
 
         return ComposeView(context).apply {

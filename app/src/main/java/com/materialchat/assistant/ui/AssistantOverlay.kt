@@ -18,26 +18,34 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -47,9 +55,12 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.ime
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.materialchat.assistant.ui.components.AssistantInputBar
 import com.materialchat.assistant.ui.components.AssistantResponseCard
@@ -86,8 +97,18 @@ fun AssistantOverlay(
     val voiceState by viewModel.voiceState.collectAsStateWithLifecycle()
     val amplitudeData by viewModel.amplitudeData.collectAsStateWithLifecycle()
     val pendingAttachments by viewModel.pendingAttachments.collectAsStateWithLifecycle()
+    val messages by viewModel.messages.collectAsStateWithLifecycle()
 
     val context = LocalContext.current
+
+    // Animation key to force re-animation on each show
+    var animationKey by remember { mutableIntStateOf(0) }
+
+    // Check for session timeout and reset animation on each show
+    LaunchedEffect(Unit) {
+        viewModel.onOverlayShown()
+        animationKey++ // Increment to force animation restart
+    }
 
     // Check permission state (we can't request it here, only check)
     val hasMicPermission = remember {
@@ -119,33 +140,38 @@ fun AssistantOverlay(
                     viewModel.dismiss()
                 }
         ) {
-            // Main overlay content
-            AssistantOverlayContent(
-                uiState = uiState,
-                voiceState = voiceState,
-                amplitudeData = amplitudeData,
-                hasMicPermission = hasMicPermission,
-                hasContent = uiState.userQuery.isNotEmpty() || uiState.response.isNotEmpty(),
-                onTextChange = viewModel::updateTextInput,
-                onVoiceClick = {
-                    if (hasMicPermission) {
-                        viewModel.startVoiceInput()
-                    } else {
-                        // Show error - permission not granted
-                        // User needs to grant permission in system settings
-                    }
-                },
-                onStopVoice = viewModel::stopVoiceInput,
-                onSendClick = { viewModel.sendQuery() },
-                onOpenInApp = viewModel::openInApp,
-                onDismiss = viewModel::dismiss,
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null
-                    ) { /* Consume clicks on the sheet */ }
-            )
+            // Use key to force recomposition and animation restart
+            key(animationKey) {
+                // Main overlay content
+                AssistantOverlayContent(
+                    uiState = uiState,
+                    voiceState = voiceState,
+                    amplitudeData = amplitudeData,
+                    messages = messages,
+                    hasMicPermission = hasMicPermission,
+                    hasContent = messages.isNotEmpty(),
+                    onTextChange = viewModel::updateTextInput,
+                    onVoiceClick = {
+                        if (hasMicPermission) {
+                            viewModel.startVoiceInput()
+                        } else {
+                            // Show error - permission not granted
+                            // User needs to grant permission in system settings
+                        }
+                    },
+                    onStopVoice = viewModel::stopVoiceInput,
+                    onSendClick = { viewModel.sendQuery() },
+                    onOpenInApp = viewModel::openInApp,
+                    onDismiss = viewModel::dismiss,
+                    onNewChat = viewModel::startNewChat,
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null
+                        ) { /* Consume clicks on the sheet */ }
+                )
+            }
         }
     }
 }
@@ -155,6 +181,7 @@ private fun AssistantOverlayContent(
     uiState: AssistantUiState,
     voiceState: VoiceState,
     amplitudeData: com.materialchat.assistant.voice.AudioAmplitudeData,
+    messages: List<AssistantMessage>,
     hasMicPermission: Boolean,
     hasContent: Boolean,
     onTextChange: (String) -> Unit,
@@ -163,6 +190,7 @@ private fun AssistantOverlayContent(
     onSendClick: () -> Unit,
     onOpenInApp: () -> Unit,
     onDismiss: () -> Unit,
+    onNewChat: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     var isVisible by remember { mutableStateOf(false) }
@@ -170,6 +198,10 @@ private fun AssistantOverlayContent(
     LaunchedEffect(Unit) {
         isVisible = true
     }
+
+    // Check if keyboard is visible for height constraints
+    val density = LocalDensity.current
+    val imeVisible = WindowInsets.ime.getBottom(density) > 0
 
     // Animate sheet entrance with bounce (M3 Expressive spatial spring)
     val offsetY by animateDpAsState(
@@ -194,6 +226,8 @@ private fun AssistantOverlayContent(
     Surface(
         modifier = modifier
             .fillMaxWidth()
+            // FIXED: Constrain maximum height to prevent unbounded growth when keyboard appears
+            .heightIn(max = if (imeVisible) 350.dp else 600.dp)
             .offset { IntOffset(0, offsetY.roundToPx()) }
             .graphicsLayer {
                 scaleX = sheetScale
@@ -209,20 +243,21 @@ private fun AssistantOverlayContent(
             modifier = Modifier
                 .fillMaxWidth()
                 .navigationBarsPadding()
-                .imePadding()
+                // REMOVED: .imePadding() from Column - was causing double padding
                 .padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             // Handle bar and close button with swipe gesture
             HeaderSection(
                 onDismiss = onDismiss,
                 onOpenInApp = onOpenInApp,
+                onNewChat = onNewChat,
                 hasContent = hasContent
             )
 
             // Response card (only shown when there's a query/response)
             AnimatedVisibility(
-                visible = uiState.userQuery.isNotEmpty() || uiState.response.isNotEmpty() || uiState.isLoading,
+                visible = messages.isNotEmpty() || uiState.isLoading,
                 enter = fadeIn(animationSpec = ExpressiveMotion.Effects.alpha()) +
                         slideInVertically(
                             animationSpec = ExpressiveMotion.Spatial.default(),
@@ -235,12 +270,13 @@ private fun AssistantOverlayContent(
                         )
             ) {
                 AssistantResponseCard(
-                    userQuery = uiState.userQuery,
-                    response = uiState.response,
+                    messages = messages,
                     isLoading = uiState.isLoading,
-                    isStreaming = uiState.isStreaming,
                     onOpenInApp = onOpenInApp,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f, fill = false)
+                        .heightIn(max = 300.dp)  // Increased for message history
                 )
             }
 
@@ -268,7 +304,7 @@ private fun AssistantOverlayContent(
 
             Spacer(modifier = Modifier.weight(1f, fill = false))
 
-            // Input bar
+            // Input bar - handles its own IME padding
             AssistantInputBar(
                 textInput = uiState.textInput,
                 onTextChange = onTextChange,
@@ -277,7 +313,9 @@ private fun AssistantOverlayContent(
                 onVoiceClick = onVoiceClick,
                 onSendClick = onSendClick,
                 onStopVoice = onStopVoice,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .imePadding()  // MOVED: IME padding only on input bar
             )
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -286,13 +324,14 @@ private fun AssistantOverlayContent(
 }
 
 /**
- * Header section with drag handle (swipe-up gesture) and close button.
+ * Header section with drag handle (swipe-up gesture), close button, and new chat button.
  * M3 Expressive: Drag handle expands on drag to provide visual feedback.
  */
 @Composable
 private fun HeaderSection(
     onDismiss: () -> Unit,
     onOpenInApp: () -> Unit,
+    onNewChat: () -> Unit,
     hasContent: Boolean
 ) {
     var dragOffset by remember { mutableFloatStateOf(0f) }
@@ -388,15 +427,36 @@ private fun HeaderSection(
             )
         }
 
-        // Title
-        Text(
-            text = "MaterialChat",
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.onSurface,
+        // Title and New Chat button
+        Row(
             modifier = Modifier
                 .align(Alignment.TopStart)
-                .padding(start = 4.dp, top = 12.dp)
-        )
+                .padding(start = 4.dp, top = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text(
+                text = "MaterialChat",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+
+            // New Chat button - always visible
+            FilledTonalIconButton(
+                onClick = onNewChat,
+                modifier = Modifier.size(32.dp),
+                colors = IconButtonDefaults.filledTonalIconButtonColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f)
+                )
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Add,
+                    contentDescription = "New Chat",
+                    modifier = Modifier.size(18.dp),
+                    tint = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+            }
+        }
     }
 }
 
