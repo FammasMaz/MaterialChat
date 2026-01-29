@@ -1,5 +1,7 @@
 package com.materialchat.ui.screens.settings
 
+import android.content.Intent
+import android.provider.Settings
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
@@ -27,9 +29,12 @@ import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.DarkMode
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.LightMode
+import androidx.compose.material.icons.outlined.Mic
 import androidx.compose.material.icons.outlined.Palette
+import androidx.compose.material.icons.outlined.RecordVoiceOver
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.SettingsSystemDaydream
+import androidx.compose.material.icons.outlined.SmartToy
 import androidx.compose.material.icons.outlined.SystemUpdate
 import androidx.compose.material.icons.outlined.Vibration
 import androidx.compose.material3.AlertDialog
@@ -65,6 +70,7 @@ import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -230,7 +236,10 @@ fun SettingsScreen(
             onInstallUpdate = { viewModel.installUpdate() },
             onCancelDownload = { viewModel.cancelDownload() },
             onSkipVersion = { viewModel.skipVersion() },
-            onRetry = { viewModel.retry() }
+            onRetry = { viewModel.retry() },
+            onAssistantEnabledChange = { viewModel.updateAssistantEnabled(it) },
+            onAssistantVoiceChange = { viewModel.updateAssistantVoiceEnabled(it) },
+            onAssistantTtsChange = { viewModel.updateAssistantTtsEnabled(it) }
         )
     }
 
@@ -290,7 +299,10 @@ private fun SettingsContent(
     onInstallUpdate: () -> Unit,
     onCancelDownload: () -> Unit,
     onSkipVersion: () -> Unit,
-    onRetry: () -> Unit
+    onRetry: () -> Unit,
+    onAssistantEnabledChange: (Boolean) -> Unit,
+    onAssistantVoiceChange: (Boolean) -> Unit,
+    onAssistantTtsChange: (Boolean) -> Unit
 ) {
     Box(
         modifier = Modifier
@@ -321,7 +333,10 @@ private fun SettingsContent(
                     onDownloadUpdate = onDownloadUpdate,
                     onInstallUpdate = onInstallUpdate,
                     onCancelDownload = onCancelDownload,
-                    onSkipVersion = onSkipVersion
+                    onSkipVersion = onSkipVersion,
+                    onAssistantEnabledChange = onAssistantEnabledChange,
+                    onAssistantVoiceChange = onAssistantVoiceChange,
+                    onAssistantTtsChange = onAssistantTtsChange
                 )
             }
             is SettingsUiState.Error -> {
@@ -367,7 +382,10 @@ private fun SuccessContent(
     onDownloadUpdate: (AppUpdate) -> Unit,
     onInstallUpdate: () -> Unit,
     onCancelDownload: () -> Unit,
-    onSkipVersion: () -> Unit
+    onSkipVersion: () -> Unit,
+    onAssistantEnabledChange: (Boolean) -> Unit,
+    onAssistantVoiceChange: (Boolean) -> Unit,
+    onAssistantTtsChange: (Boolean) -> Unit
 ) {
     LazyColumn(
         modifier = Modifier
@@ -469,6 +487,26 @@ private fun SuccessContent(
                     onModelChange = onTitleGenerationModelChange
                 )
             }
+        }
+
+        item {
+            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+        }
+
+        // Assistant Section
+        item {
+            SectionHeader(title = "Assistant")
+        }
+
+        item {
+            AssistantSection(
+                assistantEnabled = uiState.assistantEnabled,
+                voiceEnabled = uiState.assistantVoiceEnabled,
+                ttsEnabled = uiState.assistantTtsEnabled,
+                onAssistantEnabledChange = onAssistantEnabledChange,
+                onVoiceEnabledChange = onAssistantVoiceChange,
+                onTtsEnabledChange = onAssistantTtsChange
+            )
         }
 
         item {
@@ -1220,5 +1258,203 @@ private fun getUpdateStatusText(state: UpdateState): String {
         is UpdateState.ReadyToInstall -> "Ready to install v${state.update.versionName}"
         is UpdateState.Installing -> "Installing..."
         is UpdateState.Error -> "Error checking for updates"
+    }
+}
+
+@Composable
+private fun AssistantSection(
+    assistantEnabled: Boolean,
+    voiceEnabled: Boolean,
+    ttsEnabled: Boolean,
+    onAssistantEnabledChange: (Boolean) -> Unit,
+    onVoiceEnabledChange: (Boolean) -> Unit,
+    onTtsEnabledChange: (Boolean) -> Unit
+) {
+    val context = LocalContext.current
+
+    Column(
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        // Assistant Toggle
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+            ),
+            shape = RoundedCornerShape(20.dp)
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.SmartToy,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column {
+                        Text(
+                            text = "System Assistant",
+                            style = MaterialTheme.typography.titleSmall,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            text = "Replace default assistant on your device",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+
+                Switch(
+                    checked = assistantEnabled,
+                    onCheckedChange = onAssistantEnabledChange
+                )
+            }
+        }
+
+        // Set as Default Assistant button
+        if (assistantEnabled) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
+                ),
+                shape = RoundedCornerShape(20.dp)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Set as Default Assistant",
+                            style = MaterialTheme.typography.titleSmall,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            text = "Open system settings to select MaterialChat",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    OutlinedButton(
+                        onClick = {
+                            val intent = Intent(Settings.ACTION_VOICE_INPUT_SETTINGS)
+                            context.startActivity(intent)
+                        },
+                        shape = RoundedCornerShape(20.dp)
+                    ) {
+                        Text("Open")
+                    }
+                }
+            }
+
+            // Voice Input Toggle
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                ),
+                shape = RoundedCornerShape(20.dp)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.Mic,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.secondary,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column {
+                            Text(
+                                text = "Voice Input",
+                                style = MaterialTheme.typography.titleSmall,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                text = "Use microphone for voice queries",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+
+                    Switch(
+                        checked = voiceEnabled,
+                        onCheckedChange = onVoiceEnabledChange
+                    )
+                }
+            }
+
+            // Text-to-Speech Toggle
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                ),
+                shape = RoundedCornerShape(20.dp)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.RecordVoiceOver,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.secondary,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column {
+                            Text(
+                                text = "Read Aloud",
+                                style = MaterialTheme.typography.titleSmall,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                text = "Use text-to-speech for responses",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+
+                    Switch(
+                        checked = ttsEnabled,
+                        onCheckedChange = onTtsEnabledChange
+                    )
+                }
+            }
+        }
     }
 }

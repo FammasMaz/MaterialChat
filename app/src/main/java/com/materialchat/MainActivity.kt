@@ -1,5 +1,6 @@
 package com.materialchat
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -21,6 +22,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
 import com.materialchat.data.local.preferences.AppPreferences
 import com.materialchat.data.repository.UpdateManager
@@ -28,6 +30,7 @@ import com.materialchat.di.AppInitializer
 import com.materialchat.domain.model.UpdateState
 import com.materialchat.ui.components.UpdateBanner
 import com.materialchat.ui.navigation.MaterialChatNavHost
+import com.materialchat.ui.navigation.Screen
 import com.materialchat.ui.theme.MaterialChatTheme
 import com.materialchat.ui.theme.isDynamicColorSupported
 import dagger.hilt.android.AndroidEntryPoint
@@ -50,11 +53,17 @@ class MainActivity : ComponentActivity() {
     @Inject
     lateinit var updateManager: UpdateManager
 
+    /** Pending conversation ID from assistant intent, to be navigated after init */
+    private var pendingConversationId: String? = null
+
     override fun onCreate(savedInstanceState: Bundle?) {
         // Install splash screen before calling super.onCreate()
         val splashScreen = installSplashScreen()
 
         super.onCreate(savedInstanceState)
+
+        // Handle assistant navigation intent
+        handleAssistantIntent(intent)
 
         // Keep splash screen visible while initializing
         var isInitialized = false
@@ -90,10 +99,32 @@ class MainActivity : ComponentActivity() {
             ) {
                 // Only show the app after initialization is complete
                 if (initComplete) {
-                    MaterialChatApp(updateManager = updateManager)
+                    MaterialChatApp(
+                        updateManager = updateManager,
+                        initialConversationId = pendingConversationId
+                    )
                 }
             }
         }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        handleAssistantIntent(intent)
+    }
+
+    /**
+     * Handles the OPEN_CHAT intent action from the assistant overlay.
+     */
+    private fun handleAssistantIntent(intent: Intent?) {
+        if (intent?.action == ACTION_OPEN_CHAT) {
+            pendingConversationId = intent.getStringExtra(EXTRA_CONVERSATION_ID)
+        }
+    }
+
+    companion object {
+        const val ACTION_OPEN_CHAT = "com.materialchat.OPEN_CHAT"
+        const val EXTRA_CONVERSATION_ID = "conversation_id"
     }
 }
 
@@ -101,13 +132,29 @@ class MainActivity : ComponentActivity() {
  * Root composable for the MaterialChat application.
  * Sets up navigation with Material 3 Expressive transitions.
  * Includes update banner overlay for non-blocking update notifications.
+ *
+ * @param updateManager Manager for app updates
+ * @param initialConversationId Optional conversation ID to navigate to on launch (from assistant)
  */
 @Composable
 fun MaterialChatApp(
-    updateManager: UpdateManager? = null
+    updateManager: UpdateManager? = null,
+    initialConversationId: String? = null
 ) {
     val navController = rememberNavController()
     val scope = rememberCoroutineScope()
+
+    // Navigate to chat if launched from assistant with a conversation ID
+    LaunchedEffect(initialConversationId) {
+        if (initialConversationId != null) {
+            navController.navigate(Screen.Chat.createRoute(initialConversationId)) {
+                // Pop up to conversations so back button goes there
+                popUpTo(Screen.Conversations.route) {
+                    inclusive = false
+                }
+            }
+        }
+    }
 
     // Collect update state if updateManager is provided
     val updateState by updateManager?.updateState?.collectAsStateWithLifecycle()

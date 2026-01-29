@@ -22,6 +22,11 @@
     <!-- Permission to install APK updates -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
+    <!-- Voice Assistant permissions -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
+
     <application
         android:name=".MaterialChatApplication"
         android:allowBackup="true"
@@ -41,6 +46,12 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+
+            <!-- Intent filter for opening chat from assistant overlay -->
+            <intent-filter>
+                <action android:name="com.materialchat.OPEN_CHAT" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
         </activity>
 
         <!-- FileProvider for sharing exported files -->
@@ -55,6 +66,26 @@
         </provider>
 
         <!-- Note: Ackpine library automatically registers its FileProvider for APK installation -->
+
+        <!-- VoiceInteractionService for system-level assistant integration -->
+        <!-- Allows MaterialChat to replace Google Gemini on Pixel phones -->
+        <service
+            android:name=".assistant.service.MaterialChatVoiceInteractionService"
+            android:permission="android.permission.BIND_VOICE_INTERACTION"
+            android:exported="true">
+            <meta-data
+                android:name="android.voice_interaction"
+                android:resource="@xml/voice_interaction_service" />
+            <intent-filter>
+                <action android:name="android.service.voice.VoiceInteractionService" />
+            </intent-filter>
+        </service>
+
+        <!-- Session service for voice interactions -->
+        <service
+            android:name=".assistant.service.MaterialChatVoiceInteractionSessionService"
+            android:permission="android.permission.BIND_VOICE_INTERACTION"
+            android:exported="false" />
 
     </application>
 

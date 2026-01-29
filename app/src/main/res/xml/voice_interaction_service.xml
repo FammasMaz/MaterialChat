@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Voice Interaction Service configuration for MaterialChat Assistant.
+    This configuration allows MaterialChat to replace the default digital assistant
+    on Pixel phones (and other Android devices with VoiceInteractionService support).
+-->
+<voice-interaction-service xmlns:android="http://schemas.android.com/apk/res/android"
+    android:sessionService="com.materialchat.assistant.service.MaterialChatVoiceInteractionSessionService"
+    android:recognitionService="android.speech.RecognitionService"
+    android:supportsAssist="true"
+    android:supportsLaunchVoiceAssistFromKeyguard="true"
+    android:supportsLocalInteraction="true" />

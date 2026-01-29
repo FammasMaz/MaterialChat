@@ -49,6 +49,10 @@ sealed interface SettingsUiState {
         val appVersion: String = "",
         val autoCheckUpdates: Boolean = true,
         val updateState: UpdateState = UpdateState.Idle,
+        // Assistant settings
+        val assistantEnabled: Boolean = true,
+        val assistantVoiceEnabled: Boolean = true,
+        val assistantTtsEnabled: Boolean = true,
         val showAddProviderSheet: Boolean = false,
         val editingProvider: Provider? = null,
         val showDeleteConfirmation: Provider? = null,

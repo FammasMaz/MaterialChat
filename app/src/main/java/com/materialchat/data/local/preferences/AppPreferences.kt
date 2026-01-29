@@ -48,6 +48,10 @@ class AppPreferences(private val context: Context) {
         val SKIPPED_UPDATE_VERSION = stringPreferencesKey("skipped_update_version")
         val REMEMBER_LAST_MODEL = booleanPreferencesKey("remember_last_model")
         val LAST_USED_MODEL = stringPreferencesKey("last_used_model")
+        // Assistant settings
+        val ASSISTANT_ENABLED = booleanPreferencesKey("assistant_enabled")
+        val ASSISTANT_VOICE_ENABLED = booleanPreferencesKey("assistant_voice_enabled")
+        val ASSISTANT_TTS_ENABLED = booleanPreferencesKey("assistant_tts_enabled")
     }
 
     /**
@@ -309,6 +313,57 @@ class AppPreferences(private val context: Context) {
     suspend fun setLastUsedModel(model: String) {
         dataStore.edit { preferences ->
             preferences[Keys.LAST_USED_MODEL] = model
+        }
+    }
+
+    // ========== Assistant Settings ==========
+
+    /**
+     * Get whether the assistant is enabled as a Flow.
+     * When enabled, MaterialChat can be set as the default digital assistant.
+     */
+    val assistantEnabled: Flow<Boolean> = dataStore.data.map { preferences ->
+        preferences[Keys.ASSISTANT_ENABLED] ?: true
+    }
+
+    /**
+     * Set whether the assistant is enabled.
+     */
+    suspend fun setAssistantEnabled(enabled: Boolean) {
+        dataStore.edit { preferences ->
+            preferences[Keys.ASSISTANT_ENABLED] = enabled
+        }
+    }
+
+    /**
+     * Get whether voice input is enabled for the assistant as a Flow.
+     */
+    val assistantVoiceEnabled: Flow<Boolean> = dataStore.data.map { preferences ->
+        preferences[Keys.ASSISTANT_VOICE_ENABLED] ?: true
+    }
+
+    /**
+     * Set whether voice input is enabled for the assistant.
+     */
+    suspend fun setAssistantVoiceEnabled(enabled: Boolean) {
+        dataStore.edit { preferences ->
+            preferences[Keys.ASSISTANT_VOICE_ENABLED] = enabled
+        }
+    }
+
+    /**
+     * Get whether text-to-speech is enabled for the assistant as a Flow.
+     */
+    val assistantTtsEnabled: Flow<Boolean> = dataStore.data.map { preferences ->
+        preferences[Keys.ASSISTANT_TTS_ENABLED] ?: true
+    }
+
+    /**
+     * Set whether text-to-speech is enabled for the assistant.
+     */
+    suspend fun setAssistantTtsEnabled(enabled: Boolean) {
+        dataStore.edit { preferences ->
+            preferences[Keys.ASSISTANT_TTS_ENABLED] = enabled
         }
     }
 

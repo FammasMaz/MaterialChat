@@ -137,17 +137,21 @@ fun MaterialChatTheme(
     )
 
     // Update status bar and navigation bar colors
+    // Only apply to Activity contexts (not WindowContext from VoiceInteractionSession)
     val view = LocalView.current
     if (!view.isInEditMode) {
-        SideEffect {
-            val window = (view.context as Activity).window
-            window.statusBarColor = colorScheme.surface.toArgb()
-            window.navigationBarColor = colorScheme.surface.toArgb()
+        val activity = view.context as? Activity
+        if (activity != null) {
+            SideEffect {
+                val window = activity.window
+                window.statusBarColor = colorScheme.surface.toArgb()
+                window.navigationBarColor = colorScheme.surface.toArgb()
 
-            // Set light/dark appearance for status bar icons
-            val insetsController = WindowCompat.getInsetsController(window, view)
-            insetsController.isAppearanceLightStatusBars = !darkTheme
-            insetsController.isAppearanceLightNavigationBars = !darkTheme
+                // Set light/dark appearance for status bar icons
+                val insetsController = WindowCompat.getInsetsController(window, view)
+                insetsController.isAppearanceLightStatusBars = !darkTheme
+                insetsController.isAppearanceLightNavigationBars = !darkTheme
+            }
         }
     }
 

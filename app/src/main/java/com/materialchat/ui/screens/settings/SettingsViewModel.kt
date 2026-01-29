@@ -63,12 +63,15 @@ class SettingsViewModel @Inject constructor(
                     appPreferences.autoCheckUpdates,
                     combine(
                         updateManager.updateState,
-                        appPreferences.rememberLastModel
-                    ) { updateState, rememberLastModel ->
-                        Pair(updateState, rememberLastModel)
+                        appPreferences.rememberLastModel,
+                        appPreferences.assistantEnabled,
+                        appPreferences.assistantVoiceEnabled,
+                        appPreferences.assistantTtsEnabled
+                    ) { updateState, rememberLastModel, assistantEnabled, assistantVoice, assistantTts ->
+                        AssistantSettings(updateState, rememberLastModel, assistantEnabled, assistantVoice, assistantTts)
                     }
-                ) { haptics, aiTitles, titleModel, autoCheck, combined ->
-                    SettingsToggles(haptics, aiTitles, titleModel, autoCheck, combined.first, combined.second)
+                ) { haptics, aiTitles, titleModel, autoCheck, assistantSettings ->
+                    SettingsToggles(haptics, aiTitles, titleModel, autoCheck, assistantSettings)
                 }
             ) { providers, systemPrompt, themeMode, dynamicColorEnabled, toggles ->
                 SettingsData(
@@ -80,8 +83,11 @@ class SettingsViewModel @Inject constructor(
                     aiGeneratedTitlesEnabled = toggles.aiTitles,
                     titleGenerationModel = toggles.titleModel,
                     autoCheckUpdates = toggles.autoCheck,
-                    updateState = toggles.updateState,
-                    rememberLastModel = toggles.rememberLastModel
+                    updateState = toggles.assistantSettings.updateState,
+                    rememberLastModel = toggles.assistantSettings.rememberLastModel,
+                    assistantEnabled = toggles.assistantSettings.assistantEnabled,
+                    assistantVoiceEnabled = toggles.assistantSettings.assistantVoiceEnabled,
+                    assistantTtsEnabled = toggles.assistantSettings.assistantTtsEnabled
                 )
             }
                 .catch { e ->
@@ -113,6 +119,9 @@ class SettingsViewModel @Inject constructor(
                         aiGeneratedTitlesEnabled = data.aiGeneratedTitlesEnabled,
                         titleGenerationModel = data.titleGenerationModel,
                         rememberLastModelEnabled = data.rememberLastModel,
+                        assistantEnabled = data.assistantEnabled,
+                        assistantVoiceEnabled = data.assistantVoiceEnabled,
+                        assistantTtsEnabled = data.assistantTtsEnabled,
                         appVersion = updateManager.getCurrentVersion(),
                         autoCheckUpdates = data.autoCheckUpdates,
                         updateState = data.updateState,
@@ -584,6 +593,53 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
+    // ========== Assistant Settings ==========
+
+    /**
+     * Updates the assistant enabled setting.
+     */
+    fun updateAssistantEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            try {
+                appPreferences.setAssistantEnabled(enabled)
+            } catch (e: Exception) {
+                _events.emit(SettingsEvent.ShowSnackbar(
+                    message = "Failed to save assistant setting"
+                ))
+            }
+        }
+    }
+
+    /**
+     * Updates the assistant voice input setting.
+     */
+    fun updateAssistantVoiceEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            try {
+                appPreferences.setAssistantVoiceEnabled(enabled)
+            } catch (e: Exception) {
+                _events.emit(SettingsEvent.ShowSnackbar(
+                    message = "Failed to save voice input setting"
+                ))
+            }
+        }
+    }
+
+    /**
+     * Updates the assistant text-to-speech setting.
+     */
+    fun updateAssistantTtsEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            try {
+                appPreferences.setAssistantTtsEnabled(enabled)
+            } catch (e: Exception) {
+                _events.emit(SettingsEvent.ShowSnackbar(
+                    message = "Failed to save text-to-speech setting"
+                ))
+            }
+        }
+    }
+
     // ========== App Updates ==========
 
     /**
@@ -687,7 +743,10 @@ class SettingsViewModel @Inject constructor(
         val titleGenerationModel: String,
         val autoCheckUpdates: Boolean,
         val updateState: com.materialchat.domain.model.UpdateState,
-        val rememberLastModel: Boolean
+        val rememberLastModel: Boolean,
+        val assistantEnabled: Boolean,
+        val assistantVoiceEnabled: Boolean,
+        val assistantTtsEnabled: Boolean
     )
 
     /**
@@ -698,7 +757,17 @@ class SettingsViewModel @Inject constructor(
         val aiTitles: Boolean,
         val titleModel: String,
         val autoCheck: Boolean,
+        val assistantSettings: AssistantSettings
+    )
+
+    /**
+     * Internal data class for assistant-related settings.
+     */
+    private data class AssistantSettings(
         val updateState: com.materialchat.domain.model.UpdateState,
-        val rememberLastModel: Boolean
+        val rememberLastModel: Boolean,
+        val assistantEnabled: Boolean,
+        val assistantVoiceEnabled: Boolean,
+        val assistantTtsEnabled: Boolean
     )
 }
