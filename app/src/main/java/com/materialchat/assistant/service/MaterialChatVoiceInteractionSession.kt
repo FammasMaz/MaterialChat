@@ -68,6 +68,9 @@ class MaterialChatVoiceInteractionSession(
         super.onShow(args, showFlags)
         lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_START)
         lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_RESUME)
+
+        // Notify ViewModel that overlay is being shown (for timeout check and animation reset)
+        assistantViewModel?.onOverlayShown()
     }
 
     override fun onHide() {

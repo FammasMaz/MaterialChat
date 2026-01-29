@@ -69,6 +69,10 @@ class AssistantViewModel(
     private val _events = MutableSharedFlow<AssistantEvent>()
     val events: SharedFlow<AssistantEvent> = _events.asSharedFlow()
 
+    /** Trigger that increments each time overlay is shown - used to reset animations */
+    private val _showTrigger = MutableStateFlow(0)
+    val showTrigger: StateFlow<Int> = _showTrigger.asStateFlow()
+
     private val _pendingAttachments = MutableStateFlow<List<Attachment>>(emptyList())
     val pendingAttachments: StateFlow<List<Attachment>> = _pendingAttachments.asStateFlow()
 
@@ -129,6 +133,7 @@ class AssistantViewModel(
 
     /**
      * Called when the overlay is shown. Checks for session timeout and resets if needed.
+     * Also triggers animation reset in the UI.
      */
     fun onOverlayShown() {
         val now = System.currentTimeMillis()
@@ -141,6 +146,9 @@ class AssistantViewModel(
 
         // Update last activity
         lastActivityTimestamp = now
+
+        // Increment show trigger to reset animations in UI
+        _showTrigger.value++
     }
 
     /**

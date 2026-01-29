@@ -3,6 +3,7 @@ package com.materialchat.assistant.ui.components
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
+import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -27,12 +28,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import com.materialchat.assistant.ui.AssistantMessage
 import com.materialchat.domain.model.MessageRole
 import com.materialchat.ui.components.MarkdownText
 import com.materialchat.ui.screens.chat.components.TypingIndicator
-import com.materialchat.ui.screens.chat.components.M3StreamingDots
 import com.materialchat.ui.theme.MessageBubbleShapes
 
 /**
@@ -59,11 +60,42 @@ fun AssistantResponseCard(
     modifier: Modifier = Modifier
 ) {
     val listState = rememberLazyListState()
+    val density = LocalDensity.current
 
-    // Auto-scroll to bottom when messages change (matches main chat)
-    LaunchedEffect(messages.size, messages.lastOrNull()?.content) {
-        if (messages.isNotEmpty()) {
-            listState.animateScrollToItem(messages.size - 1)
+    // Calculate total items (messages + optional loading indicator)
+    val hasLoadingItem = isLoading && (messages.isEmpty() || messages.lastOrNull()?.role != MessageRole.ASSISTANT)
+    val totalItems = messages.size + if (hasLoadingItem) 1 else 0
+
+    // Track content changes via hash (more efficient than full string comparison)
+    val lastMessage = messages.lastOrNull()
+    val lastContentHash = lastMessage?.content?.hashCode() ?: 0
+    val isStreaming = lastMessage?.isStreaming ?: false
+
+    // Scroll buffer for visual comfort
+    val scrollBufferPx = with(density) { 8.dp.toPx() }
+
+    // Robust auto-scroll matching main ChatScreen approach
+    LaunchedEffect(
+        messages.size,
+        lastContentHash,
+        isLoading,
+        isStreaming
+    ) {
+        if (totalItems == 0) return@LaunchedEffect
+
+        val lastIndex = totalItems - 1
+        val layoutInfo = listState.layoutInfo
+        val lastVisible = layoutInfo.visibleItemsInfo.lastOrNull()
+
+        if (lastVisible == null || lastVisible.index < lastIndex) {
+            // Not showing last item - jump to it instantly
+            listState.scrollToItem(lastIndex)
+        } else {
+            // Last item is visible - use incremental scroll if needed
+            val overflow = (lastVisible.offset + lastVisible.size) - layoutInfo.viewportEndOffset + scrollBufferPx
+            if (overflow > 0) {
+                listState.scrollBy(overflow)
+            }
         }
     }
 
@@ -186,12 +218,12 @@ private fun AssistantBubble(
                     )
                 }
 
-                // Streaming indicator using M3StreamingDots (matches main chat)
+                // Streaming indicator using TypingIndicator (M3 shape morphing - matches main chat)
                 if (isStreaming) {
-                    M3StreamingDots(
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                    TypingIndicator(
                         dotSize = 7.dp,
-                        dotSpacing = 4.dp
+                        dotSpacing = 4.dp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                     )
                 }
             }

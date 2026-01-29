@@ -24,7 +24,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
@@ -45,7 +45,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -98,17 +97,9 @@ fun AssistantOverlay(
     val amplitudeData by viewModel.amplitudeData.collectAsStateWithLifecycle()
     val pendingAttachments by viewModel.pendingAttachments.collectAsStateWithLifecycle()
     val messages by viewModel.messages.collectAsStateWithLifecycle()
+    val showTrigger by viewModel.showTrigger.collectAsStateWithLifecycle()
 
     val context = LocalContext.current
-
-    // Animation key to force re-animation on each show
-    var animationKey by remember { mutableIntStateOf(0) }
-
-    // Check for session timeout and reset animation on each show
-    LaunchedEffect(Unit) {
-        viewModel.onOverlayShown()
-        animationKey++ // Increment to force animation restart
-    }
 
     // Check permission state (we can't request it here, only check)
     val hasMicPermission = remember {
@@ -140,8 +131,8 @@ fun AssistantOverlay(
                     viewModel.dismiss()
                 }
         ) {
-            // Use key to force recomposition and animation restart
-            key(animationKey) {
+            // Use showTrigger as key to force recomposition and animation restart
+            key(showTrigger) {
                 // Main overlay content
                 AssistantOverlayContent(
                     uiState = uiState,
@@ -199,9 +190,11 @@ private fun AssistantOverlayContent(
         isVisible = true
     }
 
-    // Check if keyboard is visible for height constraints
+    // Calculate IME padding manually (same as main ChatScreen)
     val density = LocalDensity.current
-    val imeVisible = WindowInsets.ime.getBottom(density) > 0
+    val imeBottom = WindowInsets.ime.getBottom(density)
+    val navBottom = WindowInsets.navigationBars.getBottom(density)
+    val imePadding = with(density) { (imeBottom - navBottom).coerceAtLeast(0).toDp() }
 
     // Animate sheet entrance with bounce (M3 Expressive spatial spring)
     val offsetY by animateDpAsState(
@@ -226,8 +219,7 @@ private fun AssistantOverlayContent(
     Surface(
         modifier = modifier
             .fillMaxWidth()
-            // FIXED: Constrain maximum height to prevent unbounded growth when keyboard appears
-            .heightIn(max = if (imeVisible) 350.dp else 600.dp)
+            .heightIn(max = 600.dp)  // Max height
             .offset { IntOffset(0, offsetY.roundToPx()) }
             .graphicsLayer {
                 scaleX = sheetScale
@@ -243,7 +235,7 @@ private fun AssistantOverlayContent(
             modifier = Modifier
                 .fillMaxWidth()
                 .navigationBarsPadding()
-                // REMOVED: .imePadding() from Column - was causing double padding
+                .padding(bottom = imePadding)  // Manual IME padding like main chat
                 .padding(horizontal = 16.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
@@ -255,7 +247,7 @@ private fun AssistantOverlayContent(
                 hasContent = hasContent
             )
 
-            // Response card (only shown when there's a query/response)
+            // Response card - flexible height that shrinks when keyboard appears
             AnimatedVisibility(
                 visible = messages.isNotEmpty() || uiState.isLoading,
                 enter = fadeIn(animationSpec = ExpressiveMotion.Effects.alpha()) +
@@ -267,16 +259,14 @@ private fun AssistantOverlayContent(
                         slideOutVertically(
                             animationSpec = ExpressiveMotion.Spatial.default(),
                             targetOffsetY = { it / 2 }
-                        )
+                        ),
+                modifier = Modifier.weight(1f, fill = false)
             ) {
                 AssistantResponseCard(
                     messages = messages,
                     isLoading = uiState.isLoading,
                     onOpenInApp = onOpenInApp,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f, fill = false)
-                        .heightIn(max = 300.dp)  // Increased for message history
+                    modifier = Modifier.fillMaxWidth()
                 )
             }
 
@@ -302,9 +292,7 @@ private fun AssistantOverlayContent(
                 }
             }
 
-            Spacer(modifier = Modifier.weight(1f, fill = false))
-
-            // Input bar - handles its own IME padding
+            // Input bar - no IME padding here, it's on the Surface
             AssistantInputBar(
                 textInput = uiState.textInput,
                 onTextChange = onTextChange,
@@ -313,9 +301,7 @@ private fun AssistantOverlayContent(
                 onVoiceClick = onVoiceClick,
                 onSendClick = onSendClick,
                 onStopVoice = onStopVoice,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .imePadding()  // MOVED: IME padding only on input bar
+                modifier = Modifier.fillMaxWidth()
             )
 
             Spacer(modifier = Modifier.height(8.dp))
