@@ -4,6 +4,7 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.materialchat.data.local.preferences.AppPreferences
+import com.materialchat.di.IoDispatcher
 import com.materialchat.domain.model.AiModel
 import com.materialchat.domain.model.Attachment
 import com.materialchat.domain.model.Message
@@ -18,6 +19,7 @@ import com.materialchat.domain.usecase.RegenerateResponseUseCase
 import com.materialchat.domain.usecase.SendMessageUseCase
 import com.materialchat.ui.navigation.Screen
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -28,6 +30,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import kotlin.math.abs
@@ -48,7 +51,8 @@ class ChatViewModel @Inject constructor(
     private val exportConversationUseCase: ExportConversationUseCase,
     private val branchConversationUseCase: BranchConversationUseCase,
     private val manageProvidersUseCase: ManageProvidersUseCase,
-    private val appPreferences: AppPreferences
+    private val appPreferences: AppPreferences,
+    @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) : ViewModel() {
 
     private val conversationId: String = checkNotNull(
@@ -338,7 +342,7 @@ class ChatViewModel @Inject constructor(
             streamingState = StreamingState.Starting
         )
 
-        streamingJob = viewModelScope.launch {
+        streamingJob = viewModelScope.launch(ioDispatcher) {
             try {
                 sendMessageUseCase(
                     conversationId = conversationId,
@@ -370,19 +374,22 @@ class ChatViewModel @Inject constructor(
      * Updates the streaming state in the UI.
      */
     private fun updateStreamingState(state: StreamingState) {
-        val currentState = _uiState.value
-        if (currentState is ChatUiState.Success) {
-            _uiState.value = currentState.copy(streamingState = state)
+        _uiState.update { currentState ->
+            if (currentState is ChatUiState.Success) {
+                currentState.copy(streamingState = state)
+            } else {
+                currentState
+            }
+        }
 
-            // Show error message to user when streaming error occurs
-            if (state is StreamingState.Error) {
-                viewModelScope.launch {
-                    _events.emit(
-                        ChatEvent.ShowSnackbar(
-                            message = state.error?.message ?: "An error occurred"
-                        )
+        // Show error message to user when streaming error occurs
+        if (state is StreamingState.Error) {
+            viewModelScope.launch {
+                _events.emit(
+                    ChatEvent.ShowSnackbar(
+                        message = state.error?.message ?: "An error occurred"
                     )
-                }
+                )
             }
         }
     }
@@ -526,7 +533,7 @@ class ChatViewModel @Inject constructor(
 
         _uiState.value = currentState.copy(streamingState = StreamingState.Starting)
 
-        streamingJob = viewModelScope.launch {
+        streamingJob = viewModelScope.launch(ioDispatcher) {
             try {
                 regenerateResponseUseCase(
                     conversationId = conversationId,
