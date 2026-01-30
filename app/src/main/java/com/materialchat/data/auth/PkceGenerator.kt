@@ -3,6 +3,8 @@ package com.materialchat.data.auth
 import android.util.Base64
 import java.security.MessageDigest
 import java.security.SecureRandom
+import javax.inject.Inject
+import javax.inject.Singleton
 
 /**
  * Generator for PKCE (Proof Key for Code Exchange) parameters.
@@ -17,7 +19,8 @@ import java.security.SecureRandom
  * 4. Sending the verifier during token exchange
  * 5. Server verifies that hash(verifier) == challenge
  */
-class PkceGenerator {
+@Singleton
+class PkceGenerator @Inject constructor() {
 
     private val secureRandom = SecureRandom()
 

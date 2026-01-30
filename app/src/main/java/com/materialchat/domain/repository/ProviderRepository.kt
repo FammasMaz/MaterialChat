@@ -1,10 +1,18 @@
 package com.materialchat.domain.repository
 
+import android.net.Uri
+import com.materialchat.domain.model.OAuthState
+import com.materialchat.domain.model.OAuthTokens
 import com.materialchat.domain.model.Provider
 import kotlinx.coroutines.flow.Flow
 
 /**
- * Repository interface for provider management and API key storage.
+ * Repository interface for provider management, API key storage, and OAuth authentication.
+ *
+ * This interface bridges the domain layer with:
+ * - Room database (provider persistence)
+ * - EncryptedPreferences (API key storage)
+ * - OAuthManager (OAuth authentication flows)
  */
 interface ProviderRepository {
 
@@ -113,4 +121,101 @@ interface ProviderRepository {
      * @return True if providers exist, false otherwise
      */
     suspend fun hasProviders(): Boolean
+
+    // ========== OAuth Operations ==========
+
+    /**
+     * Data class representing an OAuth authorization request.
+     * Contains the authorization URL to open in a browser and the state for validation.
+     */
+    data class OAuthAuthorizationRequest(
+        val url: String,
+        val state: String,
+        val providerId: String
+    )
+
+    /**
+     * Builds an OAuth authorization URL for a provider.
+     *
+     * This creates a PKCE session and returns a URL that should be opened
+     * in a Custom Tab or browser for user authentication.
+     *
+     * @param providerId The ID of the OAuth provider
+     * @param projectId Optional project ID for providers like Antigravity
+     * @return OAuthAuthorizationRequest containing the URL and state
+     * @throws IllegalArgumentException if provider doesn't exist
+     * @throws IllegalStateException if provider doesn't support OAuth
+     */
+    suspend fun buildOAuthAuthorizationUrl(
+        providerId: String,
+        projectId: String? = null
+    ): OAuthAuthorizationRequest
+
+    /**
+     * Handles an OAuth callback URI after user authentication.
+     *
+     * Validates the state, exchanges the authorization code for tokens,
+     * and stores them securely.
+     *
+     * @param uri The callback URI containing code and state parameters
+     * @return Result containing OAuthTokens on success, or an exception on failure
+     */
+    suspend fun handleOAuthCallback(uri: Uri): Result<OAuthTokens>
+
+    /**
+     * Gets the current OAuth authentication state for a provider.
+     *
+     * @param providerId The ID of the provider
+     * @return Current OAuthState (Unauthenticated, Authenticating, Authenticated, or Error)
+     */
+    suspend fun getOAuthState(providerId: String): OAuthState
+
+    /**
+     * Observes the OAuth authentication state for a provider.
+     *
+     * @param providerId The ID of the provider
+     * @return Flow of OAuthState updates
+     */
+    fun observeOAuthState(providerId: String): Flow<OAuthState>
+
+    /**
+     * Gets a valid OAuth access token for a provider, refreshing if necessary.
+     *
+     * @param providerId The ID of the provider
+     * @return Valid access token, or null if not authenticated
+     */
+    suspend fun getOAuthAccessToken(providerId: String): String?
+
+    /**
+     * Checks if a provider has valid OAuth tokens.
+     *
+     * @param providerId The ID of the provider
+     * @return True if OAuth tokens exist and are valid
+     */
+    suspend fun hasValidOAuthTokens(providerId: String): Boolean
+
+    /**
+     * Signs out of OAuth for a provider.
+     *
+     * Clears all OAuth tokens and resets the authentication state.
+     *
+     * @param providerId The ID of the provider
+     */
+    suspend fun logoutOAuth(providerId: String)
+
+    /**
+     * Gets the email associated with an OAuth provider's authentication.
+     *
+     * @param providerId The ID of the provider
+     * @return The authenticated user's email, or null if not authenticated
+     */
+    suspend fun getOAuthEmail(providerId: String): String?
+
+    /**
+     * Gets the project ID associated with an OAuth provider (e.g., for Antigravity).
+     *
+     * @param providerId The ID of the provider
+     * @return The project ID, or null if not set
+     */
+    suspend fun getOAuthProjectId(providerId: String): String?
 }

@@ -1,10 +1,15 @@
 package com.materialchat.data.repository
 
+import android.net.Uri
+import com.materialchat.data.auth.OAuthManager
 import com.materialchat.data.local.database.dao.ProviderDao
 import com.materialchat.data.local.preferences.EncryptedPreferences
 import com.materialchat.data.mapper.toDomain
 import com.materialchat.data.mapper.toEntity
 import com.materialchat.data.mapper.toProviderDomainList
+import com.materialchat.domain.model.AuthType
+import com.materialchat.domain.model.OAuthState
+import com.materialchat.domain.model.OAuthTokens
 import com.materialchat.domain.model.Provider
 import com.materialchat.domain.repository.ProviderRepository
 import kotlinx.coroutines.flow.Flow
@@ -13,13 +18,16 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Implementation of [ProviderRepository] that uses Room for persistence
- * and Tink-encrypted SharedPreferences for API key storage.
+ * Implementation of [ProviderRepository] that uses:
+ * - Room for provider persistence
+ * - Tink-encrypted SharedPreferences for API key storage
+ * - OAuthManager for OAuth authentication flows
  */
 @Singleton
 class ProviderRepositoryImpl @Inject constructor(
     private val providerDao: ProviderDao,
-    private val encryptedPreferences: EncryptedPreferences
+    private val encryptedPreferences: EncryptedPreferences,
+    private val oAuthManager: OAuthManager
 ) : ProviderRepository {
 
     // ========== Provider CRUD Operations ==========
@@ -129,5 +137,59 @@ class ProviderRepositoryImpl @Inject constructor(
 
     override suspend fun hasProviders(): Boolean {
         return providerDao.getProviderCount() > 0
+    }
+
+    // ========== OAuth Operations ==========
+
+    override suspend fun buildOAuthAuthorizationUrl(
+        providerId: String,
+        projectId: String?
+    ): ProviderRepository.OAuthAuthorizationRequest {
+        val provider = providerDao.getProviderById(providerId)?.toDomain()
+            ?: throw IllegalArgumentException("Provider not found: $providerId")
+
+        if (provider.authType != AuthType.OAUTH) {
+            throw IllegalStateException("Provider ${provider.name} does not support OAuth authentication")
+        }
+
+        val authRequest = oAuthManager.buildAuthorizationUrl(provider, projectId)
+
+        return ProviderRepository.OAuthAuthorizationRequest(
+            url = authRequest.url,
+            state = authRequest.state,
+            providerId = authRequest.providerId
+        )
+    }
+
+    override suspend fun handleOAuthCallback(uri: Uri): Result<OAuthTokens> {
+        return oAuthManager.handleCallback(uri)
+    }
+
+    override suspend fun getOAuthState(providerId: String): OAuthState {
+        return oAuthManager.getAuthState(providerId)
+    }
+
+    override fun observeOAuthState(providerId: String): Flow<OAuthState> {
+        return oAuthManager.observeAuthState(providerId)
+    }
+
+    override suspend fun getOAuthAccessToken(providerId: String): String? {
+        return oAuthManager.getValidAccessToken(providerId)
+    }
+
+    override suspend fun hasValidOAuthTokens(providerId: String): Boolean {
+        return encryptedPreferences.hasValidTokens(providerId)
+    }
+
+    override suspend fun logoutOAuth(providerId: String) {
+        oAuthManager.logout(providerId)
+    }
+
+    override suspend fun getOAuthEmail(providerId: String): String? {
+        return encryptedPreferences.getOAuthEmail(providerId)
+    }
+
+    override suspend fun getOAuthProjectId(providerId: String): String? {
+        return encryptedPreferences.getOAuthProjectId(providerId)
     }
 }

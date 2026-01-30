@@ -1,10 +1,10 @@
 # Implementation Plan - Multiple Providers Feature
 
 ## Status
-- **Phase**: 5 - API Layer (next)
-- **Last Updated**: 2026-01-30
+- **Phase**: 7 - UI Layer (next)
+- **Last Updated**: 2026-01-31
 - **Branch**: feature-providers
-- **Progress**: ~40% (Phases 1-4 complete)
+- **Progress**: ~60% (Phases 1-6 complete)
 
 ## Overview
 
@@ -20,45 +20,14 @@ The phases must be implemented in this order due to dependencies:
 2. **Phase 2** - Database layer (persistence) ✅ COMPLETE
 3. **Phase 3** - Security infrastructure (PKCE, encrypted storage) ✅ COMPLETE
 4. **Phase 4** - OAuth Manager (OAuth flow orchestration) ✅ COMPLETE
-5. **Phase 5** - API layer (Antigravity chat)
-6. **Phase 6** - Repository updates (bridge to UI)
+5. **Phase 5** - API layer (Antigravity chat) ✅ COMPLETE
+6. **Phase 6** - Repository updates (bridge to UI) ✅ COMPLETE
 7. **Phase 7** - UI layer (user-facing OAuth flow)
 8. **Phase 8** - DI updates (wire everything together)
 9. **Phase 9** - Built-in providers (polish)
 10. **Phase 10** - Testing (quality assurance)
 
 ---
-
----
-
-## Phase 5: API Layer
-
-### 5.1 Antigravity DTOs
-- [ ] **Create Antigravity request DTOs** - Gemini-style format
-- [ ] **Create Antigravity response DTOs** - Streaming and non-streaming
-
-### 5.2 Anthropic DTOs (Lower Priority)
-- [ ] **Create Anthropic request/response DTOs** - Native Claude format
-
-### 5.3 Antigravity API Client
-- [ ] **Create AntigravityApiClient** - Antigravity-specific API calls
-
-### 5.4 ChatApiClient Updates
-- [x] **Extend ChatApiClient** - Route by provider type ✅
-  - Added placeholder cases for ANTIGRAVITY, ANTHROPIC, GOOGLE_GEMINI, GITHUB_COPILOT
-- [x] **Extend ModelListApiClient** - Support new provider types ✅
-  - Added static model lists for new provider types
-
-### 5.5 Streaming Parser Updates
-- [ ] **Create AntigravityStreamParser** - Gemini-style SSE parsing
-- [ ] **Extend SseEventParser** - Route by provider type
-
----
-
-## Phase 6: Repository Layer
-
-- [ ] **Extend ProviderRepository interface** - OAuth operations
-- [ ] **Update ProviderRepositoryImpl** - Implement OAuth operations
 
 ---
 
@@ -79,7 +48,10 @@ The phases must be implemented in this order due to dependencies:
 ## Phase 8: Dependency Injection
 
 - [ ] **Add androidx.browser dependency** - Custom Tabs for OAuth
-- [ ] **Create AuthModule** - OAuth-related bindings
+- [x] **Create AuthModule** - OAuth-related bindings ✅ (pulled forward for Phase 6)
+  - File: `app/src/main/java/com/materialchat/di/AuthModule.kt`
+  - Provides: OAuthManager, AntigravityOAuth
+  - Uses @StandardClient OkHttpClient for auth requests
 - [ ] **Update NetworkModule** - Antigravity client
 
 ---
@@ -103,6 +75,71 @@ The phases must be implemented in this order due to dependencies:
 ---
 
 ## Completed
+
+### Phase 6: Repository Layer ✅ COMPLETE
+
+#### 6.1 ProviderRepository Interface Extensions
+- [x] **Extend ProviderRepository interface** - OAuth operations
+  - File: `app/src/main/java/com/materialchat/domain/repository/ProviderRepository.kt`
+  - Added: `OAuthAuthorizationRequest` data class
+  - Added: `buildOAuthAuthorizationUrl()` - Build OAuth authorization URL
+  - Added: `handleOAuthCallback()` - Handle OAuth callback
+  - Added: `getOAuthState()`, `observeOAuthState()` - OAuth state management
+  - Added: `getOAuthAccessToken()`, `hasValidOAuthTokens()` - Token access
+  - Added: `logoutOAuth()` - Sign out of OAuth
+  - Added: `getOAuthEmail()`, `getOAuthProjectId()` - OAuth metadata
+
+#### 6.2 ProviderRepositoryImpl Updates
+- [x] **Update ProviderRepositoryImpl** - Implement OAuth operations
+  - File: `app/src/main/java/com/materialchat/data/repository/ProviderRepositoryImpl.kt`
+  - Added: OAuthManager injection
+  - Implemented all OAuth operations delegating to OAuthManager
+  - Bridges domain layer to OAuth infrastructure
+
+#### 6.3 DI Updates (Pulled from Phase 8)
+- [x] **Create AuthModule** - OAuth-related DI bindings
+  - File: `app/src/main/java/com/materialchat/di/AuthModule.kt`
+  - Provides: OAuthManager singleton
+  - Provides: AntigravityOAuth singleton
+  - Uses @StandardClient OkHttpClient for auth requests
+- [x] **Add @Inject constructor to PkceGenerator** - Enable DI
+  - File: `app/src/main/java/com/materialchat/data/auth/PkceGenerator.kt`
+  - Added: @Singleton and @Inject constructor annotations
+
+---
+
+### Phase 5: API Layer ✅ COMPLETE
+
+#### 5.1 Antigravity DTOs
+- [x] **Create AntigravityModels.kt** - Complete Gemini-style DTOs
+  - File: `app/src/main/java/com/materialchat/data/remote/dto/AntigravityModels.kt`
+  - Request: `AntigravityRequest`, `AntigravityContent`, `AntigravityPart`, `AntigravitySystemInstruction`, `AntigravityGenerationConfig`, `AntigravityThinkingConfig`, `AntigravitySafetySetting`, `AntigravityInlineData`
+  - Response: `AntigravityResponse`, `AntigravityCandidate`, `AntigravityStreamChunk`, `AntigravitySafetyRating`, `AntigravityUsageMetadata`, `AntigravityPromptFeedback`
+  - Errors: `AntigravityErrorResponse`, `AntigravityError`, `AntigravityErrorDetail`
+  - Helpers: `AntigravityConverters` for OpenAI-to-Antigravity format conversion
+
+#### 5.2 Antigravity API Client
+- [x] **Create AntigravityApiClient** - Complete streaming and non-streaming support
+  - File: `app/src/main/java/com/materialchat/data/remote/api/AntigravityApiClient.kt`
+  - `streamChat()`: OAuth-authenticated streaming chat with thinking support
+  - `generateSimpleCompletion()`: Non-streaming completions
+  - Automatic token refresh via OAuthManager
+  - Project info caching with endpoint fallback
+  - Model ID mapping to Antigravity API format
+
+#### 5.3 Streaming Parser Updates
+- [x] **Extend SseEventParser** - Antigravity SSE parsing
+  - File: `app/src/main/java/com/materialchat/data/remote/sse/SseEventParser.kt`
+  - Added: `parseAntigravityEvent()`, `parseAntigravityChunk()`, `parseAntigravityEvents()`
+  - Handles `candidates[].content.parts[]` with `thought` field for thinking content
+  - Error handling: `AntigravityErrorWrapper`
+
+#### 5.4 ChatApiClient Updates
+- [x] **Update ChatApiClient** - Updated TODO comments
+  - Provider routing prepared for Phase 8 DI wiring
+  - AntigravityApiClient is ready but not yet injected
+
+---
 
 ### Phase 2: Database Layer ✅ COMPLETE
 
