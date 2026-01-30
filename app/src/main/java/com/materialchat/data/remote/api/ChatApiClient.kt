@@ -98,6 +98,14 @@ class ChatApiClient(
                 temperature = temperature,
                 reasoningEffort = reasoningEffort
             )
+            // TODO: Phase 5 - Implement dedicated API clients for these providers
+            ProviderType.ANTHROPIC,
+            ProviderType.GOOGLE_GEMINI,
+            ProviderType.GITHUB_COPILOT,
+            ProviderType.ANTIGRAVITY -> callbackFlow {
+                trySend(StreamingEvent.Error("${provider.type.name} provider not yet implemented"))
+                close()
+            }
         }
     }
 
@@ -347,6 +355,13 @@ class ChatApiClient(
                     model = model,
                     prompt = prompt
                 )
+                // TODO: Phase 5 - Implement dedicated completion methods for these providers
+                ProviderType.ANTHROPIC,
+                ProviderType.GOOGLE_GEMINI,
+                ProviderType.GITHUB_COPILOT,
+                ProviderType.ANTIGRAVITY -> Result.failure(
+                    IOException("${provider.type.name} provider not yet implemented")
+                )
             }
         } catch (e: Exception) {
             Result.failure(e)
@@ -483,6 +498,11 @@ class ChatApiClient(
             val url = when (provider.type) {
                 ProviderType.OPENAI_COMPATIBLE -> buildModelsUrl(provider.baseUrl)
                 ProviderType.OLLAMA_NATIVE -> "${provider.baseUrl.trimEnd('/')}/api/tags"
+                // TODO: Phase 5 - Add proper test endpoints for these providers
+                ProviderType.ANTHROPIC -> "${provider.baseUrl.trimEnd('/')}/v1/models"
+                ProviderType.GOOGLE_GEMINI -> "${provider.baseUrl.trimEnd('/')}/v1beta/models"
+                ProviderType.GITHUB_COPILOT -> "${provider.baseUrl.trimEnd('/')}/models"
+                ProviderType.ANTIGRAVITY -> "${provider.baseUrl.trimEnd('/')}/v1internal:loadCodeAssist"
             }
 
             val requestBuilder = Request.Builder()

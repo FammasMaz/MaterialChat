@@ -229,10 +229,18 @@ private fun ProviderTypeIcon(
             imageVector = when (type) {
                 ProviderType.OPENAI_COMPATIBLE -> Icons.Outlined.Cloud
                 ProviderType.OLLAMA_NATIVE -> Icons.Outlined.Computer
+                ProviderType.ANTHROPIC -> Icons.Outlined.Cloud
+                ProviderType.GOOGLE_GEMINI -> Icons.Outlined.Cloud
+                ProviderType.GITHUB_COPILOT -> Icons.Outlined.Cloud
+                ProviderType.ANTIGRAVITY -> Icons.Outlined.Cloud
             },
             contentDescription = when (type) {
                 ProviderType.OPENAI_COMPATIBLE -> "OpenAI-compatible provider"
                 ProviderType.OLLAMA_NATIVE -> "Ollama local provider"
+                ProviderType.ANTHROPIC -> "Anthropic Claude provider"
+                ProviderType.GOOGLE_GEMINI -> "Google Gemini provider"
+                ProviderType.GITHUB_COPILOT -> "GitHub Copilot provider"
+                ProviderType.ANTIGRAVITY -> "Antigravity provider"
             },
             tint = MaterialTheme.colorScheme.onPrimaryContainer,
             modifier = Modifier.size(24.dp)

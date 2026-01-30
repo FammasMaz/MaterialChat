@@ -79,14 +79,15 @@ class SseEventParserTest {
     }
 
     @Test
-    fun `parseOpenAiEvent - finish reason returns Done with reason`() {
+    fun `parseOpenAiEvent - finish reason with empty delta returns KeepAlive to await DONE marker`() {
+        // The implementation deliberately ignores finish_reason in favor of [DONE] marker
+        // because some APIs (like LiteLLM) send finish_reason on every chunk
         val line = """data: {"id":"chatcmpl-123","choices":[{"delta":{},"finish_reason":"stop"}],"model":"gpt-4o"}"""
 
         val result = parser.parseOpenAiEvent(line)
 
-        assertTrue(result is StreamingEvent.Done)
-        assertEquals("stop", (result as StreamingEvent.Done).finishReason)
-        assertEquals("gpt-4o", result.model)
+        // Empty delta returns KeepAlive; stream termination is handled by [DONE] marker
+        assertEquals(StreamingEvent.KeepAlive, result)
     }
 
     @Test

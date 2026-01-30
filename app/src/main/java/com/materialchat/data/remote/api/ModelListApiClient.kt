@@ -50,6 +50,42 @@ class ModelListApiClient(
                 baseUrl = provider.baseUrl,
                 providerId = provider.id
             )
+            // Return predefined models for providers with static model lists
+            ProviderType.ANTIGRAVITY -> Result.success(
+                com.materialchat.domain.model.AntigravityConfig.MODELS.map { model ->
+                    AiModel(
+                        id = model.id,
+                        name = model.name,
+                        providerId = provider.id,
+                        contextWindow = model.contextWindow,
+                        maxOutputTokens = model.maxOutputTokens,
+                        supportsThinking = model.supportsThinking,
+                        maxThinkingTokens = model.maxThinkingTokens,
+                        supportsImages = model.supportsImages,
+                        supportsTools = model.supportsTools
+                    )
+                }
+            )
+            ProviderType.ANTHROPIC -> Result.success(
+                listOf(
+                    AiModel(id = "claude-opus-4-20250514", name = "Claude Opus 4", providerId = provider.id),
+                    AiModel(id = "claude-sonnet-4-20250514", name = "Claude Sonnet 4", providerId = provider.id),
+                    AiModel(id = "claude-3-5-haiku-20241022", name = "Claude 3.5 Haiku", providerId = provider.id)
+                )
+            )
+            ProviderType.GOOGLE_GEMINI -> Result.success(
+                listOf(
+                    AiModel(id = "gemini-2.0-flash", name = "Gemini 2.0 Flash", providerId = provider.id),
+                    AiModel(id = "gemini-2.0-pro", name = "Gemini 2.0 Pro", providerId = provider.id),
+                    AiModel(id = "gemini-1.5-pro", name = "Gemini 1.5 Pro", providerId = provider.id)
+                )
+            )
+            ProviderType.GITHUB_COPILOT -> Result.success(
+                listOf(
+                    AiModel(id = "gpt-4o", name = "GPT-4o", providerId = provider.id),
+                    AiModel(id = "claude-sonnet-4", name = "Claude Sonnet 4", providerId = provider.id)
+                )
+            )
         }
     }
 

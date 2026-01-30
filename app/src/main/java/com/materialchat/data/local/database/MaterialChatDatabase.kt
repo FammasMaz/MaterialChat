@@ -30,7 +30,7 @@ import com.materialchat.data.local.database.entity.ProviderEntity
         ConversationEntity::class,
         MessageEntity::class
     ],
-    version = 5,
+    version = 6,
     exportSchema = true
 )
 abstract class MaterialChatDatabase : RoomDatabase() {
@@ -84,10 +84,33 @@ abstract class MaterialChatDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * Migration from version 5 to 6: Add OAuth and multi-provider support columns.
+         *
+         * New provider columns:
+         * - auth_type: Authentication method (API_KEY, OAUTH, NONE)
+         * - system_prompt: Provider-specific system prompt
+         * - headers_json: JSON serialized custom headers
+         * - options_json: JSON serialized provider options
+         * - supports_streaming: Whether provider supports streaming
+         * - supports_images: Whether provider supports image attachments
+         */
+        private val MIGRATION_5_6 = object : Migration(5, 6) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE providers ADD COLUMN auth_type TEXT NOT NULL DEFAULT 'API_KEY'")
+                db.execSQL("ALTER TABLE providers ADD COLUMN system_prompt TEXT DEFAULT NULL")
+                db.execSQL("ALTER TABLE providers ADD COLUMN headers_json TEXT DEFAULT NULL")
+                db.execSQL("ALTER TABLE providers ADD COLUMN options_json TEXT DEFAULT NULL")
+                db.execSQL("ALTER TABLE providers ADD COLUMN supports_streaming INTEGER NOT NULL DEFAULT 1")
+                db.execSQL("ALTER TABLE providers ADD COLUMN supports_images INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
         internal val MIGRATIONS = arrayOf(
             MIGRATION_2_3,
             MIGRATION_3_4,
-            MIGRATION_4_5
+            MIGRATION_4_5,
+            MIGRATION_5_6
         )
 
         /**

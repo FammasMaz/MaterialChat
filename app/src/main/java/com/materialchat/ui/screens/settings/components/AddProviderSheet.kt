@@ -221,6 +221,10 @@ private fun AddProviderSheetContent(
             placeholder = when (formState.type) {
                 ProviderType.OPENAI_COMPATIBLE -> "https://api.openai.com"
                 ProviderType.OLLAMA_NATIVE -> "http://localhost:11434"
+                ProviderType.ANTHROPIC -> "https://api.anthropic.com"
+                ProviderType.GOOGLE_GEMINI -> "https://generativelanguage.googleapis.com"
+                ProviderType.GITHUB_COPILOT -> "https://api.github.com"
+                ProviderType.ANTIGRAVITY -> "https://cloudcode-pa.googleapis.com"
             },
             leadingIcon = Icons.Outlined.Link,
             error = formState.baseUrlError,
@@ -241,6 +245,10 @@ private fun AddProviderSheetContent(
             placeholder = when (formState.type) {
                 ProviderType.OPENAI_COMPATIBLE -> "gpt-4o"
                 ProviderType.OLLAMA_NATIVE -> "llama3.2"
+                ProviderType.ANTHROPIC -> "claude-sonnet-4-20250514"
+                ProviderType.GOOGLE_GEMINI -> "gemini-2.0-flash"
+                ProviderType.GITHUB_COPILOT -> "gpt-4o"
+                ProviderType.ANTIGRAVITY -> "antigravity-claude-sonnet-4-5"
             },
             leadingIcon = Icons.Outlined.Memory,
             error = formState.defaultModelError,
@@ -416,6 +424,10 @@ private fun ProviderTypeSelector(
                             text = when (type) {
                                 ProviderType.OPENAI_COMPATIBLE -> "OpenAI-compatible"
                                 ProviderType.OLLAMA_NATIVE -> "Ollama"
+                                ProviderType.ANTHROPIC -> "Anthropic"
+                                ProviderType.GOOGLE_GEMINI -> "Gemini"
+                                ProviderType.GITHUB_COPILOT -> "GitHub Copilot"
+                                ProviderType.ANTIGRAVITY -> "Antigravity"
                             }
                         )
                     },
@@ -424,6 +436,10 @@ private fun ProviderTypeSelector(
                             imageVector = when (type) {
                                 ProviderType.OPENAI_COMPATIBLE -> Icons.Outlined.Cloud
                                 ProviderType.OLLAMA_NATIVE -> Icons.Outlined.Computer
+                                ProviderType.ANTHROPIC -> Icons.Outlined.Cloud
+                                ProviderType.GOOGLE_GEMINI -> Icons.Outlined.Cloud
+                                ProviderType.GITHUB_COPILOT -> Icons.Outlined.Cloud
+                                ProviderType.ANTIGRAVITY -> Icons.Outlined.Cloud
                             },
                             contentDescription = null,
                             modifier = Modifier.size(18.dp)

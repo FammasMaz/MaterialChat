@@ -1,10 +1,12 @@
 package com.materialchat.domain.usecase
 
+import com.materialchat.data.local.preferences.AppPreferences
 import com.materialchat.domain.model.Conversation
 import com.materialchat.domain.model.Message
 import com.materialchat.domain.model.MessageRole
 import com.materialchat.domain.model.Provider
 import com.materialchat.domain.model.ProviderType
+import com.materialchat.domain.model.ReasoningEffort
 import com.materialchat.domain.model.StreamingState
 import com.materialchat.domain.repository.ChatRepository
 import com.materialchat.domain.repository.ConversationRepository
@@ -14,8 +16,11 @@ import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.toList
+import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -31,11 +36,15 @@ import org.junit.Test
  * - Message persistence
  * - Title generation
  */
+@OptIn(ExperimentalCoroutinesApi::class)
 class SendMessageUseCaseTest {
 
     private lateinit var chatRepository: ChatRepository
     private lateinit var conversationRepository: ConversationRepository
     private lateinit var providerRepository: ProviderRepository
+    private lateinit var appPreferences: AppPreferences
+    private lateinit var generateConversationTitleUseCase: GenerateConversationTitleUseCase
+    private lateinit var applicationScope: CoroutineScope
     private lateinit var sendMessageUseCase: SendMessageUseCase
 
     private val testProvider = Provider(
@@ -66,16 +75,28 @@ class SendMessageUseCaseTest {
         )
     )
 
+    private val testReasoningEffort = ReasoningEffort.HIGH
+
     @Before
     fun setup() {
         chatRepository = mockk()
         conversationRepository = mockk()
         providerRepository = mockk()
+        appPreferences = mockk()
+        generateConversationTitleUseCase = mockk()
+        applicationScope = TestScope()
+
+        // Default mock for appPreferences
+        every { appPreferences.aiGeneratedTitlesEnabled } returns flowOf(false)
+        every { appPreferences.titleGenerationModel } returns flowOf("")
 
         sendMessageUseCase = SendMessageUseCase(
             chatRepository = chatRepository,
             conversationRepository = conversationRepository,
-            providerRepository = providerRepository
+            providerRepository = providerRepository,
+            appPreferences = appPreferences,
+            generateConversationTitleUseCase = generateConversationTitleUseCase,
+            applicationScope = applicationScope
         )
     }
 
@@ -88,7 +109,8 @@ class SendMessageUseCaseTest {
         val results = sendMessageUseCase(
             conversationId = "conv-1",
             userContent = "Hello!",
-            systemPrompt = "You are helpful."
+            systemPrompt = "You are helpful.",
+            reasoningEffort = testReasoningEffort
         ).toList()
 
         // Then
@@ -105,10 +127,10 @@ class SendMessageUseCaseTest {
         coEvery { conversationRepository.setMessageStreaming(any(), any()) } returns Unit
         coEvery { conversationRepository.updateConversationTitle(any(), any()) } returns Unit
         coEvery {
-            chatRepository.sendMessage(any(), any(), any(), any())
+            chatRepository.sendMessage(any(), any(), any(), any(), any())
         } returns flowOf(
-            StreamingState.Streaming("Hello", "msg-assistant"),
-            StreamingState.Completed("Hello!", "msg-assistant")
+            StreamingState.Streaming("Hello", messageId = "msg-assistant"),
+            StreamingState.Completed("Hello!", messageId = "msg-assistant")
         )
 
         val capturedMessages = mutableListOf<Message>()
@@ -118,7 +140,8 @@ class SendMessageUseCaseTest {
         sendMessageUseCase(
             conversationId = "conv-1",
             userContent = "Hello there!",
-            systemPrompt = "You are helpful."
+            systemPrompt = "You are helpful.",
+            reasoningEffort = testReasoningEffort
         ).toList()
 
         // Then
@@ -140,7 +163,8 @@ class SendMessageUseCaseTest {
         sendMessageUseCase(
             conversationId = "conv-1",
             userContent = "Hello!",
-            systemPrompt = "You are helpful."
+            systemPrompt = "You are helpful.",
+            reasoningEffort = testReasoningEffort
         ).toList()
 
         // Then
@@ -158,31 +182,35 @@ class SendMessageUseCaseTest {
         val providerSlot = slot<Provider>()
         val messagesSlot = slot<List<Message>>()
         val modelSlot = slot<String>()
-        val systemPromptSlot = slot<String>()
+        val reasoningEffortSlot = slot<ReasoningEffort>()
+        val systemPromptSlot = slot<String?>()
 
         coEvery {
             chatRepository.sendMessage(
                 capture(providerSlot),
                 capture(messagesSlot),
                 capture(modelSlot),
-                capture(systemPromptSlot)
+                capture(reasoningEffortSlot),
+                captureNullable(systemPromptSlot)
             )
         } returns flowOf(
-            StreamingState.Streaming("Hello", "msg-assistant"),
-            StreamingState.Completed("Hello!", "msg-assistant")
+            StreamingState.Streaming("Hello", messageId = "msg-assistant"),
+            StreamingState.Completed("Hello!", messageId = "msg-assistant")
         )
 
         // When
         sendMessageUseCase(
             conversationId = "conv-1",
             userContent = "Hello!",
-            systemPrompt = "Be helpful."
+            systemPrompt = "Be helpful.",
+            reasoningEffort = testReasoningEffort
         ).toList()
 
         // Then
         assertEquals(testProvider.id, providerSlot.captured.id)
         assertEquals("test-model", modelSlot.captured)
         assertEquals("Be helpful.", systemPromptSlot.captured)
+        assertEquals(testReasoningEffort, reasoningEffortSlot.captured)
     }
 
     @Test
@@ -190,19 +218,20 @@ class SendMessageUseCaseTest {
         // Given
         setupSuccessfulFlow()
         coEvery {
-            chatRepository.sendMessage(any(), any(), any(), any())
+            chatRepository.sendMessage(any(), any(), any(), any(), any())
         } returns flowOf(
-            StreamingState.Streaming("He", "msg-assistant"),
-            StreamingState.Streaming("Hell", "msg-assistant"),
-            StreamingState.Streaming("Hello", "msg-assistant"),
-            StreamingState.Completed("Hello!", "msg-assistant")
+            StreamingState.Streaming("He", messageId = "msg-assistant"),
+            StreamingState.Streaming("Hell", messageId = "msg-assistant"),
+            StreamingState.Streaming("Hello", messageId = "msg-assistant"),
+            StreamingState.Completed("Hello!", messageId = "msg-assistant")
         )
 
         // When
         sendMessageUseCase(
             conversationId = "conv-1",
             userContent = "Hi",
-            systemPrompt = "System"
+            systemPrompt = "System",
+            reasoningEffort = testReasoningEffort
         ).toList()
 
         // Then
@@ -218,7 +247,8 @@ class SendMessageUseCaseTest {
         sendMessageUseCase(
             conversationId = "conv-1",
             userContent = "Hi",
-            systemPrompt = "System"
+            systemPrompt = "System",
+            reasoningEffort = testReasoningEffort
         ).toList()
 
         // Then
@@ -230,17 +260,18 @@ class SendMessageUseCaseTest {
         // Given
         setupSuccessfulFlow()
         coEvery {
-            chatRepository.sendMessage(any(), any(), any(), any())
+            chatRepository.sendMessage(any(), any(), any(), any(), any())
         } returns flowOf(
-            StreamingState.Streaming("Hello", "msg-assistant"),
-            StreamingState.Completed("Hello!", "msg-assistant")
+            StreamingState.Streaming("Hello", messageId = "msg-assistant"),
+            StreamingState.Completed("Hello!", messageId = "msg-assistant")
         )
 
         // When
         val results = sendMessageUseCase(
             conversationId = "conv-1",
             userContent = "Hi",
-            systemPrompt = "System"
+            systemPrompt = "System",
+            reasoningEffort = testReasoningEffort
         ).toList()
 
         // Then
@@ -258,7 +289,8 @@ class SendMessageUseCaseTest {
         sendMessageUseCase(
             conversationId = "conv-1",
             userContent = "What is the capital of France?",
-            systemPrompt = "System"
+            systemPrompt = "System",
+            reasoningEffort = testReasoningEffort
         ).toList()
 
         // Then
@@ -276,14 +308,15 @@ class SendMessageUseCaseTest {
         coEvery { conversationRepository.updateMessageContent(any(), any()) } returns Unit
         coEvery { conversationRepository.setMessageStreaming(any(), any()) } returns Unit
         coEvery {
-            chatRepository.sendMessage(any(), any(), any(), any())
-        } returns flowOf(StreamingState.Completed("Done", "msg-assistant"))
+            chatRepository.sendMessage(any(), any(), any(), any(), any())
+        } returns flowOf(StreamingState.Completed("Done", messageId = "msg-assistant"))
 
         // When
         sendMessageUseCase(
             conversationId = "conv-1",
             userContent = "Hello!",
-            systemPrompt = "System"
+            systemPrompt = "System",
+            reasoningEffort = testReasoningEffort
         ).toList()
 
         // Then
@@ -296,17 +329,18 @@ class SendMessageUseCaseTest {
         setupSuccessfulFlow()
         val error = RuntimeException("Network error")
         coEvery {
-            chatRepository.sendMessage(any(), any(), any(), any())
+            chatRepository.sendMessage(any(), any(), any(), any(), any())
         } returns flowOf(
-            StreamingState.Streaming("Par", "msg-assistant"),
-            StreamingState.Error(error, "Par", "msg-assistant")
+            StreamingState.Streaming("Par", messageId = "msg-assistant"),
+            StreamingState.Error(error, "Par", messageId = "msg-assistant")
         )
 
         // When
         val results = sendMessageUseCase(
             conversationId = "conv-1",
             userContent = "Hi",
-            systemPrompt = "System"
+            systemPrompt = "System",
+            reasoningEffort = testReasoningEffort
         ).toList()
 
         // Then
@@ -320,17 +354,18 @@ class SendMessageUseCaseTest {
         // Given
         setupSuccessfulFlow()
         coEvery {
-            chatRepository.sendMessage(any(), any(), any(), any())
+            chatRepository.sendMessage(any(), any(), any(), any(), any())
         } returns flowOf(
-            StreamingState.Streaming("Partial", "msg-assistant"),
-            StreamingState.Cancelled("Partial", "msg-assistant")
+            StreamingState.Streaming("Partial", messageId = "msg-assistant"),
+            StreamingState.Cancelled("Partial", messageId = "msg-assistant")
         )
 
         // When
         val results = sendMessageUseCase(
             conversationId = "conv-1",
             userContent = "Hi",
-            systemPrompt = "System"
+            systemPrompt = "System",
+            reasoningEffort = testReasoningEffort
         ).toList()
 
         // Then
@@ -348,7 +383,8 @@ class SendMessageUseCaseTest {
         sendMessageUseCase(
             conversationId = "conv-invalid",
             userContent = "Hi",
-            systemPrompt = "System"
+            systemPrompt = "System",
+            reasoningEffort = testReasoningEffort
         ).toList()
 
         // Then - exception thrown
@@ -364,7 +400,8 @@ class SendMessageUseCaseTest {
         sendMessageUseCase(
             conversationId = "conv-1",
             userContent = "Hi",
-            systemPrompt = "System"
+            systemPrompt = "System",
+            reasoningEffort = testReasoningEffort
         ).toList()
 
         // Then - exception thrown
@@ -376,17 +413,18 @@ class SendMessageUseCaseTest {
         setupSuccessfulFlow()
         coEvery { conversationRepository.addMessage(any()) } returnsMany listOf("user-123", "assistant-456")
         coEvery {
-            chatRepository.sendMessage(any(), any(), any(), any())
+            chatRepository.sendMessage(any(), any(), any(), any(), any())
         } returns flowOf(
-            StreamingState.Streaming("Hello", "original-id"),
-            StreamingState.Completed("Hello!", "original-id")
+            StreamingState.Streaming("Hello", messageId = "original-id"),
+            StreamingState.Completed("Hello!", messageId = "original-id")
         )
 
         // When
         val results = sendMessageUseCase(
             conversationId = "conv-1",
             userContent = "Hi",
-            systemPrompt = "System"
+            systemPrompt = "System",
+            reasoningEffort = testReasoningEffort
         ).toList()
 
         // Then - states should have the correct assistant message ID
@@ -425,7 +463,8 @@ class SendMessageUseCaseTest {
         sendMessageUseCase(
             conversationId = "conv-1",
             userContent = longMessage,
-            systemPrompt = "System"
+            systemPrompt = "System",
+            reasoningEffort = testReasoningEffort
         ).toList()
 
         // Then
@@ -444,7 +483,8 @@ class SendMessageUseCaseTest {
         sendMessageUseCase(
             conversationId = "conv-1",
             userContent = "Line 1\nLine 2\nLine 3",
-            systemPrompt = "System"
+            systemPrompt = "System",
+            reasoningEffort = testReasoningEffort
         ).toList()
 
         // Then
@@ -464,10 +504,10 @@ class SendMessageUseCaseTest {
         coEvery { conversationRepository.setMessageStreaming(any(), any()) } returns Unit
         coEvery { conversationRepository.updateConversationTitle(any(), any()) } returns Unit
         coEvery {
-            chatRepository.sendMessage(any(), any(), any(), any())
+            chatRepository.sendMessage(any(), any(), any(), any(), any())
         } returns flowOf(
-            StreamingState.Streaming("Hello", "msg-assistant"),
-            StreamingState.Completed("Hello!", "msg-assistant")
+            StreamingState.Streaming("Hello", messageId = "msg-assistant"),
+            StreamingState.Completed("Hello!", messageId = "msg-assistant")
         )
     }
 }

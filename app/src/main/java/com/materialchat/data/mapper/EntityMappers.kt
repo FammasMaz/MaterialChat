@@ -4,6 +4,7 @@ import com.materialchat.data.local.database.entity.ConversationEntity
 import com.materialchat.data.local.database.entity.MessageEntity
 import com.materialchat.data.local.database.entity.ProviderEntity
 import com.materialchat.domain.model.Attachment
+import com.materialchat.domain.model.AuthType
 import com.materialchat.domain.model.Conversation
 import com.materialchat.domain.model.Message
 import com.materialchat.domain.model.MessageRole
@@ -28,10 +29,16 @@ fun Provider.toEntity(): ProviderEntity = ProviderEntity(
     id = id,
     name = name,
     type = type.name,
+    authType = authType.name,
     baseUrl = baseUrl,
     defaultModel = defaultModel,
     requiresApiKey = requiresApiKey,
-    isActive = isActive
+    isActive = isActive,
+    systemPrompt = systemPrompt,
+    headersJson = serializeHeaders(headers),
+    optionsJson = serializeOptions(options),
+    supportsStreaming = supportsStreaming,
+    supportsImages = supportsImages
 )
 
 /**
@@ -41,11 +48,79 @@ fun ProviderEntity.toDomain(): Provider = Provider(
     id = id,
     name = name,
     type = ProviderType.valueOf(type),
+    authType = parseAuthType(authType),
     baseUrl = baseUrl,
     defaultModel = defaultModel,
     requiresApiKey = requiresApiKey,
-    isActive = isActive
+    isActive = isActive,
+    systemPrompt = systemPrompt,
+    headers = deserializeHeaders(headersJson),
+    options = deserializeOptions(optionsJson),
+    supportsStreaming = supportsStreaming,
+    supportsImages = supportsImages
 )
+
+/**
+ * Safely parses AuthType from string, defaulting to API_KEY for migration compatibility.
+ */
+private fun parseAuthType(value: String): AuthType {
+    return try {
+        AuthType.valueOf(value)
+    } catch (e: IllegalArgumentException) {
+        AuthType.API_KEY
+    }
+}
+
+/**
+ * Serializes a Map of headers to JSON string for database storage.
+ */
+private fun serializeHeaders(headers: Map<String, String>): String? {
+    if (headers.isEmpty()) return null
+    return try {
+        json.encodeToString(headers)
+    } catch (e: Exception) {
+        null
+    }
+}
+
+/**
+ * Deserializes a JSON string to a Map of headers.
+ */
+private fun deserializeHeaders(jsonString: String?): Map<String, String> {
+    if (jsonString.isNullOrEmpty()) return emptyMap()
+    return try {
+        json.decodeFromString<Map<String, String>>(jsonString)
+    } catch (e: Exception) {
+        emptyMap()
+    }
+}
+
+/**
+ * Serializes a Map of options to JSON string for database storage.
+ * Note: Options can contain various types, so we store as String map for simplicity.
+ */
+private fun serializeOptions(options: Map<String, Any>): String? {
+    if (options.isEmpty()) return null
+    return try {
+        // Convert Any values to String for serialization
+        val stringMap = options.mapValues { it.value.toString() }
+        json.encodeToString(stringMap)
+    } catch (e: Exception) {
+        null
+    }
+}
+
+/**
+ * Deserializes a JSON string to a Map of options.
+ */
+private fun deserializeOptions(jsonString: String?): Map<String, Any> {
+    if (jsonString.isNullOrEmpty()) return emptyMap()
+    return try {
+        json.decodeFromString<Map<String, String>>(jsonString)
+    } catch (e: Exception) {
+        emptyMap()
+    }
+}
 
 /**
  * Converts a list of [ProviderEntity] to a list of [Provider] domain models.
