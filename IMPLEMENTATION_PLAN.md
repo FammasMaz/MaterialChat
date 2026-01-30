@@ -1,10 +1,10 @@
 # Implementation Plan - Multiple Providers Feature
 
 ## Status
-- **Phase**: 2 - Database Layer (in progress)
+- **Phase**: 5 - API Layer (next)
 - **Last Updated**: 2026-01-30
 - **Branch**: feature-providers
-- **Progress**: ~25% (Phase 1 complete, Phase 2 partially complete)
+- **Progress**: ~40% (Phases 1-4 complete)
 
 ## Overview
 
@@ -17,9 +17,9 @@ This plan implements a multi-provider system for MaterialChat, enabling support 
 The phases must be implemented in this order due to dependencies:
 
 1. **Phase 1** - Domain models (foundation for everything) ✅ COMPLETE
-2. **Phase 2** - Database layer (persistence) - IN PROGRESS
-3. **Phase 3** - Security infrastructure (PKCE, encrypted storage)
-4. **Phase 4** - OAuth Manager (OAuth flow orchestration)
+2. **Phase 2** - Database layer (persistence) ✅ COMPLETE
+3. **Phase 3** - Security infrastructure (PKCE, encrypted storage) ✅ COMPLETE
+4. **Phase 4** - OAuth Manager (OAuth flow orchestration) ✅ COMPLETE
 5. **Phase 5** - API layer (Antigravity chat)
 6. **Phase 6** - Repository updates (bridge to UI)
 7. **Phase 7** - UI layer (user-facing OAuth flow)
@@ -28,52 +28,6 @@ The phases must be implemented in this order due to dependencies:
 10. **Phase 10** - Testing (quality assurance)
 
 ---
-
-## Phase 2: Database Layer (IN PROGRESS)
-
-### 2.1 Entity Updates
-- [x] **Extend ProviderEntity** - Add new columns ✅
-  - File: `app/src/main/java/com/materialchat/data/local/database/entity/ProviderEntity.kt`
-  - Added: `authType`, `systemPrompt`, `headersJson`, `optionsJson`, `supportsStreaming`, `supportsImages`
-
-### 2.2 DAO Updates
-- [ ] **Extend ProviderDao** - Add auth-type queries
-  - File: `app/src/main/java/com/materialchat/data/local/database/dao/ProviderDao.kt`
-  - Add queries:
-    - `getProvidersByAuthType(authType: String): Flow<List<ProviderEntity>>`
-    - `getOAuthProviders(): Flow<List<ProviderEntity>>` (where authType = 'OAUTH')
-
-### 2.3 Database Migration
-- [x] **Create Migration_5_6** - Add new provider columns ✅
-  - File: `app/src/main/java/com/materialchat/data/local/database/MaterialChatDatabase.kt`
-  - Database version updated to 6
-
-### 2.4 Mappers
-- [x] **Update EntityMappers** - Map new Provider fields ✅
-  - File: `app/src/main/java/com/materialchat/data/mapper/EntityMappers.kt`
-  - Added JSON serialization for headers and options
-
----
-
-## Phase 3: Security Infrastructure
-
-### 3.1 PKCE Implementation
-- [ ] **Create PkceGenerator** - PKCE code verifier and challenge
-- [ ] **Create PkceState data class** - Track PKCE session
-
-### 3.2 Encrypted Storage Extensions
-- [ ] **Extend EncryptedPreferences** - OAuth token methods
-
----
-
-## Phase 4: OAuth Manager
-
-### 4.1 Core OAuth Manager
-- [ ] **Create OAuthManager** - Central OAuth orchestration
-- [ ] **Create OAuthException sealed class** - OAuth-specific errors
-
-### 4.2 Antigravity-Specific OAuth
-- [ ] **Create AntigravityOAuth** - Antigravity token exchange helpers
 
 ---
 
@@ -149,6 +103,73 @@ The phases must be implemented in this order due to dependencies:
 ---
 
 ## Completed
+
+### Phase 2: Database Layer ✅ COMPLETE
+
+#### 2.1 Entity Updates
+- [x] **Extend ProviderEntity** - Add new columns
+  - File: `app/src/main/java/com/materialchat/data/local/database/entity/ProviderEntity.kt`
+  - Added: `authType`, `systemPrompt`, `headersJson`, `optionsJson`, `supportsStreaming`, `supportsImages`
+
+#### 2.2 DAO Updates
+- [x] **Extend ProviderDao** - Add auth-type queries
+  - File: `app/src/main/java/com/materialchat/data/local/database/dao/ProviderDao.kt`
+  - Added: `getProvidersByAuthType()`, `getOAuthProviders()`, `getApiKeyProviders()`
+
+#### 2.3 Database Migration
+- [x] **Create Migration_5_6** - Add new provider columns
+  - File: `app/src/main/java/com/materialchat/data/local/database/MaterialChatDatabase.kt`
+  - Database version updated to 6
+
+#### 2.4 Mappers
+- [x] **Update EntityMappers** - Map new Provider fields
+  - File: `app/src/main/java/com/materialchat/data/mapper/EntityMappers.kt`
+  - Added JSON serialization for headers and options
+
+---
+
+### Phase 3: Security Infrastructure ✅ COMPLETE
+
+#### 3.1 PKCE Implementation
+- [x] **Create PkceGenerator** - PKCE code verifier and challenge (RFC 7636)
+  - File: `app/src/main/java/com/materialchat/data/auth/PkceGenerator.kt`
+  - Uses SecureRandom for cryptographically secure values
+  - Base64 URL-safe encoding without padding
+- [x] **Create PkceState data class** - Track PKCE session
+  - File: `app/src/main/java/com/materialchat/data/auth/PkceState.kt`
+  - Includes 10-minute expiration for security
+
+#### 3.2 Encrypted Storage Extensions
+- [x] **Extend EncryptedPreferences** - OAuth token methods
+  - File: `app/src/main/java/com/materialchat/data/local/preferences/EncryptedPreferences.kt`
+  - Added: `setAccessToken`, `getAccessToken`, `setRefreshToken`, `getRefreshToken`
+  - Added: `setTokenExpiry`, `getTokenExpiry`, `setOAuthEmail`, `getOAuthEmail`
+  - Added: `setOAuthProjectId`, `getOAuthProjectId`, `clearOAuthTokens`, `hasValidTokens`
+
+---
+
+### Phase 4: OAuth Manager ✅ COMPLETE
+
+#### 4.1 Core OAuth Manager
+- [x] **Create OAuthManager** - Central OAuth orchestration
+  - File: `app/src/main/java/com/materialchat/data/auth/OAuthManager.kt`
+  - Thread-safe singleton with ConcurrentHashMap for active sessions
+  - Handles: authorization URL building, callback processing, token exchange, refresh
+  - Uses Mutex for synchronized token refresh
+- [x] **Create OAuthException sealed class** - OAuth-specific errors
+  - File: `app/src/main/java/com/materialchat/data/auth/OAuthException.kt`
+  - Error types: InvalidState, TokenExchangeFailed, RefreshFailed, NetworkError, UserCancelled, InvalidCallback, UnsupportedProvider, UserInfoFailed
+  - Includes `isRecoverable` property for UI handling
+
+#### 4.2 Antigravity-Specific OAuth
+- [x] **Create AntigravityOAuth** - Antigravity helper functions
+  - File: `app/src/main/java/com/materialchat/data/auth/AntigravityOAuth.kt`
+  - Fetches user info from Google userinfo API
+  - Resolves project ID with endpoint fallback logic
+  - Builds authenticated request headers
+  - Constructs Antigravity API URLs
+
+---
 
 ### Phase 1: Domain Foundation ✅ COMPLETE
 
