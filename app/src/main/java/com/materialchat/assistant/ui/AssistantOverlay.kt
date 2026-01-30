@@ -20,13 +20,12 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.ime
-import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -55,7 +54,6 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
@@ -129,6 +127,8 @@ fun AssistantOverlay(
                 ) {
                     viewModel.dismiss()
                 }
+                .imePadding()
+                .navigationBarsPadding()
         ) {
             // Use showTrigger as key to force recomposition and animation restart
             key(showTrigger) {
@@ -185,12 +185,6 @@ private fun AssistantOverlayContent(
 ) {
     var isVisible by remember { mutableStateOf(false) }
 
-    // Manual IME padding calculation (same approach as ChatScreen)
-    val density = LocalDensity.current
-    val imeBottom = WindowInsets.ime.getBottom(density)
-    val navBottom = WindowInsets.navigationBars.getBottom(density)
-    val imePadding = with(density) { (imeBottom - navBottom).coerceAtLeast(0).toDp() }
-
     LaunchedEffect(Unit) {
         isVisible = true
     }
@@ -233,7 +227,6 @@ private fun AssistantOverlayContent(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(bottom = imePadding)  // Manual IME padding (same as ChatScreen)
                 .padding(horizontal = 16.dp)
                 .padding(top = 12.dp, bottom = 12.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -291,7 +284,7 @@ private fun AssistantOverlayContent(
                 }
             }
 
-            // Input bar - IME padding handled by imePadding() on Surface
+            // Input bar - IME padding handled by parent Box
             AssistantInputBar(
                 textInput = uiState.textInput,
                 onTextChange = onTextChange,
