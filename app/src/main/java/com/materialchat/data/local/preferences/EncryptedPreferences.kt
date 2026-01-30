@@ -134,10 +134,191 @@ class EncryptedPreferences(context: Context) {
         return "$API_KEY_PREFIX$providerId"
     }
 
+    // ============================================================================
+    // OAuth Token Storage Methods
+    // ============================================================================
+
+    /**
+     * Store an encrypted OAuth access token for a provider.
+     *
+     * @param providerId The unique identifier of the provider
+     * @param token The access token to encrypt and store
+     */
+    suspend fun setAccessToken(providerId: String, token: String) = withContext(Dispatchers.IO) {
+        encryptAndStore(oauthAccessTokenKey(providerId), token)
+    }
+
+    /**
+     * Retrieve and decrypt an OAuth access token for a provider.
+     *
+     * @param providerId The unique identifier of the provider
+     * @return The decrypted access token, or null if not found
+     */
+    suspend fun getAccessToken(providerId: String): String? = withContext(Dispatchers.IO) {
+        decryptAndRetrieve(oauthAccessTokenKey(providerId))
+    }
+
+    /**
+     * Store an encrypted OAuth refresh token for a provider.
+     *
+     * @param providerId The unique identifier of the provider
+     * @param token The refresh token to encrypt and store
+     */
+    suspend fun setRefreshToken(providerId: String, token: String) = withContext(Dispatchers.IO) {
+        encryptAndStore(oauthRefreshTokenKey(providerId), token)
+    }
+
+    /**
+     * Retrieve and decrypt an OAuth refresh token for a provider.
+     *
+     * @param providerId The unique identifier of the provider
+     * @return The decrypted refresh token, or null if not found
+     */
+    suspend fun getRefreshToken(providerId: String): String? = withContext(Dispatchers.IO) {
+        decryptAndRetrieve(oauthRefreshTokenKey(providerId))
+    }
+
+    /**
+     * Store the OAuth token expiry timestamp for a provider.
+     *
+     * @param providerId The unique identifier of the provider
+     * @param expiresAt Token expiry timestamp in milliseconds since epoch
+     */
+    suspend fun setTokenExpiry(providerId: String, expiresAt: Long) = withContext(Dispatchers.IO) {
+        prefs.edit().putLong(oauthExpiryKey(providerId), expiresAt).apply()
+    }
+
+    /**
+     * Retrieve the OAuth token expiry timestamp for a provider.
+     *
+     * @param providerId The unique identifier of the provider
+     * @return Token expiry timestamp, or null if not found
+     */
+    suspend fun getTokenExpiry(providerId: String): Long? = withContext(Dispatchers.IO) {
+        val key = oauthExpiryKey(providerId)
+        if (prefs.contains(key)) prefs.getLong(key, 0L) else null
+    }
+
+    /**
+     * Store the OAuth user email for a provider.
+     *
+     * @param providerId The unique identifier of the provider
+     * @param email The authenticated user's email
+     */
+    suspend fun setOAuthEmail(providerId: String, email: String) = withContext(Dispatchers.IO) {
+        encryptAndStore(oauthEmailKey(providerId), email)
+    }
+
+    /**
+     * Retrieve the OAuth user email for a provider.
+     *
+     * @param providerId The unique identifier of the provider
+     * @return The user's email, or null if not found
+     */
+    suspend fun getOAuthEmail(providerId: String): String? = withContext(Dispatchers.IO) {
+        decryptAndRetrieve(oauthEmailKey(providerId))
+    }
+
+    /**
+     * Store the OAuth project ID for a provider (e.g., for Antigravity).
+     *
+     * @param providerId The unique identifier of the provider
+     * @param projectId The provider-specific project ID
+     */
+    suspend fun setOAuthProjectId(providerId: String, projectId: String) = withContext(Dispatchers.IO) {
+        encryptAndStore(oauthProjectIdKey(providerId), projectId)
+    }
+
+    /**
+     * Retrieve the OAuth project ID for a provider.
+     *
+     * @param providerId The unique identifier of the provider
+     * @return The project ID, or null if not found
+     */
+    suspend fun getOAuthProjectId(providerId: String): String? = withContext(Dispatchers.IO) {
+        decryptAndRetrieve(oauthProjectIdKey(providerId))
+    }
+
+    /**
+     * Clear all OAuth tokens and metadata for a provider.
+     *
+     * @param providerId The unique identifier of the provider
+     */
+    suspend fun clearOAuthTokens(providerId: String) = withContext(Dispatchers.IO) {
+        prefs.edit()
+            .remove(oauthAccessTokenKey(providerId))
+            .remove(oauthRefreshTokenKey(providerId))
+            .remove(oauthExpiryKey(providerId))
+            .remove(oauthEmailKey(providerId))
+            .remove(oauthProjectIdKey(providerId))
+            .apply()
+    }
+
+    /**
+     * Check if valid OAuth tokens exist for a provider.
+     *
+     * @param providerId The unique identifier of the provider
+     * @return True if access token exists and hasn't expired
+     */
+    suspend fun hasValidTokens(providerId: String): Boolean = withContext(Dispatchers.IO) {
+        val accessToken = getAccessToken(providerId)
+        val expiry = getTokenExpiry(providerId)
+
+        if (accessToken.isNullOrEmpty()) return@withContext false
+        if (expiry == null) return@withContext true // No expiry means token doesn't expire
+
+        // Check if token is still valid (with 60 second buffer)
+        System.currentTimeMillis() < expiry - 60_000L
+    }
+
+    // ============================================================================
+    // Private Helper Methods
+    // ============================================================================
+
+    /**
+     * Encrypt a string value and store it in preferences.
+     */
+    private fun encryptAndStore(key: String, value: String) {
+        val associatedData = key.toByteArray(StandardCharsets.UTF_8)
+        val plaintext = value.toByteArray(StandardCharsets.UTF_8)
+        val ciphertext = aead.encrypt(plaintext, associatedData)
+        val encoded = Base64.encodeToString(ciphertext, Base64.NO_WRAP)
+        prefs.edit().putString(key, encoded).apply()
+    }
+
+    /**
+     * Decrypt and retrieve a string value from preferences.
+     */
+    private fun decryptAndRetrieve(key: String): String? {
+        val encoded = prefs.getString(key, null) ?: return null
+        return try {
+            val ciphertext = Base64.decode(encoded, Base64.NO_WRAP)
+            val associatedData = key.toByteArray(StandardCharsets.UTF_8)
+            val plaintext = aead.decrypt(ciphertext, associatedData)
+            String(plaintext, StandardCharsets.UTF_8)
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    // OAuth preference key generators
+    private fun oauthAccessTokenKey(providerId: String) = "${OAUTH_ACCESS_PREFIX}$providerId"
+    private fun oauthRefreshTokenKey(providerId: String) = "${OAUTH_REFRESH_PREFIX}$providerId"
+    private fun oauthExpiryKey(providerId: String) = "${OAUTH_EXPIRY_PREFIX}$providerId"
+    private fun oauthEmailKey(providerId: String) = "${OAUTH_EMAIL_PREFIX}$providerId"
+    private fun oauthProjectIdKey(providerId: String) = "${OAUTH_PROJECT_PREFIX}$providerId"
+
     companion object {
         private const val PREFS_NAME = "materialchat_encrypted_prefs"
         private const val KEYSET_NAME = "materialchat_keyset"
         private const val MASTER_KEY_URI = "android-keystore://materialchat_master_key"
         private const val API_KEY_PREFIX = "api_key_"
+
+        // OAuth token prefixes
+        private const val OAUTH_ACCESS_PREFIX = "oauth_access_"
+        private const val OAUTH_REFRESH_PREFIX = "oauth_refresh_"
+        private const val OAUTH_EXPIRY_PREFIX = "oauth_expiry_"
+        private const val OAUTH_EMAIL_PREFIX = "oauth_email_"
+        private const val OAUTH_PROJECT_PREFIX = "oauth_project_"
     }
 }

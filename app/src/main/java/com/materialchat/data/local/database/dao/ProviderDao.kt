@@ -108,4 +108,29 @@ interface ProviderDao {
      */
     @Query("SELECT EXISTS(SELECT 1 FROM providers WHERE id = :providerId)")
     suspend fun providerExists(providerId: String): Boolean
+
+    /**
+     * Get providers by authentication type.
+     *
+     * @param authType The authentication type to filter by (NONE, API_KEY, OAUTH)
+     * @return Flow of providers with the specified auth type
+     */
+    @Query("SELECT * FROM providers WHERE auth_type = :authType ORDER BY name ASC")
+    fun getProvidersByAuthType(authType: String): Flow<List<ProviderEntity>>
+
+    /**
+     * Get all OAuth providers.
+     *
+     * @return Flow of providers that use OAuth authentication
+     */
+    @Query("SELECT * FROM providers WHERE auth_type = 'OAUTH' ORDER BY name ASC")
+    fun getOAuthProviders(): Flow<List<ProviderEntity>>
+
+    /**
+     * Get providers that require API keys.
+     *
+     * @return Flow of providers that use API key authentication
+     */
+    @Query("SELECT * FROM providers WHERE auth_type = 'API_KEY' ORDER BY name ASC")
+    fun getApiKeyProviders(): Flow<List<ProviderEntity>>
 }
