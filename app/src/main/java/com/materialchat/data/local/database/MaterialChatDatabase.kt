@@ -84,6 +84,12 @@ abstract class MaterialChatDatabase : RoomDatabase() {
             }
         }
 
+        internal val MIGRATIONS = arrayOf(
+            MIGRATION_2_3,
+            MIGRATION_3_4,
+            MIGRATION_4_5
+        )
+
         /**
          * Get the singleton database instance.
          *
@@ -101,8 +107,8 @@ abstract class MaterialChatDatabase : RoomDatabase() {
                 MaterialChatDatabase::class.java,
                 DATABASE_NAME
             )
-                .addMigrations(MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
-                .fallbackToDestructiveMigration()
+                .addMigrations(*MIGRATIONS)
+                .fallbackToDestructiveMigrationOnDowngrade()
                 .build()
         }
     }

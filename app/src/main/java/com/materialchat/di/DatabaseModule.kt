@@ -32,7 +32,8 @@ object DatabaseModule {
      * Provides the Room database instance.
      *
      * The database is configured with:
-     * - Fallback to destructive migration (for development)
+     * - Schema migrations to preserve user data
+     * - Destructive fallback on downgrade only
      * - Singleton pattern for thread safety
      */
     @Provides
@@ -45,7 +46,8 @@ object DatabaseModule {
             MaterialChatDatabase::class.java,
             DATABASE_NAME
         )
-            .fallbackToDestructiveMigration()
+            .addMigrations(*MaterialChatDatabase.MIGRATIONS)
+            .fallbackToDestructiveMigrationOnDowngrade()
             .build()
     }
 
