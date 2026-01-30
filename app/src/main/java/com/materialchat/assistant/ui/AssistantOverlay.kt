@@ -24,7 +24,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
@@ -54,12 +54,9 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.ime
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.materialchat.assistant.ui.components.AssistantInputBar
 import com.materialchat.assistant.ui.components.AssistantResponseCard
@@ -190,12 +187,6 @@ private fun AssistantOverlayContent(
         isVisible = true
     }
 
-    // Calculate IME padding manually (same as main ChatScreen)
-    val density = LocalDensity.current
-    val imeBottom = WindowInsets.ime.getBottom(density)
-    val navBottom = WindowInsets.navigationBars.getBottom(density)
-    val imePadding = with(density) { (imeBottom - navBottom).coerceAtLeast(0).toDp() }
-
     // Animate sheet entrance with bounce (M3 Expressive spatial spring)
     val offsetY by animateDpAsState(
         targetValue = if (isVisible) 0.dp else 400.dp,
@@ -220,7 +211,8 @@ private fun AssistantOverlayContent(
         modifier = modifier
             .fillMaxWidth()
             .heightIn(max = 600.dp)  // Max height
-            .offset { IntOffset(0, offsetY.roundToPx()) }
+            .offset { IntOffset(0, offsetY.roundToPx()) }  // Animate entrance only
+            .imePadding()  // Handle keyboard insets properly
             .graphicsLayer {
                 scaleX = sheetScale
                 scaleY = sheetScale
@@ -235,8 +227,8 @@ private fun AssistantOverlayContent(
             modifier = Modifier
                 .fillMaxWidth()
                 .navigationBarsPadding()
-                .padding(bottom = imePadding)  // Manual IME padding like main chat
-                .padding(horizontal = 16.dp, vertical = 12.dp),
+                .padding(horizontal = 16.dp)
+                .padding(top = 12.dp, bottom = 12.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             // Handle bar and close button with swipe gesture
@@ -292,7 +284,7 @@ private fun AssistantOverlayContent(
                 }
             }
 
-            // Input bar - no IME padding here, it's on the Surface
+            // Input bar - IME padding handled by imePadding() on Surface
             AssistantInputBar(
                 textInput = uiState.textInput,
                 onTextChange = onTextChange,
@@ -303,8 +295,6 @@ private fun AssistantOverlayContent(
                 onStopVoice = onStopVoice,
                 modifier = Modifier.fillMaxWidth()
             )
-
-            Spacer(modifier = Modifier.height(8.dp))
         }
     }
 }

@@ -28,8 +28,11 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -76,6 +79,16 @@ fun AssistantInputBar(
     val isProcessing = voiceState is VoiceState.Processing
     val hasText = textInput.isNotBlank()
 
+    // Focus requester for auto-focusing the text field
+    val focusRequester = remember { FocusRequester() }
+
+    // Request focus when the input bar appears (and not in listening mode)
+    LaunchedEffect(isListening) {
+        if (!isListening) {
+            focusRequester.requestFocus()
+        }
+    }
+
     // Animate container expansion for listening state
     val containerHeight by animateDpAsState(
         targetValue = if (isListening) 80.dp else 56.dp,
@@ -116,7 +129,8 @@ fun AssistantInputBar(
                 isProcessing = isProcessing,
                 voiceState = voiceState,
                 onVoiceClick = onVoiceClick,
-                onSendClick = onSendClick
+                onSendClick = onSendClick,
+                focusRequester = focusRequester
             )
         }
     }
@@ -168,7 +182,8 @@ private fun NormalInputContent(
     isProcessing: Boolean,
     voiceState: VoiceState,
     onVoiceClick: () -> Unit,
-    onSendClick: () -> Unit
+    onSendClick: () -> Unit,
+    focusRequester: FocusRequester
 ) {
     Row(
         modifier = Modifier
@@ -202,7 +217,9 @@ private fun NormalInputContent(
             BasicTextField(
                 value = textInput,
                 onValueChange = onTextChange,
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .focusRequester(focusRequester),
                 textStyle = MaterialTheme.typography.bodyLarge.copy(
                     color = MaterialTheme.colorScheme.onSurface
                 ),
