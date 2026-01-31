@@ -1,10 +1,10 @@
 # Implementation Plan - Multiple Providers Feature
 
 ## Status
-- **Phase**: 9 - Default Providers & Onboarding (next)
+- **Phase**: 10 - Testing (next)
 - **Last Updated**: 2026-01-31
 - **Branch**: feature-providers
-- **Progress**: ~80% (Phases 1-8 complete)
+- **Progress**: ~90% (Phases 1-9 complete)
 
 ## Overview
 
@@ -24,17 +24,10 @@ The phases must be implemented in this order due to dependencies:
 6. **Phase 6** - Repository updates (bridge to UI) ✅ COMPLETE
 7. **Phase 7** - UI layer (user-facing OAuth flow) ✅ COMPLETE
 8. **Phase 8** - DI updates (wire everything together) ✅ COMPLETE
-9. **Phase 9** - Built-in providers (polish)
+9. **Phase 9** - Built-in providers (polish) ✅ COMPLETE
 10. **Phase 10** - Testing (quality assurance)
 
 ---
-
----
-
-## Phase 9: Default Providers & Onboarding
-
-- [ ] **Create BuiltInProviders object** - Predefined provider configurations
-- [ ] **Update seedDefaultProviders** - Include Antigravity option
 
 ---
 
@@ -50,6 +43,19 @@ The phases must be implemented in this order due to dependencies:
 ---
 
 ## Completed
+
+### Phase 9: Default Providers & Onboarding ✅ COMPLETE
+
+- [x] **Create BuiltInProviders object** - Predefined provider configurations ✅
+  - File: `app/src/main/java/com/materialchat/domain/model/BuiltInProviders.kt`
+  - Centralized registry for default and all provider templates
+  - Provider categorization by auth type, features
+- [x] **Update seedDefaultProviders** - Include Antigravity option ✅
+  - File: `app/src/main/java/com/materialchat/data/repository/ProviderRepositoryImpl.kt`
+  - Now uses BuiltInProviders.defaultProviders
+  - Includes Ollama (active by default), OpenAI, OpenRouter, and Antigravity
+
+---
 
 ### Phase 8: Dependency Injection ✅ COMPLETE
 

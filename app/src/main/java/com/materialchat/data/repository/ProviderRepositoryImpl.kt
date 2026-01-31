@@ -8,6 +8,7 @@ import com.materialchat.data.mapper.toDomain
 import com.materialchat.data.mapper.toEntity
 import com.materialchat.data.mapper.toProviderDomainList
 import com.materialchat.domain.model.AuthType
+import com.materialchat.domain.model.BuiltInProviders
 import com.materialchat.domain.model.OAuthState
 import com.materialchat.domain.model.OAuthTokens
 import com.materialchat.domain.model.Provider
@@ -122,17 +123,11 @@ class ProviderRepositoryImpl @Inject constructor(
             return
         }
 
-        // Create default provider templates
-        val openAiProvider = Provider.openAiTemplate()
-        val ollamaProvider = Provider.ollamaLocalTemplate()
-        val openRouterProvider = Provider.openRouterTemplate()
+        // Use BuiltInProviders for centralized provider configuration
+        val defaultProviders = BuiltInProviders.defaultProviders
 
-        // Insert default providers
-        providerDao.insertAll(listOf(
-            openAiProvider.toEntity(),
-            ollamaProvider.toEntity(),
-            openRouterProvider.toEntity()
-        ))
+        // Insert default providers (includes Ollama, OpenAI, OpenRouter, and Antigravity)
+        providerDao.insertAll(defaultProviders.map { it.toEntity() })
     }
 
     override suspend fun hasProviders(): Boolean {
