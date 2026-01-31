@@ -253,6 +253,7 @@ The phases must be implemented in this order due to dependencies:
 1. **Fixed regex pattern in GenerateConversationTitleUseCase** - Invalid `\U` escape sequences causing PatternSyntaxException
 2. **Fixed SseEventParser test** - Test expected Done but implementation returns KeepAlive (by design, relies on [DONE] marker)
 3. **Fixed SendMessageUseCaseTest** - Updated to match current use case signature (added appPreferences, generateConversationTitleUseCase, applicationScope, reasoningEffort)
+4. **Fixed HapticFeedbackManager lint error** - Updated @RequiresApi annotation from API 29 (Q) to API 30 (R) for isEffectSupported method (areEffectsSupported requires API 30)
 
 ---
 
