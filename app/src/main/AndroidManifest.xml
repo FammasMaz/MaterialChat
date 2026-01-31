@@ -88,6 +88,24 @@
             android:permission="android.permission.BIND_VOICE_INTERACTION"
             android:exported="false" />
 
+        <!-- OAuth callback activity for deep link handling -->
+        <activity
+            android:name=".ui.oauth.OAuthCallbackActivity"
+            android:exported="true"
+            android:launchMode="singleTask"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <!-- Antigravity OAuth callback -->
+                <data
+                    android:scheme="materialchat"
+                    android:host="oauth"
+                    android:path="/antigravity" />
+            </intent-filter>
+        </activity>
+
     </application>
 
 </manifest>

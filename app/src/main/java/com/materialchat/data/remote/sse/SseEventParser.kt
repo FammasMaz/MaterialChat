@@ -1,6 +1,7 @@
 package com.materialchat.data.remote.sse
 
 import com.materialchat.data.remote.api.StreamingEvent
+import com.materialchat.data.remote.dto.AntigravityStreamChunk
 import com.materialchat.data.remote.dto.OllamaChatResponse
 import com.materialchat.data.remote.dto.OpenAiStreamChunk
 import kotlinx.serialization.json.Json
@@ -262,6 +263,156 @@ class SseEventParser(
             .toList()
     }
 
+    /**
+     * Parses an Antigravity SSE event line (Gemini-style format).
+     *
+     * Antigravity SSE format:
+     * - Lines starting with "data: " contain JSON payload
+     * - JSON has `candidates` array with `content.parts`
+     * - Parts may have `text` for content or `thought: true` for thinking
+     *
+     * @param line The raw SSE line from the stream
+     * @return StreamingEvent representing the parsed event, or null if the line should be ignored
+     */
+    fun parseAntigravityEvent(line: String): StreamingEvent? {
+        val trimmedLine = line.trim()
+
+        // Empty lines or comment lines (starting with :) are keep-alive signals
+        if (trimmedLine.isEmpty() || trimmedLine.startsWith(":")) {
+            return StreamingEvent.KeepAlive
+        }
+
+        // Must start with "data: " prefix
+        if (!trimmedLine.startsWith(DATA_PREFIX)) {
+            // Unknown line format, skip it
+            return null
+        }
+
+        // Extract the data payload
+        val data = trimmedLine.removePrefix(DATA_PREFIX).trim()
+
+        // Check for stream termination (Antigravity may use [DONE] or empty data)
+        if (data == DONE_MARKER || data.isEmpty()) {
+            return if (data == DONE_MARKER) {
+                StreamingEvent.Done()
+            } else {
+                StreamingEvent.KeepAlive
+            }
+        }
+
+        // Parse JSON payload
+        return try {
+            val chunk = json.decodeFromString<AntigravityStreamChunk>(data)
+            parseAntigravityChunk(chunk)
+        } catch (e: Exception) {
+            // Try to parse as error response
+            tryParseAntigravityError(data) ?: StreamingEvent.Error(
+                message = "Failed to parse Antigravity SSE event: ${e.message}",
+                code = StreamingEvent.Companion.ErrorCode.PARSE_ERROR,
+                isRecoverable = false
+            )
+        }
+    }
+
+    /**
+     * Parses an Antigravity stream chunk into a StreamingEvent.
+     */
+    private fun parseAntigravityChunk(chunk: AntigravityStreamChunk): StreamingEvent {
+        val candidates = chunk.candidates
+        if (candidates.isNullOrEmpty()) {
+            // No candidates usually means initial connection or keep-alive
+            return StreamingEvent.KeepAlive
+        }
+
+        val candidate = candidates.first()
+
+        // Check for finish reason
+        val finishReason = candidate.finishReason
+        if (finishReason != null && finishReason != "STOP" && candidate.content == null) {
+            // Blocked or error finish without content
+            return StreamingEvent.Done(
+                finishReason = when (finishReason) {
+                    "STOP" -> StreamingEvent.Companion.FinishReason.STOP
+                    "MAX_TOKENS" -> StreamingEvent.Companion.FinishReason.LENGTH
+                    "SAFETY" -> StreamingEvent.Companion.FinishReason.CONTENT_FILTER
+                    else -> StreamingEvent.Companion.FinishReason.STOP
+                }
+            )
+        }
+
+        val content = candidate.content ?: return StreamingEvent.KeepAlive
+        val parts = content.parts
+
+        // Extract text and thinking from parts
+        val textParts = StringBuilder()
+        val thinkingParts = StringBuilder()
+
+        for (part in parts) {
+            val text = part.text ?: continue
+            if (part.thought == true) {
+                thinkingParts.append(text)
+            } else {
+                textParts.append(text)
+            }
+        }
+
+        val textContent = textParts.toString()
+        val thinkingContent = thinkingParts.toString().takeIf { it.isNotEmpty() }
+
+        // If there's content or thinking, emit it
+        if (textContent.isNotEmpty() || thinkingContent != null) {
+            return StreamingEvent.Content(
+                content = textContent,
+                thinking = thinkingContent,
+                isFirst = false
+            )
+        }
+
+        // Check if this is the first chunk with role
+        if (content.role == "model" && parts.isEmpty()) {
+            return StreamingEvent.Connected
+        }
+
+        // Check for finish reason with content (final chunk)
+        if (finishReason == "STOP" && textContent.isEmpty() && thinkingContent == null) {
+            return StreamingEvent.Done(finishReason = StreamingEvent.Companion.FinishReason.STOP)
+        }
+
+        return StreamingEvent.KeepAlive
+    }
+
+    /**
+     * Attempts to parse an Antigravity error response.
+     */
+    private fun tryParseAntigravityError(data: String): StreamingEvent.Error? {
+        return try {
+            val errorWrapper = json.decodeFromString<AntigravityErrorWrapper>(data)
+            errorWrapper.error?.let { error ->
+                StreamingEvent.Error(
+                    message = error.message ?: "Unknown Antigravity error",
+                    code = error.status ?: error.code?.toString(),
+                    isRecoverable = error.code in 500..599
+                )
+            }
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    /**
+     * Parses multiple SSE lines (Antigravity format) and returns all events.
+     * Useful for parsing buffered content.
+     *
+     * @param content Multi-line SSE content
+     * @return List of non-null StreamingEvents
+     */
+    fun parseAntigravityEvents(content: String): List<StreamingEvent> {
+        return content.lineSequence()
+            .mapNotNull { parseAntigravityEvent(it) }
+            .filter { it != StreamingEvent.KeepAlive }
+            .toList()
+    }
+
     companion object {
         private const val DATA_PREFIX = "data:"
         private const val DONE_MARKER = "[DONE]"
@@ -295,4 +446,19 @@ private data class OpenAiErrorDetail(
 @kotlinx.serialization.Serializable
 private data class OllamaErrorWrapper(
     val error: String? = null
+)
+
+/**
+ * Internal wrapper for parsing Antigravity error responses.
+ */
+@kotlinx.serialization.Serializable
+private data class AntigravityErrorWrapper(
+    val error: AntigravityErrorDetail? = null
+)
+
+@kotlinx.serialization.Serializable
+private data class AntigravityErrorDetail(
+    val code: Int? = null,
+    val message: String? = null,
+    val status: String? = null
 )

@@ -1,10 +1,10 @@
 # Implementation Plan - Multiple Providers Feature
 
 ## Status
-- **Phase**: 7 - UI Layer (next)
+- **Phase**: 8 - Dependency Injection (next)
 - **Last Updated**: 2026-01-31
 - **Branch**: feature-providers
-- **Progress**: ~60% (Phases 1-6 complete)
+- **Progress**: ~70% (Phases 1-7 complete)
 
 ## Overview
 
@@ -22,7 +22,7 @@ The phases must be implemented in this order due to dependencies:
 4. **Phase 4** - OAuth Manager (OAuth flow orchestration) ✅ COMPLETE
 5. **Phase 5** - API layer (Antigravity chat) ✅ COMPLETE
 6. **Phase 6** - Repository updates (bridge to UI) ✅ COMPLETE
-7. **Phase 7** - UI layer (user-facing OAuth flow)
+7. **Phase 7** - UI layer (user-facing OAuth flow) ✅ COMPLETE
 8. **Phase 8** - DI updates (wire everything together)
 9. **Phase 9** - Built-in providers (polish)
 10. **Phase 10** - Testing (quality assurance)
@@ -31,23 +31,10 @@ The phases must be implemented in this order due to dependencies:
 
 ---
 
-## Phase 7: UI Layer - OAuth
-
-- [ ] **Update AndroidManifest.xml** - OAuth callback deep link
-- [ ] **Create OAuthCallbackActivity** - Handle OAuth deep link callback
-- [ ] **Create OAuthViewModel** - OAuth flow state management
-- [ ] **Create OAuthLoginButton** - OAuth sign-in button
-- [ ] **Create OAuthStatusIndicator** - OAuth status chip/badge
-- [x] **Update AddProviderSheet** - Support OAuth providers ✅
-  - Added all provider types to when expressions
-- [x] **Update ProviderCard** - Show OAuth status ✅
-  - Added all provider types to when expressions
-
----
-
 ## Phase 8: Dependency Injection
 
-- [ ] **Add androidx.browser dependency** - Custom Tabs for OAuth
+- [x] **Add androidx.browser dependency** - Custom Tabs for OAuth ✅
+  - Added browser = "1.8.0" to libs.versions.toml
 - [x] **Create AuthModule** - OAuth-related bindings ✅ (pulled forward for Phase 6)
   - File: `app/src/main/java/com/materialchat/di/AuthModule.kt`
   - Provides: OAuthManager, AntigravityOAuth
@@ -75,6 +62,26 @@ The phases must be implemented in this order due to dependencies:
 ---
 
 ## Completed
+
+### Phase 7: UI Layer - OAuth ✅ COMPLETE
+
+- [x] **Update AndroidManifest.xml** - OAuth callback deep link ✅
+  - Added OAuthCallbackActivity with intent-filter for `materialchat://oauth/antigravity`
+- [x] **Create OAuthCallbackActivity** - Handle OAuth deep link callback ✅
+  - File: `app/src/main/java/com/materialchat/ui/oauth/OAuthCallbackActivity.kt`
+- [x] **Create OAuthViewModel** - OAuth flow state management ✅
+  - File: `app/src/main/java/com/materialchat/ui/oauth/OAuthViewModel.kt`
+- [x] **Create OAuthLoginButton** - OAuth sign-in button ✅
+  - File: `app/src/main/java/com/materialchat/ui/oauth/OAuthLoginButton.kt`
+  - M3 Expressive button with spring-physics animations
+- [x] **Create OAuthStatusIndicator** - OAuth status chip/badge ✅
+  - File: `app/src/main/java/com/materialchat/ui/oauth/OAuthStatusIndicator.kt`
+- [x] **Update AddProviderSheet** - Support OAuth providers ✅
+  - Added all provider types to when expressions
+- [x] **Update ProviderCard** - Show OAuth status ✅
+  - Added all provider types to when expressions
+
+---
 
 ### Phase 6: Repository Layer ✅ COMPLETE
 
@@ -264,8 +271,8 @@ The phases must be implemented in this order due to dependencies:
 implementation(libs.tink.android)                    // Encryption - ALREADY PRESENT
 implementation(libs.kotlinx.serialization.json)     // DTO serialization - ALREADY PRESENT
 
-// Need to add:
-implementation(libs.androidx.browser)               // Custom Tabs for OAuth (add browser = "1.8.0" to libs.versions.toml)
+// Added:
+implementation(libs.androidx.browser)               // Custom Tabs for OAuth - ADDED (browser = "1.8.0" in libs.versions.toml)
 ```
 
 ### Migration Strategy

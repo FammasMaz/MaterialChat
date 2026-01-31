@@ -98,12 +98,17 @@ class ChatApiClient(
                 temperature = temperature,
                 reasoningEffort = reasoningEffort
             )
-            // TODO: Phase 5 - Implement dedicated API clients for these providers
+            // Phase 5 COMPLETE: AntigravityApiClient available for Antigravity.
+            // Phase 8 TODO: Wire AntigravityApiClient via DI.
             ProviderType.ANTHROPIC,
             ProviderType.GOOGLE_GEMINI,
             ProviderType.GITHUB_COPILOT,
             ProviderType.ANTIGRAVITY -> callbackFlow {
-                trySend(StreamingEvent.Error("${provider.type.name} provider not yet implemented"))
+                trySend(StreamingEvent.Error(
+                    message = "${provider.type.name} provider requires DI wiring (Phase 8)",
+                    code = "NOT_WIRED",
+                    isRecoverable = false
+                ))
                 close()
             }
         }
