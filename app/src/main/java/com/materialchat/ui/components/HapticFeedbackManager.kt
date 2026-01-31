@@ -141,9 +141,9 @@ class HapticFeedbackManager(
     }
 
     /**
-     * Check if a specific predefined effect is supported (API 29+).
+     * Check if a specific predefined effect is supported (API 30+).
      */
-    @RequiresApi(Build.VERSION_CODES.Q)
+    @RequiresApi(Build.VERSION_CODES.R)
     private fun isEffectSupported(effectId: Int): Boolean {
         return vibrator?.areEffectsSupported(effectId)?.get(0) == Vibrator.VIBRATION_EFFECT_SUPPORT_YES
     }
