@@ -43,6 +43,7 @@ import java.util.concurrent.atomic.AtomicReference
  * Supports:
  * - OpenAI-compatible APIs (OpenAI, Groq, Together, etc.)
  * - Ollama local LLM server
+ * - Antigravity (via dedicated AntigravityApiClient)
  *
  * Uses OkHttp for HTTP requests and Kotlin Flow for streaming responses.
  */
@@ -54,7 +55,8 @@ class ChatApiClient(
         isLenient = true
         coerceInputValues = true
     },
-    private val sseEventParser: SseEventParser = SseEventParser.default
+    private val sseEventParser: SseEventParser = SseEventParser.default,
+    private val antigravityApiClient: AntigravityApiClient? = null
 ) {
 
     private val activeCall = AtomicReference<Call?>(null)
@@ -98,15 +100,34 @@ class ChatApiClient(
                 temperature = temperature,
                 reasoningEffort = reasoningEffort
             )
-            // Phase 5 COMPLETE: AntigravityApiClient available for Antigravity.
-            // Phase 8 TODO: Wire AntigravityApiClient via DI.
+            ProviderType.ANTIGRAVITY -> {
+                if (antigravityApiClient != null) {
+                    antigravityApiClient.streamChat(
+                        providerId = provider.id,
+                        messages = messages,
+                        model = model,
+                        systemPrompt = systemPrompt,
+                        temperature = temperature,
+                        reasoningEffort = reasoningEffort
+                    )
+                } else {
+                    callbackFlow {
+                        trySend(StreamingEvent.Error(
+                            message = "AntigravityApiClient not available. Provider requires OAuth configuration.",
+                            code = "NOT_CONFIGURED",
+                            isRecoverable = true
+                        ))
+                        close()
+                    }
+                }
+            }
+            // These providers are not yet implemented
             ProviderType.ANTHROPIC,
             ProviderType.GOOGLE_GEMINI,
-            ProviderType.GITHUB_COPILOT,
-            ProviderType.ANTIGRAVITY -> callbackFlow {
+            ProviderType.GITHUB_COPILOT -> callbackFlow {
                 trySend(StreamingEvent.Error(
-                    message = "${provider.type.name} provider requires DI wiring (Phase 8)",
-                    code = "NOT_WIRED",
+                    message = "${provider.type.name} provider is not yet implemented",
+                    code = "NOT_IMPLEMENTED",
                     isRecoverable = false
                 ))
                 close()
@@ -360,12 +381,22 @@ class ChatApiClient(
                     model = model,
                     prompt = prompt
                 )
-                // TODO: Phase 5 - Implement dedicated completion methods for these providers
+                ProviderType.ANTIGRAVITY -> {
+                    if (antigravityApiClient != null) {
+                        antigravityApiClient.generateSimpleCompletion(
+                            providerId = provider.id,
+                            prompt = prompt,
+                            model = model
+                        )
+                    } else {
+                        Result.failure(IOException("AntigravityApiClient not available"))
+                    }
+                }
+                // These providers are not yet implemented
                 ProviderType.ANTHROPIC,
                 ProviderType.GOOGLE_GEMINI,
-                ProviderType.GITHUB_COPILOT,
-                ProviderType.ANTIGRAVITY -> Result.failure(
-                    IOException("${provider.type.name} provider not yet implemented")
+                ProviderType.GITHUB_COPILOT -> Result.failure(
+                    IOException("${provider.type.name} provider is not yet implemented")
                 )
             }
         } catch (e: Exception) {

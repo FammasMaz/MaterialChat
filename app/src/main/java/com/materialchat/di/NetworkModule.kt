@@ -1,7 +1,10 @@
 package com.materialchat.di
 
 import android.content.Context
+import com.materialchat.data.auth.AntigravityOAuth
+import com.materialchat.data.auth.OAuthManager
 import com.materialchat.data.local.preferences.AppPreferences
+import com.materialchat.data.remote.api.AntigravityApiClient
 import com.materialchat.data.remote.api.ChatApiClient
 import com.materialchat.data.remote.api.GitHubReleaseApiClient
 import com.materialchat.data.remote.api.ModelListApiClient
@@ -84,21 +87,48 @@ object NetworkModule {
     }
 
     /**
+     * Provides the AntigravityApiClient for Antigravity OAuth streaming chat.
+     *
+     * Uses the streaming OkHttpClient with extended read timeouts for
+     * thinking-enabled models that may take longer to respond.
+     */
+    @Provides
+    @Singleton
+    fun provideAntigravityApiClient(
+        oauthManager: OAuthManager,
+        antigravityOAuth: AntigravityOAuth,
+        @StreamingClient okHttpClient: OkHttpClient,
+        json: Json,
+        sseEventParser: SseEventParser
+    ): AntigravityApiClient {
+        return AntigravityApiClient(
+            oauthManager = oauthManager,
+            antigravityOAuth = antigravityOAuth,
+            okHttpClient = okHttpClient,
+            json = json,
+            sseEventParser = sseEventParser
+        )
+    }
+
+    /**
      * Provides the ChatApiClient for streaming chat completions.
      *
      * Uses the streaming OkHttpClient with longer read timeouts.
+     * Includes AntigravityApiClient for routing Antigravity requests.
      */
     @Provides
     @Singleton
     fun provideChatApiClient(
         @StreamingClient okHttpClient: OkHttpClient,
         json: Json,
-        sseEventParser: SseEventParser
+        sseEventParser: SseEventParser,
+        antigravityApiClient: AntigravityApiClient
     ): ChatApiClient {
         return ChatApiClient(
             okHttpClient = okHttpClient,
             json = json,
-            sseEventParser = sseEventParser
+            sseEventParser = sseEventParser,
+            antigravityApiClient = antigravityApiClient
         )
     }
 

@@ -1,10 +1,10 @@
 # Implementation Plan - Multiple Providers Feature
 
 ## Status
-- **Phase**: 8 - Dependency Injection (next)
+- **Phase**: 9 - Default Providers & Onboarding (next)
 - **Last Updated**: 2026-01-31
 - **Branch**: feature-providers
-- **Progress**: ~70% (Phases 1-7 complete)
+- **Progress**: ~80% (Phases 1-8 complete)
 
 ## Overview
 
@@ -23,23 +23,11 @@ The phases must be implemented in this order due to dependencies:
 5. **Phase 5** - API layer (Antigravity chat) ✅ COMPLETE
 6. **Phase 6** - Repository updates (bridge to UI) ✅ COMPLETE
 7. **Phase 7** - UI layer (user-facing OAuth flow) ✅ COMPLETE
-8. **Phase 8** - DI updates (wire everything together)
+8. **Phase 8** - DI updates (wire everything together) ✅ COMPLETE
 9. **Phase 9** - Built-in providers (polish)
 10. **Phase 10** - Testing (quality assurance)
 
 ---
-
----
-
-## Phase 8: Dependency Injection
-
-- [x] **Add androidx.browser dependency** - Custom Tabs for OAuth ✅
-  - Added browser = "1.8.0" to libs.versions.toml
-- [x] **Create AuthModule** - OAuth-related bindings ✅ (pulled forward for Phase 6)
-  - File: `app/src/main/java/com/materialchat/di/AuthModule.kt`
-  - Provides: OAuthManager, AntigravityOAuth
-  - Uses @StandardClient OkHttpClient for auth requests
-- [ ] **Update NetworkModule** - Antigravity client
 
 ---
 
@@ -62,6 +50,21 @@ The phases must be implemented in this order due to dependencies:
 ---
 
 ## Completed
+
+### Phase 8: Dependency Injection ✅ COMPLETE
+
+- [x] **Add androidx.browser dependency** - Custom Tabs for OAuth ✅
+  - Added browser = "1.8.0" to libs.versions.toml
+- [x] **Create AuthModule** - OAuth-related bindings ✅ (pulled forward for Phase 6)
+  - File: `app/src/main/java/com/materialchat/di/AuthModule.kt`
+  - Provides: OAuthManager, AntigravityOAuth
+  - Uses @StandardClient OkHttpClient for auth requests
+- [x] **Update NetworkModule** - Antigravity client ✅
+  - File: `app/src/main/java/com/materialchat/di/NetworkModule.kt`
+  - Added AntigravityApiClient provider with StreamingClient
+  - Updated ChatApiClient provider to include AntigravityApiClient
+
+---
 
 ### Phase 7: UI Layer - OAuth ✅ COMPLETE
 
