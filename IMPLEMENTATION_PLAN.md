@@ -257,6 +257,17 @@ The phases must be implemented in this order due to dependencies:
 
 ---
 
+## Future Enhancements
+
+These are minor improvements identified during implementation that are not blocking but could improve the experience:
+
+1. **Connection test for OAuth providers** (`ChatApiClient.kt:537`)
+   - The `testConnection()` function currently uses model listing endpoints as a fallback for non-OpenAI providers
+   - OAuth-based providers (GitHub Copilot, Antigravity) need authenticated test endpoints
+   - Current implementation works but could be enhanced when OAuth providers are actively used
+
+---
+
 ## Notes
 
 ### Key Technical Decisions
