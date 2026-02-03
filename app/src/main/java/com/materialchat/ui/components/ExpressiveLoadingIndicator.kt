@@ -35,7 +35,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -553,14 +555,15 @@ fun MorphingSendButton(
     val isPressed by interactionSource.collectIsPressedAsState()
 
     // Container color animation (Effects spring - no overshoot)
+    // Use errorContainer during streaming to signal "stop" action
     val containerColor = when {
-        isStreaming -> MaterialTheme.colorScheme.primaryContainer
+        isStreaming -> MaterialTheme.colorScheme.errorContainer
         canSend -> MaterialTheme.colorScheme.primaryContainer
         else -> MaterialTheme.colorScheme.surfaceContainerHigh
     }
 
     val contentColor = when {
-        isStreaming -> MaterialTheme.colorScheme.primary
+        isStreaming -> MaterialTheme.colorScheme.onErrorContainer
         canSend -> MaterialTheme.colorScheme.onPrimaryContainer
         else -> MaterialTheme.colorScheme.onSurfaceVariant
     }
@@ -593,7 +596,7 @@ fun MorphingSendButton(
 
     val shapeScale by animateFloatAsState(
         targetValue = if (isStreaming) 1f else 0.6f,
-        animationSpec = ExpressiveMotion.Spatial.playful(),
+        animationSpec = ExpressiveMotion.Spatial.default(),
         label = "shapeScale"
     )
 
@@ -604,40 +607,6 @@ fun MorphingSendButton(
         label = "pressScale"
     )
 
-    // Container pulse animation during streaming
-    val infiniteTransition = rememberInfiniteTransition(label = "morphingSendButtonTransition")
-    val pulseScale by infiniteTransition.animateFloat(
-        initialValue = 1f,
-        targetValue = 1.04f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 1200, easing = EaseInOutCubic),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "pulseScale"
-    )
-
-    // Shape morph progress (0-4 for full cycle through shapes)
-    val morphProgress by infiniteTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = 4f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 2800, easing = EaseInOutCubic),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "morphProgress"
-    )
-
-    // Rotation animation
-    val rotation by infiniteTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = 360f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 3000, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "rotation"
-    )
-
     // Accessibility description
     val semanticsDescription = when {
         isStreaming -> "Loading, tap to stop"
@@ -645,12 +614,8 @@ fun MorphingSendButton(
         else -> "Send message, disabled"
     }
 
-    // Apply combined scale (press + pulse when streaming)
-    val combinedScale = if (isStreaming) {
-        pressScale * pulseScale
-    } else {
-        pressScale
-    }
+    // Apply press scale
+    val combinedScale = pressScale
 
     Surface(
         onClick = {
@@ -680,7 +645,8 @@ fun MorphingSendButton(
             // Both icon and shape use graphicsLayer for transforms - no layout changes
             // This ensures perfectly smooth M3 Expressive spring transitions
 
-            // Morphing shape (visible when streaming)
+            // Official M3 Expressive LoadingIndicator (visible when streaming)
+            @OptIn(ExperimentalMaterial3ExpressiveApi::class)
             Box(
                 modifier = Modifier
                     .size(24.dp)
@@ -691,32 +657,9 @@ fun MorphingSendButton(
                     },
                 contentAlignment = Alignment.Center
             ) {
-                Canvas(modifier = Modifier.fillMaxSize()) {
-                    val centerX = this.size.width / 2
-                    val centerY = this.size.height / 2
-                    val radius = minOf(this.size.width, this.size.height) / 2
-
-                    rotate(rotation) {
-                        val normalizedProgress = morphProgress % 4f
-                        val (points, innerRadiusRatio) = calculateMorphParams(normalizedProgress)
-
-                        drawMorphingShapeFilled(
-                            centerX = centerX,
-                            centerY = centerY,
-                            outerRadius = radius,
-                            innerRadiusRatio = innerRadiusRatio,
-                            points = points.toInt().coerceAtLeast(3),
-                            color = contentColor
-                        )
-                    }
-                }
-
-                // Small close icon overlay
-                Icon(
-                    imageVector = Icons.Default.Close,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.5f),
-                    modifier = Modifier.size(12.dp)
+                LoadingIndicator(
+                    modifier = Modifier.fillMaxSize(),
+                    color = contentColor
                 )
             }
 
