@@ -47,7 +47,7 @@ import androidx.compose.material.icons.filled.AddPhotoAlternate
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Stop
-import androidx.compose.material.icons.outlined.PsychologyAlt
+import androidx.compose.material.icons.outlined.Lightbulb
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
@@ -232,18 +232,21 @@ fun MessageInput(
                 .weight(1f)
                 .defaultMinSize(minHeight = 48.dp)
             
-            val pillModifier = if (sharedTransitionScope != null && animatedVisibilityScope != null && sharedContentState != null) {
+            // Only apply shared element when navigating forward (new chat)
+            // Skip for existing chats to avoid predictive back gesture issues
+            val pillModifier = if (shouldAutoFocus && sharedTransitionScope != null && animatedVisibilityScope != null && sharedContentState != null) {
                 with(sharedTransitionScope) {
-                    basePillModifier.sharedElement(
-                        state = sharedContentState,
-                        animatedVisibilityScope = animatedVisibilityScope,
-                        boundsTransform = { _, _ ->
-                            spring(
-                                dampingRatio = 0.65f,
-                                stiffness = 340f
-                            )
-                        }
-                    )
+                    basePillModifier
+                        .sharedElement(
+                            state = sharedContentState,
+                            animatedVisibilityScope = animatedVisibilityScope,
+                            boundsTransform = { _, _ ->
+                                spring(
+                                    dampingRatio = 0.65f,
+                                    stiffness = 340f
+                                )
+                            }
+                        )
                 }
             } else {
                 basePillModifier
@@ -447,7 +450,7 @@ private fun ReasoningEffortSelector(
         ) {
             Box(contentAlignment = Alignment.Center) {
                 Icon(
-                    imageVector = Icons.Outlined.PsychologyAlt,
+                    imageVector = Icons.Outlined.Lightbulb,
                     contentDescription = "Reasoning options"
                 )
             }
@@ -532,13 +535,12 @@ private fun ReasoningOptionPill(
         label = "reasoningPillContent"
     )
 
+    // M3 Expressive: Use tonal differentiation without shadows
     Surface(
         onClick = onClick,
         shape = RoundedCornerShape(999.dp),
         color = containerColor,
         contentColor = contentColor,
-        tonalElevation = if (selected) 3.dp else 2.dp,
-        shadowElevation = if (selected) 4.dp else 2.dp,
         modifier = modifier
             .defaultMinSize(minHeight = 48.dp)
             .padding(horizontal = 6.dp)
