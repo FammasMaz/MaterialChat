@@ -465,8 +465,10 @@ private fun SuccessContent(
 
         // Beautiful Model Names Toggle
         item {
+            val activeProvider = uiState.providers.find { it.provider.isActive }?.provider
             BeautifulModelNamesToggle(
                 enabled = uiState.beautifulModelNamesEnabled,
+                activeProviderName = activeProvider?.name,
                 onToggle = onBeautifulModelNamesChange
             )
         }
@@ -767,6 +769,7 @@ private fun HapticsToggle(
 @Composable
 private fun BeautifulModelNamesToggle(
     enabled: Boolean,
+    activeProviderName: String?,
     onToggle: (Boolean) -> Unit
 ) {
     Card(
@@ -801,7 +804,11 @@ private fun BeautifulModelNamesToggle(
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
-                        text = "Format model names into readable badges",
+                        text = if (activeProviderName != null) {
+                            "Using $activeProviderName • Tap to filter by provider"
+                        } else {
+                            "Format model names into readable badges"
+                        },
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
