@@ -198,8 +198,8 @@ object ModelNameParser {
      * Creates an abbreviated version of the provider name for compact display.
      */
     private fun abbreviateProvider(provider: String): String {
-        return if (provider.length > 10) {
-            "${provider.take(8)}..."
+        return if (provider.length > 16) {
+            "${provider.take(14)}…"
         } else {
             provider
         }
@@ -210,11 +210,11 @@ object ModelNameParser {
      * Tries to keep the base model name and version while removing middle modifiers.
      */
     private fun abbreviateModel(model: String): String {
-        if (model.length <= 15) return model
+        if (model.length <= 18) return model
 
         val words = model.split(" ")
         if (words.size <= 2) {
-            return if (model.length > 15) "${model.take(12)}..." else model
+            return if (model.length > 18) "${model.take(15)}…" else model
         }
 
         // Try to keep first word and last word (often version)
@@ -229,7 +229,7 @@ object ModelNameParser {
             words.take(2).joinToString(" ")
         }
 
-        return if (abbreviated.length > 15) "${abbreviated.take(12)}..." else abbreviated
+        return if (abbreviated.length > 18) "${abbreviated.take(15)}…" else abbreviated
     }
 
     /**

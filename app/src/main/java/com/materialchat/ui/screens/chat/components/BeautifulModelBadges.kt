@@ -106,7 +106,7 @@ fun BeautifulModelBadges(
     modifier: Modifier = Modifier
 ) {
     var providerExpanded by remember { mutableStateOf(false) }
-    var providerTextExpanded by remember { mutableStateOf(false) }
+    var providerTextExpanded by remember { mutableStateOf(true) } // Show full text by default
     var modelPickerExpanded by remember { mutableStateOf(false) }
     var modelTextExpanded by remember { mutableStateOf(true) }
 
@@ -114,28 +114,24 @@ fun BeautifulModelBadges(
     var selectedProviderFilter by remember { mutableStateOf<String?>(null) }
 
     // Extract unique providers from available models
-    val availableProviders by remember(availableModels) {
-        derivedStateOf {
-            availableModels
-                .mapNotNull { model ->
-                    val parsed = ModelNameParser.parse(model.id)
-                    if (parsed.provider != "Provider") parsed.provider else null
-                }
-                .distinct()
-                .sorted()
-        }
+    val availableProviders = remember(availableModels) {
+        availableModels
+            .mapNotNull { model ->
+                val parsed = ModelNameParser.parse(model.id)
+                if (parsed.provider != "Provider") parsed.provider else null
+            }
+            .distinct()
+            .sorted()
     }
 
     // Filter models based on selected provider
-    val filteredModels by remember(availableModels, selectedProviderFilter) {
-        derivedStateOf {
-            if (selectedProviderFilter == null) {
-                availableModels
-            } else {
-                availableModels.filter { model ->
-                    val parsed = ModelNameParser.parse(model.id)
-                    parsed.provider.equals(selectedProviderFilter, ignoreCase = true)
-                }
+    val filteredModels = remember(availableModels, selectedProviderFilter) {
+        if (selectedProviderFilter == null) {
+            availableModels
+        } else {
+            availableModels.filter { model ->
+                val parsed = ModelNameParser.parse(model.id)
+                parsed.provider.equals(selectedProviderFilter, ignoreCase = true)
             }
         }
     }
@@ -143,7 +139,7 @@ fun BeautifulModelBadges(
     // Display text for provider badge
     val providerDisplayText = selectedProviderFilter ?: parsedModel.provider
     val providerAbbreviatedText = if (selectedProviderFilter != null) {
-        if (selectedProviderFilter!!.length > 10) "${selectedProviderFilter!!.take(8)}..." else selectedProviderFilter!!
+        if (selectedProviderFilter!!.length > 16) "${selectedProviderFilter!!.take(14)}…" else selectedProviderFilter!!
     } else {
         parsedModel.providerAbbreviated
     }
@@ -362,7 +358,7 @@ private fun ProviderFilterBadge(
         Box(
             modifier = Modifier
                 .scale(scale)
-                .defaultMinSize(minWidth = 48.dp, minHeight = 32.dp) // M3 XS button height
+                .defaultMinSize(minWidth = 40.dp, minHeight = 28.dp) // Compact size
                 .clip(RoundedCornerShape(50)) // Full pill shape
                 .background(containerColor)
                 .alpha(if (enabled) 1f else 0.6f)
@@ -373,7 +369,7 @@ private fun ProviderFilterBadge(
                     onClick = { onDropdownToggle(true) },
                     onLongClick = { onTextToggle() }
                 )
-                .padding(horizontal = 10.dp, vertical = 6.dp)
+                .padding(horizontal = 8.dp, vertical = 4.dp)
                 .animateContentSize(
                     animationSpec = spring(
                         dampingRatio = 0.7f,
@@ -667,7 +663,7 @@ private fun ModelPickerBadge(
         Box(
             modifier = Modifier
                 .scale(scale)
-                .defaultMinSize(minWidth = 48.dp, minHeight = 32.dp) // M3 XS button height
+                .defaultMinSize(minWidth = 40.dp, minHeight = 28.dp) // Compact size
                 .clip(RoundedCornerShape(50)) // Full pill shape
                 .background(containerColor)
                 .alpha(if (!isStreaming) 1f else 0.6f)
@@ -678,7 +674,7 @@ private fun ModelPickerBadge(
                     onClick = { onPickerToggle(true) },
                     onLongClick = { onTextToggle() }
                 )
-                .padding(horizontal = 10.dp, vertical = 6.dp)
+                .padding(horizontal = 8.dp, vertical = 4.dp)
                 .animateContentSize(
                     animationSpec = spring(
                         dampingRatio = 0.7f,
