@@ -62,6 +62,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.materialchat.ui.theme.ExpressiveMotion
+import com.materialchat.domain.model.ReasoningEffort
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.PI
@@ -528,6 +529,7 @@ fun M3ExpressiveFullscreenLoading(
  * - Container pulse for "breathing" effect
  * - Spring-based transitions between states
  * - Haptic feedback integration
+ * - Reasoning effort-aware colors (indicator color changes based on thinking intensity)
  *
  * States:
  * - IDLE: Disabled, grayed out send icon
@@ -541,6 +543,7 @@ fun M3ExpressiveFullscreenLoading(
  * @param onCancel Callback when stop button is tapped during streaming
  * @param modifier Modifier for the button
  * @param size Size of the button (default 48.dp for M3 touch target)
+ * @param reasoningEffort Current reasoning effort level (affects indicator color)
  */
 @Composable
 fun MorphingSendButton(
@@ -549,7 +552,8 @@ fun MorphingSendButton(
     onSend: () -> Unit,
     onCancel: () -> Unit,
     modifier: Modifier = Modifier,
-    size: Dp = 48.dp
+    size: Dp = 48.dp,
+    reasoningEffort: ReasoningEffort = ReasoningEffort.HIGH
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
@@ -562,10 +566,31 @@ fun MorphingSendButton(
         else -> MaterialTheme.colorScheme.surfaceContainerHigh
     }
 
+    // Content color: changes based on reasoning effort during streaming
+    // Higher effort = more intense color to indicate deeper thinking
     val contentColor = when {
         isStreaming -> MaterialTheme.colorScheme.onErrorContainer
         canSend -> MaterialTheme.colorScheme.onPrimaryContainer
         else -> MaterialTheme.colorScheme.onSurfaceVariant
+    }
+
+    // Indicator color based on reasoning effort level
+    // This provides visual feedback about thinking intensity
+    val indicatorColor = when (reasoningEffort) {
+        ReasoningEffort.NONE -> MaterialTheme.colorScheme.onSurfaceVariant
+        ReasoningEffort.LOW -> MaterialTheme.colorScheme.tertiary
+        ReasoningEffort.MEDIUM -> MaterialTheme.colorScheme.secondary
+        ReasoningEffort.HIGH -> MaterialTheme.colorScheme.primary
+        ReasoningEffort.XHIGH -> MaterialTheme.colorScheme.error
+    }
+
+    // Indicator size varies slightly based on effort (more effort = slightly larger)
+    val indicatorSize = when (reasoningEffort) {
+        ReasoningEffort.NONE -> 20.dp
+        ReasoningEffort.LOW -> 22.dp
+        ReasoningEffort.MEDIUM -> 24.dp
+        ReasoningEffort.HIGH -> 26.dp
+        ReasoningEffort.XHIGH -> 28.dp
     }
 
     // M3 Expressive spring-based alpha transitions
@@ -646,10 +671,11 @@ fun MorphingSendButton(
             // This ensures perfectly smooth M3 Expressive spring transitions
 
             // Official M3 Expressive LoadingIndicator (visible when streaming)
+            // Color and size change based on reasoning effort level
             @OptIn(ExperimentalMaterial3ExpressiveApi::class)
             Box(
                 modifier = Modifier
-                    .size(24.dp)
+                    .size(indicatorSize)
                     .graphicsLayer {
                         alpha = shapeAlpha
                         scaleX = shapeScale
@@ -659,7 +685,7 @@ fun MorphingSendButton(
             ) {
                 LoadingIndicator(
                     modifier = Modifier.fillMaxSize(),
-                    color = contentColor
+                    color = indicatorColor
                 )
             }
 

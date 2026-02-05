@@ -46,6 +46,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AddPhotoAlternate
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.outlined.Lightbulb
 import androidx.compose.material3.Icon
@@ -311,6 +312,7 @@ fun MessageInput(
 
             // M3 Expressive Morphing Send Button
             // Morphs into a shape-shifting loading indicator when streaming
+            // Color and size change based on reasoning effort level
             MorphingSendButton(
                 isStreaming = isStreaming,
                 canSend = canSend,
@@ -322,7 +324,8 @@ fun MessageInput(
                     haptics.perform(HapticPattern.CONFIRM, hapticsEnabled)
                     onCancel()
                 },
-                modifier = Modifier.size(48.dp)
+                modifier = Modifier.size(48.dp),
+                reasoningEffort = reasoningEffort
             )
         }
     }
@@ -411,11 +414,13 @@ private fun ReasoningEffortSelector(
         animationSpec = ExpressiveMotion.Spatial.scale(),
         label = "reasoningButtonScale"
     )
-    // M3 Expressive: Use secondary container for reasoning effort (distinct from tertiary attach and primary send)
-    val baseContainerColor = if (isActive) {
-        MaterialTheme.colorScheme.secondaryContainer
-    } else {
-        MaterialTheme.colorScheme.surfaceContainerHigh
+    // M3 Expressive: Container color reflects reasoning effort intensity
+    val baseContainerColor = when (selectedEffort) {
+        ReasoningEffort.NONE -> MaterialTheme.colorScheme.surfaceContainerHigh
+        ReasoningEffort.LOW -> MaterialTheme.colorScheme.tertiaryContainer
+        ReasoningEffort.MEDIUM -> MaterialTheme.colorScheme.secondaryContainer
+        ReasoningEffort.HIGH -> MaterialTheme.colorScheme.primaryContainer
+        ReasoningEffort.XHIGH -> MaterialTheme.colorScheme.errorContainer
     }
     val containerColor by animateColorAsState(
         targetValue = if (isPressed) {
@@ -426,10 +431,13 @@ private fun ReasoningEffortSelector(
         animationSpec = ExpressiveMotion.SpringSpecs.ColorTransition,
         label = "reasoningButtonColor"
     )
-    val contentColor = if (isActive) {
-        MaterialTheme.colorScheme.onSecondaryContainer
-    } else {
-        MaterialTheme.colorScheme.onSurfaceVariant
+    // Content color matches container style
+    val contentColor = when (selectedEffort) {
+        ReasoningEffort.NONE -> MaterialTheme.colorScheme.onSurfaceVariant
+        ReasoningEffort.LOW -> MaterialTheme.colorScheme.onTertiaryContainer
+        ReasoningEffort.MEDIUM -> MaterialTheme.colorScheme.onSecondaryContainer
+        ReasoningEffort.HIGH -> MaterialTheme.colorScheme.onPrimaryContainer
+        ReasoningEffort.XHIGH -> MaterialTheme.colorScheme.onErrorContainer
     }
 
     Box(modifier = modifier) {
@@ -449,9 +457,14 @@ private fun ReasoningEffortSelector(
                 }
         ) {
             Box(contentAlignment = Alignment.Center) {
+                // Use filled icon for higher thinking intensity, outlined for lower
+                val icon = when (selectedEffort) {
+                    ReasoningEffort.NONE, ReasoningEffort.LOW -> Icons.Outlined.Lightbulb
+                    else -> Icons.Filled.Lightbulb
+                }
                 Icon(
-                    imageVector = Icons.Outlined.Lightbulb,
-                    contentDescription = "Reasoning options"
+                    imageVector = icon,
+                    contentDescription = "Reasoning: ${selectedEffort.displayName}"
                 )
             }
         }
