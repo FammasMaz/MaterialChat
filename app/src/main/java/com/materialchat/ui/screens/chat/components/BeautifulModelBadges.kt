@@ -220,6 +220,7 @@ private fun SearchField(
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 12.dp, vertical = 8.dp)
+            .height(48.dp) // Fixed height to prevent expansion
             .focusRequester(focusRequester),
         placeholder = {
             Text(
@@ -361,7 +362,7 @@ private fun ProviderFilterBadge(
         Box(
             modifier = Modifier
                 .scale(scale)
-                .defaultMinSize(minWidth = 48.dp, minHeight = 40.dp) // M3 Small button height
+                .defaultMinSize(minWidth = 48.dp, minHeight = 32.dp) // M3 XS button height
                 .clip(RoundedCornerShape(50)) // Full pill shape
                 .background(containerColor)
                 .alpha(if (enabled) 1f else 0.6f)
@@ -372,7 +373,7 @@ private fun ProviderFilterBadge(
                     onClick = { onDropdownToggle(true) },
                     onLongClick = { onTextToggle() }
                 )
-                .padding(horizontal = 12.dp, vertical = 8.dp)
+                .padding(horizontal = 10.dp, vertical = 6.dp)
                 .animateContentSize(
                     animationSpec = spring(
                         dampingRatio = 0.7f,
@@ -386,7 +387,7 @@ private fun ProviderFilterBadge(
             ) {
                 Text(
                     text = displayText,
-                    style = MaterialTheme.typography.labelLarge, // M3: labelLarge for buttons
+                    style = MaterialTheme.typography.labelMedium, // M3: labelMedium for compact buttons
                     color = contentColor,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
@@ -420,7 +421,7 @@ private fun ProviderFilterBadge(
                 SearchField(
                     query = searchQuery,
                     onQueryChange = { searchQuery = it },
-                    placeholder = "Search providers..."
+                    placeholder = "Search providers",
                 )
             }
 
@@ -666,7 +667,7 @@ private fun ModelPickerBadge(
         Box(
             modifier = Modifier
                 .scale(scale)
-                .defaultMinSize(minWidth = 48.dp, minHeight = 40.dp) // M3 Small button height
+                .defaultMinSize(minWidth = 48.dp, minHeight = 32.dp) // M3 XS button height
                 .clip(RoundedCornerShape(50)) // Full pill shape
                 .background(containerColor)
                 .alpha(if (!isStreaming) 1f else 0.6f)
@@ -677,7 +678,7 @@ private fun ModelPickerBadge(
                     onClick = { onPickerToggle(true) },
                     onLongClick = { onTextToggle() }
                 )
-                .padding(horizontal = 12.dp, vertical = 8.dp)
+                .padding(horizontal = 10.dp, vertical = 6.dp)
                 .animateContentSize(
                     animationSpec = spring(
                         dampingRatio = 0.7f,
@@ -691,7 +692,7 @@ private fun ModelPickerBadge(
             ) {
                 Text(
                     text = displayText.ifEmpty { "Select model" },
-                    style = MaterialTheme.typography.labelLarge, // M3: labelLarge for buttons
+                    style = MaterialTheme.typography.labelMedium, // M3: labelMedium for compact buttons
                     color = contentColor,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
@@ -725,7 +726,7 @@ private fun ModelPickerBadge(
                 SearchField(
                     query = searchQuery,
                     onQueryChange = { searchQuery = it },
-                    placeholder = "Search models..."
+                    placeholder = "Search models",
                 )
             }
 
