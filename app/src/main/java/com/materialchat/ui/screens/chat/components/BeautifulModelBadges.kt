@@ -7,11 +7,9 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -24,17 +22,23 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
@@ -49,7 +53,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.materialchat.domain.model.AiModel
@@ -57,19 +65,35 @@ import com.materialchat.ui.util.ModelNameParser
 import com.materialchat.ui.util.ParsedModelName
 
 /**
+ * M3 Expressive Spring Tokens
+ * - Fast spatial: For small components (badges, buttons)
+ * - Default spatial: For partial screen animations
+ */
+private object M3Springs {
+    // Fast spatial spring - for badge press/scale animations
+    val FastSpatial = spring<Float>(
+        dampingRatio = 0.6f,  // Some bounce for expressive feel
+        stiffness = 400f      // Fast resolution
+    )
+
+    // Default effects spring - for color/opacity (no overshoot)
+    val DefaultEffects = spring<androidx.compose.ui.graphics.Color>(
+        dampingRatio = Spring.DampingRatioNoBouncy,
+        stiffness = Spring.StiffnessMedium
+    )
+}
+
+/**
  * Beautiful dual pill badge component for displaying model names.
  *
- * Shows provider and model as separate expandable badges following M3 Expressive design.
- * Provider badge: tap to open provider filter dropdown, long-press toggles text expansion
- * Model badge: tap opens model picker (filtered by provider), long-press toggles text expansion
+ * Follows M3 Expressive design with:
+ * - 48dp minimum touch targets
+ * - Spring-based physics for animations
+ * - Pill shapes (full radius)
+ * - Proper color tokens
  *
- * @param parsedModel The parsed model name with provider and model parts
- * @param isStreaming Whether a message is currently streaming (disables interaction)
- * @param availableModels List of available models from the provider
- * @param isLoadingModels Whether models are being loaded
- * @param onModelSelected Callback when a model is selected
- * @param onLoadModels Callback to trigger model loading
- * @param modifier Optional modifier
+ * Provider badge: tap to open provider filter with search, long-press toggles text
+ * Model badge: tap opens model picker with search, long-press toggles text
  */
 @Composable
 fun BeautifulModelBadges(
@@ -138,7 +162,9 @@ fun BeautifulModelBadges(
             availableProviders = availableProviders,
             isLoadingModels = isLoadingModels,
             enabled = !isStreaming,
-            onDropdownToggle = { expanded -> providerExpanded = expanded },
+            onDropdownToggle = { expanded ->
+                providerExpanded = expanded
+            },
             onTextToggle = { providerTextExpanded = !providerTextExpanded },
             onProviderSelected = { provider ->
                 selectedProviderFilter = provider
@@ -175,8 +201,80 @@ fun BeautifulModelBadges(
 }
 
 /**
- * Provider filter badge with dropdown for selecting provider filter.
- * Tap opens dropdown, long-press toggles text expansion.
+ * M3 Expressive Search Field for dropdowns.
+ * Uses OutlinedTextField with proper M3 styling.
+ */
+@Composable
+private fun SearchField(
+    query: String,
+    onQueryChange: (String) -> Unit,
+    placeholder: String,
+    modifier: Modifier = Modifier
+) {
+    val focusRequester = remember { FocusRequester() }
+    val keyboardController = LocalSoftwareKeyboardController.current
+
+    OutlinedTextField(
+        value = query,
+        onValueChange = onQueryChange,
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp, vertical = 8.dp)
+            .focusRequester(focusRequester),
+        placeholder = {
+            Text(
+                text = placeholder,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+            )
+        },
+        leadingIcon = {
+            Icon(
+                imageVector = Icons.Default.Search,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(20.dp)
+            )
+        },
+        trailingIcon = {
+            if (query.isNotEmpty()) {
+                IconButton(
+                    onClick = { onQueryChange("") },
+                    modifier = Modifier.size(32.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = "Clear search",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+            }
+        },
+        singleLine = true,
+        textStyle = MaterialTheme.typography.bodyMedium,
+        shape = RoundedCornerShape(24.dp), // M3 Expressive pill shape
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedBorderColor = MaterialTheme.colorScheme.primary,
+            unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
+            focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+        ),
+        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+        keyboardActions = KeyboardActions(
+            onSearch = { keyboardController?.hide() }
+        )
+    )
+
+    // Auto-focus search field when shown
+    LaunchedEffect(Unit) {
+        focusRequester.requestFocus()
+    }
+}
+
+/**
+ * Provider filter badge with dropdown and search.
+ * M3 Expressive: 48dp min touch target, spring animations, pill shape.
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -198,26 +296,44 @@ private fun ProviderFilterBadge(
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
 
-    // M3 Expressive spring animation for press feedback
+    // Search state
+    var searchQuery by remember { mutableStateOf("") }
+
+    // Clear search when dropdown closes
+    LaunchedEffect(isDropdownExpanded) {
+        if (!isDropdownExpanded) {
+            searchQuery = ""
+        }
+    }
+
+    // Filter providers by search
+    val filteredProviders by remember(availableProviders, searchQuery) {
+        derivedStateOf {
+            if (searchQuery.isBlank()) {
+                availableProviders
+            } else {
+                availableProviders.filter {
+                    it.contains(searchQuery, ignoreCase = true)
+                }
+            }
+        }
+    }
+
+    // M3 Expressive: Fast spatial spring for press animation
     val scale by animateFloatAsState(
         targetValue = if (isPressed) 0.95f else 1f,
-        animationSpec = spring(
-            dampingRatio = 0.6f,
-            stiffness = 380f
-        ),
+        animationSpec = M3Springs.FastSpatial,
         label = "providerBadgeScale"
     )
 
+    // M3 Expressive: Effects spring for color (no bounce)
     val containerColor by animateColorAsState(
         targetValue = when {
             isFiltering -> MaterialTheme.colorScheme.primaryContainer
             isDropdownExpanded -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.85f)
             else -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f)
         },
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioNoBouncy,
-            stiffness = Spring.StiffnessMedium
-        ),
+        animationSpec = M3Springs.DefaultEffects,
         label = "providerContainerColor"
     )
 
@@ -227,10 +343,7 @@ private fun ProviderFilterBadge(
         } else {
             MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.6f)
         },
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioNoBouncy,
-            stiffness = Spring.StiffnessMedium
-        ),
+        animationSpec = M3Springs.DefaultEffects,
         label = "providerContentColor"
     )
 
@@ -244,11 +357,12 @@ private fun ProviderFilterBadge(
     val displayText = if (isTextExpanded) text else abbreviatedText
 
     Box {
+        // M3 Expressive: 48dp minimum touch target
         Box(
             modifier = Modifier
                 .scale(scale)
-                .defaultMinSize(minHeight = 28.dp)
-                .clip(RoundedCornerShape(50))
+                .defaultMinSize(minWidth = 48.dp, minHeight = 40.dp) // M3 Small button height
+                .clip(RoundedCornerShape(50)) // Full pill shape
                 .background(containerColor)
                 .alpha(if (enabled) 1f else 0.6f)
                 .combinedClickable(
@@ -258,11 +372,11 @@ private fun ProviderFilterBadge(
                     onClick = { onDropdownToggle(true) },
                     onLongClick = { onTextToggle() }
                 )
-                .padding(horizontal = 10.dp, vertical = 4.dp)
+                .padding(horizontal = 12.dp, vertical = 8.dp)
                 .animateContentSize(
                     animationSpec = spring(
-                        dampingRatio = 0.6f,
-                        stiffness = 380f
+                        dampingRatio = 0.7f,
+                        stiffness = 400f
                     )
                 ),
             contentAlignment = Alignment.Center
@@ -272,7 +386,7 @@ private fun ProviderFilterBadge(
             ) {
                 Text(
                     text = displayText,
-                    style = MaterialTheme.typography.labelMedium,
+                    style = MaterialTheme.typography.labelLarge, // M3: labelLarge for buttons
                     color = contentColor,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
@@ -287,18 +401,29 @@ private fun ProviderFilterBadge(
                         Icons.Default.KeyboardArrowDown
                     },
                     contentDescription = if (isDropdownExpanded) "Collapse" else "Expand",
-                    modifier = Modifier.size(16.dp),
+                    modifier = Modifier.size(18.dp),
                     tint = contentColor
                 )
             }
         }
 
-        // Provider dropdown menu
+        // Provider dropdown menu with search
         DropdownMenu(
             expanded = isDropdownExpanded,
             onDismissRequest = { onDropdownToggle(false) },
-            modifier = Modifier.heightIn(max = 300.dp)
+            modifier = Modifier
+                .heightIn(max = 350.dp)
+                .width(240.dp)
         ) {
+            // Search field
+            if (availableProviders.size > 3) {
+                SearchField(
+                    query = searchQuery,
+                    onQueryChange = { searchQuery = it },
+                    placeholder = "Search providers..."
+                )
+            }
+
             // Clear filter option (if filtering)
             if (isFiltering) {
                 DropdownMenuItem(
@@ -321,7 +446,8 @@ private fun ProviderFilterBadge(
                             )
                         }
                     },
-                    onClick = onClearFilter
+                    onClick = onClearFilter,
+                    modifier = Modifier.defaultMinSize(minHeight = 48.dp) // M3: 48dp touch target
                 )
                 HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
             }
@@ -344,7 +470,21 @@ private fun ProviderFilterBadge(
                                 )
                             }
                         },
-                        onClick = { }
+                        onClick = { },
+                        modifier = Modifier.defaultMinSize(minHeight = 48.dp)
+                    )
+                }
+                filteredProviders.isEmpty() && searchQuery.isNotBlank() -> {
+                    DropdownMenuItem(
+                        text = {
+                            Text(
+                                text = "No providers match \"$searchQuery\"",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        },
+                        onClick = { },
+                        modifier = Modifier.defaultMinSize(minHeight = 48.dp)
                     )
                 }
                 availableProviders.isEmpty() -> {
@@ -364,11 +504,12 @@ private fun ProviderFilterBadge(
                                 )
                             }
                         },
-                        onClick = { }
+                        onClick = { },
+                        modifier = Modifier.defaultMinSize(minHeight = 48.dp)
                     )
                 }
                 else -> {
-                    availableProviders.forEach { provider ->
+                    filteredProviders.forEach { provider ->
                         val isSelected = provider.equals(text, ignoreCase = true)
 
                         val textColor by animateColorAsState(
@@ -377,10 +518,7 @@ private fun ProviderFilterBadge(
                             } else {
                                 MaterialTheme.colorScheme.onSurface
                             },
-                            animationSpec = spring(
-                                dampingRatio = Spring.DampingRatioNoBouncy,
-                                stiffness = Spring.StiffnessMedium
-                            ),
+                            animationSpec = M3Springs.DefaultEffects,
                             label = "providerItemTextColor"
                         )
 
@@ -413,13 +551,17 @@ private fun ProviderFilterBadge(
                                 }
                             },
                             onClick = { onProviderSelected(provider) },
-                            modifier = if (isSelected) {
-                                Modifier.background(
-                                    MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+                            modifier = Modifier
+                                .defaultMinSize(minHeight = 48.dp)
+                                .then(
+                                    if (isSelected) {
+                                        Modifier.background(
+                                            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+                                        )
+                                    } else {
+                                        Modifier
+                                    }
                                 )
-                            } else {
-                                Modifier
-                            }
                         )
                     }
                 }
@@ -429,9 +571,8 @@ private fun ProviderFilterBadge(
 }
 
 /**
- * Model badge with picker functionality.
- * Tap opens the model picker dropdown (filtered by provider if set).
- * Long-press toggles between abbreviated and full display.
+ * Model badge with picker and search functionality.
+ * M3 Expressive: 48dp min touch target, spring animations, pill shape.
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -453,26 +594,47 @@ private fun ModelPickerBadge(
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
 
-    // M3 Expressive spring animation for press feedback
+    // Search state
+    var searchQuery by remember { mutableStateOf("") }
+
+    // Clear search when dropdown closes
+    LaunchedEffect(isPickerExpanded) {
+        if (!isPickerExpanded) {
+            searchQuery = ""
+        }
+    }
+
+    // Parse and filter models by search
+    val searchedModels by remember(availableModels, searchQuery) {
+        derivedStateOf {
+            if (searchQuery.isBlank()) {
+                availableModels
+            } else {
+                availableModels.filter { model ->
+                    val parsed = ModelNameParser.parse(model.id)
+                    parsed.model.contains(searchQuery, ignoreCase = true) ||
+                    parsed.provider.contains(searchQuery, ignoreCase = true) ||
+                    model.name.contains(searchQuery, ignoreCase = true)
+                }
+            }
+        }
+    }
+
+    // M3 Expressive: Fast spatial spring for press animation
     val scale by animateFloatAsState(
         targetValue = if (isPressed) 0.95f else 1f,
-        animationSpec = spring(
-            dampingRatio = 0.6f,
-            stiffness = 380f
-        ),
+        animationSpec = M3Springs.FastSpatial,
         label = "modelBadgeScale"
     )
 
+    // M3 Expressive: Effects spring for color (no bounce)
     val containerColor by animateColorAsState(
         targetValue = if (isPickerExpanded) {
             MaterialTheme.colorScheme.secondaryContainer
         } else {
             MaterialTheme.colorScheme.surfaceContainerHighest
         },
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioNoBouncy,
-            stiffness = Spring.StiffnessMedium
-        ),
+        animationSpec = M3Springs.DefaultEffects,
         label = "modelContainerColor"
     )
 
@@ -486,10 +648,7 @@ private fun ModelPickerBadge(
         } else {
             MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
         },
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioNoBouncy,
-            stiffness = Spring.StiffnessMedium
-        ),
+        animationSpec = M3Springs.DefaultEffects,
         label = "modelContentColor"
     )
 
@@ -503,11 +662,12 @@ private fun ModelPickerBadge(
     val displayText = if (isTextExpanded) text else abbreviatedText
 
     Box {
+        // M3 Expressive: 48dp minimum touch target
         Box(
             modifier = Modifier
                 .scale(scale)
-                .defaultMinSize(minHeight = 28.dp)
-                .clip(RoundedCornerShape(50))
+                .defaultMinSize(minWidth = 48.dp, minHeight = 40.dp) // M3 Small button height
+                .clip(RoundedCornerShape(50)) // Full pill shape
                 .background(containerColor)
                 .alpha(if (!isStreaming) 1f else 0.6f)
                 .combinedClickable(
@@ -517,11 +677,11 @@ private fun ModelPickerBadge(
                     onClick = { onPickerToggle(true) },
                     onLongClick = { onTextToggle() }
                 )
-                .padding(horizontal = 10.dp, vertical = 4.dp)
+                .padding(horizontal = 12.dp, vertical = 8.dp)
                 .animateContentSize(
                     animationSpec = spring(
-                        dampingRatio = 0.6f,
-                        stiffness = 380f
+                        dampingRatio = 0.7f,
+                        stiffness = 400f
                     )
                 ),
             contentAlignment = Alignment.Center
@@ -531,7 +691,7 @@ private fun ModelPickerBadge(
             ) {
                 Text(
                     text = displayText.ifEmpty { "Select model" },
-                    style = MaterialTheme.typography.labelMedium,
+                    style = MaterialTheme.typography.labelLarge, // M3: labelLarge for buttons
                     color = contentColor,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
@@ -546,18 +706,29 @@ private fun ModelPickerBadge(
                         Icons.Default.KeyboardArrowDown
                     },
                     contentDescription = if (isPickerExpanded) "Collapse" else "Expand",
-                    modifier = Modifier.size(16.dp),
+                    modifier = Modifier.size(18.dp),
                     tint = contentColor
                 )
             }
         }
 
-        // Dropdown menu with models
+        // Dropdown menu with models and search
         DropdownMenu(
             expanded = isPickerExpanded,
             onDismissRequest = { onPickerToggle(false) },
-            modifier = Modifier.heightIn(max = 300.dp)
+            modifier = Modifier
+                .heightIn(max = 400.dp)
+                .width(280.dp)
         ) {
+            // Search field - show when there are enough models
+            if (availableModels.size > 5) {
+                SearchField(
+                    query = searchQuery,
+                    onQueryChange = { searchQuery = it },
+                    placeholder = "Search models..."
+                )
+            }
+
             when {
                 isLoadingModels -> {
                     DropdownMenuItem(
@@ -576,7 +747,21 @@ private fun ModelPickerBadge(
                                 )
                             }
                         },
-                        onClick = { }
+                        onClick = { },
+                        modifier = Modifier.defaultMinSize(minHeight = 48.dp)
+                    )
+                }
+                searchedModels.isEmpty() && searchQuery.isNotBlank() -> {
+                    DropdownMenuItem(
+                        text = {
+                            Text(
+                                text = "No models match \"$searchQuery\"",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        },
+                        onClick = { },
+                        modifier = Modifier.defaultMinSize(minHeight = 48.dp)
                     )
                 }
                 availableModels.isEmpty() -> {
@@ -598,26 +783,27 @@ private fun ModelPickerBadge(
                                 }
                             }
                         },
-                        onClick = { }
+                        onClick = { },
+                        modifier = Modifier.defaultMinSize(minHeight = 48.dp)
                     )
                 }
                 else -> {
-                    // Show filtered count if filtering
-                    if (hasFilter) {
+                    // Show count when filtering or searching
+                    if (hasFilter || searchQuery.isNotBlank()) {
                         DropdownMenuItem(
                             text = {
                                 Text(
-                                    text = "${availableModels.size} models",
+                                    text = "${searchedModels.size} model${if (searchedModels.size != 1) "s" else ""}",
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                                 )
                             },
                             onClick = { },
-                            modifier = Modifier.height(24.dp)
+                            modifier = Modifier.height(28.dp)
                         )
                     }
 
-                    availableModels.forEach { model ->
+                    searchedModels.forEach { model ->
                         val isSelected = model.id == currentModel || model.name == currentModel
 
                         // Parse the model to get a cleaner display name
@@ -629,10 +815,7 @@ private fun ModelPickerBadge(
                             } else {
                                 MaterialTheme.colorScheme.onSurface
                             },
-                            animationSpec = spring(
-                                dampingRatio = Spring.DampingRatioNoBouncy,
-                                stiffness = Spring.StiffnessMedium
-                            ),
+                            animationSpec = M3Springs.DefaultEffects,
                             label = "menuItemTextColor"
                         )
 
@@ -679,13 +862,17 @@ private fun ModelPickerBadge(
                                 onPickerToggle(false)
                                 onModelSelected(model)
                             },
-                            modifier = if (isSelected) {
-                                Modifier.background(
-                                    MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+                            modifier = Modifier
+                                .defaultMinSize(minHeight = 48.dp) // M3: 48dp touch target
+                                .then(
+                                    if (isSelected) {
+                                        Modifier.background(
+                                            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+                                        )
+                                    } else {
+                                        Modifier
+                                    }
                                 )
-                            } else {
-                                Modifier
-                            }
                         )
                     }
                 }
