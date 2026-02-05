@@ -165,6 +165,17 @@ fun BeautifulModelBadges(
             onProviderSelected = { provider ->
                 selectedProviderFilter = provider
                 providerExpanded = false
+
+                // Auto-switch to same model from new provider if available
+                val currentModelName = parsedModel.model.lowercase()
+                val matchingModel = availableModels.find { model ->
+                    val parsed = ModelNameParser.parse(model.id)
+                    parsed.provider.equals(provider, ignoreCase = true) &&
+                    parsed.model.lowercase() == currentModelName
+                }
+                if (matchingModel != null) {
+                    onModelSelected(matchingModel)
+                }
             },
             onClearFilter = {
                 selectedProviderFilter = null
