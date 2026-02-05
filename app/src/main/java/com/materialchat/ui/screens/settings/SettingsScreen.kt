@@ -229,6 +229,7 @@ fun SettingsScreen(
             onThemeModeChange = { viewModel.updateThemeMode(it) },
             onDynamicColorChange = { viewModel.updateDynamicColorEnabled(it) },
             onHapticsChange = { viewModel.updateHapticsEnabled(it) },
+            onBeautifulModelNamesChange = { viewModel.updateBeautifulModelNamesEnabled(it) },
             onAiGeneratedTitlesChange = { viewModel.updateAiGeneratedTitlesEnabled(it) },
             onTitleGenerationModelChange = { viewModel.updateTitleGenerationModel(it) },
             onRememberLastModelChange = { viewModel.updateRememberLastModelEnabled(it) },
@@ -292,6 +293,7 @@ private fun SettingsContent(
     onThemeModeChange: (AppPreferences.ThemeMode) -> Unit,
     onDynamicColorChange: (Boolean) -> Unit,
     onHapticsChange: (Boolean) -> Unit,
+    onBeautifulModelNamesChange: (Boolean) -> Unit,
     onAiGeneratedTitlesChange: (Boolean) -> Unit,
     onTitleGenerationModelChange: (String) -> Unit,
     onRememberLastModelChange: (Boolean) -> Unit,
@@ -327,6 +329,7 @@ private fun SettingsContent(
                     onThemeModeChange = onThemeModeChange,
                     onDynamicColorChange = onDynamicColorChange,
                     onHapticsChange = onHapticsChange,
+                    onBeautifulModelNamesChange = onBeautifulModelNamesChange,
                     onAiGeneratedTitlesChange = onAiGeneratedTitlesChange,
                     onTitleGenerationModelChange = onTitleGenerationModelChange,
                     onRememberLastModelChange = onRememberLastModelChange,
@@ -377,6 +380,7 @@ private fun SuccessContent(
     onThemeModeChange: (AppPreferences.ThemeMode) -> Unit,
     onDynamicColorChange: (Boolean) -> Unit,
     onHapticsChange: (Boolean) -> Unit,
+    onBeautifulModelNamesChange: (Boolean) -> Unit,
     onAiGeneratedTitlesChange: (Boolean) -> Unit,
     onTitleGenerationModelChange: (String) -> Unit,
     onRememberLastModelChange: (Boolean) -> Unit,
@@ -456,6 +460,14 @@ private fun SuccessContent(
             HapticsToggle(
                 enabled = uiState.hapticsEnabled,
                 onToggle = onHapticsChange
+            )
+        }
+
+        // Beautiful Model Names Toggle
+        item {
+            BeautifulModelNamesToggle(
+                enabled = uiState.beautifulModelNamesEnabled,
+                onToggle = onBeautifulModelNamesChange
             )
         }
 
@@ -747,6 +759,58 @@ private fun HapticsToggle(
                     haptics.perform(HapticPattern.TOGGLE, enabled = newValue)
                     onToggle(newValue)
                 }
+            )
+        }
+    }
+}
+
+@Composable
+private fun BeautifulModelNamesToggle(
+    enabled: Boolean,
+    onToggle: (Boolean) -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+        ),
+        shape = RoundedCornerShape(20.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.weight(1f)
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.AutoAwesome,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(24.dp)
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                Column {
+                    Text(
+                        text = "Beautiful Model Names",
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = "Format model names into readable badges",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            Switch(
+                checked = enabled,
+                onCheckedChange = onToggle
             )
         }
     }

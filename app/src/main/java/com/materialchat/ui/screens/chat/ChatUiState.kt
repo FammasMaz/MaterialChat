@@ -52,7 +52,8 @@ sealed interface ChatUiState {
         val showExportSheet: Boolean = false,
         val isExporting: Boolean = false,
         val hapticsEnabled: Boolean = true,
-        val reasoningEffort: ReasoningEffort = ReasoningEffort.HIGH
+        val reasoningEffort: ReasoningEffort = ReasoningEffort.HIGH,
+        val beautifulModelNamesEnabled: Boolean = true
     ) : ChatUiState {
         /**
          * Whether a message is currently streaming.

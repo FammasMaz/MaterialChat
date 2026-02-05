@@ -45,6 +45,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.materialchat.domain.model.AiModel
 import com.materialchat.ui.screens.chat.components.ModelPickerDropdown
+import com.materialchat.ui.util.ModelNameParser
 
 /**
  * Top app bar for the Chat screen.
@@ -62,6 +63,7 @@ import com.materialchat.ui.screens.chat.components.ModelPickerDropdown
  * @param isStreaming Whether a message is currently streaming
  * @param availableModels List of available models from the provider
  * @param isLoadingModels Whether models are being loaded
+ * @param beautifulModelNamesEnabled Whether to show beautiful formatted model badges
  * @param onNavigateBack Callback for back navigation
  * @param onExportClick Callback when export is clicked
  * @param onModelSelected Callback when a model is selected from the picker
@@ -78,6 +80,7 @@ fun ChatTopBar(
     isStreaming: Boolean,
     availableModels: List<AiModel>,
     isLoadingModels: Boolean,
+    beautifulModelNamesEnabled: Boolean = false,
     onNavigateBack: () -> Unit,
     onExportClick: () -> Unit,
     onModelSelected: (AiModel) -> Unit,
@@ -158,20 +161,34 @@ fun ChatTopBar(
                 Row(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    val brand = remember(modelName) { resolveModelBrand(modelName) }
-                    if (brand != null) {
-                        ModelBrandBadge(brand = brand)
-                        Spacer(modifier = Modifier.width(8.dp))
+                    if (beautifulModelNamesEnabled) {
+                        // Beautiful formatted dual pill badges
+                        val parsedModel = remember(modelName) { ModelNameParser.parse(modelName) }
+                        BeautifulModelBadges(
+                            parsedModel = parsedModel,
+                            isStreaming = isStreaming,
+                            availableModels = availableModels,
+                            isLoadingModels = isLoadingModels,
+                            onModelSelected = onModelSelected,
+                            onLoadModels = onLoadModels
+                        )
+                    } else {
+                        // Original display: brand badge + model picker
+                        val brand = remember(modelName) { resolveModelBrand(modelName) }
+                        if (brand != null) {
+                            ModelBrandBadge(brand = brand)
+                            Spacer(modifier = Modifier.width(8.dp))
+                        }
+                        // Model picker dropdown - tappable model name
+                        ModelPickerDropdown(
+                            currentModel = modelName,
+                            availableModels = availableModels,
+                            isLoadingModels = isLoadingModels,
+                            isStreaming = isStreaming,
+                            onModelSelected = onModelSelected,
+                            onLoadModels = onLoadModels
+                        )
                     }
-                    // Model picker dropdown - tappable model name
-                    ModelPickerDropdown(
-                        currentModel = modelName,
-                        availableModels = availableModels,
-                        isLoadingModels = isLoadingModels,
-                        isStreaming = isStreaming,
-                        onModelSelected = onModelSelected,
-                        onLoadModels = onLoadModels
-                    )
                     // Streaming indicator removed - now shown in the morphing send button
                 }
             }

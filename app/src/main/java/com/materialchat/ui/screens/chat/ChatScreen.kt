@@ -270,6 +270,7 @@ fun ChatScreen(
                         isStreaming = state.isStreaming,
                         availableModels = state.availableModels,
                         isLoadingModels = state.isLoadingModels,
+                        beautifulModelNamesEnabled = state.beautifulModelNamesEnabled,
                         onNavigateBack = { viewModel.navigateBack() },
                         onExportClick = { viewModel.showExportOptions() },
                         onModelSelected = { model -> viewModel.changeModel(model) },

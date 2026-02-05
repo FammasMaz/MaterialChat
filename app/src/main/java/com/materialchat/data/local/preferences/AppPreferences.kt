@@ -52,6 +52,7 @@ class AppPreferences(private val context: Context) {
         val ASSISTANT_ENABLED = booleanPreferencesKey("assistant_enabled")
         val ASSISTANT_VOICE_ENABLED = booleanPreferencesKey("assistant_voice_enabled")
         val ASSISTANT_TTS_ENABLED = booleanPreferencesKey("assistant_tts_enabled")
+        val BEAUTIFUL_MODEL_NAMES = booleanPreferencesKey("beautiful_model_names")
     }
 
     /**
@@ -74,6 +75,7 @@ class AppPreferences(private val context: Context) {
         const val DEFAULT_AI_GENERATED_TITLES_ENABLED = true
         val DEFAULT_REASONING_EFFORT = ReasoningEffort.HIGH
         const val DEFAULT_REMEMBER_LAST_MODEL = true
+        const val DEFAULT_BEAUTIFUL_MODEL_NAMES = true
     }
 
     // ========== System Prompt ==========
@@ -364,6 +366,25 @@ class AppPreferences(private val context: Context) {
     suspend fun setAssistantTtsEnabled(enabled: Boolean) {
         dataStore.edit { preferences ->
             preferences[Keys.ASSISTANT_TTS_ENABLED] = enabled
+        }
+    }
+
+    // ========== Beautiful Model Names ==========
+
+    /**
+     * Get whether beautiful model names display is enabled as a Flow.
+     * When enabled, raw model identifiers are formatted into readable dual pill badges.
+     */
+    val beautifulModelNamesEnabled: Flow<Boolean> = dataStore.data.map { preferences ->
+        preferences[Keys.BEAUTIFUL_MODEL_NAMES] ?: DEFAULT_BEAUTIFUL_MODEL_NAMES
+    }
+
+    /**
+     * Set whether beautiful model names display is enabled.
+     */
+    suspend fun setBeautifulModelNamesEnabled(enabled: Boolean) {
+        dataStore.edit { preferences ->
+            preferences[Keys.BEAUTIFUL_MODEL_NAMES] = enabled
         }
     }
 

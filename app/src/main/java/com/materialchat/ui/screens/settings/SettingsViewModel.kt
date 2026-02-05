@@ -62,13 +62,25 @@ class SettingsViewModel @Inject constructor(
                     appPreferences.titleGenerationModel,
                     appPreferences.autoCheckUpdates,
                     combine(
-                        updateManager.updateState,
-                        appPreferences.rememberLastModel,
-                        appPreferences.assistantEnabled,
+                        combine(
+                            updateManager.updateState,
+                            appPreferences.rememberLastModel,
+                            appPreferences.assistantEnabled
+                        ) { updateState, rememberLastModel, assistantEnabled ->
+                            Triple(updateState, rememberLastModel, assistantEnabled)
+                        },
                         appPreferences.assistantVoiceEnabled,
-                        appPreferences.assistantTtsEnabled
-                    ) { updateState, rememberLastModel, assistantEnabled, assistantVoice, assistantTts ->
-                        AssistantSettings(updateState, rememberLastModel, assistantEnabled, assistantVoice, assistantTts)
+                        appPreferences.assistantTtsEnabled,
+                        appPreferences.beautifulModelNamesEnabled
+                    ) { assistantCore, assistantVoice, assistantTts, beautifulModelNames ->
+                        AssistantSettings(
+                            updateState = assistantCore.first,
+                            rememberLastModel = assistantCore.second,
+                            assistantEnabled = assistantCore.third,
+                            assistantVoiceEnabled = assistantVoice,
+                            assistantTtsEnabled = assistantTts,
+                            beautifulModelNamesEnabled = beautifulModelNames
+                        )
                     }
                 ) { haptics, aiTitles, titleModel, autoCheck, assistantSettings ->
                     SettingsToggles(haptics, aiTitles, titleModel, autoCheck, assistantSettings)
@@ -87,7 +99,8 @@ class SettingsViewModel @Inject constructor(
                     rememberLastModel = toggles.assistantSettings.rememberLastModel,
                     assistantEnabled = toggles.assistantSettings.assistantEnabled,
                     assistantVoiceEnabled = toggles.assistantSettings.assistantVoiceEnabled,
-                    assistantTtsEnabled = toggles.assistantSettings.assistantTtsEnabled
+                    assistantTtsEnabled = toggles.assistantSettings.assistantTtsEnabled,
+                    beautifulModelNamesEnabled = toggles.assistantSettings.beautifulModelNamesEnabled
                 )
             }
                 .catch { e ->
@@ -122,6 +135,7 @@ class SettingsViewModel @Inject constructor(
                         assistantEnabled = data.assistantEnabled,
                         assistantVoiceEnabled = data.assistantVoiceEnabled,
                         assistantTtsEnabled = data.assistantTtsEnabled,
+                        beautifulModelNamesEnabled = data.beautifulModelNamesEnabled,
                         appVersion = updateManager.getCurrentVersion(),
                         autoCheckUpdates = data.autoCheckUpdates,
                         updateState = data.updateState,
@@ -593,6 +607,21 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Updates the beautiful model names setting.
+     */
+    fun updateBeautifulModelNamesEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            try {
+                appPreferences.setBeautifulModelNamesEnabled(enabled)
+            } catch (e: Exception) {
+                _events.emit(SettingsEvent.ShowSnackbar(
+                    message = "Failed to save model names setting"
+                ))
+            }
+        }
+    }
+
     // ========== Assistant Settings ==========
 
     /**
@@ -746,7 +775,8 @@ class SettingsViewModel @Inject constructor(
         val rememberLastModel: Boolean,
         val assistantEnabled: Boolean,
         val assistantVoiceEnabled: Boolean,
-        val assistantTtsEnabled: Boolean
+        val assistantTtsEnabled: Boolean,
+        val beautifulModelNamesEnabled: Boolean
     )
 
     /**
@@ -768,6 +798,7 @@ class SettingsViewModel @Inject constructor(
         val rememberLastModel: Boolean,
         val assistantEnabled: Boolean,
         val assistantVoiceEnabled: Boolean,
-        val assistantTtsEnabled: Boolean
+        val assistantTtsEnabled: Boolean,
+        val beautifulModelNamesEnabled: Boolean
     )
 }

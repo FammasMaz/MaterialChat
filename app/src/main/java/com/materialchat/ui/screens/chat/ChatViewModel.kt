@@ -69,12 +69,14 @@ class ChatViewModel @Inject constructor(
     private var currentSystemPrompt: String = AppPreferences.DEFAULT_SYSTEM_PROMPT
     private var currentHapticsEnabled: Boolean = AppPreferences.DEFAULT_HAPTICS_ENABLED
     private var currentReasoningEffort: ReasoningEffort = AppPreferences.DEFAULT_REASONING_EFFORT
+    private var currentBeautifulModelNamesEnabled: Boolean = AppPreferences.DEFAULT_BEAUTIFUL_MODEL_NAMES
 
     init {
         loadConversation()
         loadSystemPrompt()
         loadHapticsPreference()
         loadReasoningEffort()
+        loadBeautifulModelNamesPreference()
     }
 
     /**
@@ -179,7 +181,8 @@ class ChatViewModel @Inject constructor(
                             availableModels = availableModels,
                             isLoadingModels = isLoadingModels,
                             hapticsEnabled = currentHapticsEnabled,
-                            reasoningEffort = reasoningEffort
+                            reasoningEffort = reasoningEffort,
+                            beautifulModelNamesEnabled = currentBeautifulModelNamesEnabled
                         )
 
                         // Only scroll to bottom when a NEW message is added, not during streaming updates
@@ -236,6 +239,21 @@ class ChatViewModel @Inject constructor(
                 val currentState = _uiState.value
                 if (currentState is ChatUiState.Success) {
                     _uiState.value = currentState.copy(reasoningEffort = effort)
+                }
+            }
+        }
+    }
+
+    /**
+     * Loads the beautiful model names preference and updates UI state when it changes.
+     */
+    private fun loadBeautifulModelNamesPreference() {
+        viewModelScope.launch {
+            appPreferences.beautifulModelNamesEnabled.collect { enabled ->
+                currentBeautifulModelNamesEnabled = enabled
+                val currentState = _uiState.value
+                if (currentState is ChatUiState.Success) {
+                    _uiState.value = currentState.copy(beautifulModelNamesEnabled = enabled)
                 }
             }
         }
