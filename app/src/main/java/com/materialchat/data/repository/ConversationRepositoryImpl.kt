@@ -361,6 +361,22 @@ class ConversationRepositoryImpl @Inject constructor(
     override suspend fun getBranchCount(parentId: String): Int {
         return conversationDao.getBranchCount(parentId)
     }
+
+    // ========== Sibling Branch Operations ==========
+
+    override fun observeSiblingBranches(parentId: String, branchSourceMessageId: String): Flow<List<Conversation>> {
+        return conversationDao.getSiblingBranches(parentId, branchSourceMessageId).map { entities ->
+            entities.toConversationDomainList()
+        }
+    }
+
+    override suspend fun getSiblingBranches(parentId: String, branchSourceMessageId: String): List<Conversation> {
+        return conversationDao.getSiblingBranchesOnce(parentId, branchSourceMessageId).toConversationDomainList()
+    }
+
+    override suspend fun updateMessageModelName(messageId: String, modelName: String) {
+        messageDao.updateModelName(messageId, modelName)
+    }
 }
 
 /**

@@ -38,7 +38,8 @@ class RegenerateResponseUseCase @Inject constructor(
     operator fun invoke(
         conversationId: String,
         systemPrompt: String,
-        reasoningEffort: ReasoningEffort
+        reasoningEffort: ReasoningEffort,
+        overrideModelName: String? = null
     ): Flow<StreamingState> = flow {
         // Get the conversation and provider
         val conversation = conversationRepository.getConversation(conversationId)
@@ -54,7 +55,7 @@ class RegenerateResponseUseCase @Inject constructor(
             return@flow
         }
 
-        // Find and remove the last assistant message
+        // Find and remove the last assistant message (skip if last is USER, e.g. auto-send after redo)
         val lastMessage = messages.last()
         if (lastMessage.role == MessageRole.ASSISTANT) {
             conversationRepository.deleteMessage(lastMessage.id)
@@ -63,12 +64,16 @@ class RegenerateResponseUseCase @Inject constructor(
         // Get updated messages without the last assistant message
         val updatedMessages = conversationRepository.getMessages(conversationId)
 
+        // Determine model to use (override for redo-with-model, otherwise conversation default)
+        val modelToUse = overrideModelName ?: conversation.modelName
+
         // Create a new placeholder assistant message for streaming
         val assistantMessage = Message(
             conversationId = conversationId,
             role = MessageRole.ASSISTANT,
             content = "",
-            isStreaming = true
+            isStreaming = true,
+            modelName = modelToUse
         )
         val assistantMessageId = conversationRepository.addMessage(assistantMessage)
 
@@ -84,7 +89,7 @@ class RegenerateResponseUseCase @Inject constructor(
         chatRepository.sendMessage(
             provider = provider,
             messages = updatedMessages,
-            model = conversation.modelName,
+            model = modelToUse,
             reasoningEffort = reasoningEffort,
             systemPrompt = systemPrompt
         ).onEach { state ->

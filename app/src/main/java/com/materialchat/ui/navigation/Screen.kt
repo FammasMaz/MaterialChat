@@ -14,20 +14,31 @@ sealed class Screen(val route: String) {
 
     /**
      * Chat screen for a specific conversation.
-     * Requires a conversationId argument.
+     * Requires a conversationId argument. Supports optional autoSend query param.
      */
-    data object Chat : Screen("chat/{conversationId}") {
+    data object Chat : Screen("chat/{conversationId}?autoSend={autoSend}&overrideModel={overrideModel}") {
 
         /**
          * Creates the navigation route for a specific conversation.
          * @param conversationId The UUID of the conversation to display.
+         * @param autoSend Whether to automatically send/regenerate on navigation.
+         * @param overrideModel Optional model name to use for auto-sent regeneration.
          */
-        fun createRoute(conversationId: String): String = "chat/$conversationId"
+        fun createRoute(
+            conversationId: String,
+            autoSend: Boolean = false,
+            overrideModel: String? = null
+        ): String {
+            var route = "chat/$conversationId?autoSend=$autoSend"
+            if (overrideModel != null) {
+                route += "&overrideModel=$overrideModel"
+            }
+            return route
+        }
 
-        /**
-         * Argument key for the conversation ID.
-         */
         const val ARG_CONVERSATION_ID = "conversationId"
+        const val ARG_AUTO_SEND = "autoSend"
+        const val ARG_OVERRIDE_MODEL = "overrideModel"
     }
 
     /**

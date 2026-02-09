@@ -14,6 +14,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.CallSplit
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.outlined.SwapHoriz
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
@@ -31,12 +32,13 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 
 /**
- * Action buttons for chat messages (copy, regenerate, branch).
+ * Action buttons for chat messages (copy, regenerate, branch, redo with model).
  *
  * This component provides quick actions for messages following Material 3 Expressive design:
  * - Copy button: Copies message content to clipboard (available for all messages)
  * - Regenerate button: Regenerates the AI response (only for last assistant message)
  * - Branch button: Creates a new conversation branch from this message
+ * - Redo with model button: Redo response with a different model
  *
  * Features:
  * - Animated visibility with scale and fade transitions
@@ -46,9 +48,11 @@ import androidx.compose.ui.unit.dp
  * @param showCopy Whether to show the copy button
  * @param showRegenerate Whether to show the regenerate button
  * @param showBranch Whether to show the branch button
+ * @param showRedoWithModel Whether to show the redo with model button
  * @param onCopy Callback when copy button is clicked
  * @param onRegenerate Callback when regenerate button is clicked
  * @param onBranch Callback when branch button is clicked
+ * @param onRedoWithModel Callback when redo with model button is clicked
  * @param modifier Modifier for the action row
  */
 @Composable
@@ -56,9 +60,11 @@ fun MessageActions(
     showCopy: Boolean = true,
     showRegenerate: Boolean = false,
     showBranch: Boolean = false,
+    showRedoWithModel: Boolean = false,
     onCopy: () -> Unit,
     onRegenerate: (() -> Unit)? = null,
     onBranch: (() -> Unit)? = null,
+    onRedoWithModel: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     Row(
@@ -108,6 +114,29 @@ fun MessageActions(
                 icon = Icons.AutoMirrored.Outlined.CallSplit,
                 contentDescription = "Branch conversation",
                 onClick = { onBranch?.invoke() }
+            )
+        }
+
+        // Redo with model button
+        AnimatedVisibility(
+            visible = showRedoWithModel && onRedoWithModel != null,
+            enter = fadeIn(
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                    stiffness = Spring.StiffnessMedium
+                )
+            ) + scaleIn(
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                    stiffness = Spring.StiffnessMedium
+                )
+            ),
+            exit = fadeOut() + scaleOut()
+        ) {
+            ActionButton(
+                icon = Icons.Outlined.SwapHoriz,
+                contentDescription = "Redo with different model",
+                onClick = { onRedoWithModel?.invoke() }
             )
         }
 
@@ -201,16 +230,20 @@ fun CompactMessageActions(
     isUser: Boolean,
     showRegenerate: Boolean,
     showBranch: Boolean,
+    showRedoWithModel: Boolean = false,
     onCopy: () -> Unit,
     onRegenerate: (() -> Unit)?,
-    onBranch: (() -> Unit)?
+    onBranch: (() -> Unit)?,
+    onRedoWithModel: (() -> Unit)? = null
 ) {
     MessageActions(
         showCopy = true,
         showRegenerate = showRegenerate && onRegenerate != null,
         showBranch = showBranch && onBranch != null,
+        showRedoWithModel = showRedoWithModel && onRedoWithModel != null,
         onCopy = onCopy,
         onRegenerate = onRegenerate,
-        onBranch = onBranch
+        onBranch = onBranch,
+        onRedoWithModel = onRedoWithModel
     )
 }

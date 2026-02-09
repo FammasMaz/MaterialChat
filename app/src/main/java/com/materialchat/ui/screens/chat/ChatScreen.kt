@@ -9,6 +9,9 @@ import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.Animatable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -56,6 +59,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -77,6 +81,7 @@ import com.materialchat.ui.screens.chat.components.ChatTopBar
 import com.materialchat.ui.screens.chat.components.ExportBottomSheet
 import com.materialchat.ui.screens.chat.components.MessageBubble
 import com.materialchat.ui.screens.chat.components.MessageInput
+import com.materialchat.ui.screens.chat.components.RedoModelPickerSheet
 import com.materialchat.ui.theme.CustomShapes
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -122,7 +127,7 @@ private const val MAX_ATTACHMENTS = 4
 @Composable
 fun ChatScreen(
     onNavigateBack: () -> Unit,
-    onNavigateToBranch: (String) -> Unit = {},
+    onNavigateToBranch: (String, Boolean, String?) -> Unit = { _, _, _ -> },
     viewModel: ChatViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -243,10 +248,12 @@ fun ChatScreen(
                     if (hapticsEnabled) {
                         haptics.perform(HapticPattern.CONFIRM, true)
                     }
-                    coroutineScope.launch {
-                        snackbarHostState.showSnackbar("Conversation branched")
+                    if (!event.autoSend) {
+                        coroutineScope.launch {
+                            snackbarHostState.showSnackbar("Conversation branched")
+                        }
                     }
-                    onNavigateToBranch(event.conversationId)
+                    onNavigateToBranch(event.conversationId, event.autoSend, event.overrideModel)
                 }
             }
         }
@@ -333,6 +340,19 @@ fun ChatScreen(
                     },
                     onRegenerateResponse = { viewModel.regenerateResponse() },
                     onBranchFromMessage = { messageId -> viewModel.branchFromMessage(messageId) },
+                    onRedoWithModel = { messageId -> viewModel.showRedoModelPicker(messageId) },
+                    onNavigatePrevious = { siblingInfo ->
+                        if (siblingInfo.currentIndex > 0) {
+                            val prevId = siblingInfo.siblings[siblingInfo.currentIndex - 1].conversationId
+                            viewModel.navigateToSibling(prevId, -1)
+                        }
+                    },
+                    onNavigateNext = { siblingInfo ->
+                        if (siblingInfo.currentIndex < siblingInfo.totalCount - 1) {
+                            val nextId = siblingInfo.siblings[siblingInfo.currentIndex + 1].conversationId
+                            viewModel.navigateToSibling(nextId, 1)
+                        }
+                    },
                     onAttachImage = {
                         imagePickerLauncher.launch(
                             PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
@@ -349,6 +369,16 @@ fun ChatScreen(
                     isExporting = state.isExporting,
                     onDismiss = { viewModel.hideExportOptions() },
                     onExportFormat = { format -> viewModel.exportConversation(format) }
+                )
+
+                // Redo model picker bottom sheet
+                RedoModelPickerSheet(
+                    isVisible = state.showRedoModelPicker,
+                    models = state.availableModels,
+                    isLoading = state.isLoadingModels,
+                    currentModelName = state.modelName,
+                    onModelSelected = { model -> viewModel.redoWithModel(model) },
+                    onDismiss = { viewModel.hideRedoModelPicker() }
                 )
             }
         }
@@ -436,6 +466,9 @@ private fun ChatContent(
     onCopyMessage: (String) -> Unit,
     onRegenerateResponse: () -> Unit,
     onBranchFromMessage: (String) -> Unit,
+    onRedoWithModel: (String) -> Unit,
+    onNavigatePrevious: (SiblingInfo) -> Unit,
+    onNavigateNext: (SiblingInfo) -> Unit,
     onAttachImage: () -> Unit,
     onRemoveAttachment: (Attachment) -> Unit,
     reasoningEffort: ReasoningEffort,
@@ -449,6 +482,22 @@ private fun ChatContent(
     var autoScrollEnabled by remember { mutableStateOf(true) }
     var inputHeightPx by remember { mutableIntStateOf(0) }
     val bottomThresholdPx = with(density) { 24.dp.toPx() }
+
+    // Sibling switching slide animation (M3 Expressive spring physics)
+    val slideOffset = remember { Animatable(0f) }
+    LaunchedEffect(state.conversationId) {
+        if (state.slideDirection != 0) {
+            // Snap to edge, then animate in with spring overshoot
+            slideOffset.snapTo(state.slideDirection.toFloat())
+            slideOffset.animateTo(
+                0f,
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioLowBouncy,
+                    stiffness = Spring.StiffnessMediumLow
+                )
+            )
+        }
+    }
 
     // Fix 1: Visual buffer during streaming (8dp)
     val scrollBufferPx = with(density) { 8.dp.toPx() }
@@ -580,17 +629,24 @@ private fun ChatContent(
                 .padding(bottom = imePadding)
                 .nestedScroll(autoScrollConnection)
         ) {
-            // Message list
+            // Message list with sibling slide animation
             MessageList(
                 messages = state.messages,
                 listState = listState,
                 onCopyMessage = onCopyMessage,
                 onRegenerateResponse = onRegenerateResponse,
                 onBranchFromMessage = onBranchFromMessage,
+                onRedoWithModel = onRedoWithModel,
+                onNavigatePrevious = onNavigatePrevious,
+                onNavigateNext = onNavigateNext,
                 alwaysShowThinking = state.alwaysShowThinking,
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxWidth()
+                    .graphicsLayer {
+                        translationX = slideOffset.value * size.width * 0.3f
+                        alpha = 1f - (kotlin.math.abs(slideOffset.value) * 0.2f)
+                    }
             )
 
             // Input area
@@ -624,6 +680,9 @@ private fun MessageList(
     onCopyMessage: (String) -> Unit,
     onRegenerateResponse: () -> Unit,
     onBranchFromMessage: (String) -> Unit,
+    onRedoWithModel: (String) -> Unit,
+    onNavigatePrevious: (SiblingInfo) -> Unit,
+    onNavigateNext: (SiblingInfo) -> Unit,
     alwaysShowThinking: Boolean = false,
     modifier: Modifier = Modifier
 ) {
@@ -661,6 +720,21 @@ private fun MessageList(
                     { onBranchFromMessage(messageItem.message.id) }
                 } else {
                     null
+                },
+                onRedoWithModel = if (messageItem.isLastAssistantMessage && !messageItem.message.isStreaming) {
+                    { onRedoWithModel(messageItem.message.id) }
+                } else {
+                    null
+                },
+                onNavigatePrevious = messageItem.siblingInfo?.let { siblingInfo ->
+                    if (siblingInfo.currentIndex > 0) {
+                        { onNavigatePrevious(siblingInfo) }
+                    } else null
+                },
+                onNavigateNext = messageItem.siblingInfo?.let { siblingInfo ->
+                    if (siblingInfo.currentIndex < siblingInfo.totalCount - 1) {
+                        { onNavigateNext(siblingInfo) }
+                    } else null
                 },
                 alwaysShowThinking = alwaysShowThinking,
                 modifier = Modifier.padding(top = topSpacing)

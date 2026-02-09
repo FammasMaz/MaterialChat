@@ -55,6 +55,9 @@ data class ConversationEntity(
     @ColumnInfo(name = "parent_id", defaultValue = "NULL")
     val parentId: String? = null,
 
+    @ColumnInfo(name = "branch_source_message_id", defaultValue = "NULL")
+    val branchSourceMessageId: String? = null,
+
     @ColumnInfo(name = "created_at")
     val createdAt: Long,
 

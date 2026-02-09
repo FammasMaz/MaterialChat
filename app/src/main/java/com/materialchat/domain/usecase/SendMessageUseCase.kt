@@ -82,7 +82,8 @@ class SendMessageUseCase @Inject constructor(
             conversationId = conversationId,
             role = MessageRole.ASSISTANT,
             content = "",
-            isStreaming = true
+            isStreaming = true,
+            modelName = conversation.modelName
         )
         val assistantMessageId = conversationRepository.addMessage(assistantMessage)
 

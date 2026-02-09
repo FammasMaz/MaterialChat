@@ -229,4 +229,33 @@ interface ConversationRepository {
      * @return The number of branches
      */
     suspend fun getBranchCount(parentId: String): Int
+
+    // ========== Sibling Branch Operations ==========
+
+    /**
+     * Observes sibling branches sharing the same parent and branch source message.
+     * Used for redo-with-model sibling navigation.
+     *
+     * @param parentId The parent conversation ID
+     * @param branchSourceMessageId The source message ID that siblings share
+     * @return A Flow emitting the list of sibling conversations
+     */
+    fun observeSiblingBranches(parentId: String, branchSourceMessageId: String): Flow<List<Conversation>>
+
+    /**
+     * Gets sibling branches sharing the same parent and branch source message (one-shot).
+     *
+     * @param parentId The parent conversation ID
+     * @param branchSourceMessageId The source message ID that siblings share
+     * @return The list of sibling conversations
+     */
+    suspend fun getSiblingBranches(parentId: String, branchSourceMessageId: String): List<Conversation>
+
+    /**
+     * Updates the model name for a specific message.
+     *
+     * @param messageId The ID of the message
+     * @param modelName The model name to set
+     */
+    suspend fun updateMessageModelName(messageId: String, modelName: String)
 }

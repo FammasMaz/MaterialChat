@@ -147,6 +147,15 @@ fun MaterialChatNavHost(
                 arguments = listOf(
                     navArgument(Screen.Chat.ARG_CONVERSATION_ID) {
                         type = NavType.StringType
+                    },
+                    navArgument(Screen.Chat.ARG_AUTO_SEND) {
+                        type = NavType.BoolType
+                        defaultValue = false
+                    },
+                    navArgument(Screen.Chat.ARG_OVERRIDE_MODEL) {
+                        type = NavType.StringType
+                        nullable = true
+                        defaultValue = null
                     }
                 )
             ) { backStackEntry ->
@@ -158,9 +167,9 @@ fun MaterialChatNavHost(
                 ) {
                     ChatScreen(
                         onNavigateBack = { navController.popBackStack() },
-                        onNavigateToBranch = { newId ->
+                        onNavigateToBranch = { newId, autoSend, overrideModel ->
                             navController.popBackStack()
-                            navController.navigate(Screen.Chat.createRoute(newId))
+                            navController.navigate(Screen.Chat.createRoute(newId, autoSend, overrideModel))
                         }
                     )
                 }

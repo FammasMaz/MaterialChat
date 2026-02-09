@@ -24,6 +24,7 @@ data class Message(
     val isStreaming: Boolean = false,
     val thinkingDurationMs: Long? = null,
     val totalDurationMs: Long? = null,
+    val modelName: String? = null,
     val createdAt: Long = System.currentTimeMillis()
 ) {
     /**

@@ -24,9 +24,12 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -56,6 +59,7 @@ import com.materialchat.domain.model.MessageRole
 import com.materialchat.ui.components.MarkdownText
 import com.materialchat.ui.screens.chat.MessageUiItem
 import com.materialchat.ui.screens.chat.MessageGroupPosition
+import com.materialchat.ui.screens.chat.SiblingInfo
 import com.materialchat.ui.theme.MessageBubbleShapes
 
 /**
@@ -72,6 +76,9 @@ import com.materialchat.ui.theme.MessageBubbleShapes
  * @param onCopy Callback when copy button is clicked
  * @param onRegenerate Optional callback when regenerate button is clicked (only for last assistant message)
  * @param onBranch Optional callback when branch button is clicked
+ * @param onRedoWithModel Optional callback when redo with model button is clicked
+ * @param onNavigatePrevious Optional callback to navigate to previous sibling
+ * @param onNavigateNext Optional callback to navigate to next sibling
  * @param modifier Modifier for the bubble container
  */
 @Composable
@@ -80,6 +87,9 @@ fun MessageBubble(
     onCopy: () -> Unit,
     onRegenerate: (() -> Unit)? = null,
     onBranch: (() -> Unit)? = null,
+    onRedoWithModel: (() -> Unit)? = null,
+    onNavigatePrevious: (() -> Unit)? = null,
+    onNavigateNext: (() -> Unit)? = null,
     alwaysShowThinking: Boolean = false,
     modifier: Modifier = Modifier
 ) {
@@ -172,9 +182,29 @@ fun MessageBubble(
                 }
             }
 
-            // Action buttons and reply time (below the bubble)
+            // Action buttons, model label, and sibling navigation (below the bubble)
             if (isAssistant && !message.isStreaming && message.content.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(4.dp))
+
+                // Sibling navigation row (model label + arrows)
+                val siblingInfo = messageItem.siblingInfo
+                if (siblingInfo != null && siblingInfo.totalCount > 1) {
+                    ModelSiblingRow(
+                        siblingInfo = siblingInfo,
+                        modelName = message.modelName,
+                        onNavigatePrevious = onNavigatePrevious,
+                        onNavigateNext = onNavigateNext
+                    )
+                } else if (messageItem.showModelLabel && message.modelName != null) {
+                    // Only show model label when the model was switched (differs from conversation default)
+                    Text(
+                        text = message.modelName,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                        modifier = Modifier.padding(start = 4.dp, bottom = 2.dp)
+                    )
+                }
+
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -186,9 +216,11 @@ fun MessageBubble(
                             showCopy = true,
                             showRegenerate = messageItem.isLastAssistantMessage && onRegenerate != null,
                             showBranch = onBranch != null,
+                            showRedoWithModel = messageItem.isLastAssistantMessage && onRedoWithModel != null,
                             onCopy = onCopy,
                             onRegenerate = onRegenerate,
-                            onBranch = onBranch
+                            onBranch = onBranch,
+                            onRedoWithModel = onRedoWithModel
                         )
                     } else {
                         Spacer(modifier = Modifier.weight(1f))
@@ -430,6 +462,67 @@ private fun ThinkingSection(
                 color = textColor.copy(alpha = 0.7f),
                 fontStyle = FontStyle.Italic,
                 modifier = Modifier.padding(start = 20.dp, top = 4.dp)
+            )
+        }
+    }
+}
+
+/**
+ * Row showing model name with left/right sibling navigation arrows.
+ * Displayed below the assistant bubble when multiple siblings exist.
+ */
+@Composable
+private fun ModelSiblingRow(
+    siblingInfo: SiblingInfo,
+    modelName: String?,
+    onNavigatePrevious: (() -> Unit)?,
+    onNavigateNext: (() -> Unit)?
+) {
+    val canGoPrevious = siblingInfo.currentIndex > 0
+    val canGoNext = siblingInfo.currentIndex < siblingInfo.totalCount - 1
+    val displayName = modelName ?: siblingInfo.siblings.getOrNull(siblingInfo.currentIndex)?.modelName ?: ""
+
+    Row(
+        modifier = Modifier.padding(start = 4.dp, bottom = 2.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(0.dp)
+    ) {
+        // Previous arrow
+        IconButton(
+            onClick = { onNavigatePrevious?.invoke() },
+            enabled = canGoPrevious,
+            modifier = Modifier.size(28.dp)
+        ) {
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
+                contentDescription = "Previous response",
+                modifier = Modifier.size(16.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(
+                    alpha = if (canGoPrevious) 0.6f else 0.25f
+                )
+            )
+        }
+
+        // Model name and count
+        Text(
+            text = "$displayName (${siblingInfo.currentIndex + 1}/${siblingInfo.totalCount})",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+        )
+
+        // Next arrow
+        IconButton(
+            onClick = { onNavigateNext?.invoke() },
+            enabled = canGoNext,
+            modifier = Modifier.size(28.dp)
+        ) {
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                contentDescription = "Next response",
+                modifier = Modifier.size(16.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(
+                    alpha = if (canGoNext) 0.6f else 0.25f
+                )
             )
         }
     }

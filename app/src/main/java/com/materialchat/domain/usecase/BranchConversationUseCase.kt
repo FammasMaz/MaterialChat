@@ -26,12 +26,14 @@ class BranchConversationUseCase @Inject constructor(
      *
      * @param sourceConversationId The ID of the conversation to branch from
      * @param upToMessageId The ID of the message to branch up to (inclusive)
+     * @param branchSourceMessageId Optional source message ID for sibling tracking
      * @return The ID of the newly created branched conversation
      * @throws IllegalStateException if the source conversation or message is not found
      */
     suspend operator fun invoke(
         sourceConversationId: String,
-        upToMessageId: String
+        upToMessageId: String,
+        branchSourceMessageId: String? = null
     ): String {
         // Get source conversation
         val sourceConversation = conversationRepository.getConversation(sourceConversationId)
@@ -60,7 +62,8 @@ class BranchConversationUseCase @Inject constructor(
             icon = null, // AI will generate new icon based on branch content
             providerId = sourceConversation.providerId,
             modelName = sourceConversation.modelName,
-            parentId = parentId
+            parentId = parentId,
+            branchSourceMessageId = branchSourceMessageId ?: sourceConversation.branchSourceMessageId
         )
 
         val newConversationId = conversationRepository.createConversation(newConversation)
@@ -75,6 +78,7 @@ class BranchConversationUseCase @Inject constructor(
                 thinkingContent = message.thinkingContent,
                 attachments = message.attachments,
                 isStreaming = false, // Never copy streaming state
+                modelName = message.modelName,
                 createdAt = message.createdAt
             )
             conversationRepository.addMessage(copiedMessage)

@@ -30,7 +30,7 @@ import com.materialchat.data.local.database.entity.ProviderEntity
         ConversationEntity::class,
         MessageEntity::class
     ],
-    version = 6,
+    version = 7,
     exportSchema = true
 )
 abstract class MaterialChatDatabase : RoomDatabase() {
@@ -94,11 +94,22 @@ abstract class MaterialChatDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * Migration from version 6 to 7: Add model_name to messages and branch_source_message_id to conversations.
+         */
+        private val MIGRATION_6_7 = object : Migration(6, 7) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE messages ADD COLUMN model_name TEXT DEFAULT NULL")
+                db.execSQL("ALTER TABLE conversations ADD COLUMN branch_source_message_id TEXT DEFAULT NULL")
+            }
+        }
+
         internal val MIGRATIONS = arrayOf(
             MIGRATION_2_3,
             MIGRATION_3_4,
             MIGRATION_4_5,
-            MIGRATION_5_6
+            MIGRATION_5_6,
+            MIGRATION_6_7
         )
 
         /**

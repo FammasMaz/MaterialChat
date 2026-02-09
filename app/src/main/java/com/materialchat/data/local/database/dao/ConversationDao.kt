@@ -186,4 +186,29 @@ interface ConversationDao {
         ORDER BY c.updated_at DESC
     """)
     fun getRootConversationsWithBranches(): Flow<List<ConversationEntity>>
+
+    // ========== Sibling Branch Operations ==========
+
+    /**
+     * Get sibling branches sharing the same parent and branch source message.
+     * Used for redo-with-model sibling navigation.
+     */
+    @Query("""
+        SELECT * FROM conversations
+        WHERE parent_id = :parentId
+        AND branch_source_message_id = :branchSourceMessageId
+        ORDER BY created_at ASC
+    """)
+    fun getSiblingBranches(parentId: String, branchSourceMessageId: String): Flow<List<ConversationEntity>>
+
+    /**
+     * Get sibling branches sharing the same parent and branch source message (one-shot).
+     */
+    @Query("""
+        SELECT * FROM conversations
+        WHERE parent_id = :parentId
+        AND branch_source_message_id = :branchSourceMessageId
+        ORDER BY created_at ASC
+    """)
+    suspend fun getSiblingBranchesOnce(parentId: String, branchSourceMessageId: String): List<ConversationEntity>
 }

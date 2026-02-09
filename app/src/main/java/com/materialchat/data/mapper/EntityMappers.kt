@@ -71,6 +71,7 @@ fun Conversation.toEntity(): ConversationEntity = ConversationEntity(
     providerId = providerId,
     modelName = modelName,
     parentId = parentId,
+    branchSourceMessageId = branchSourceMessageId,
     createdAt = createdAt,
     updatedAt = updatedAt
 )
@@ -87,6 +88,7 @@ fun ConversationEntity.toDomain(): Conversation = Conversation(
     providerId = providerId ?: "",
     modelName = modelName,
     parentId = parentId,
+    branchSourceMessageId = branchSourceMessageId,
     createdAt = createdAt,
     updatedAt = updatedAt
 )
@@ -118,6 +120,7 @@ fun Message.toEntity(): MessageEntity = MessageEntity(
     isStreaming = isStreaming,
     thinkingDurationMs = thinkingDurationMs,
     totalDurationMs = totalDurationMs,
+    modelName = modelName,
     createdAt = createdAt
 )
 
@@ -134,6 +137,7 @@ fun MessageEntity.toDomain(): Message = Message(
     isStreaming = isStreaming,
     thinkingDurationMs = thinkingDurationMs,
     totalDurationMs = totalDurationMs,
+    modelName = modelName,
     createdAt = createdAt
 )
 

@@ -54,7 +54,10 @@ sealed interface ChatUiState {
         val hapticsEnabled: Boolean = true,
         val reasoningEffort: ReasoningEffort = ReasoningEffort.HIGH,
         val beautifulModelNamesEnabled: Boolean = true,
-        val alwaysShowThinking: Boolean = false
+        val alwaysShowThinking: Boolean = false,
+        val showRedoModelPicker: Boolean = false,
+        val redoTargetMessageId: String? = null,
+        val slideDirection: Int = 0
     ) : ChatUiState {
         /**
          * Whether a message is currently streaming.
@@ -93,12 +96,15 @@ sealed interface ChatUiState {
  * @property message The domain message model
  * @property isLastAssistantMessage Whether this is the last message from the assistant
  * @property showActions Whether to show action buttons for this message
+ * @property siblingInfo Sibling navigation info for redo-with-model branches
  */
 data class MessageUiItem(
     val message: Message,
     val isLastAssistantMessage: Boolean = false,
     val showActions: Boolean = false,
-    val groupPosition: MessageGroupPosition = MessageGroupPosition.Single
+    val groupPosition: MessageGroupPosition = MessageGroupPosition.Single,
+    val siblingInfo: SiblingInfo? = null,
+    val showModelLabel: Boolean = false
 )
 
 /**
@@ -178,6 +184,35 @@ sealed interface ChatEvent {
      * Navigate to a branched conversation.
      *
      * @property conversationId The ID of the new branched conversation
+     * @property autoSend Whether to auto-send/regenerate in the new conversation
      */
-    data class NavigateToBranch(val conversationId: String) : ChatEvent
+    data class NavigateToBranch(
+        val conversationId: String,
+        val autoSend: Boolean = false,
+        val overrideModel: String? = null
+    ) : ChatEvent
 }
+
+/**
+ * Sibling navigation info for redo-with-model branches.
+ *
+ * @property currentIndex The 0-based index of the current conversation among siblings
+ * @property totalCount The total number of siblings (including the original)
+ * @property siblings The list of sibling entries with conversation IDs and model names
+ */
+data class SiblingInfo(
+    val currentIndex: Int,
+    val totalCount: Int,
+    val siblings: List<SiblingEntry>
+)
+
+/**
+ * A single entry in the sibling list.
+ *
+ * @property conversationId The conversation ID of this sibling
+ * @property modelName The model name used for this sibling
+ */
+data class SiblingEntry(
+    val conversationId: String,
+    val modelName: String
+)

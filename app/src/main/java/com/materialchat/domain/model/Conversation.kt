@@ -21,6 +21,7 @@ data class Conversation(
     val providerId: String,
     val modelName: String,
     val parentId: String? = null,
+    val branchSourceMessageId: String? = null,
     val createdAt: Long = System.currentTimeMillis(),
     val updatedAt: Long = System.currentTimeMillis()
 ) {

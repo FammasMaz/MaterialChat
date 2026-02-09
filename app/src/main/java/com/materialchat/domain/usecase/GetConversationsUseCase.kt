@@ -86,4 +86,15 @@ class GetConversationsUseCase @Inject constructor(
     suspend fun updateConversationModel(conversationId: String, modelName: String) {
         conversationRepository.updateConversationModel(conversationId, modelName)
     }
+
+    /**
+     * Observes sibling branches sharing the same parent and branch source message.
+     *
+     * @param parentId The parent conversation ID
+     * @param branchSourceMessageId The source message ID that siblings share
+     * @return A Flow emitting the list of sibling conversations
+     */
+    fun observeSiblingBranches(parentId: String, branchSourceMessageId: String): Flow<List<Conversation>> {
+        return conversationRepository.observeSiblingBranches(parentId, branchSourceMessageId)
+    }
 }

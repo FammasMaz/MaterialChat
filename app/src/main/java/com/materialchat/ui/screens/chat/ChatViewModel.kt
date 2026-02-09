@@ -15,11 +15,13 @@ import com.materialchat.domain.usecase.ExportConversationUseCase
 import com.materialchat.domain.usecase.BranchConversationUseCase
 import com.materialchat.domain.usecase.GetConversationsUseCase
 import com.materialchat.domain.usecase.ManageProvidersUseCase
+import com.materialchat.domain.usecase.RedoWithModelUseCase
 import com.materialchat.domain.usecase.RegenerateResponseUseCase
 import com.materialchat.domain.usecase.SendMessageUseCase
 import com.materialchat.ui.navigation.Screen
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -28,8 +30,12 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -42,6 +48,7 @@ private const val MESSAGE_GROUP_TIME_WINDOW_MS = 5 * 60 * 1000L
  *
  * Manages the chat state, message sending, and streaming responses.
  */
+@OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class ChatViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
@@ -50,6 +57,7 @@ class ChatViewModel @Inject constructor(
     private val regenerateResponseUseCase: RegenerateResponseUseCase,
     private val exportConversationUseCase: ExportConversationUseCase,
     private val branchConversationUseCase: BranchConversationUseCase,
+    private val redoWithModelUseCase: RedoWithModelUseCase,
     private val manageProvidersUseCase: ManageProvidersUseCase,
     private val appPreferences: AppPreferences,
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher
@@ -58,6 +66,8 @@ class ChatViewModel @Inject constructor(
     private val conversationId: String = checkNotNull(
         savedStateHandle[Screen.Chat.ARG_CONVERSATION_ID]
     )
+
+    private val autoSend: Boolean = savedStateHandle[Screen.Chat.ARG_AUTO_SEND] ?: false
 
     private val _uiState = MutableStateFlow<ChatUiState>(ChatUiState.Loading)
     val uiState: StateFlow<ChatUiState> = _uiState.asStateFlow()
@@ -71,6 +81,10 @@ class ChatViewModel @Inject constructor(
     private var currentReasoningEffort: ReasoningEffort = AppPreferences.DEFAULT_REASONING_EFFORT
     private var currentBeautifulModelNamesEnabled: Boolean = AppPreferences.DEFAULT_BEAUTIFUL_MODEL_NAMES
     private var currentAlwaysShowThinking: Boolean = false
+    private var autoSendTriggered: Boolean = false
+    private var siblingInfo: SiblingInfo? = null
+    private val activeConversationId = MutableStateFlow(conversationId)
+    private val overrideModel: String? = savedStateHandle[Screen.Chat.ARG_OVERRIDE_MODEL]
 
     init {
         loadConversation()
@@ -79,6 +93,7 @@ class ChatViewModel @Inject constructor(
         loadReasoningEffort()
         loadBeautifulModelNamesPreference()
         loadAlwaysShowThinkingPreference()
+        loadSiblings()
     }
 
     /**
@@ -99,12 +114,14 @@ class ChatViewModel @Inject constructor(
                 val provider = providers.find { it.id == initialConversation.providerId }
                 val providerName = provider?.name ?: "Unknown Provider"
 
-                // Combine conversation and messages observation
-                combine(
-                    getConversationsUseCase.observeConversation(conversationId),
-                    getConversationsUseCase.observeMessages(conversationId)
-                ) { conversation, messages ->
-                    Pair(conversation, messages)
+                // Observe conversation and messages reactively, switching on activeConversationId
+                activeConversationId.flatMapLatest { currentId ->
+                    combine(
+                        getConversationsUseCase.observeConversation(currentId),
+                        getConversationsUseCase.observeMessages(currentId)
+                    ) { conversation, messages ->
+                        Pair(conversation, messages)
+                    }
                 }
                     .catch { e ->
                         _uiState.value = ChatUiState.Error(
@@ -118,18 +135,20 @@ class ChatViewModel @Inject constructor(
                         }
 
                         val currentState = _uiState.value
-                        val inputText = if (currentState is ChatUiState.Success) {
-                            currentState.inputText
+                        val isSameConversation = currentState is ChatUiState.Success &&
+                            currentState.conversationId == activeConversationId.value
+                        val inputText = if (isSameConversation) {
+                            (currentState as ChatUiState.Success).inputText
                         } else {
                             ""
                         }
-                        val pendingAttachments = if (currentState is ChatUiState.Success) {
-                            currentState.pendingAttachments
+                        val pendingAttachments = if (isSameConversation) {
+                            (currentState as ChatUiState.Success).pendingAttachments
                         } else {
                             emptyList()
                         }
-                        val streamingState = if (currentState is ChatUiState.Success) {
-                            currentState.streamingState
+                        val streamingState = if (isSameConversation) {
+                            (currentState as ChatUiState.Success).streamingState
                         } else {
                             StreamingState.Idle
                         }
@@ -143,9 +162,12 @@ class ChatViewModel @Inject constructor(
                         } else {
                             false
                         }
-                        val currentModelName = if (currentState is ChatUiState.Success) {
+                        val currentModelName = if (currentState is ChatUiState.Success &&
+                            currentState.conversationId == activeConversationId.value) {
+                            // Same conversation — preserve user's model picker selection
                             currentState.modelName
                         } else {
+                            // New/switched conversation — use its actual model
                             conversation.modelName
                         }
                         val reasoningEffort = if (currentState is ChatUiState.Success) {
@@ -160,18 +182,29 @@ class ChatViewModel @Inject constructor(
                         }
 
                         val messageItems = messages.mapIndexed { index, message ->
+                            val isSiblingTarget = index == lastAssistantIndex &&
+                                    message.role == MessageRole.ASSISTANT
                             MessageUiItem(
                                 message = message,
                                 isLastAssistantMessage = index == lastAssistantIndex &&
                                         message.role == MessageRole.ASSISTANT,
                                 showActions = message.role == MessageRole.ASSISTANT ||
                                         message.role == MessageRole.USER,
-                                groupPosition = resolveGroupPosition(messages, index)
+                                groupPosition = resolveGroupPosition(messages, index),
+                                siblingInfo = if (isSiblingTarget) siblingInfo else null,
+                                showModelLabel = message.modelName != null &&
+                                        message.modelName != conversation.modelName
                             )
                         }
 
+                        val slideDirection = if (currentState is ChatUiState.Success) {
+                            currentState.slideDirection
+                        } else {
+                            0
+                        }
+
                         _uiState.value = ChatUiState.Success(
-                            conversationId = conversationId,
+                            conversationId = activeConversationId.value,
                             conversationTitle = conversation.title,
                             conversationIcon = conversation.icon,
                             providerName = providerName,
@@ -185,7 +218,8 @@ class ChatViewModel @Inject constructor(
                             hapticsEnabled = currentHapticsEnabled,
                             reasoningEffort = reasoningEffort,
                             beautifulModelNamesEnabled = currentBeautifulModelNamesEnabled,
-                            alwaysShowThinking = currentAlwaysShowThinking
+                            alwaysShowThinking = currentAlwaysShowThinking,
+                            slideDirection = slideDirection
                         )
 
                         // Only scroll to bottom when a NEW message is added, not during streaming updates
@@ -195,6 +229,12 @@ class ChatViewModel @Inject constructor(
 
                         if (messages.isNotEmpty() && newMessageAdded) {
                             _events.emit(ChatEvent.ScrollToBottom)
+                        }
+
+                        // Auto-send logic: if navigated with autoSend=true, trigger regenerate once
+                        if (autoSend && !autoSendTriggered && _uiState.value is ChatUiState.Success) {
+                            autoSendTriggered = true
+                            regenerateResponse(overrideModelName = overrideModel)
                         }
                     }
             } catch (e: Exception) {
@@ -381,7 +421,7 @@ class ChatViewModel @Inject constructor(
         streamingJob = viewModelScope.launch(ioDispatcher) {
             try {
                 sendMessageUseCase(
-                    conversationId = conversationId,
+                    conversationId = activeConversationId.value,
                     userContent = messageContent,
                     attachments = attachments,
                     systemPrompt = currentSystemPrompt,
@@ -477,7 +517,7 @@ class ChatViewModel @Inject constructor(
 
         viewModelScope.launch {
             try {
-                val conversation = getConversationsUseCase.getConversation(conversationId)
+                val conversation = getConversationsUseCase.getConversation(activeConversationId.value)
                 if (conversation == null) {
                     _uiState.value = currentState.copy(isLoadingModels = false)
                     return@launch
@@ -522,7 +562,7 @@ class ChatViewModel @Inject constructor(
     fun changeModel(model: AiModel) {
         viewModelScope.launch {
             try {
-                getConversationsUseCase.updateConversationModel(conversationId, model.id)
+                getConversationsUseCase.updateConversationModel(activeConversationId.value, model.id)
 
                 val currentState = _uiState.value
                 if (currentState is ChatUiState.Success) {
@@ -561,8 +601,10 @@ class ChatViewModel @Inject constructor(
 
     /**
      * Regenerates the last AI response.
+     *
+     * @param overrideModelName Optional model name to use instead of conversation default
      */
-    fun regenerateResponse() {
+    fun regenerateResponse(overrideModelName: String? = null) {
         val currentState = _uiState.value
         if (currentState !is ChatUiState.Success) return
         if (currentState.isStreaming) return
@@ -572,9 +614,10 @@ class ChatViewModel @Inject constructor(
         streamingJob = viewModelScope.launch(ioDispatcher) {
             try {
                 regenerateResponseUseCase(
-                    conversationId = conversationId,
+                    conversationId = activeConversationId.value,
                     systemPrompt = currentSystemPrompt,
-                    reasoningEffort = currentReasoningEffort
+                    reasoningEffort = currentReasoningEffort,
+                    overrideModelName = overrideModelName
                 ).collect { state ->
                     updateStreamingState(state)
                 }
@@ -609,7 +652,7 @@ class ChatViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 val newConversationId = branchConversationUseCase(
-                    sourceConversationId = conversationId,
+                    sourceConversationId = activeConversationId.value,
                     upToMessageId = messageId
                 )
                 _events.emit(ChatEvent.NavigateToBranch(newConversationId))
@@ -657,7 +700,7 @@ class ChatViewModel @Inject constructor(
 
         viewModelScope.launch {
             try {
-                val result = exportConversationUseCase(conversationId, format)
+                val result = exportConversationUseCase(activeConversationId.value, format)
                 result.fold(
                     onSuccess = { exportResult ->
                         // Hide the export sheet first
@@ -701,6 +744,231 @@ class ChatViewModel @Inject constructor(
                 )
             }
         }
+    }
+
+    /**
+     * Loads sibling branch info for redo-with-model navigation.
+     * Observes sibling branches and computes SiblingInfo for the last assistant message.
+     * Re-evaluates when activeConversationId changes (inline sibling switching).
+     */
+    private fun loadSiblings() {
+        viewModelScope.launch {
+            try {
+                activeConversationId.collectLatest { currentId ->
+                    val conversation = getConversationsUseCase.getConversation(currentId)
+                    if (conversation == null) {
+                        siblingInfo = null
+                        refreshSiblingInfoInState()
+                        return@collectLatest
+                    }
+
+                    // Only load siblings for conversations that have a branchSourceMessageId,
+                    // or for root conversations that might be parents of sibling branches
+                    val parentId: String
+                    val branchSourceMsgId: String
+
+                    when {
+                        conversation.branchSourceMessageId != null -> {
+                            // This is a branch with sibling tracking
+                            parentId = conversation.parentId ?: run {
+                                siblingInfo = null
+                                refreshSiblingInfoInState()
+                                return@collectLatest
+                            }
+                            branchSourceMsgId = conversation.branchSourceMessageId
+                        }
+                        conversation.parentId == null -> {
+                            // This is a root conversation — check if any branches have it as parent
+                            parentId = conversation.id
+                            val messages = getConversationsUseCase.getMessages(currentId)
+                            val lastUserMessage = messages.lastOrNull { it.role == MessageRole.USER }
+                            if (lastUserMessage == null) {
+                                siblingInfo = null
+                                refreshSiblingInfoInState()
+                                return@collectLatest
+                            }
+                            branchSourceMsgId = lastUserMessage.id
+                        }
+                        else -> {
+                            // Branch without branchSourceMessageId (legacy branch), no sibling nav
+                            siblingInfo = null
+                            refreshSiblingInfoInState()
+                            return@collectLatest
+                        }
+                    }
+
+                    getConversationsUseCase.observeSiblingBranches(parentId, branchSourceMsgId)
+                        .collect { siblings ->
+                            if (siblings.isEmpty()) {
+                                siblingInfo = null
+                                refreshSiblingInfoInState()
+                                return@collect
+                            }
+
+                            // Build sibling list: root/parent is always index 0
+                            val entries = mutableListOf<SiblingEntry>()
+
+                            if (conversation.parentId == null) {
+                                // Root conversation: add itself as the first entry
+                                val rootMessages = getConversationsUseCase.getMessages(currentId)
+                                val rootLastAssistant = rootMessages.lastOrNull { it.role == MessageRole.ASSISTANT }
+                                entries.add(SiblingEntry(
+                                    conversationId = conversation.id,
+                                    modelName = rootLastAssistant?.modelName ?: conversation.modelName
+                                ))
+                            } else {
+                                // Branch: add the parent as the first entry
+                                val parent = getConversationsUseCase.getConversation(parentId)
+                                if (parent != null) {
+                                    val parentMessages = getConversationsUseCase.getMessages(parentId)
+                                    val parentLastAssistant = parentMessages.lastOrNull { it.role == MessageRole.ASSISTANT }
+                                    entries.add(SiblingEntry(
+                                        conversationId = parent.id,
+                                        modelName = parentLastAssistant?.modelName ?: parent.modelName
+                                    ))
+                                }
+                            }
+
+                            // Add all sibling branches (use response model name, not conversation model)
+                            for (sibling in siblings) {
+                                val siblingMessages = getConversationsUseCase.getMessages(sibling.id)
+                                val siblingLastAssistant = siblingMessages.lastOrNull { it.role == MessageRole.ASSISTANT }
+                                entries.add(SiblingEntry(
+                                    conversationId = sibling.id,
+                                    modelName = siblingLastAssistant?.modelName ?: sibling.modelName
+                                ))
+                            }
+
+                            val totalCount = entries.size
+                            if (totalCount <= 1) {
+                                siblingInfo = null
+                                refreshSiblingInfoInState()
+                                return@collect
+                            }
+
+                            val currentIndex = entries.indexOfFirst { it.conversationId == currentId }
+                            if (currentIndex == -1) {
+                                siblingInfo = null
+                                refreshSiblingInfoInState()
+                                return@collect
+                            }
+
+                            siblingInfo = SiblingInfo(
+                                currentIndex = currentIndex,
+                                totalCount = totalCount,
+                                siblings = entries
+                            )
+                            refreshSiblingInfoInState()
+                        }
+                }
+            } catch (_: Exception) {
+                // Silently fail — sibling navigation is optional
+            }
+        }
+    }
+
+    /**
+     * Refreshes siblingInfo on the last assistant message in current UI state.
+     */
+    private fun refreshSiblingInfoInState() {
+        val currentState = _uiState.value
+        if (currentState is ChatUiState.Success) {
+            val updatedMessages = currentState.messages.map { item ->
+                if (item.isLastAssistantMessage) {
+                    item.copy(siblingInfo = siblingInfo)
+                } else {
+                    item
+                }
+            }
+            _uiState.value = currentState.copy(messages = updatedMessages)
+        }
+    }
+
+    /**
+     * Shows the redo model picker for the given assistant message.
+     */
+    fun showRedoModelPicker(messageId: String) {
+        val currentState = _uiState.value
+        if (currentState !is ChatUiState.Success) return
+        if (currentState.isStreaming) return
+
+        _uiState.value = currentState.copy(
+            showRedoModelPicker = true,
+            redoTargetMessageId = messageId
+        )
+
+        // Ensure models are loaded
+        if (currentState.availableModels.isEmpty()) {
+            loadModels()
+        }
+    }
+
+    /**
+     * Hides the redo model picker.
+     */
+    fun hideRedoModelPicker() {
+        val currentState = _uiState.value
+        if (currentState is ChatUiState.Success) {
+            _uiState.value = currentState.copy(
+                showRedoModelPicker = false,
+                redoTargetMessageId = null
+            )
+        }
+    }
+
+    /**
+     * Redo the response with a different model.
+     * Creates a branch and navigates to it with autoSend=true.
+     */
+    fun redoWithModel(model: AiModel) {
+        val currentState = _uiState.value
+        if (currentState !is ChatUiState.Success) return
+        if (currentState.isStreaming) return
+
+        val targetMessageId = currentState.redoTargetMessageId ?: return
+
+        // Hide picker immediately
+        _uiState.value = currentState.copy(
+            showRedoModelPicker = false,
+            redoTargetMessageId = null
+        )
+
+        viewModelScope.launch {
+            try {
+                val newConversationId = redoWithModelUseCase(
+                    conversationId = activeConversationId.value,
+                    targetAssistantMessageId = targetMessageId,
+                    newModelName = model.id
+                )
+                _events.emit(ChatEvent.NavigateToBranch(
+                    conversationId = newConversationId,
+                    autoSend = true,
+                    overrideModel = model.id
+                ))
+            } catch (e: Exception) {
+                _events.emit(
+                    ChatEvent.ShowSnackbar(
+                        message = e.message ?: "Failed to redo with model"
+                    )
+                )
+            }
+        }
+    }
+
+    /**
+     * Navigates to a sibling conversation inline (no page navigation).
+     * Switches the active conversation and triggers a slide animation.
+     *
+     * @param targetConversationId The conversation ID to switch to
+     * @param direction -1 for previous (slide from left), 1 for next (slide from right)
+     */
+    fun navigateToSibling(targetConversationId: String, direction: Int) {
+        _uiState.update { currentState ->
+            if (currentState is ChatUiState.Success) {
+                currentState.copy(slideDirection = direction)
+            } else currentState
+        }
+        activeConversationId.value = targetConversationId
     }
 
     /**

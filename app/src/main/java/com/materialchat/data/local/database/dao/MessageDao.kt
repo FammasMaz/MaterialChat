@@ -153,6 +153,12 @@ interface MessageDao {
     suspend fun completeAllStreamingMessages()
 
     /**
+     * Update the model name for a message.
+     */
+    @Query("UPDATE messages SET model_name = :modelName WHERE id = :messageId")
+    suspend fun updateModelName(messageId: String, modelName: String)
+
+    /**
      * Search messages by content, excluding system messages.
      * Returns messages grouped by conversation.
      *

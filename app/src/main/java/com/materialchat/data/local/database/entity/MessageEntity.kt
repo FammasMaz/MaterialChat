@@ -56,6 +56,9 @@ data class MessageEntity(
     @ColumnInfo(name = "total_duration_ms")
     val totalDurationMs: Long? = null,
 
+    @ColumnInfo(name = "model_name")
+    val modelName: String? = null,
+
     @ColumnInfo(name = "created_at")
     val createdAt: Long
 )
