@@ -110,6 +110,9 @@ class SendMessageUseCase @Inject constructor(
                     // Track when thinking ends (first time we get content while thinking exists)
                     if (thinkingEndTime == null && state.content.isNotEmpty() && !state.thinkingContent.isNullOrEmpty()) {
                         thinkingEndTime = System.currentTimeMillis()
+                        // Persist thinking duration immediately so UI shows "Thought for Xs" on collapse
+                        val thinkingDurationMs = thinkingEndTime!! - streamStartTime
+                        conversationRepository.updateMessageDurations(assistantMessageId, thinkingDurationMs, null)
                     }
                     // Update the message content in the database (with thinking if available)
                     if (accumulatedThinking != null) {

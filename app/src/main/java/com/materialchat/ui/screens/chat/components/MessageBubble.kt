@@ -370,8 +370,8 @@ private fun ThinkingSection(
 
     val headerText = when {
         isThinkingPhase -> "Thinking..."
-        isStreaming -> "Thinking..."   // Content started but still streaming
         thinkingDurationMs != null -> "Thought for ${formatDuration(thinkingDurationMs)}"
+        isStreaming -> "Thinking..."
         else -> "Thought"
     }
 

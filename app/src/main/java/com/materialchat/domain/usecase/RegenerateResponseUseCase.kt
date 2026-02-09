@@ -102,6 +102,9 @@ class RegenerateResponseUseCase @Inject constructor(
                     // Track when thinking ends
                     if (thinkingEndTime == null && state.content.isNotEmpty() && !state.thinkingContent.isNullOrEmpty()) {
                         thinkingEndTime = System.currentTimeMillis()
+                        // Persist thinking duration immediately so UI shows "Thought for Xs" on collapse
+                        val thinkingDurationMs = thinkingEndTime!! - streamStartTime
+                        conversationRepository.updateMessageDurations(assistantMessageId, thinkingDurationMs, null)
                     }
                 }
                 is StreamingState.Error -> {
