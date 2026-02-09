@@ -31,6 +31,7 @@ import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.LightMode
 import androidx.compose.material.icons.outlined.Mic
 import androidx.compose.material.icons.outlined.Palette
+import androidx.compose.material.icons.outlined.Psychology
 import androidx.compose.material.icons.outlined.RecordVoiceOver
 import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.Refresh
@@ -235,6 +236,7 @@ fun SettingsScreen(
             onAiGeneratedTitlesChange = { viewModel.updateAiGeneratedTitlesEnabled(it) },
             onTitleGenerationModelChange = { viewModel.updateTitleGenerationModel(it) },
             onRememberLastModelChange = { viewModel.updateRememberLastModelEnabled(it) },
+            onAlwaysShowThinkingChange = { viewModel.updateAlwaysShowThinking(it) },
             onAutoCheckUpdatesChange = { viewModel.updateAutoCheckUpdates(it) },
             onCheckForUpdates = { viewModel.checkForUpdates() },
             onDownloadUpdate = { viewModel.downloadUpdate(it) },
@@ -299,6 +301,7 @@ private fun SettingsContent(
     onAiGeneratedTitlesChange: (Boolean) -> Unit,
     onTitleGenerationModelChange: (String) -> Unit,
     onRememberLastModelChange: (Boolean) -> Unit,
+    onAlwaysShowThinkingChange: (Boolean) -> Unit,
     onAutoCheckUpdatesChange: (Boolean) -> Unit,
     onCheckForUpdates: () -> Unit,
     onDownloadUpdate: (AppUpdate) -> Unit,
@@ -335,6 +338,7 @@ private fun SettingsContent(
                     onAiGeneratedTitlesChange = onAiGeneratedTitlesChange,
                     onTitleGenerationModelChange = onTitleGenerationModelChange,
                     onRememberLastModelChange = onRememberLastModelChange,
+                    onAlwaysShowThinkingChange = onAlwaysShowThinkingChange,
                     onAutoCheckUpdatesChange = onAutoCheckUpdatesChange,
                     onCheckForUpdates = onCheckForUpdates,
                     onDownloadUpdate = onDownloadUpdate,
@@ -386,6 +390,7 @@ private fun SuccessContent(
     onAiGeneratedTitlesChange: (Boolean) -> Unit,
     onTitleGenerationModelChange: (String) -> Unit,
     onRememberLastModelChange: (Boolean) -> Unit,
+    onAlwaysShowThinkingChange: (Boolean) -> Unit,
     onAutoCheckUpdatesChange: (Boolean) -> Unit,
     onCheckForUpdates: () -> Unit,
     onDownloadUpdate: (AppUpdate) -> Unit,
@@ -506,6 +511,13 @@ private fun SuccessContent(
                     onModelChange = onTitleGenerationModelChange
                 )
             }
+        }
+
+        item {
+            AlwaysShowThinkingToggle(
+                enabled = uiState.alwaysShowThinking,
+                onToggle = onAlwaysShowThinkingChange
+            )
         }
 
         item {
@@ -915,6 +927,58 @@ private fun AiGeneratedTitlesToggle(
                     )
                     Text(
                         text = "Use AI to create meaningful conversation titles",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            Switch(
+                checked = enabled,
+                onCheckedChange = onToggle
+            )
+        }
+    }
+}
+
+@Composable
+private fun AlwaysShowThinkingToggle(
+    enabled: Boolean,
+    onToggle: (Boolean) -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+        ),
+        shape = RoundedCornerShape(20.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.weight(1f)
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.Psychology,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(24.dp)
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                Column {
+                    Text(
+                        text = "Always Show Thinking",
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = "Show model reasoning content by default",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

@@ -70,6 +70,7 @@ class ChatViewModel @Inject constructor(
     private var currentHapticsEnabled: Boolean = AppPreferences.DEFAULT_HAPTICS_ENABLED
     private var currentReasoningEffort: ReasoningEffort = AppPreferences.DEFAULT_REASONING_EFFORT
     private var currentBeautifulModelNamesEnabled: Boolean = AppPreferences.DEFAULT_BEAUTIFUL_MODEL_NAMES
+    private var currentAlwaysShowThinking: Boolean = false
 
     init {
         loadConversation()
@@ -77,6 +78,7 @@ class ChatViewModel @Inject constructor(
         loadHapticsPreference()
         loadReasoningEffort()
         loadBeautifulModelNamesPreference()
+        loadAlwaysShowThinkingPreference()
     }
 
     /**
@@ -182,7 +184,8 @@ class ChatViewModel @Inject constructor(
                             isLoadingModels = isLoadingModels,
                             hapticsEnabled = currentHapticsEnabled,
                             reasoningEffort = reasoningEffort,
-                            beautifulModelNamesEnabled = currentBeautifulModelNamesEnabled
+                            beautifulModelNamesEnabled = currentBeautifulModelNamesEnabled,
+                            alwaysShowThinking = currentAlwaysShowThinking
                         )
 
                         // Only scroll to bottom when a NEW message is added, not during streaming updates
@@ -254,6 +257,21 @@ class ChatViewModel @Inject constructor(
                 val currentState = _uiState.value
                 if (currentState is ChatUiState.Success) {
                     _uiState.value = currentState.copy(beautifulModelNamesEnabled = enabled)
+                }
+            }
+        }
+    }
+
+    /**
+     * Loads the always show thinking preference and updates UI state when it changes.
+     */
+    private fun loadAlwaysShowThinkingPreference() {
+        viewModelScope.launch {
+            appPreferences.alwaysShowThinking.collect { enabled ->
+                currentAlwaysShowThinking = enabled
+                val currentState = _uiState.value
+                if (currentState is ChatUiState.Success) {
+                    _uiState.value = currentState.copy(alwaysShowThinking = enabled)
                 }
             }
         }

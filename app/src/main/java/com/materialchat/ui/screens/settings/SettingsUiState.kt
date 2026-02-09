@@ -54,6 +54,7 @@ sealed interface SettingsUiState {
         val assistantVoiceEnabled: Boolean = true,
         val assistantTtsEnabled: Boolean = true,
         val beautifulModelNamesEnabled: Boolean = true,
+        val alwaysShowThinking: Boolean = false,
         val showAddProviderSheet: Boolean = false,
         val editingProvider: Provider? = null,
         val showDeleteConfirmation: Provider? = null,

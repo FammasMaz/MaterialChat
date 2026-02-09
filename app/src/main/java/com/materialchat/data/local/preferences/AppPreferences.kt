@@ -53,6 +53,7 @@ class AppPreferences(private val context: Context) {
         val ASSISTANT_VOICE_ENABLED = booleanPreferencesKey("assistant_voice_enabled")
         val ASSISTANT_TTS_ENABLED = booleanPreferencesKey("assistant_tts_enabled")
         val BEAUTIFUL_MODEL_NAMES = booleanPreferencesKey("beautiful_model_names")
+        val ALWAYS_SHOW_THINKING = booleanPreferencesKey("always_show_thinking")
     }
 
     /**
@@ -385,6 +386,25 @@ class AppPreferences(private val context: Context) {
     suspend fun setBeautifulModelNamesEnabled(enabled: Boolean) {
         dataStore.edit { preferences ->
             preferences[Keys.BEAUTIFUL_MODEL_NAMES] = enabled
+        }
+    }
+
+    // ========== Always Show Thinking ==========
+
+    /**
+     * Get whether thinking content is always shown expanded as a Flow.
+     * When enabled, model reasoning content is expanded by default after completion.
+     */
+    val alwaysShowThinking: Flow<Boolean> = dataStore.data.map { preferences ->
+        preferences[Keys.ALWAYS_SHOW_THINKING] ?: false
+    }
+
+    /**
+     * Set whether thinking content is always shown expanded.
+     */
+    suspend fun setAlwaysShowThinking(enabled: Boolean) {
+        dataStore.edit { preferences ->
+            preferences[Keys.ALWAYS_SHOW_THINKING] = enabled
         }
     }
 

@@ -71,15 +71,17 @@ class SettingsViewModel @Inject constructor(
                         },
                         appPreferences.assistantVoiceEnabled,
                         appPreferences.assistantTtsEnabled,
-                        appPreferences.beautifulModelNamesEnabled
-                    ) { assistantCore, assistantVoice, assistantTts, beautifulModelNames ->
+                        appPreferences.beautifulModelNamesEnabled,
+                        appPreferences.alwaysShowThinking
+                    ) { assistantCore, assistantVoice, assistantTts, beautifulModelNames, alwaysShowThinking ->
                         AssistantSettings(
                             updateState = assistantCore.first,
                             rememberLastModel = assistantCore.second,
                             assistantEnabled = assistantCore.third,
                             assistantVoiceEnabled = assistantVoice,
                             assistantTtsEnabled = assistantTts,
-                            beautifulModelNamesEnabled = beautifulModelNames
+                            beautifulModelNamesEnabled = beautifulModelNames,
+                            alwaysShowThinking = alwaysShowThinking
                         )
                     }
                 ) { haptics, aiTitles, titleModel, autoCheck, assistantSettings ->
@@ -100,7 +102,8 @@ class SettingsViewModel @Inject constructor(
                     assistantEnabled = toggles.assistantSettings.assistantEnabled,
                     assistantVoiceEnabled = toggles.assistantSettings.assistantVoiceEnabled,
                     assistantTtsEnabled = toggles.assistantSettings.assistantTtsEnabled,
-                    beautifulModelNamesEnabled = toggles.assistantSettings.beautifulModelNamesEnabled
+                    beautifulModelNamesEnabled = toggles.assistantSettings.beautifulModelNamesEnabled,
+                    alwaysShowThinking = toggles.assistantSettings.alwaysShowThinking
                 )
             }
                 .catch { e ->
@@ -136,6 +139,7 @@ class SettingsViewModel @Inject constructor(
                         assistantVoiceEnabled = data.assistantVoiceEnabled,
                         assistantTtsEnabled = data.assistantTtsEnabled,
                         beautifulModelNamesEnabled = data.beautifulModelNamesEnabled,
+                        alwaysShowThinking = data.alwaysShowThinking,
                         appVersion = updateManager.getCurrentVersion(),
                         autoCheckUpdates = data.autoCheckUpdates,
                         updateState = data.updateState,
@@ -622,6 +626,21 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Updates the always show thinking setting.
+     */
+    fun updateAlwaysShowThinking(enabled: Boolean) {
+        viewModelScope.launch {
+            try {
+                appPreferences.setAlwaysShowThinking(enabled)
+            } catch (e: Exception) {
+                _events.emit(SettingsEvent.ShowSnackbar(
+                    message = "Failed to save thinking setting"
+                ))
+            }
+        }
+    }
+
     // ========== Assistant Settings ==========
 
     /**
@@ -776,7 +795,8 @@ class SettingsViewModel @Inject constructor(
         val assistantEnabled: Boolean,
         val assistantVoiceEnabled: Boolean,
         val assistantTtsEnabled: Boolean,
-        val beautifulModelNamesEnabled: Boolean
+        val beautifulModelNamesEnabled: Boolean,
+        val alwaysShowThinking: Boolean
     )
 
     /**
@@ -799,6 +819,7 @@ class SettingsViewModel @Inject constructor(
         val assistantEnabled: Boolean,
         val assistantVoiceEnabled: Boolean,
         val assistantTtsEnabled: Boolean,
-        val beautifulModelNamesEnabled: Boolean
+        val beautifulModelNamesEnabled: Boolean,
+        val alwaysShowThinking: Boolean
     )
 }

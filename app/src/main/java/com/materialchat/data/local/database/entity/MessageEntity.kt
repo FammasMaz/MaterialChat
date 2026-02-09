@@ -50,6 +50,12 @@ data class MessageEntity(
     @ColumnInfo(name = "is_streaming")
     val isStreaming: Boolean,
 
+    @ColumnInfo(name = "thinking_duration_ms")
+    val thinkingDurationMs: Long? = null,
+
+    @ColumnInfo(name = "total_duration_ms")
+    val totalDurationMs: Long? = null,
+
     @ColumnInfo(name = "created_at")
     val createdAt: Long
 )

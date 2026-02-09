@@ -30,7 +30,7 @@ import com.materialchat.data.local.database.entity.ProviderEntity
         ConversationEntity::class,
         MessageEntity::class
     ],
-    version = 5,
+    version = 6,
     exportSchema = true
 )
 abstract class MaterialChatDatabase : RoomDatabase() {
@@ -84,10 +84,21 @@ abstract class MaterialChatDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * Migration from version 5 to 6: Add duration columns to messages table.
+         */
+        private val MIGRATION_5_6 = object : Migration(5, 6) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE messages ADD COLUMN thinking_duration_ms INTEGER DEFAULT NULL")
+                db.execSQL("ALTER TABLE messages ADD COLUMN total_duration_ms INTEGER DEFAULT NULL")
+            }
+        }
+
         internal val MIGRATIONS = arrayOf(
             MIGRATION_2_3,
             MIGRATION_3_4,
-            MIGRATION_4_5
+            MIGRATION_4_5,
+            MIGRATION_5_6
         )
 
         /**

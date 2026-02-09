@@ -143,6 +143,15 @@ interface ConversationRepository {
     suspend fun setMessageStreaming(messageId: String, isStreaming: Boolean)
 
     /**
+     * Updates the thinking and total duration for a message.
+     *
+     * @param messageId The ID of the message
+     * @param thinkingDurationMs The thinking duration in milliseconds
+     * @param totalDurationMs The total response duration in milliseconds
+     */
+    suspend fun updateMessageDurations(messageId: String, thinkingDurationMs: Long?, totalDurationMs: Long?)
+
+    /**
      * Deletes a message.
      *
      * @param messageId The ID of the message to delete

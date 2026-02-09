@@ -92,6 +92,8 @@ class SendMessageUseCase @Inject constructor(
         var accumulatedContent = ""
         var accumulatedThinking: String? = null
         var hasError = false
+        val streamStartTime = System.currentTimeMillis()
+        var thinkingEndTime: Long? = null
 
         // Stream the response from the chat repository
         chatRepository.sendMessage(
@@ -105,6 +107,10 @@ class SendMessageUseCase @Inject constructor(
                 is StreamingState.Streaming -> {
                     accumulatedContent = state.content
                     accumulatedThinking = state.thinkingContent
+                    // Track when thinking ends (first time we get content while thinking exists)
+                    if (thinkingEndTime == null && state.content.isNotEmpty() && !state.thinkingContent.isNullOrEmpty()) {
+                        thinkingEndTime = System.currentTimeMillis()
+                    }
                     // Update the message content in the database (with thinking if available)
                     if (accumulatedThinking != null) {
                         conversationRepository.updateMessageContentWithThinking(
@@ -144,6 +150,13 @@ class SendMessageUseCase @Inject constructor(
                         conversationRepository.updateMessageContent(assistantMessageId, state.finalContent)
                     }
                     conversationRepository.setMessageStreaming(assistantMessageId, false)
+
+                    // Save duration data
+                    val totalDurationMs = System.currentTimeMillis() - streamStartTime
+                    val thinkingDurationMs = if (!state.finalThinkingContent.isNullOrEmpty()) {
+                        (thinkingEndTime ?: System.currentTimeMillis()) - streamStartTime
+                    } else null
+                    conversationRepository.updateMessageDurations(assistantMessageId, thinkingDurationMs, totalDurationMs)
                 }
                 else -> { /* Ignore other states */ }
             }

@@ -587,6 +587,7 @@ private fun ChatContent(
                 onCopyMessage = onCopyMessage,
                 onRegenerateResponse = onRegenerateResponse,
                 onBranchFromMessage = onBranchFromMessage,
+                alwaysShowThinking = state.alwaysShowThinking,
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxWidth()
@@ -623,6 +624,7 @@ private fun MessageList(
     onCopyMessage: (String) -> Unit,
     onRegenerateResponse: () -> Unit,
     onBranchFromMessage: (String) -> Unit,
+    alwaysShowThinking: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     LazyColumn(
@@ -660,6 +662,7 @@ private fun MessageList(
                 } else {
                     null
                 },
+                alwaysShowThinking = alwaysShowThinking,
                 modifier = Modifier.padding(top = topSpacing)
             )
         }

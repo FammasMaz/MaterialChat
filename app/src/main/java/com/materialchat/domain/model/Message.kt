@@ -22,6 +22,8 @@ data class Message(
     val thinkingContent: String? = null,
     val attachments: List<Attachment> = emptyList(),
     val isStreaming: Boolean = false,
+    val thinkingDurationMs: Long? = null,
+    val totalDurationMs: Long? = null,
     val createdAt: Long = System.currentTimeMillis()
 ) {
     /**

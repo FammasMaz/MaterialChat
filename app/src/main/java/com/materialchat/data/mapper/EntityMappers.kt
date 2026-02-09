@@ -116,6 +116,8 @@ fun Message.toEntity(): MessageEntity = MessageEntity(
     thinkingContent = thinkingContent,
     imageAttachments = serializeAttachments(attachments),
     isStreaming = isStreaming,
+    thinkingDurationMs = thinkingDurationMs,
+    totalDurationMs = totalDurationMs,
     createdAt = createdAt
 )
 
@@ -130,6 +132,8 @@ fun MessageEntity.toDomain(): Message = Message(
     thinkingContent = thinkingContent,
     attachments = deserializeAttachments(imageAttachments),
     isStreaming = isStreaming,
+    thinkingDurationMs = thinkingDurationMs,
+    totalDurationMs = totalDurationMs,
     createdAt = createdAt
 )
 

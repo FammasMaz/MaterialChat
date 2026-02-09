@@ -141,6 +141,10 @@ class ConversationRepositoryImpl @Inject constructor(
         messageDao.updateStreamingStatus(messageId, isStreaming)
     }
 
+    override suspend fun updateMessageDurations(messageId: String, thinkingDurationMs: Long?, totalDurationMs: Long?) {
+        messageDao.updateDurations(messageId, thinkingDurationMs, totalDurationMs)
+    }
+
     override suspend fun deleteMessage(messageId: String) {
         messageDao.deleteById(messageId)
     }

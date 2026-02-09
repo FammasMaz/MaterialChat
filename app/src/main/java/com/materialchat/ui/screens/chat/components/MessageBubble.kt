@@ -79,6 +79,7 @@ fun MessageBubble(
     onCopy: () -> Unit,
     onRegenerate: (() -> Unit)? = null,
     onBranch: (() -> Unit)? = null,
+    alwaysShowThinking: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     val message = messageItem.message
@@ -129,7 +130,9 @@ fun MessageBubble(
                         ThinkingSection(
                             thinkingContent = message.thinkingContent,
                             textColor = bubbleStyle.textColor,
-                            isStreaming = message.isStreaming
+                            isStreaming = message.isStreaming,
+                            thinkingDurationMs = message.thinkingDurationMs,
+                            alwaysShowThinking = alwaysShowThinking
                         )
                         if (message.content.isNotEmpty() || message.hasAttachments) {
                             Spacer(modifier = Modifier.height(8.dp))
@@ -161,6 +164,18 @@ fun MessageBubble(
                             dotSize = 7.dp,
                             dotSpacing = 4.dp,
                             color = bubbleStyle.textColor.copy(alpha = 0.6f)
+                        )
+                    }
+
+                    // Reply time (only for completed assistant messages with duration data)
+                    if (isAssistant && !message.isStreaming && message.totalDurationMs != null) {
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = formatDuration(message.totalDurationMs),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = bubbleStyle.textColor.copy(alpha = 0.45f),
+                            modifier = Modifier.fillMaxWidth(),
+                            textAlign = androidx.compose.ui.text.style.TextAlign.End
                         )
                     }
                 }
@@ -275,6 +290,24 @@ private fun getBubbleStyle(
 }
 
 /**
+ * Formats a duration in milliseconds to a human-readable string.
+ * Returns "<1s", "Xs", or "Xm Ys" as appropriate.
+ */
+private fun formatDuration(ms: Long?): String {
+    if (ms == null) return ""
+    val totalSeconds = ms / 1000
+    return when {
+        totalSeconds < 1 -> "<1s"
+        totalSeconds < 60 -> "${totalSeconds}s"
+        else -> {
+            val minutes = totalSeconds / 60
+            val seconds = totalSeconds % 60
+            if (seconds == 0L) "${minutes}m" else "${minutes}m ${seconds}s"
+        }
+    }
+}
+
+/**
  * Collapsible thinking section for displaying model reasoning.
  * Shows thinking content in a muted, italic style with expand/collapse toggle.
  */
@@ -282,10 +315,20 @@ private fun getBubbleStyle(
 private fun ThinkingSection(
     thinkingContent: String,
     textColor: Color,
-    isStreaming: Boolean
+    isStreaming: Boolean,
+    thinkingDurationMs: Long? = null,
+    alwaysShowThinking: Boolean = false
 ) {
-    var isExpanded by remember { mutableStateOf(true) }
-    
+    var isExpanded by remember(isStreaming) {
+        mutableStateOf(if (isStreaming) true else alwaysShowThinking)
+    }
+
+    val headerText = when {
+        isStreaming -> "Thinking..."
+        thinkingDurationMs != null -> "Thought for ${formatDuration(thinkingDurationMs)}"
+        else -> "Thought"
+    }
+
     Column {
         // Header row with toggle
         Row(
@@ -304,14 +347,14 @@ private fun ThinkingSection(
                 tint = textColor
             )
             Text(
-                text = if (isStreaming) "Thinking..." else "Thinking",
+                text = headerText,
                 style = MaterialTheme.typography.labelMedium,
                 color = textColor.copy(alpha = 0.6f),
                 fontStyle = FontStyle.Italic,
                 modifier = Modifier.padding(start = 4.dp)
             )
         }
-        
+
         // Collapsible thinking content
         AnimatedVisibility(
             visible = isExpanded,

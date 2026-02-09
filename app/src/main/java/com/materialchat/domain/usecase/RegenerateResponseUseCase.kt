@@ -76,6 +76,9 @@ class RegenerateResponseUseCase @Inject constructor(
         emit(StreamingState.Starting)
 
         var hasError = false
+        var accumulatedThinking: String? = null
+        val streamStartTime = System.currentTimeMillis()
+        var thinkingEndTime: Long? = null
 
         // Stream the response from the chat repository
         chatRepository.sendMessage(
@@ -88,7 +91,18 @@ class RegenerateResponseUseCase @Inject constructor(
             when (state) {
                 is StreamingState.Streaming -> {
                     // Update the message content in the database
-                    conversationRepository.updateMessageContent(assistantMessageId, state.content)
+                    if (state.thinkingContent != null) {
+                        accumulatedThinking = state.thinkingContent
+                        conversationRepository.updateMessageContentWithThinking(
+                            assistantMessageId, state.content, state.thinkingContent
+                        )
+                    } else {
+                        conversationRepository.updateMessageContent(assistantMessageId, state.content)
+                    }
+                    // Track when thinking ends
+                    if (thinkingEndTime == null && state.content.isNotEmpty() && !state.thinkingContent.isNullOrEmpty()) {
+                        thinkingEndTime = System.currentTimeMillis()
+                    }
                 }
                 is StreamingState.Error -> {
                     hasError = true
@@ -106,8 +120,21 @@ class RegenerateResponseUseCase @Inject constructor(
                     conversationRepository.setMessageStreaming(assistantMessageId, false)
                 }
                 is StreamingState.Completed -> {
-                    conversationRepository.updateMessageContent(assistantMessageId, state.finalContent)
+                    if (state.finalThinkingContent != null) {
+                        conversationRepository.updateMessageContentWithThinking(
+                            assistantMessageId, state.finalContent, state.finalThinkingContent
+                        )
+                    } else {
+                        conversationRepository.updateMessageContent(assistantMessageId, state.finalContent)
+                    }
                     conversationRepository.setMessageStreaming(assistantMessageId, false)
+
+                    // Save duration data
+                    val totalDurationMs = System.currentTimeMillis() - streamStartTime
+                    val thinkingDurationMs = if (!state.finalThinkingContent.isNullOrEmpty()) {
+                        (thinkingEndTime ?: System.currentTimeMillis()) - streamStartTime
+                    } else null
+                    conversationRepository.updateMessageDurations(assistantMessageId, thinkingDurationMs, totalDurationMs)
                 }
                 else -> { /* Ignore other states */ }
             }
@@ -121,10 +148,12 @@ class RegenerateResponseUseCase @Inject constructor(
             val mappedState = when (state) {
                 is StreamingState.Streaming -> StreamingState.Streaming(
                     content = state.content,
+                    thinkingContent = state.thinkingContent,
                     messageId = assistantMessageId
                 )
                 is StreamingState.Completed -> StreamingState.Completed(
                     finalContent = state.finalContent,
+                    finalThinkingContent = state.finalThinkingContent,
                     messageId = assistantMessageId
                 )
                 is StreamingState.Error -> StreamingState.Error(

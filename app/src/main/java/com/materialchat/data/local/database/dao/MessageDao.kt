@@ -129,6 +129,12 @@ interface MessageDao {
     suspend fun deleteLastMessages(conversationId: String, count: Int)
 
     /**
+     * Update thinking and total duration for a message.
+     */
+    @Query("UPDATE messages SET thinking_duration_ms = :thinkingDurationMs, total_duration_ms = :totalDurationMs WHERE id = :messageId")
+    suspend fun updateDurations(messageId: String, thinkingDurationMs: Long?, totalDurationMs: Long?)
+
+    /**
      * Check if any messages are currently streaming in a conversation.
      */
     @Query("SELECT EXISTS(SELECT 1 FROM messages WHERE conversation_id = :conversationId AND is_streaming = 1)")
