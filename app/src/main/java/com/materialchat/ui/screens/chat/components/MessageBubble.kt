@@ -4,6 +4,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -131,6 +132,7 @@ fun MessageBubble(
                             thinkingContent = message.thinkingContent,
                             textColor = bubbleStyle.textColor,
                             isStreaming = message.isStreaming,
+                            hasContent = message.content.isNotEmpty(),
                             thinkingDurationMs = message.thinkingDurationMs,
                             alwaysShowThinking = alwaysShowThinking
                         )
@@ -167,26 +169,45 @@ fun MessageBubble(
                         )
                     }
 
-                    // Reply time (only for completed assistant messages with duration data)
-                    if (isAssistant && !message.isStreaming && message.totalDurationMs != null) {
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = formatDuration(message.totalDurationMs),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = bubbleStyle.textColor.copy(alpha = 0.45f),
-                            modifier = Modifier.fillMaxWidth(),
-                            textAlign = androidx.compose.ui.text.style.TextAlign.End
-                        )
-                    }
                 }
             }
 
-            // Action buttons (copy, branch, regenerate)
-            if (messageItem.showActions && message.content.isNotEmpty() && !message.isStreaming) {
+            // Action buttons and reply time (below the bubble)
+            if (isAssistant && !message.isStreaming && message.content.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Action buttons
+                    if (messageItem.showActions) {
+                        MessageActions(
+                            showCopy = true,
+                            showRegenerate = messageItem.isLastAssistantMessage && onRegenerate != null,
+                            showBranch = onBranch != null,
+                            onCopy = onCopy,
+                            onRegenerate = onRegenerate,
+                            onBranch = onBranch
+                        )
+                    } else {
+                        Spacer(modifier = Modifier.weight(1f))
+                    }
+
+                    // Reply time
+                    if (message.totalDurationMs != null) {
+                        Text(
+                            text = formatDuration(message.totalDurationMs),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.55f)
+                        )
+                    }
+                }
+            } else if (!isAssistant && messageItem.showActions && message.content.isNotEmpty() && !message.isStreaming) {
                 Spacer(modifier = Modifier.height(4.dp))
                 MessageActions(
                     showCopy = true,
-                    showRegenerate = messageItem.isLastAssistantMessage && onRegenerate != null,
+                    showRegenerate = false,
                     showBranch = onBranch != null,
                     onCopy = onCopy,
                     onRegenerate = onRegenerate,
@@ -311,29 +332,55 @@ private fun formatDuration(ms: Long?): String {
  * Collapsible thinking section for displaying model reasoning.
  * Shows thinking content in a muted, italic style with expand/collapse toggle.
  */
+/**
+ * Collapsible thinking section for displaying model reasoning.
+ *
+ * Behavior:
+ * - Expanded while streaming thinking-only content (no response content yet)
+ * - Auto-collapses when response content starts streaming
+ * - Collapsed after completion (unless alwaysShowThinking is enabled)
+ * - User can manually toggle at any time
+ *
+ * Motion follows M3 Expressive spring physics:
+ * - Spatial (expand/shrink): spring with overshoot for expressive feel
+ * - Effects (fade): spring with no bounce per M3 guidelines
+ */
 @Composable
 private fun ThinkingSection(
     thinkingContent: String,
     textColor: Color,
     isStreaming: Boolean,
+    hasContent: Boolean = false,
     thinkingDurationMs: Long? = null,
     alwaysShowThinking: Boolean = false
 ) {
-    var isExpanded by remember(isStreaming) {
-        mutableStateOf(if (isStreaming) true else alwaysShowThinking)
+    // Determine the current phase to drive auto-collapse
+    // Phase key: true = thinking-only (expanded), false = content arrived or done
+    val isThinkingPhase = isStreaming && !hasContent
+
+    var isExpanded by remember(isThinkingPhase, isStreaming) {
+        mutableStateOf(
+            when {
+                isThinkingPhase -> true              // Still thinking only — expanded
+                isStreaming -> false                   // Content started streaming — auto-collapse
+                else -> alwaysShowThinking            // Done — respect user setting
+            }
+        )
     }
 
     val headerText = when {
-        isStreaming -> "Thinking..."
+        isThinkingPhase -> "Thinking..."
+        isStreaming -> "Thinking..."   // Content started but still streaming
         thinkingDurationMs != null -> "Thought for ${formatDuration(thinkingDurationMs)}"
         else -> "Thought"
     }
 
     Column {
-        // Header row with toggle
+        // Header row — tappable toggle
         Row(
             modifier = Modifier
                 .fillMaxWidth()
+                .clip(RoundedCornerShape(8.dp))
                 .clickable { isExpanded = !isExpanded }
                 .padding(vertical = 4.dp),
             verticalAlignment = Alignment.CenterVertically
@@ -355,11 +402,27 @@ private fun ThinkingSection(
             )
         }
 
-        // Collapsible thinking content
+        // Collapsible thinking content with M3 spring physics
         AnimatedVisibility(
             visible = isExpanded,
-            enter = fadeIn() + expandVertically(),
-            exit = fadeOut() + shrinkVertically()
+            // Spatial: spring with overshoot (expressive scheme, default speed)
+            enter = fadeIn(
+                animationSpec = tween(durationMillis = 150)
+            ) + expandVertically(
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioLowBouncy,
+                    stiffness = Spring.StiffnessMediumLow
+                )
+            ),
+            // Effects: no bounce for opacity; spatial spring for size
+            exit = fadeOut(
+                animationSpec = tween(durationMillis = 120)
+            ) + shrinkVertically(
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioNoBouncy,
+                    stiffness = Spring.StiffnessMediumLow
+                )
+            )
         ) {
             Text(
                 text = thinkingContent,
