@@ -138,8 +138,10 @@ object ModelNameParser {
      * Formats a model name with proper capitalization, handling versions and acronyms.
      */
     private fun formatModelName(rawModel: String): String {
-        // Replace separators with spaces
+        // Replace dashes between digits with dots (e.g., "4-6" -> "4.6" for version numbers)
+        // then replace remaining separators with spaces
         val spaced = rawModel
+            .replace(Regex("""(\d)-(\d)"""), "$1.$2")
             .replace("-", " ")
             .replace("_", " ")
 
