@@ -25,6 +25,7 @@ data class Message(
     val thinkingDurationMs: Long? = null,
     val totalDurationMs: Long? = null,
     val modelName: String? = null,
+    val fusionMetadata: String? = null,
     val createdAt: Long = System.currentTimeMillis()
 ) {
     /**

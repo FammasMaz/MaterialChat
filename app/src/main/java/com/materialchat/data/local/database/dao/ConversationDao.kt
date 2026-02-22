@@ -211,4 +211,18 @@ interface ConversationDao {
         ORDER BY created_at ASC
     """)
     suspend fun getSiblingBranchesOnce(parentId: String, branchSourceMessageId: String): List<ConversationEntity>
+
+    // ========== Insights Aggregate Queries ==========
+
+    /**
+     * Get total conversation count (for insights dashboard).
+     */
+    @Query("SELECT COUNT(*) FROM conversations WHERE parent_id IS NULL")
+    suspend fun getRootConversationCount(): Int
+
+    /**
+     * Get conversation count within a time range.
+     */
+    @Query("SELECT COUNT(*) FROM conversations WHERE created_at >= :sinceTimestamp AND parent_id IS NULL")
+    suspend fun getConversationCountSince(sinceTimestamp: Long): Int
 }

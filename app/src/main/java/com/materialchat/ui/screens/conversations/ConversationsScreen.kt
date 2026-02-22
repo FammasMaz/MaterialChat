@@ -42,7 +42,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.outlined.Bookmark
 import androidx.compose.material.icons.outlined.ChatBubbleOutline
+import androidx.compose.material.icons.outlined.EmojiEvents
+import androidx.compose.material.icons.outlined.Insights
 import androidx.compose.material.icons.outlined.SearchOff
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -129,6 +132,9 @@ import kotlin.math.roundToInt
 fun ConversationsScreen(
     onNavigateToChat: (String) -> Unit,
     onNavigateToSettings: () -> Unit,
+    onNavigateToArena: () -> Unit = {},
+    onNavigateToInsights: () -> Unit = {},
+    onNavigateToBookmarks: () -> Unit = {},
     viewModel: ConversationsViewModel = hiltViewModel(),
     searchViewModel: SearchViewModel = hiltViewModel()
 ) {
@@ -247,7 +253,10 @@ fun ConversationsScreen(
                     ConversationsTopBar(
                         scrollBehavior = scrollBehavior,
                         onSearchClick = { isSearchActive = true },
-                        onSettingsClick = { viewModel.navigateToSettings() }
+                        onSettingsClick = { viewModel.navigateToSettings() },
+                        onArenaClick = onNavigateToArena,
+                        onInsightsClick = onNavigateToInsights,
+                        onBookmarksClick = onNavigateToBookmarks
                     )
                 }
             }
@@ -308,7 +317,10 @@ fun ConversationsScreen(
 private fun ConversationsTopBar(
     scrollBehavior: TopAppBarScrollBehavior,
     onSearchClick: () -> Unit,
-    onSettingsClick: () -> Unit
+    onSettingsClick: () -> Unit,
+    onArenaClick: () -> Unit = {},
+    onInsightsClick: () -> Unit = {},
+    onBookmarksClick: () -> Unit = {}
 ) {
     val expandedHeight = 140.dp
     val collapsedHeight = 72.dp
@@ -390,6 +402,48 @@ private fun ConversationsTopBar(
             ) {
                 // M3 Expressive: Enclosed icon buttons with surface container
                 // 48dp minimum touch target per M3 accessibility requirements
+                Surface(
+                    onClick = onInsightsClick,
+                    shape = RoundedCornerShape(iconCornerRadius),
+                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(48.dp)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = Icons.Outlined.Insights,
+                            contentDescription = "Insights"
+                        )
+                    }
+                }
+                Surface(
+                    onClick = onArenaClick,
+                    shape = RoundedCornerShape(iconCornerRadius),
+                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(48.dp)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = Icons.Outlined.EmojiEvents,
+                            contentDescription = "Arena"
+                        )
+                    }
+                }
+                Surface(
+                    onClick = onBookmarksClick,
+                    shape = RoundedCornerShape(iconCornerRadius),
+                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(48.dp)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = Icons.Outlined.Bookmark,
+                            contentDescription = "Bookmarks"
+                        )
+                    }
+                }
                 Surface(
                     onClick = onSearchClick,
                     shape = RoundedCornerShape(iconCornerRadius),

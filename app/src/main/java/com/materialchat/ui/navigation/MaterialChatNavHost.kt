@@ -136,6 +136,15 @@ fun MaterialChatNavHost(
                         },
                         onNavigateToSettings = {
                             navController.navigate(Screen.Settings.route)
+                        },
+                        onNavigateToArena = {
+                            navController.navigate(Screen.Arena.route)
+                        },
+                        onNavigateToInsights = {
+                            navController.navigate(Screen.Insights.route)
+                        },
+                        onNavigateToBookmarks = {
+                            navController.navigate(Screen.Bookmarks.route)
                         }
                     )
                 }
@@ -180,6 +189,31 @@ fun MaterialChatNavHost(
                 SettingsScreen(
                     onNavigateBack = { navController.popBackStack() }
                 )
+            }
+
+            // Arena mode screen (placeholder — replaced by arena-agent)
+            composable(route = Screen.Arena.route) {
+                // Placeholder: ArenaScreen will be provided by the arena feature module
+            }
+
+            // Arena leaderboard screen (placeholder — replaced by arena-agent)
+            composable(route = Screen.ArenaLeaderboard.route) {
+                // Placeholder: ArenaLeaderboard will be provided by the arena feature module
+            }
+
+            // Insights dashboard screen (placeholder — replaced by insights-agent)
+            composable(route = Screen.Insights.route) {
+                // Placeholder: InsightsScreen will be provided by the insights feature module
+            }
+
+            // Persona studio screen (placeholder — replaced by personas-agent)
+            composable(route = Screen.PersonaStudio.route) {
+                // Placeholder: PersonaStudioScreen will be provided by the personas feature module
+            }
+
+            // Bookmarks knowledge base screen (placeholder — replaced by bookmarks-agent)
+            composable(route = Screen.Bookmarks.route) {
+                // Placeholder: BookmarksScreen will be provided by the bookmarks feature module
             }
         }
         } // Close CompositionLocalProvider

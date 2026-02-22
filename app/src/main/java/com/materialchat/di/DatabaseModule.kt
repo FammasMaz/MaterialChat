@@ -3,8 +3,11 @@ package com.materialchat.di
 import android.content.Context
 import androidx.room.Room
 import com.materialchat.data.local.database.MaterialChatDatabase
+import com.materialchat.data.local.database.dao.ArenaDao
+import com.materialchat.data.local.database.dao.BookmarkDao
 import com.materialchat.data.local.database.dao.ConversationDao
 import com.materialchat.data.local.database.dao.MessageDao
+import com.materialchat.data.local.database.dao.PersonaDao
 import com.materialchat.data.local.database.dao.ProviderDao
 import dagger.Module
 import dagger.Provides
@@ -21,6 +24,9 @@ import javax.inject.Singleton
  * - ProviderDao
  * - ConversationDao
  * - MessageDao
+ * - ArenaDao
+ * - PersonaDao
+ * - BookmarkDao
  */
 @Module
 @InstallIn(SingletonComponent::class)
@@ -76,5 +82,32 @@ object DatabaseModule {
     @Singleton
     fun provideMessageDao(database: MaterialChatDatabase): MessageDao {
         return database.messageDao()
+    }
+
+    /**
+     * Provides the ArenaDao for arena battle and model rating operations.
+     */
+    @Provides
+    @Singleton
+    fun provideArenaDao(database: MaterialChatDatabase): ArenaDao {
+        return database.arenaDao()
+    }
+
+    /**
+     * Provides the PersonaDao for persona CRUD operations.
+     */
+    @Provides
+    @Singleton
+    fun providePersonaDao(database: MaterialChatDatabase): PersonaDao {
+        return database.personaDao()
+    }
+
+    /**
+     * Provides the BookmarkDao for bookmark CRUD operations.
+     */
+    @Provides
+    @Singleton
+    fun provideBookmarkDao(database: MaterialChatDatabase): BookmarkDao {
+        return database.bookmarkDao()
     }
 }

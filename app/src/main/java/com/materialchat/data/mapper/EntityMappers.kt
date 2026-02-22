@@ -72,6 +72,7 @@ fun Conversation.toEntity(): ConversationEntity = ConversationEntity(
     modelName = modelName,
     parentId = parentId,
     branchSourceMessageId = branchSourceMessageId,
+    personaId = personaId,
     createdAt = createdAt,
     updatedAt = updatedAt
 )
@@ -89,6 +90,7 @@ fun ConversationEntity.toDomain(): Conversation = Conversation(
     modelName = modelName,
     parentId = parentId,
     branchSourceMessageId = branchSourceMessageId,
+    personaId = personaId,
     createdAt = createdAt,
     updatedAt = updatedAt
 )
@@ -121,6 +123,7 @@ fun Message.toEntity(): MessageEntity = MessageEntity(
     thinkingDurationMs = thinkingDurationMs,
     totalDurationMs = totalDurationMs,
     modelName = modelName,
+    fusionMetadata = fusionMetadata,
     createdAt = createdAt
 )
 
@@ -138,6 +141,7 @@ fun MessageEntity.toDomain(): Message = Message(
     thinkingDurationMs = thinkingDurationMs,
     totalDurationMs = totalDurationMs,
     modelName = modelName,
+    fusionMetadata = fusionMetadata,
     createdAt = createdAt
 )
 

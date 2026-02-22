@@ -46,6 +46,31 @@ sealed class Screen(val route: String) {
      */
     data object Settings : Screen("settings")
 
+    /**
+     * Arena mode screen for model battle royale comparisons.
+     */
+    data object Arena : Screen("arena")
+
+    /**
+     * Arena leaderboard screen showing model ELO ratings.
+     */
+    data object ArenaLeaderboard : Screen("arena/leaderboard")
+
+    /**
+     * Conversation intelligence dashboard with usage analytics.
+     */
+    data object Insights : Screen("insights")
+
+    /**
+     * Persona studio for creating and managing AI personas.
+     */
+    data object PersonaStudio : Screen("personas")
+
+    /**
+     * Bookmarks knowledge base screen.
+     */
+    data object Bookmarks : Screen("bookmarks")
+
     companion object {
         /**
          * The start destination for the app navigation.
@@ -55,6 +80,9 @@ sealed class Screen(val route: String) {
         /**
          * List of all screens for navigation setup.
          */
-        val allScreens: List<Screen> = listOf(Conversations, Chat, Settings)
+        val allScreens: List<Screen> = listOf(
+            Conversations, Chat, Settings,
+            Arena, ArenaLeaderboard, Insights, PersonaStudio, Bookmarks
+        )
     }
 }

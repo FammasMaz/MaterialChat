@@ -61,6 +61,9 @@ data class ConversationEntity(
     @ColumnInfo(name = "created_at")
     val createdAt: Long,
 
+    @ColumnInfo(name = "persona_id", defaultValue = "NULL")
+    val personaId: String? = null,
+
     @ColumnInfo(name = "updated_at")
     val updatedAt: Long
 )

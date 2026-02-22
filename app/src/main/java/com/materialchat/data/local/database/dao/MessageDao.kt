@@ -182,11 +182,88 @@ interface MessageDao {
      * @param limit Maximum number of messages to return
      */
     @Query("""
-        SELECT * FROM messages 
-        WHERE conversation_id = :conversationId 
+        SELECT * FROM messages
+        WHERE conversation_id = :conversationId
         AND role != 'SYSTEM'
         ORDER BY created_at ASC
         LIMIT :limit
     """)
     suspend fun getNonSystemMessagesForConversation(conversationId: String, limit: Int = 20): List<MessageEntity>
+
+    // ========== Insights Aggregate Queries ==========
+
+    /**
+     * Get message count grouped by model name (for model usage chart).
+     */
+    @Query("""
+        SELECT model_name, COUNT(*) as count
+        FROM messages
+        WHERE role = 'ASSISTANT' AND model_name IS NOT NULL
+        GROUP BY model_name
+    """)
+    suspend fun getModelUsageCounts(): List<com.materialchat.data.local.database.entity.ModelUsageCount>
+
+    /**
+     * Get average response duration grouped by model (for model comparison).
+     */
+    @Query("""
+        SELECT model_name, AVG(total_duration_ms) as avg_duration
+        FROM messages
+        WHERE role = 'ASSISTANT' AND model_name IS NOT NULL AND total_duration_ms IS NOT NULL
+        GROUP BY model_name
+    """)
+    suspend fun getAvgDurationByModel(): List<com.materialchat.data.local.database.entity.ModelAvgDuration>
+
+    /**
+     * Get message count per day for the activity heatmap.
+     */
+    @Query("""
+        SELECT DATE(created_at/1000, 'unixepoch', 'localtime') as day, COUNT(*) as count
+        FROM messages
+        GROUP BY day
+        ORDER BY day DESC
+        LIMIT :days
+    """)
+    suspend fun getMessageCountByDay(days: Int = 90): List<com.materialchat.data.local.database.entity.DailyMessageCount>
+
+    /**
+     * Get total message count across all conversations.
+     */
+    @Query("SELECT COUNT(*) FROM messages")
+    suspend fun getTotalMessageCount(): Int
+
+    /**
+     * Get count of assistant messages only.
+     */
+    @Query("SELECT COUNT(*) FROM messages WHERE role = 'ASSISTANT'")
+    suspend fun getAssistantMessageCount(): Int
+
+    /**
+     * Get average thinking duration across all assistant messages.
+     */
+    @Query("SELECT AVG(thinking_duration_ms) FROM messages WHERE role = 'ASSISTANT' AND thinking_duration_ms IS NOT NULL")
+    suspend fun getAverageThinkingDuration(): Double?
+
+    /**
+     * Get average total duration across all assistant messages.
+     */
+    @Query("SELECT AVG(total_duration_ms) FROM messages WHERE role = 'ASSISTANT' AND total_duration_ms IS NOT NULL")
+    suspend fun getAverageTotalDuration(): Double?
+
+    /**
+     * Get message count within a time range.
+     */
+    @Query("SELECT COUNT(*) FROM messages WHERE created_at >= :sinceTimestamp")
+    suspend fun getMessageCountSince(sinceTimestamp: Long): Int
+
+    /**
+     * Get model usage counts within a time range.
+     */
+    @Query("""
+        SELECT model_name, COUNT(*) as count
+        FROM messages
+        WHERE role = 'ASSISTANT' AND model_name IS NOT NULL AND created_at >= :sinceTimestamp
+        GROUP BY model_name
+    """)
+    suspend fun getModelUsageCountsSince(sinceTimestamp: Long): List<com.materialchat.data.local.database.entity.ModelUsageCount>
 }
