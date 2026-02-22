@@ -207,9 +207,9 @@ abstract class MaterialChatDatabase : RoomDatabase() {
                         FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE
                     )
                 """)
-                db.execSQL("CREATE INDEX IF NOT EXISTS idx_bookmarks_message_id ON bookmarks(message_id)")
-                db.execSQL("CREATE INDEX IF NOT EXISTS idx_bookmarks_conversation_id ON bookmarks(conversation_id)")
-                db.execSQL("CREATE INDEX IF NOT EXISTS idx_bookmarks_category ON bookmarks(category)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_bookmarks_message_id ON bookmarks(message_id)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_bookmarks_conversation_id ON bookmarks(conversation_id)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_bookmarks_category ON bookmarks(category)")
 
                 // Add fusion_metadata to messages
                 db.execSQL("ALTER TABLE messages ADD COLUMN fusion_metadata TEXT DEFAULT NULL")
