@@ -21,6 +21,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.materialchat.ui.screens.arena.ArenaScreen
 import com.materialchat.ui.screens.arena.components.ArenaLeaderboard
+import com.materialchat.ui.screens.bookmarks.BookmarksScreen
 import com.materialchat.ui.screens.chat.ChatScreen
 import com.materialchat.ui.screens.conversations.ConversationsScreen
 import com.materialchat.ui.screens.personas.PersonaStudioScreen
@@ -223,9 +224,14 @@ fun MaterialChatNavHost(
                 )
             }
 
-            // Bookmarks knowledge base screen (placeholder — replaced by bookmarks-agent)
+            // Bookmarks knowledge base screen
             composable(route = Screen.Bookmarks.route) {
-                // Placeholder: BookmarksScreen will be provided by the bookmarks feature module
+                BookmarksScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onNavigateToConversation = { conversationId ->
+                        navController.navigate(Screen.Chat.createRoute(conversationId))
+                    }
+                )
             }
         }
         } // Close CompositionLocalProvider

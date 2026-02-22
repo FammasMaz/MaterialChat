@@ -12,10 +12,12 @@ import com.materialchat.domain.model.MessageRole
 import com.materialchat.domain.model.Persona
 import com.materialchat.domain.model.ReasoningEffort
 import com.materialchat.domain.model.StreamingState
+import com.materialchat.domain.model.BookmarkCategory
 import com.materialchat.domain.usecase.ExportConversationUseCase
 import com.materialchat.domain.usecase.BranchConversationUseCase
 import com.materialchat.domain.usecase.GetConversationsUseCase
 import com.materialchat.domain.usecase.ManagePersonasUseCase
+import com.materialchat.domain.usecase.ManageBookmarksUseCase
 import com.materialchat.domain.usecase.ManageProvidersUseCase
 import com.materialchat.domain.usecase.RedoWithModelUseCase
 import com.materialchat.domain.usecase.RegenerateResponseUseCase
@@ -60,6 +62,7 @@ class ChatViewModel @Inject constructor(
     private val exportConversationUseCase: ExportConversationUseCase,
     private val branchConversationUseCase: BranchConversationUseCase,
     private val redoWithModelUseCase: RedoWithModelUseCase,
+    private val manageBookmarksUseCase: ManageBookmarksUseCase,
     private val manageProvidersUseCase: ManageProvidersUseCase,
     private val managePersonasUseCase: ManagePersonasUseCase,
     private val appPreferences: AppPreferences,
@@ -99,6 +102,7 @@ class ChatViewModel @Inject constructor(
         loadAlwaysShowThinkingPreference()
         loadSiblings()
         loadPersona()
+        loadBookmarkStates()
     }
 
     /**
@@ -996,6 +1000,146 @@ class ChatViewModel @Inject constructor(
             } else currentState
         }
         activeConversationId.value = targetConversationId
+    }
+
+    // ========== Bookmark Operations ==========
+
+    /**
+     * Loads bookmark states for all messages in the current conversation.
+     * Observes bookmark changes reactively to keep the UI in sync.
+     */
+    private fun loadBookmarkStates() {
+        viewModelScope.launch(ioDispatcher) {
+            activeConversationId.collectLatest { currentId ->
+                try {
+                    val messages = getConversationsUseCase.getMessages(currentId)
+                    val bookmarkedIds = mutableSetOf<String>()
+                    for (message in messages) {
+                        if (manageBookmarksUseCase.isMessageBookmarked(message.id)) {
+                            bookmarkedIds.add(message.id)
+                        }
+                    }
+                    _uiState.update { currentState ->
+                        if (currentState is ChatUiState.Success) {
+                            currentState.copy(bookmarkedMessageIds = bookmarkedIds)
+                        } else currentState
+                    }
+                } catch (_: Exception) {
+                    // Bookmark state loading is best-effort
+                }
+            }
+        }
+    }
+
+    /**
+     * Toggles the bookmark state for a message (quick bookmark with default category).
+     */
+    fun toggleBookmark(messageId: String) {
+        viewModelScope.launch(ioDispatcher) {
+            try {
+                val isNowBookmarked = manageBookmarksUseCase.toggleBookmark(
+                    messageId = messageId,
+                    conversationId = activeConversationId.value
+                )
+                _uiState.update { currentState ->
+                    if (currentState is ChatUiState.Success) {
+                        val updatedIds = if (isNowBookmarked) {
+                            currentState.bookmarkedMessageIds + messageId
+                        } else {
+                            currentState.bookmarkedMessageIds - messageId
+                        }
+                        currentState.copy(bookmarkedMessageIds = updatedIds)
+                    } else currentState
+                }
+                _events.emit(
+                    ChatEvent.ShowSnackbar(
+                        message = if (isNowBookmarked) "Message bookmarked" else "Bookmark removed"
+                    )
+                )
+            } catch (e: Exception) {
+                _events.emit(
+                    ChatEvent.ShowSnackbar(
+                        message = "Failed to toggle bookmark: ${e.message}"
+                    )
+                )
+            }
+        }
+    }
+
+    /**
+     * Shows the add bookmark bottom sheet for a specific message.
+     */
+    fun showAddBookmarkSheet(messageId: String) {
+        val currentState = _uiState.value
+        if (currentState is ChatUiState.Success) {
+            _uiState.value = currentState.copy(
+                showAddBookmarkSheet = true,
+                bookmarkTargetMessageId = messageId
+            )
+        }
+    }
+
+    /**
+     * Hides the add bookmark bottom sheet.
+     */
+    fun hideAddBookmarkSheet() {
+        val currentState = _uiState.value
+        if (currentState is ChatUiState.Success) {
+            _uiState.value = currentState.copy(
+                showAddBookmarkSheet = false,
+                bookmarkTargetMessageId = null
+            )
+        }
+    }
+
+    /**
+     * Adds a bookmark with full metadata (category, tags, note).
+     * Called from the AddBookmarkSheet.
+     */
+    fun addBookmarkWithDetails(
+        category: BookmarkCategory,
+        tags: List<String>,
+        note: String?
+    ) {
+        val currentState = _uiState.value
+        if (currentState !is ChatUiState.Success) return
+        val messageId = currentState.bookmarkTargetMessageId ?: return
+
+        // Hide sheet immediately
+        _uiState.value = currentState.copy(
+            showAddBookmarkSheet = false,
+            bookmarkTargetMessageId = null
+        )
+
+        viewModelScope.launch(ioDispatcher) {
+            try {
+                // Remove existing bookmark first if present
+                manageBookmarksUseCase.removeBookmarkByMessageId(messageId)
+
+                // Add new bookmark with details
+                val isNowBookmarked = manageBookmarksUseCase.toggleBookmark(
+                    messageId = messageId,
+                    conversationId = activeConversationId.value,
+                    category = category,
+                    tags = tags,
+                    note = note
+                )
+                _uiState.update { state ->
+                    if (state is ChatUiState.Success) {
+                        state.copy(
+                            bookmarkedMessageIds = state.bookmarkedMessageIds + messageId
+                        )
+                    } else state
+                }
+                _events.emit(ChatEvent.ShowSnackbar(message = "Message bookmarked"))
+            } catch (e: Exception) {
+                _events.emit(
+                    ChatEvent.ShowSnackbar(
+                        message = "Failed to add bookmark: ${e.message}"
+                    )
+                )
+            }
+        }
     }
 
     /**
