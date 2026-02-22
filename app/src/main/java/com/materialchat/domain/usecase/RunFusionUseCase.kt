@@ -13,21 +13,24 @@ import com.materialchat.domain.model.StreamingState
 import com.materialchat.domain.repository.ChatRepository
 import com.materialchat.domain.repository.ConversationRepository
 import com.materialchat.domain.repository.ProviderRepository
-import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.channelFlow
+import kotlinx.coroutines.launch
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
 
 /**
  * Use case for running Response Fusion (Multi-Model Synthesis).
  *
- * Phase 1: Sends the user prompt to multiple models in parallel, collecting all responses.
- * Phase 2: Sends all individual responses to a judge model for synthesis into one best answer.
+ * Phase 1: Sends the user prompt to multiple models in parallel, streaming each
+ *          response in real-time and emitting updates as tokens arrive.
+ * Phase 2: Sends all individual responses to a judge model for synthesis into
+ *          one best answer, streaming the synthesis in real-time.
  *
- * Emits [FusionResult] updates as responses stream in and synthesis progresses.
+ * Uses [channelFlow] to support concurrent emissions from parallel model streams.
  */
 class RunFusionUseCase @Inject constructor(
     private val chatRepository: ChatRepository,
@@ -42,14 +45,14 @@ class RunFusionUseCase @Inject constructor(
     }
 
     /**
-     * Executes the fusion pipeline.
+     * Executes the fusion pipeline with real-time per-model streaming.
      *
      * @param conversationId The conversation to add the fused message to
      * @param userContent The user's prompt
      * @param fusionConfig The fusion configuration with selected models and judge
      * @param systemPrompt The system prompt to use
      * @param reasoningEffort The reasoning effort setting
-     * @return A Flow emitting FusionResult updates as the operation progresses
+     * @return A Flow emitting FusionResult updates in real-time as models stream
      */
     operator fun invoke(
         conversationId: String,
@@ -57,7 +60,7 @@ class RunFusionUseCase @Inject constructor(
         fusionConfig: FusionConfig,
         systemPrompt: String,
         reasoningEffort: ReasoningEffort
-    ): Flow<FusionResult> = flow {
+    ): Flow<FusionResult> = channelFlow {
         // Get conversation
         val conversation = conversationRepository.getConversation(conversationId)
             ?: throw IllegalStateException("Conversation not found: $conversationId")
@@ -83,19 +86,27 @@ class RunFusionUseCase @Inject constructor(
         )
         val assistantMessageId = conversationRepository.addMessage(assistantMessage)
 
-        // Phase 1: Query all models in parallel
-        val individualResponses = mutableListOf<FusionIndividualResponse>()
+        // Phase 1: Query all models in parallel with real-time streaming
+        val modelResponses = ConcurrentHashMap<String, FusionIndividualResponse>()
 
-        emit(FusionResult(isSynthesizing = false))
+        // Initialize all models as waiting
+        fusionConfig.selectedModels.forEach { modelSelection ->
+            modelResponses[modelSelection.modelName] = FusionIndividualResponse(
+                modelName = modelSelection.modelName,
+                providerId = modelSelection.providerId,
+                content = "",
+                isStreaming = true
+            )
+        }
+        send(FusionResult(individualResponses = modelResponses.values.toList()))
 
+        // Launch parallel streams — coroutineScope waits for all to complete
         coroutineScope {
-            val deferredResponses = fusionConfig.selectedModels.map { modelSelection ->
-                async {
+            fusionConfig.selectedModels.forEach { modelSelection ->
+                launch {
                     val startTime = System.currentTimeMillis()
                     val provider = providerRepository.getProvider(modelSelection.providerId)
                         ?: throw IllegalStateException("Provider not found: ${modelSelection.providerId}")
-
-                    var accumulatedContent = ""
 
                     chatRepository.sendMessage(
                         provider = provider,
@@ -106,51 +117,57 @@ class RunFusionUseCase @Inject constructor(
                     ).collect { state ->
                         when (state) {
                             is StreamingState.Streaming -> {
-                                accumulatedContent = state.content
+                                modelResponses[modelSelection.modelName] = FusionIndividualResponse(
+                                    modelName = modelSelection.modelName,
+                                    providerId = modelSelection.providerId,
+                                    content = state.content,
+                                    isStreaming = true
+                                )
+                                send(FusionResult(
+                                    individualResponses = modelResponses.values.toList(),
+                                    isSynthesizing = false
+                                ))
                             }
                             is StreamingState.Completed -> {
-                                accumulatedContent = state.finalContent
+                                val durationMs = System.currentTimeMillis() - startTime
+                                modelResponses[modelSelection.modelName] = FusionIndividualResponse(
+                                    modelName = modelSelection.modelName,
+                                    providerId = modelSelection.providerId,
+                                    content = state.finalContent,
+                                    isStreaming = false,
+                                    durationMs = durationMs
+                                )
+                                send(FusionResult(
+                                    individualResponses = modelResponses.values.toList(),
+                                    isSynthesizing = false
+                                ))
                             }
                             is StreamingState.Error -> {
-                                accumulatedContent = state.partialContent
-                                    ?: "Error: ${state.error.message}"
+                                val durationMs = System.currentTimeMillis() - startTime
+                                modelResponses[modelSelection.modelName] = FusionIndividualResponse(
+                                    modelName = modelSelection.modelName,
+                                    providerId = modelSelection.providerId,
+                                    content = state.partialContent ?: "Error: ${state.error.message}",
+                                    isStreaming = false,
+                                    durationMs = durationMs
+                                )
+                                send(FusionResult(
+                                    individualResponses = modelResponses.values.toList(),
+                                    isSynthesizing = false
+                                ))
                             }
-                            else -> { /* ignore */ }
+                            else -> { /* Starting — ignore */ }
                         }
                     }
-
-                    val durationMs = System.currentTimeMillis() - startTime
-
-                    FusionIndividualResponse(
-                        modelName = modelSelection.modelName,
-                        providerId = modelSelection.providerId,
-                        content = accumulatedContent,
-                        isStreaming = false,
-                        durationMs = durationMs
-                    )
                 }
-            }
-
-            // Collect all responses
-            for (deferred in deferredResponses) {
-                val response = deferred.await()
-                individualResponses.add(response)
-                emit(
-                    FusionResult(
-                        individualResponses = individualResponses.toList(),
-                        isSynthesizing = false
-                    )
-                )
             }
         }
 
         // Phase 2: Synthesize using judge model
-        emit(
-            FusionResult(
-                individualResponses = individualResponses.toList(),
-                isSynthesizing = true
-            )
-        )
+        send(FusionResult(
+            individualResponses = modelResponses.values.toList(),
+            isSynthesizing = true
+        ))
 
         val judgeModel = fusionConfig.judgeModel
             ?: fusionConfig.selectedModels.first()
@@ -159,7 +176,7 @@ class RunFusionUseCase @Inject constructor(
             ?: throw IllegalStateException("Judge provider not found: ${judgeModel.providerId}")
 
         // Build synthesis prompt
-        val synthesisPrompt = buildSynthesisPrompt(userContent, individualResponses)
+        val synthesisPrompt = buildSynthesisPrompt(userContent, modelResponses.values.toList())
 
         val synthesisMessages = listOf(
             Message(
@@ -182,13 +199,11 @@ class RunFusionUseCase @Inject constructor(
             when (state) {
                 is StreamingState.Streaming -> {
                     synthesizedContent = state.content
-                    emit(
-                        FusionResult(
-                            individualResponses = individualResponses,
-                            synthesizedResponse = synthesizedContent,
-                            isSynthesizing = true
-                        )
-                    )
+                    send(FusionResult(
+                        individualResponses = modelResponses.values.toList(),
+                        synthesizedResponse = synthesizedContent,
+                        isSynthesizing = true
+                    ))
                 }
                 is StreamingState.Completed -> {
                     synthesizedContent = state.finalContent
@@ -205,7 +220,7 @@ class RunFusionUseCase @Inject constructor(
 
         // Build fusion metadata
         val fusionMetadata = FusionMetadata(
-            sources = individualResponses.map { response ->
+            sources = modelResponses.values.map { response ->
                 FusionSource(
                     modelName = response.modelName,
                     content = response.content,
@@ -224,13 +239,11 @@ class RunFusionUseCase @Inject constructor(
         conversationRepository.updateMessageFusionMetadata(assistantMessageId, metadataJson)
 
         // Emit final result
-        emit(
-            FusionResult(
-                individualResponses = individualResponses,
-                synthesizedResponse = synthesizedContent,
-                isSynthesizing = false
-            )
-        )
+        send(FusionResult(
+            individualResponses = modelResponses.values.toList(),
+            synthesizedResponse = synthesizedContent,
+            isSynthesizing = false
+        ))
     }
 
     /**

@@ -5,7 +5,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.CallMerge
+import androidx.compose.material.icons.automirrored.outlined.CallMerge
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -38,7 +38,7 @@ fun FusionBadge(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
-                imageVector = Icons.Outlined.CallMerge,
+                imageVector = Icons.AutoMirrored.Outlined.CallMerge,
                 contentDescription = null,
                 modifier = Modifier
                     .size(14.dp)

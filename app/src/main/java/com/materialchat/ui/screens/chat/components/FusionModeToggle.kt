@@ -1,12 +1,13 @@
 package com.materialchat.ui.screens.chat.components
 
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.CallMerge
+import androidx.compose.material.icons.automirrored.outlined.CallMerge
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -18,16 +19,16 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
 import com.materialchat.ui.theme.ExpressiveMotion
 
 /**
  * Toggle button for enabling/disabling fusion mode.
  *
- * Displays a merge icon with an animated badge showing the number of selected
- * models when fusion is enabled. Uses M3 Expressive spring animations for
- * color and scale transitions.
+ * Uses M3 Expressive design with shape morphing (squircle → circle on active),
+ * spring-animated color transitions, and a badge showing selected model count.
+ * Minimum 48dp touch target per M3 accessibility requirements.
  *
  * @param isEnabled Whether fusion mode is currently enabled
  * @param modelCount The number of models selected for fusion
@@ -44,6 +45,7 @@ fun FusionModeToggle(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    // M3 Expressive: Container color animates with effects spring (no overshoot)
     val containerColor by animateColorAsState(
         targetValue = if (isEnabled) {
             MaterialTheme.colorScheme.tertiaryContainer
@@ -64,6 +66,14 @@ fun FusionModeToggle(
         label = "fusionToggleContentColor"
     )
 
+    // M3 Expressive: Shape morphs from squircle (12dp) to circle (24dp) when active
+    val cornerRadius by animateDpAsState(
+        targetValue = if (isEnabled) 24.dp else 12.dp,
+        animationSpec = ExpressiveMotion.Spatial.shapeMorph(),
+        label = "fusionToggleCorner"
+    )
+
+    // M3 Expressive: Subtle scale bounce on state change
     val scale by animateFloatAsState(
         targetValue = if (isEnabled) 1.05f else 1f,
         animationSpec = ExpressiveMotion.Spatial.scale(),
@@ -75,8 +85,11 @@ fun FusionModeToggle(
         enabled = enabled,
         modifier = modifier
             .size(48.dp)
-            .scale(scale),
-        shape = CircleShape,
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            },
+        shape = RoundedCornerShape(cornerRadius),
         color = containerColor,
         contentColor = contentColor
     ) {
@@ -93,13 +106,13 @@ fun FusionModeToggle(
                     }
                 ) {
                     Icon(
-                        imageVector = Icons.Outlined.CallMerge,
+                        imageVector = Icons.AutoMirrored.Outlined.CallMerge,
                         contentDescription = "Fusion mode enabled with $modelCount models"
                     )
                 }
             } else {
                 Icon(
-                    imageVector = Icons.Outlined.CallMerge,
+                    imageVector = Icons.AutoMirrored.Outlined.CallMerge,
                     contentDescription = "Enable fusion mode"
                 )
             }

@@ -2,6 +2,8 @@ package com.materialchat.ui.screens.chat.components
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
@@ -87,6 +89,7 @@ import com.materialchat.ui.theme.MessageBubbleShapes
  * @param onNavigateNext Optional callback to navigate to next sibling
  * @param modifier Modifier for the bubble container
  */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun MessageBubble(
     messageItem: MessageUiItem,
@@ -236,26 +239,28 @@ fun MessageBubble(
                             )
                         }
 
-                        // Bookmark button
+                        // Bookmark button — tap to toggle, long-press for detail sheet
                         if (onBookmarkToggle != null) {
-                            IconButton(
-                                onClick = onBookmarkToggle,
-                                modifier = Modifier.size(48.dp),
-                                colors = IconButtonDefaults.iconButtonColors(
-                                    containerColor = Color.Transparent,
-                                    contentColor = if (isBookmarked) {
-                                        MaterialTheme.colorScheme.primary
-                                    } else {
-                                        MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
-                                    }
-                                )
+                            Box(
+                                modifier = Modifier
+                                    .size(48.dp)
+                                    .combinedClickable(
+                                        onClick = onBookmarkToggle,
+                                        onLongClick = onBookmarkLongPress
+                                    ),
+                                contentAlignment = Alignment.Center
                             ) {
                                 Icon(
                                     imageVector = if (isBookmarked) Icons.Filled.Bookmark
                                                   else Icons.Outlined.BookmarkBorder,
                                     contentDescription = if (isBookmarked) "Remove bookmark"
                                                          else "Bookmark message",
-                                    modifier = Modifier.size(20.dp)
+                                    modifier = Modifier.size(20.dp),
+                                    tint = if (isBookmarked) {
+                                        MaterialTheme.colorScheme.primary
+                                    } else {
+                                        MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                                    }
                                 )
                             }
                         }

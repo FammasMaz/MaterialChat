@@ -81,6 +81,7 @@ import com.materialchat.ui.screens.bookmarks.components.AddBookmarkSheet
 import com.materialchat.ui.screens.chat.components.ChatTopBar
 import com.materialchat.ui.screens.chat.components.ExportBottomSheet
 import com.materialchat.ui.screens.chat.components.FusionModelSelector
+import com.materialchat.ui.screens.chat.components.FusionProgressView
 import com.materialchat.ui.screens.chat.components.MessageBubble
 import com.materialchat.ui.screens.chat.components.MessageInput
 import com.materialchat.ui.screens.chat.components.RedoModelPickerSheet
@@ -700,6 +701,12 @@ private fun ChatContent(
                     onStarterSelected = onConversationStarterSelected
                 )
             }
+
+            // Fusion progress view - shows real-time per-model streaming during fusion
+            FusionProgressView(
+                fusionResult = state.fusionResult,
+                isFusionRunning = state.isFusionRunning
+            )
 
             // Input area
             MessageInput(

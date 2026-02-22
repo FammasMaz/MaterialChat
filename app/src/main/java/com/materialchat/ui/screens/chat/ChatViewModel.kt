@@ -522,12 +522,16 @@ class ChatViewModel @Inject constructor(
     fun cancelStreaming() {
         streamingJob?.cancel()
         streamingJob = null
+        fusionJob?.cancel()
+        fusionJob = null
         sendMessageUseCase.cancel()
 
         val currentState = _uiState.value
         if (currentState is ChatUiState.Success) {
             _uiState.value = currentState.copy(
-                streamingState = StreamingState.Idle
+                streamingState = StreamingState.Idle,
+                isFusionRunning = false,
+                fusionResult = null
             )
         }
     }
