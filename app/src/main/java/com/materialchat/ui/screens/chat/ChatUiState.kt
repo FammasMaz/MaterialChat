@@ -2,6 +2,8 @@ package com.materialchat.ui.screens.chat
 
 import com.materialchat.domain.model.AiModel
 import com.materialchat.domain.model.Attachment
+import com.materialchat.domain.model.FusionConfig
+import com.materialchat.domain.model.FusionResult
 import com.materialchat.domain.model.Message
 import com.materialchat.domain.model.Persona
 import com.materialchat.domain.model.ReasoningEffort
@@ -62,7 +64,11 @@ sealed interface ChatUiState {
         val persona: Persona? = null,
         val showAddBookmarkSheet: Boolean = false,
         val bookmarkTargetMessageId: String? = null,
-        val bookmarkedMessageIds: Set<String> = emptySet()
+        val bookmarkedMessageIds: Set<String> = emptySet(),
+        val fusionConfig: FusionConfig = FusionConfig(),
+        val fusionResult: FusionResult? = null,
+        val showFusionModelSelector: Boolean = false,
+        val isFusionRunning: Boolean = false
     ) : ChatUiState {
         /**
          * Whether a message is currently streaming.

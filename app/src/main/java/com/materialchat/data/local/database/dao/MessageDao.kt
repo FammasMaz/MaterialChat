@@ -162,6 +162,12 @@ interface MessageDao {
     suspend fun updateModelName(messageId: String, modelName: String)
 
     /**
+     * Update the fusion metadata for a message.
+     */
+    @Query("UPDATE messages SET fusion_metadata = :fusionMetadata WHERE id = :messageId")
+    suspend fun updateFusionMetadata(messageId: String, fusionMetadata: String?)
+
+    /**
      * Search messages by content, excluding system messages.
      * Returns messages grouped by conversation.
      *

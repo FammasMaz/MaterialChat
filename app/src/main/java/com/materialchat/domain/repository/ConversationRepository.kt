@@ -258,4 +258,12 @@ interface ConversationRepository {
      * @param modelName The model name to set
      */
     suspend fun updateMessageModelName(messageId: String, modelName: String)
+
+    /**
+     * Updates the fusion metadata for a specific message.
+     *
+     * @param messageId The ID of the message
+     * @param fusionMetadata The serialized fusion metadata JSON string
+     */
+    suspend fun updateMessageFusionMetadata(messageId: String, fusionMetadata: String?)
 }

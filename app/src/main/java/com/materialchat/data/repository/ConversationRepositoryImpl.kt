@@ -377,6 +377,10 @@ class ConversationRepositoryImpl @Inject constructor(
     override suspend fun updateMessageModelName(messageId: String, modelName: String) {
         messageDao.updateModelName(messageId, modelName)
     }
+
+    override suspend fun updateMessageFusionMetadata(messageId: String, fusionMetadata: String?) {
+        messageDao.updateFusionMetadata(messageId, fusionMetadata)
+    }
 }
 
 /**

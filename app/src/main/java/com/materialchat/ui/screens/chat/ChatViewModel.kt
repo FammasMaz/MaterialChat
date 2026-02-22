@@ -13,6 +13,8 @@ import com.materialchat.domain.model.Persona
 import com.materialchat.domain.model.ReasoningEffort
 import com.materialchat.domain.model.StreamingState
 import com.materialchat.domain.model.BookmarkCategory
+import com.materialchat.domain.model.FusionConfig
+import com.materialchat.domain.model.FusionModelSelection
 import com.materialchat.domain.usecase.ExportConversationUseCase
 import com.materialchat.domain.usecase.BranchConversationUseCase
 import com.materialchat.domain.usecase.GetConversationsUseCase
@@ -21,6 +23,7 @@ import com.materialchat.domain.usecase.ManageBookmarksUseCase
 import com.materialchat.domain.usecase.ManageProvidersUseCase
 import com.materialchat.domain.usecase.RedoWithModelUseCase
 import com.materialchat.domain.usecase.RegenerateResponseUseCase
+import com.materialchat.domain.usecase.RunFusionUseCase
 import com.materialchat.domain.usecase.SendMessageUseCase
 import com.materialchat.ui.navigation.Screen
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -63,6 +66,7 @@ class ChatViewModel @Inject constructor(
     private val branchConversationUseCase: BranchConversationUseCase,
     private val redoWithModelUseCase: RedoWithModelUseCase,
     private val manageBookmarksUseCase: ManageBookmarksUseCase,
+    private val runFusionUseCase: RunFusionUseCase,
     private val manageProvidersUseCase: ManageProvidersUseCase,
     private val managePersonasUseCase: ManagePersonasUseCase,
     private val appPreferences: AppPreferences,
@@ -82,6 +86,7 @@ class ChatViewModel @Inject constructor(
     val events: SharedFlow<ChatEvent> = _events.asSharedFlow()
 
     private var streamingJob: Job? = null
+    private var fusionJob: Job? = null
     private var currentSystemPrompt: String = AppPreferences.DEFAULT_SYSTEM_PROMPT
     private var currentHapticsEnabled: Boolean = AppPreferences.DEFAULT_HAPTICS_ENABLED
     private var currentReasoningEffort: ReasoningEffort = AppPreferences.DEFAULT_REASONING_EFFORT
@@ -433,11 +438,21 @@ class ChatViewModel @Inject constructor(
 
     /**
      * Sends the current message.
+     * If fusion mode is enabled, delegates to sendFusionMessage instead.
      */
     fun sendMessage() {
         val currentState = _uiState.value
         if (currentState !is ChatUiState.Success) return
         if (!currentState.canSend) return
+
+        // If fusion is enabled and configured, use fusion flow
+        if (currentState.fusionConfig.isEnabled &&
+            currentState.fusionConfig.selectedModels.size >= 2 &&
+            currentState.fusionConfig.judgeModel != null
+        ) {
+            sendFusionMessage()
+            return
+        }
 
         val messageContent = currentState.inputText.trim()
         val attachments = currentState.pendingAttachments.toList()
@@ -1153,5 +1168,198 @@ class ChatViewModel @Inject constructor(
     override fun onCleared() {
         super.onCleared()
         streamingJob?.cancel()
+        fusionJob?.cancel()
+    }
+
+    // ========== Fusion Methods ==========
+
+    /**
+     * Toggles fusion mode on/off.
+     * When enabling, shows the model selector. When disabling, clears the config.
+     */
+    fun toggleFusionMode() {
+        val currentState = _uiState.value
+        if (currentState !is ChatUiState.Success) return
+
+        val isCurrentlyEnabled = currentState.fusionConfig.isEnabled
+
+        if (isCurrentlyEnabled) {
+            // Disable fusion
+            _uiState.value = currentState.copy(
+                fusionConfig = FusionConfig(),
+                showFusionModelSelector = false,
+                fusionResult = null
+            )
+        } else {
+            // Show the model selector to configure fusion
+            _uiState.value = currentState.copy(
+                showFusionModelSelector = true
+            )
+            // Ensure models are loaded
+            if (currentState.availableModels.isEmpty()) {
+                loadModels()
+            }
+        }
+    }
+
+    /**
+     * Shows the fusion model selector bottom sheet.
+     */
+    fun showFusionModelSelector() {
+        val currentState = _uiState.value
+        if (currentState !is ChatUiState.Success) return
+
+        _uiState.value = currentState.copy(showFusionModelSelector = true)
+
+        if (currentState.availableModels.isEmpty()) {
+            loadModels()
+        }
+    }
+
+    /**
+     * Hides the fusion model selector bottom sheet.
+     */
+    fun hideFusionModelSelector() {
+        val currentState = _uiState.value
+        if (currentState is ChatUiState.Success) {
+            _uiState.value = currentState.copy(showFusionModelSelector = false)
+        }
+    }
+
+    /**
+     * Toggles a model's selection for fusion.
+     */
+    fun toggleFusionModel(model: AiModel) {
+        val currentState = _uiState.value
+        if (currentState !is ChatUiState.Success) return
+
+        val currentConfig = currentState.fusionConfig
+        val currentSelections = currentConfig.selectedModels.toMutableList()
+        val existing = currentSelections.find { it.modelName == model.id }
+
+        if (existing != null) {
+            currentSelections.remove(existing)
+        } else if (currentSelections.size < 3) {
+            // Look up provider for this model
+            val conversation = null // We'll use the conversation's provider
+            currentSelections.add(
+                FusionModelSelection(
+                    modelName = model.id,
+                    providerId = model.providerId
+                )
+            )
+        }
+
+        _uiState.value = currentState.copy(
+            fusionConfig = currentConfig.copy(selectedModels = currentSelections)
+        )
+    }
+
+    /**
+     * Sets the judge model for fusion synthesis.
+     */
+    fun setFusionJudgeModel(model: AiModel) {
+        val currentState = _uiState.value
+        if (currentState !is ChatUiState.Success) return
+
+        _uiState.value = currentState.copy(
+            fusionConfig = currentState.fusionConfig.copy(
+                judgeModel = FusionModelSelection(
+                    modelName = model.id,
+                    providerId = model.providerId
+                )
+            )
+        )
+    }
+
+    /**
+     * Confirms the fusion configuration and enables fusion mode.
+     */
+    fun confirmFusionConfig() {
+        val currentState = _uiState.value
+        if (currentState !is ChatUiState.Success) return
+
+        val config = currentState.fusionConfig
+        if (config.selectedModels.size < 2 || config.judgeModel == null) return
+
+        _uiState.value = currentState.copy(
+            fusionConfig = config.copy(isEnabled = true),
+            showFusionModelSelector = false
+        )
+    }
+
+    /**
+     * Sends the current message using the fusion pipeline.
+     * Queries multiple models in parallel, then synthesizes via judge model.
+     */
+    private fun sendFusionMessage() {
+        val currentState = _uiState.value
+        if (currentState !is ChatUiState.Success) return
+        if (!currentState.canSend) return
+
+        val messageContent = currentState.inputText.trim()
+
+        // Clear input immediately
+        _uiState.value = currentState.copy(
+            inputText = "",
+            pendingAttachments = emptyList(),
+            streamingState = StreamingState.Starting,
+            isFusionRunning = true,
+            fusionResult = null
+        )
+
+        fusionJob = viewModelScope.launch(ioDispatcher) {
+            try {
+                runFusionUseCase(
+                    conversationId = activeConversationId.value,
+                    userContent = messageContent,
+                    fusionConfig = currentState.fusionConfig,
+                    systemPrompt = currentSystemPrompt,
+                    reasoningEffort = currentReasoningEffort
+                ).collect { result ->
+                    _uiState.update { state ->
+                        if (state is ChatUiState.Success) {
+                            state.copy(
+                                fusionResult = result,
+                                streamingState = if (result.synthesizedResponse != null && !result.isSynthesizing) {
+                                    StreamingState.Idle
+                                } else {
+                                    StreamingState.Starting
+                                },
+                                isFusionRunning = result.isSynthesizing || result.synthesizedResponse == null
+                            )
+                        } else state
+                    }
+                }
+
+                // Fusion complete
+                _uiState.update { state ->
+                    if (state is ChatUiState.Success) {
+                        state.copy(
+                            streamingState = StreamingState.Idle,
+                            isFusionRunning = false
+                        )
+                    } else state
+                }
+            } catch (e: Exception) {
+                _uiState.update { state ->
+                    if (state is ChatUiState.Success) {
+                        state.copy(
+                            streamingState = StreamingState.Error(
+                                error = e,
+                                partialContent = null,
+                                messageId = null
+                            ),
+                            isFusionRunning = false
+                        )
+                    } else state
+                }
+                _events.emit(
+                    ChatEvent.ShowSnackbar(
+                        message = e.message ?: "Fusion failed"
+                    )
+                )
+            }
+        }
     }
 }
