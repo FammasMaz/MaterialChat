@@ -9,11 +9,13 @@ import com.materialchat.domain.model.AiModel
 import com.materialchat.domain.model.Attachment
 import com.materialchat.domain.model.Message
 import com.materialchat.domain.model.MessageRole
+import com.materialchat.domain.model.Persona
 import com.materialchat.domain.model.ReasoningEffort
 import com.materialchat.domain.model.StreamingState
 import com.materialchat.domain.usecase.ExportConversationUseCase
 import com.materialchat.domain.usecase.BranchConversationUseCase
 import com.materialchat.domain.usecase.GetConversationsUseCase
+import com.materialchat.domain.usecase.ManagePersonasUseCase
 import com.materialchat.domain.usecase.ManageProvidersUseCase
 import com.materialchat.domain.usecase.RedoWithModelUseCase
 import com.materialchat.domain.usecase.RegenerateResponseUseCase
@@ -59,6 +61,7 @@ class ChatViewModel @Inject constructor(
     private val branchConversationUseCase: BranchConversationUseCase,
     private val redoWithModelUseCase: RedoWithModelUseCase,
     private val manageProvidersUseCase: ManageProvidersUseCase,
+    private val managePersonasUseCase: ManagePersonasUseCase,
     private val appPreferences: AppPreferences,
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) : ViewModel() {
@@ -83,6 +86,7 @@ class ChatViewModel @Inject constructor(
     private var currentAlwaysShowThinking: Boolean = false
     private var autoSendTriggered: Boolean = false
     private var siblingInfo: SiblingInfo? = null
+    private var currentPersona: Persona? = null
     private val activeConversationId = MutableStateFlow(conversationId)
     private val overrideModel: String? = savedStateHandle[Screen.Chat.ARG_OVERRIDE_MODEL]
 
@@ -94,6 +98,7 @@ class ChatViewModel @Inject constructor(
         loadBeautifulModelNamesPreference()
         loadAlwaysShowThinkingPreference()
         loadSiblings()
+        loadPersona()
     }
 
     /**
@@ -219,7 +224,8 @@ class ChatViewModel @Inject constructor(
                             reasoningEffort = reasoningEffort,
                             beautifulModelNamesEnabled = currentBeautifulModelNamesEnabled,
                             alwaysShowThinking = currentAlwaysShowThinking,
-                            slideDirection = slideDirection
+                            slideDirection = slideDirection,
+                            persona = currentPersona
                         )
 
                         // Only scroll to bottom when a NEW message is added, not during streaming updates
@@ -241,6 +247,27 @@ class ChatViewModel @Inject constructor(
                 _uiState.value = ChatUiState.Error(
                     message = e.message ?: "Failed to load conversation"
                 )
+            }
+        }
+    }
+
+    /**
+     * Loads the persona associated with the conversation (if any).
+     */
+    private fun loadPersona() {
+        viewModelScope.launch {
+            try {
+                val conversation = getConversationsUseCase.getConversation(conversationId)
+                val personaId = conversation?.personaId
+                if (personaId != null) {
+                    currentPersona = managePersonasUseCase.getPersonaById(personaId)
+                    val currentState = _uiState.value
+                    if (currentState is ChatUiState.Success) {
+                        _uiState.value = currentState.copy(persona = currentPersona)
+                    }
+                }
+            } catch (_: Exception) {
+                // Persona loading is non-critical
             }
         }
     }

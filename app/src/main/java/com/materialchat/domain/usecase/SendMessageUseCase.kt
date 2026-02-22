@@ -11,6 +11,7 @@ import com.materialchat.domain.model.Provider
 import com.materialchat.domain.model.StreamingState
 import com.materialchat.domain.repository.ChatRepository
 import com.materialchat.domain.repository.ConversationRepository
+import com.materialchat.domain.repository.PersonaRepository
 import com.materialchat.domain.repository.ProviderRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
@@ -36,6 +37,7 @@ class SendMessageUseCase @Inject constructor(
     private val chatRepository: ChatRepository,
     private val conversationRepository: ConversationRepository,
     private val providerRepository: ProviderRepository,
+    private val personaRepository: PersonaRepository,
     private val appPreferences: AppPreferences,
     private val generateConversationTitleUseCase: GenerateConversationTitleUseCase,
     @ApplicationScope private val applicationScope: CoroutineScope
@@ -63,6 +65,14 @@ class SendMessageUseCase @Inject constructor(
 
         val provider = providerRepository.getProvider(conversation.providerId)
             ?: throw IllegalStateException("Provider not found: ${conversation.providerId}")
+
+        // Resolve the effective system prompt: persona overrides global
+        val effectiveSystemPrompt = if (conversation.personaId != null) {
+            val persona = personaRepository.getPersonaById(conversation.personaId)
+            persona?.systemPrompt ?: systemPrompt
+        } else {
+            systemPrompt
+        }
 
         // Create and save the user message (with attachments if any)
         val userMessage = Message(
@@ -102,7 +112,7 @@ class SendMessageUseCase @Inject constructor(
             messages = messages,
             model = conversation.modelName,
             reasoningEffort = reasoningEffort,
-            systemPrompt = systemPrompt
+            systemPrompt = effectiveSystemPrompt
         ).onEach { state ->
             when (state) {
                 is StreamingState.Streaming -> {

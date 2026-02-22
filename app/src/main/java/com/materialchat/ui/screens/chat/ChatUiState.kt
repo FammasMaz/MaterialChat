@@ -3,6 +3,7 @@ package com.materialchat.ui.screens.chat
 import com.materialchat.domain.model.AiModel
 import com.materialchat.domain.model.Attachment
 import com.materialchat.domain.model.Message
+import com.materialchat.domain.model.Persona
 import com.materialchat.domain.model.ReasoningEffort
 import com.materialchat.domain.model.StreamingState
 
@@ -57,7 +58,8 @@ sealed interface ChatUiState {
         val alwaysShowThinking: Boolean = false,
         val showRedoModelPicker: Boolean = false,
         val redoTargetMessageId: String? = null,
-        val slideDirection: Int = 0
+        val slideDirection: Int = 0,
+        val persona: Persona? = null
     ) : ChatUiState {
         /**
          * Whether a message is currently streaming.

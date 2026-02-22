@@ -1,7 +1,9 @@
 package com.materialchat.di
 
 import com.materialchat.data.local.preferences.AppPreferences
+import com.materialchat.domain.repository.PersonaRepository
 import com.materialchat.domain.repository.ProviderRepository
+import com.materialchat.domain.usecase.GetBuiltinPersonasUseCase
 import kotlinx.coroutines.flow.first
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -17,6 +19,8 @@ import javax.inject.Singleton
 @Singleton
 class AppInitializer @Inject constructor(
     private val providerRepository: ProviderRepository,
+    private val personaRepository: PersonaRepository,
+    private val getBuiltinPersonasUseCase: GetBuiltinPersonasUseCase,
     private val appPreferences: AppPreferences
 ) {
     /**
@@ -31,6 +35,9 @@ class AppInitializer @Inject constructor(
         if (!isFirstLaunchComplete) {
             performFirstLaunchSetup()
         }
+
+        // Seed built-in personas if missing (covers fresh installs AND upgrades)
+        seedBuiltinPersonasIfNeeded()
     }
 
     /**
@@ -46,6 +53,18 @@ class AppInitializer @Inject constructor(
 
         // Mark first launch as complete
         appPreferences.setFirstLaunchComplete()
+    }
+
+    /**
+     * Seeds built-in personas if the database has none.
+     * Runs on every launch so upgrading users also receive them.
+     */
+    private suspend fun seedBuiltinPersonasIfNeeded() {
+        val builtinCount = personaRepository.getBuiltinPersonaCount()
+        if (builtinCount == 0) {
+            val builtins = getBuiltinPersonasUseCase()
+            personaRepository.seedBuiltinPersonas(builtins)
+        }
     }
 
     /**

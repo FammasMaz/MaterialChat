@@ -75,7 +75,7 @@ class CreateConversationUseCase @Inject constructor(
      * Uses the last used model if the setting is enabled and a model was previously used,
      * otherwise falls back to the provider's default model.
      */
-    private suspend fun createWithProvider(provider: Provider): String {
+    private suspend fun createWithProvider(provider: Provider, personaId: String? = null): String {
         // Determine which model to use
         val modelToUse = if (appPreferences.rememberLastModel.first()) {
             val lastModel = appPreferences.lastUsedModel.first()
@@ -87,9 +87,24 @@ class CreateConversationUseCase @Inject constructor(
         val conversation = Conversation(
             title = Conversation.generateDefaultTitle(),
             providerId = provider.id,
-            modelName = modelToUse
+            modelName = modelToUse,
+            personaId = personaId
         )
 
         return conversationRepository.createConversation(conversation)
+    }
+
+    /**
+     * Creates a new conversation bound to a specific persona.
+     *
+     * @param personaId The ID of the persona to associate with the conversation
+     * @return The ID of the created conversation
+     * @throws IllegalStateException if no active provider is set
+     */
+    suspend fun withPersona(personaId: String): String {
+        val activeProvider = providerRepository.getActiveProvider()
+            ?: throw IllegalStateException("No active provider configured. Please add a provider in settings.")
+
+        return createWithProvider(activeProvider, personaId = personaId)
     }
 }

@@ -82,6 +82,7 @@ import com.materialchat.ui.screens.chat.components.ExportBottomSheet
 import com.materialchat.ui.screens.chat.components.MessageBubble
 import com.materialchat.ui.screens.chat.components.MessageInput
 import com.materialchat.ui.screens.chat.components.RedoModelPickerSheet
+import com.materialchat.ui.screens.personas.components.ConversationStarterChips
 import com.materialchat.ui.theme.CustomShapes
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -360,7 +361,10 @@ fun ChatScreen(
                     },
                     onRemoveAttachment = { viewModel.removeAttachment(it) },
                     reasoningEffort = state.reasoningEffort,
-                    onReasoningEffortChange = { viewModel.updateReasoningEffort(it) }
+                    onReasoningEffortChange = { viewModel.updateReasoningEffort(it) },
+                    onConversationStarterSelected = { starter ->
+                        viewModel.updateInputText(starter)
+                    }
                 )
 
                 // Export bottom sheet
@@ -472,7 +476,8 @@ private fun ChatContent(
     onAttachImage: () -> Unit,
     onRemoveAttachment: (Attachment) -> Unit,
     reasoningEffort: ReasoningEffort,
-    onReasoningEffortChange: (ReasoningEffort) -> Unit
+    onReasoningEffortChange: (ReasoningEffort) -> Unit,
+    onConversationStarterSelected: (String) -> Unit
 ) {
     val haptics = rememberHapticFeedback()
     val density = LocalDensity.current
@@ -648,6 +653,16 @@ private fun ChatContent(
                         alpha = 1f - (kotlin.math.abs(slideOffset.value) * 0.2f)
                     }
             )
+
+            // Conversation starter chips when empty + persona assigned
+            if (state.messages.isEmpty() && state.persona != null &&
+                state.persona.conversationStarters.isNotEmpty()
+            ) {
+                ConversationStarterChips(
+                    starters = state.persona.conversationStarters,
+                    onStarterSelected = onConversationStarterSelected
+                )
+            }
 
             // Input area
             MessageInput(
