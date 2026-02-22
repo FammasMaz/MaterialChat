@@ -6,7 +6,10 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
+import com.materialchat.data.local.database.entity.DailyMessageCount
 import com.materialchat.data.local.database.entity.MessageEntity
+import com.materialchat.data.local.database.entity.ModelAvgDuration
+import com.materialchat.data.local.database.entity.ModelUsageCount
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -189,4 +192,106 @@ interface MessageDao {
         LIMIT :limit
     """)
     suspend fun getNonSystemMessagesForConversation(conversationId: String, limit: Int = 20): List<MessageEntity>
+
+    // ========== Insights Aggregate Queries ==========
+
+    /**
+     * Get model usage counts for assistant messages, grouped by model name.
+     * Only counts messages with a non-null model_name.
+     */
+    @Query("""
+        SELECT model_name, COUNT(*) as count FROM messages
+        WHERE role = 'ASSISTANT' AND model_name IS NOT NULL
+        GROUP BY model_name ORDER BY count DESC
+    """)
+    suspend fun getModelUsageCounts(): List<ModelUsageCount>
+
+    /**
+     * Get model usage counts since a timestamp.
+     */
+    @Query("""
+        SELECT model_name, COUNT(*) as count FROM messages
+        WHERE role = 'ASSISTANT' AND model_name IS NOT NULL AND created_at >= :timestamp
+        GROUP BY model_name ORDER BY count DESC
+    """)
+    suspend fun getModelUsageCountsSince(timestamp: Long): List<ModelUsageCount>
+
+    /**
+     * Get average total duration by model for assistant messages.
+     */
+    @Query("""
+        SELECT model_name, AVG(total_duration_ms) as avg_duration FROM messages
+        WHERE role = 'ASSISTANT' AND model_name IS NOT NULL AND total_duration_ms IS NOT NULL
+        GROUP BY model_name ORDER BY avg_duration ASC
+    """)
+    suspend fun getAvgDurationByModel(): List<ModelAvgDuration>
+
+    /**
+     * Get daily message counts for the last N days.
+     */
+    @Query("""
+        SELECT DATE(created_at / 1000, 'unixepoch', 'localtime') as day, COUNT(*) as count
+        FROM messages
+        WHERE created_at >= :sinceTimestamp
+        GROUP BY day ORDER BY day ASC
+    """)
+    suspend fun getMessageCountByDay(sinceTimestamp: Long): List<DailyMessageCount>
+
+    /**
+     * Get total message count across all conversations.
+     */
+    @Query("SELECT COUNT(*) FROM messages WHERE role != 'SYSTEM'")
+    suspend fun getTotalMessageCount(): Int
+
+    /**
+     * Get total assistant message count.
+     */
+    @Query("SELECT COUNT(*) FROM messages WHERE role = 'ASSISTANT'")
+    suspend fun getAssistantMessageCount(): Int
+
+    /**
+     * Get average thinking duration across all assistant messages.
+     */
+    @Query("SELECT AVG(thinking_duration_ms) FROM messages WHERE role = 'ASSISTANT' AND thinking_duration_ms IS NOT NULL")
+    suspend fun getAverageThinkingDuration(): Double?
+
+    /**
+     * Get average total duration across all assistant messages.
+     */
+    @Query("SELECT AVG(total_duration_ms) FROM messages WHERE role = 'ASSISTANT' AND total_duration_ms IS NOT NULL")
+    suspend fun getAverageTotalDuration(): Double?
+
+    /**
+     * Get message count since a timestamp.
+     */
+    @Query("SELECT COUNT(*) FROM messages WHERE role != 'SYSTEM' AND created_at >= :timestamp")
+    suspend fun getMessageCountSince(timestamp: Long): Int
+
+    /**
+     * Get assistant message count since a timestamp.
+     */
+    @Query("SELECT COUNT(*) FROM messages WHERE role = 'ASSISTANT' AND created_at >= :timestamp")
+    suspend fun getAssistantMessageCountSince(timestamp: Long): Int
+
+    /**
+     * Get average thinking duration since a timestamp.
+     */
+    @Query("SELECT AVG(thinking_duration_ms) FROM messages WHERE role = 'ASSISTANT' AND thinking_duration_ms IS NOT NULL AND created_at >= :timestamp")
+    suspend fun getAverageThinkingDurationSince(timestamp: Long): Double?
+
+    /**
+     * Get average total duration since a timestamp.
+     */
+    @Query("SELECT AVG(total_duration_ms) FROM messages WHERE role = 'ASSISTANT' AND total_duration_ms IS NOT NULL AND created_at >= :timestamp")
+    suspend fun getAverageTotalDurationSince(timestamp: Long): Double?
+
+    /**
+     * Get average duration by model since a timestamp.
+     */
+    @Query("""
+        SELECT model_name, AVG(total_duration_ms) as avg_duration FROM messages
+        WHERE role = 'ASSISTANT' AND model_name IS NOT NULL AND total_duration_ms IS NOT NULL AND created_at >= :timestamp
+        GROUP BY model_name ORDER BY avg_duration ASC
+    """)
+    suspend fun getAvgDurationByModelSince(timestamp: Long): List<ModelAvgDuration>
 }

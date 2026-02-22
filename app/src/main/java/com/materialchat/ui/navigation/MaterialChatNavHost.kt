@@ -21,6 +21,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.materialchat.ui.screens.chat.ChatScreen
 import com.materialchat.ui.screens.conversations.ConversationsScreen
+import com.materialchat.ui.screens.insights.InsightsScreen
 import com.materialchat.ui.screens.settings.SettingsScreen
 import com.materialchat.ui.theme.ExpressiveMotion
 
@@ -178,6 +179,13 @@ fun MaterialChatNavHost(
             // Settings screen
             composable(route = Screen.Settings.route) {
                 SettingsScreen(
+                    onNavigateBack = { navController.popBackStack() }
+                )
+            }
+
+            // Insights screen
+            composable(route = Screen.Insights.route) {
+                InsightsScreen(
                     onNavigateBack = { navController.popBackStack() }
                 )
             }

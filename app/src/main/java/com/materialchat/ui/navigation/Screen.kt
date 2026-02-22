@@ -46,6 +46,11 @@ sealed class Screen(val route: String) {
      */
     data object Settings : Screen("settings")
 
+    /**
+     * Insights screen for viewing conversation intelligence dashboard.
+     */
+    data object Insights : Screen("insights")
+
     companion object {
         /**
          * The start destination for the app navigation.
@@ -55,6 +60,6 @@ sealed class Screen(val route: String) {
         /**
          * List of all screens for navigation setup.
          */
-        val allScreens: List<Screen> = listOf(Conversations, Chat, Settings)
+        val allScreens: List<Screen> = listOf(Conversations, Chat, Settings, Insights)
     }
 }
