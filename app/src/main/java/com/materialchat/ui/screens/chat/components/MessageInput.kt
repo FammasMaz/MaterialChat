@@ -135,6 +135,9 @@ fun MessageInput(
     onRemoveAttachment: (Attachment) -> Unit = {},
     reasoningEffort: ReasoningEffort = ReasoningEffort.HIGH,
     onReasoningEffortChange: (ReasoningEffort) -> Unit = {},
+    fusionEnabled: Boolean = false,
+    fusionModelCount: Int = 0,
+    onFusionToggle: () -> Unit = {},
     modifier: Modifier = Modifier,
     hapticsEnabled: Boolean = true,
     shouldAutoFocus: Boolean = false

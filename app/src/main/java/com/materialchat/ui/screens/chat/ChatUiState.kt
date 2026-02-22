@@ -2,6 +2,8 @@ package com.materialchat.ui.screens.chat
 
 import com.materialchat.domain.model.AiModel
 import com.materialchat.domain.model.Attachment
+import com.materialchat.domain.model.FusionConfig
+import com.materialchat.domain.model.FusionResult
 import com.materialchat.domain.model.Message
 import com.materialchat.domain.model.ReasoningEffort
 import com.materialchat.domain.model.StreamingState
@@ -57,7 +59,11 @@ sealed interface ChatUiState {
         val alwaysShowThinking: Boolean = false,
         val showRedoModelPicker: Boolean = false,
         val redoTargetMessageId: String? = null,
-        val slideDirection: Int = 0
+        val slideDirection: Int = 0,
+        val fusionConfig: FusionConfig = FusionConfig(),
+        val fusionResult: FusionResult? = null,
+        val showFusionModelSelector: Boolean = false,
+        val isFusionRunning: Boolean = false
     ) : ChatUiState {
         /**
          * Whether a message is currently streaming.

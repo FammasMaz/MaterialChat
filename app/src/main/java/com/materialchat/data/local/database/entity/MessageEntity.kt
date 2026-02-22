@@ -59,6 +59,9 @@ data class MessageEntity(
     @ColumnInfo(name = "model_name")
     val modelName: String? = null,
 
+    @ColumnInfo(name = "fusion_metadata")
+    val fusionMetadata: String? = null,
+
     @ColumnInfo(name = "created_at")
     val createdAt: Long
 )

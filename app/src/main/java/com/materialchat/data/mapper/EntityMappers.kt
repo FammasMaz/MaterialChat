@@ -121,6 +121,7 @@ fun Message.toEntity(): MessageEntity = MessageEntity(
     thinkingDurationMs = thinkingDurationMs,
     totalDurationMs = totalDurationMs,
     modelName = modelName,
+    fusionMetadata = fusionMetadata,
     createdAt = createdAt
 )
 
@@ -138,6 +139,7 @@ fun MessageEntity.toDomain(): Message = Message(
     thinkingDurationMs = thinkingDurationMs,
     totalDurationMs = totalDurationMs,
     modelName = modelName,
+    fusionMetadata = fusionMetadata,
     createdAt = createdAt
 )
 
