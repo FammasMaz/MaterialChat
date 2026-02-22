@@ -361,6 +361,21 @@ private fun ConversationsTopBar(
         label = "suffixAlpha"
     )
 
+    // M3 Expressive: Icon row collapses in sync with title
+    // Spatial spring for scale (can overshoot), effects spring for opacity (no overshoot)
+    val iconRowScaleTarget = (1f - collapseFraction * 1.5f).coerceIn(0f, 1f)
+    val iconRowAlphaTarget = (1f - collapseFraction * 2.5f).coerceIn(0f, 1f)
+    val iconRowScale by animateFloatAsState(
+        targetValue = iconRowScaleTarget,
+        animationSpec = spatialFloatSpec,
+        label = "iconRowScale"
+    )
+    val iconRowAlpha by animateFloatAsState(
+        targetValue = iconRowAlphaTarget,
+        animationSpec = alphaFloatSpec,
+        label = "iconRowAlpha"
+    )
+
     val density = LocalDensity.current
     SideEffect {
         scrollBehavior.state.heightOffsetLimit = with(density) {
@@ -385,19 +400,24 @@ private fun ConversationsTopBar(
                 animationSpec = spatialDpSpec,
                 label = "iconCornerRadius"
             )
-            
-            // Bottom padding for vertical centering in collapsed state (72dp height, 48dp buttons = 12dp padding)
-            val baseBottomPadding = 12.dp
-            // Icons get extra padding when expanded to position them higher
-            val iconExpandedExtraPadding = 10.dp
-            val iconBottomPadding = baseBottomPadding + iconExpandedExtraPadding * (1f - collapseFraction)
 
-            // Icons row - aligned to bottom right, positioned higher when expanded
+            val baseBottomPadding = 12.dp
+
+            // Icons row - collapses when scrolling with M3 Expressive spring motion
+            // Scales from top-right origin and fades out as bar collapses
+            val iconTopPadding = 20.dp - 8.dp * collapseFraction
+
             Row(
                 modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .padding(bottom = iconBottomPadding),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    .align(Alignment.TopEnd)
+                    .padding(top = iconTopPadding)
+                    .graphicsLayer {
+                        scaleX = iconRowScale
+                        scaleY = iconRowScale
+                        alpha = iconRowAlpha
+                        transformOrigin = TransformOrigin(1f, 0f)
+                    },
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 // M3 Expressive: Enclosed icon buttons with surface container

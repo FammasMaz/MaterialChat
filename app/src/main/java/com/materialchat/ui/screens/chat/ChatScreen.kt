@@ -80,6 +80,7 @@ import com.materialchat.ui.components.rememberHapticFeedback
 import com.materialchat.ui.screens.bookmarks.components.AddBookmarkSheet
 import com.materialchat.ui.screens.chat.components.ChatTopBar
 import com.materialchat.ui.screens.chat.components.ExportBottomSheet
+import com.materialchat.ui.screens.chat.components.FusionModelSelector
 import com.materialchat.ui.screens.chat.components.MessageBubble
 import com.materialchat.ui.screens.chat.components.MessageInput
 import com.materialchat.ui.screens.chat.components.RedoModelPickerSheet
@@ -368,7 +369,9 @@ fun ChatScreen(
                     onReasoningEffortChange = { viewModel.updateReasoningEffort(it) },
                     onConversationStarterSelected = { starter ->
                         viewModel.updateInputText(starter)
-                    }
+                    },
+                    onFusionToggle = { viewModel.toggleFusionMode() },
+                    onShowFusionSelector = { viewModel.showFusionModelSelector() }
                 )
 
                 // Export bottom sheet
@@ -396,6 +399,19 @@ fun ChatScreen(
                     onSave = { category, tags, note ->
                         viewModel.addBookmarkWithDetails(category, tags, note)
                     }
+                )
+
+                // Fusion model selector bottom sheet
+                FusionModelSelector(
+                    isVisible = state.showFusionModelSelector,
+                    models = state.availableModels,
+                    isLoading = state.isLoadingModels,
+                    selectedModelIds = state.fusionConfig.selectedModels.map { it.modelName }.toSet(),
+                    judgeModelId = state.fusionConfig.judgeModel?.modelName,
+                    onModelToggle = { model -> viewModel.toggleFusionModel(model) },
+                    onJudgeModelSelect = { model -> viewModel.setFusionJudgeModel(model) },
+                    onStartFusion = { viewModel.confirmFusionConfig() },
+                    onDismiss = { viewModel.hideFusionModelSelector() }
                 )
             }
         }
@@ -493,7 +509,9 @@ private fun ChatContent(
     onRemoveAttachment: (Attachment) -> Unit,
     reasoningEffort: ReasoningEffort,
     onReasoningEffortChange: (ReasoningEffort) -> Unit,
-    onConversationStarterSelected: (String) -> Unit
+    onConversationStarterSelected: (String) -> Unit,
+    onFusionToggle: () -> Unit,
+    onShowFusionSelector: () -> Unit
 ) {
     val haptics = rememberHapticFeedback()
     val density = LocalDensity.current
@@ -696,6 +714,9 @@ private fun ChatContent(
                 onRemoveAttachment = onRemoveAttachment,
                 reasoningEffort = reasoningEffort,
                 onReasoningEffortChange = onReasoningEffortChange,
+                fusionEnabled = state.fusionConfig.isEnabled,
+                fusionModelCount = state.fusionConfig.selectedModels.size,
+                onFusionToggle = onFusionToggle,
                 hapticsEnabled = state.hapticsEnabled,
                 shouldAutoFocus = state.messages.isEmpty(),
                 modifier = Modifier.onSizeChanged { inputHeightPx = it.height }

@@ -201,9 +201,9 @@ fun MessageInput(
                 },
                 modifier = Modifier.size(48.dp),
                 shape = CircleShape,
-                color = if (!isStreaming) 
-                    MaterialTheme.colorScheme.tertiaryContainer 
-                else 
+                color = if (!isStreaming)
+                    MaterialTheme.colorScheme.tertiaryContainer
+                else
                     MaterialTheme.colorScheme.surfaceContainerHigh,
                 enabled = !isStreaming
             ) {
@@ -221,6 +221,17 @@ fun MessageInput(
                     )
                 }
             }
+
+            // Fusion mode toggle - M3 Expressive merge icon with badge
+            FusionModeToggle(
+                isEnabled = fusionEnabled,
+                modelCount = fusionModelCount,
+                enabled = !isStreaming,
+                onClick = {
+                    haptics.perform(HapticPattern.CLICK, hapticsEnabled)
+                    onFusionToggle()
+                }
+            )
 
             // Text input pill - shared element for FAB morph
             val sharedTransitionScope = LocalSharedTransitionScope.current
