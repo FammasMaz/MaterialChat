@@ -1,8 +1,10 @@
 package com.materialchat.di
 
+import com.materialchat.data.repository.ArenaRepositoryImpl
 import com.materialchat.data.repository.ChatRepositoryImpl
 import com.materialchat.data.repository.ConversationRepositoryImpl
 import com.materialchat.data.repository.ProviderRepositoryImpl
+import com.materialchat.domain.repository.ArenaRepository
 import com.materialchat.domain.repository.ChatRepository
 import com.materialchat.domain.repository.ConversationRepository
 import com.materialchat.domain.repository.ProviderRepository
@@ -72,4 +74,18 @@ abstract class RepositoryModule {
     abstract fun bindChatRepository(
         impl: ChatRepositoryImpl
     ): ChatRepository
+
+    /**
+     * Binds [ArenaRepositoryImpl] to [ArenaRepository] interface.
+     *
+     * The implementation handles:
+     * - Arena battle CRUD operations (Room database)
+     * - Model ELO rating management
+     * - Leaderboard queries
+     */
+    @Binds
+    @Singleton
+    abstract fun bindArenaRepository(
+        impl: ArenaRepositoryImpl
+    ): ArenaRepository
 }

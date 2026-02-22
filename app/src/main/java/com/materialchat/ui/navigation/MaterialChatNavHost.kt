@@ -19,6 +19,8 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.materialchat.ui.screens.arena.ArenaScreen
+import com.materialchat.ui.screens.arena.components.ArenaLeaderboard
 import com.materialchat.ui.screens.chat.ChatScreen
 import com.materialchat.ui.screens.conversations.ConversationsScreen
 import com.materialchat.ui.screens.settings.SettingsScreen
@@ -191,14 +193,21 @@ fun MaterialChatNavHost(
                 )
             }
 
-            // Arena mode screen (placeholder — replaced by arena-agent)
+            // Arena mode screen
             composable(route = Screen.Arena.route) {
-                // Placeholder: ArenaScreen will be provided by the arena feature module
+                ArenaScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onNavigateToLeaderboard = {
+                        navController.navigate(Screen.ArenaLeaderboard.route)
+                    }
+                )
             }
 
-            // Arena leaderboard screen (placeholder — replaced by arena-agent)
+            // Arena leaderboard screen
             composable(route = Screen.ArenaLeaderboard.route) {
-                // Placeholder: ArenaLeaderboard will be provided by the arena feature module
+                ArenaLeaderboard(
+                    onNavigateBack = { navController.popBackStack() }
+                )
             }
 
             // Insights dashboard screen (placeholder — replaced by insights-agent)
