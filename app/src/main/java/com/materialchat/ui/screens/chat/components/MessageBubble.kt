@@ -26,10 +26,13 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.outlined.BookmarkBorder
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -77,6 +80,9 @@ import com.materialchat.ui.theme.MessageBubbleShapes
  * @param onRegenerate Optional callback when regenerate button is clicked (only for last assistant message)
  * @param onBranch Optional callback when branch button is clicked
  * @param onRedoWithModel Optional callback when redo with model button is clicked
+ * @param onBookmarkToggle Optional callback when bookmark button is clicked (quick toggle)
+ * @param onBookmarkLongPress Optional callback when bookmark button is long-pressed (open detail sheet)
+ * @param isBookmarked Whether this message is currently bookmarked
  * @param onNavigatePrevious Optional callback to navigate to previous sibling
  * @param onNavigateNext Optional callback to navigate to next sibling
  * @param modifier Modifier for the bubble container
@@ -88,6 +94,9 @@ fun MessageBubble(
     onRegenerate: (() -> Unit)? = null,
     onBranch: (() -> Unit)? = null,
     onRedoWithModel: (() -> Unit)? = null,
+    onBookmarkToggle: (() -> Unit)? = null,
+    onBookmarkLongPress: (() -> Unit)? = null,
+    isBookmarked: Boolean = false,
     onNavigatePrevious: (() -> Unit)? = null,
     onNavigateNext: (() -> Unit)? = null,
     alwaysShowThinking: Boolean = false,
@@ -210,20 +219,46 @@ fun MessageBubble(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Action buttons
-                    if (messageItem.showActions) {
-                        MessageActions(
-                            showCopy = true,
-                            showRegenerate = messageItem.isLastAssistantMessage && onRegenerate != null,
-                            showBranch = onBranch != null,
-                            showRedoWithModel = messageItem.isLastAssistantMessage && onRedoWithModel != null,
-                            onCopy = onCopy,
-                            onRegenerate = onRegenerate,
-                            onBranch = onBranch,
-                            onRedoWithModel = onRedoWithModel
-                        )
-                    } else {
-                        Spacer(modifier = Modifier.weight(1f))
+                    // Action buttons (including bookmark)
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        if (messageItem.showActions) {
+                            MessageActions(
+                                showCopy = true,
+                                showRegenerate = messageItem.isLastAssistantMessage && onRegenerate != null,
+                                showBranch = onBranch != null,
+                                showRedoWithModel = messageItem.isLastAssistantMessage && onRedoWithModel != null,
+                                onCopy = onCopy,
+                                onRegenerate = onRegenerate,
+                                onBranch = onBranch,
+                                onRedoWithModel = onRedoWithModel
+                            )
+                        }
+
+                        // Bookmark button
+                        if (onBookmarkToggle != null) {
+                            IconButton(
+                                onClick = onBookmarkToggle,
+                                modifier = Modifier.size(48.dp),
+                                colors = IconButtonDefaults.iconButtonColors(
+                                    containerColor = Color.Transparent,
+                                    contentColor = if (isBookmarked) {
+                                        MaterialTheme.colorScheme.primary
+                                    } else {
+                                        MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                                    }
+                                )
+                            ) {
+                                Icon(
+                                    imageVector = if (isBookmarked) Icons.Filled.Bookmark
+                                                  else Icons.Outlined.BookmarkBorder,
+                                    contentDescription = if (isBookmarked) "Remove bookmark"
+                                                         else "Bookmark message",
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                        }
                     }
 
                     // Reply time

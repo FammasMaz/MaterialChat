@@ -57,7 +57,10 @@ sealed interface ChatUiState {
         val alwaysShowThinking: Boolean = false,
         val showRedoModelPicker: Boolean = false,
         val redoTargetMessageId: String? = null,
-        val slideDirection: Int = 0
+        val slideDirection: Int = 0,
+        val showAddBookmarkSheet: Boolean = false,
+        val bookmarkTargetMessageId: String? = null,
+        val bookmarkedMessageIds: Set<String> = emptySet()
     ) : ChatUiState {
         /**
          * Whether a message is currently streaming.

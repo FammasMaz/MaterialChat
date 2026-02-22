@@ -1,8 +1,10 @@
 package com.materialchat.di
 
+import com.materialchat.data.repository.BookmarkRepositoryImpl
 import com.materialchat.data.repository.ChatRepositoryImpl
 import com.materialchat.data.repository.ConversationRepositoryImpl
 import com.materialchat.data.repository.ProviderRepositoryImpl
+import com.materialchat.domain.repository.BookmarkRepository
 import com.materialchat.domain.repository.ChatRepository
 import com.materialchat.domain.repository.ConversationRepository
 import com.materialchat.domain.repository.ProviderRepository
@@ -72,4 +74,19 @@ abstract class RepositoryModule {
     abstract fun bindChatRepository(
         impl: ChatRepositoryImpl
     ): ChatRepository
+
+    /**
+     * Binds [BookmarkRepositoryImpl] to [BookmarkRepository] interface.
+     *
+     * The implementation handles:
+     * - Bookmark CRUD operations (Room database)
+     * - Tag aggregation and filtering
+     * - Category-based filtering
+     * - Reactive observation of bookmark state
+     */
+    @Binds
+    @Singleton
+    abstract fun bindBookmarkRepository(
+        impl: BookmarkRepositoryImpl
+    ): BookmarkRepository
 }

@@ -77,6 +77,7 @@ import com.materialchat.domain.model.ReasoningEffort
 import com.materialchat.domain.model.StreamingState
 import com.materialchat.ui.components.HapticPattern
 import com.materialchat.ui.components.rememberHapticFeedback
+import com.materialchat.ui.screens.bookmarks.components.AddBookmarkSheet
 import com.materialchat.ui.screens.chat.components.ChatTopBar
 import com.materialchat.ui.screens.chat.components.ExportBottomSheet
 import com.materialchat.ui.screens.chat.components.MessageBubble
@@ -341,6 +342,9 @@ fun ChatScreen(
                     onRegenerateResponse = { viewModel.regenerateResponse() },
                     onBranchFromMessage = { messageId -> viewModel.branchFromMessage(messageId) },
                     onRedoWithModel = { messageId -> viewModel.showRedoModelPicker(messageId) },
+                    onBookmarkToggle = { messageId -> viewModel.toggleBookmark(messageId) },
+                    onBookmarkLongPress = { messageId -> viewModel.showAddBookmarkSheet(messageId) },
+                    bookmarkedMessageIds = state.bookmarkedMessageIds,
                     onNavigatePrevious = { siblingInfo ->
                         if (siblingInfo.currentIndex > 0) {
                             val prevId = siblingInfo.siblings[siblingInfo.currentIndex - 1].conversationId
@@ -379,6 +383,15 @@ fun ChatScreen(
                     currentModelName = state.modelName,
                     onModelSelected = { model -> viewModel.redoWithModel(model) },
                     onDismiss = { viewModel.hideRedoModelPicker() }
+                )
+
+                // Add bookmark bottom sheet
+                AddBookmarkSheet(
+                    isVisible = state.showAddBookmarkSheet,
+                    onDismiss = { viewModel.hideAddBookmarkSheet() },
+                    onSave = { category, tags, note ->
+                        viewModel.addBookmarkWithDetails(category, tags, note)
+                    }
                 )
             }
         }
@@ -467,6 +480,9 @@ private fun ChatContent(
     onRegenerateResponse: () -> Unit,
     onBranchFromMessage: (String) -> Unit,
     onRedoWithModel: (String) -> Unit,
+    onBookmarkToggle: (String) -> Unit,
+    onBookmarkLongPress: (String) -> Unit,
+    bookmarkedMessageIds: Set<String>,
     onNavigatePrevious: (SiblingInfo) -> Unit,
     onNavigateNext: (SiblingInfo) -> Unit,
     onAttachImage: () -> Unit,
@@ -637,6 +653,9 @@ private fun ChatContent(
                 onRegenerateResponse = onRegenerateResponse,
                 onBranchFromMessage = onBranchFromMessage,
                 onRedoWithModel = onRedoWithModel,
+                onBookmarkToggle = onBookmarkToggle,
+                onBookmarkLongPress = onBookmarkLongPress,
+                bookmarkedMessageIds = bookmarkedMessageIds,
                 onNavigatePrevious = onNavigatePrevious,
                 onNavigateNext = onNavigateNext,
                 alwaysShowThinking = state.alwaysShowThinking,
@@ -681,6 +700,9 @@ private fun MessageList(
     onRegenerateResponse: () -> Unit,
     onBranchFromMessage: (String) -> Unit,
     onRedoWithModel: (String) -> Unit,
+    onBookmarkToggle: (String) -> Unit,
+    onBookmarkLongPress: (String) -> Unit,
+    bookmarkedMessageIds: Set<String>,
     onNavigatePrevious: (SiblingInfo) -> Unit,
     onNavigateNext: (SiblingInfo) -> Unit,
     alwaysShowThinking: Boolean = false,
@@ -726,6 +748,17 @@ private fun MessageList(
                 } else {
                     null
                 },
+                onBookmarkToggle = if (!messageItem.message.isStreaming && messageItem.message.content.isNotEmpty()) {
+                    { onBookmarkToggle(messageItem.message.id) }
+                } else {
+                    null
+                },
+                onBookmarkLongPress = if (!messageItem.message.isStreaming && messageItem.message.content.isNotEmpty()) {
+                    { onBookmarkLongPress(messageItem.message.id) }
+                } else {
+                    null
+                },
+                isBookmarked = bookmarkedMessageIds.contains(messageItem.message.id),
                 onNavigatePrevious = messageItem.siblingInfo?.let { siblingInfo ->
                     if (siblingInfo.currentIndex > 0) {
                         { onNavigatePrevious(siblingInfo) }
