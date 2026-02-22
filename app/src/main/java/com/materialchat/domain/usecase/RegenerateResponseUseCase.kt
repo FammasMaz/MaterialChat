@@ -6,6 +6,7 @@ import com.materialchat.domain.model.ReasoningEffort
 import com.materialchat.domain.model.StreamingState
 import com.materialchat.domain.repository.ChatRepository
 import com.materialchat.domain.repository.ConversationRepository
+import com.materialchat.domain.repository.PersonaRepository
 import com.materialchat.domain.repository.ProviderRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
@@ -25,7 +26,8 @@ import javax.inject.Inject
 class RegenerateResponseUseCase @Inject constructor(
     private val chatRepository: ChatRepository,
     private val conversationRepository: ConversationRepository,
-    private val providerRepository: ProviderRepository
+    private val providerRepository: ProviderRepository,
+    private val personaRepository: PersonaRepository
 ) {
     /**
      * Regenerates the last response in a conversation.
@@ -47,6 +49,14 @@ class RegenerateResponseUseCase @Inject constructor(
 
         val provider = providerRepository.getProvider(conversation.providerId)
             ?: throw IllegalStateException("Provider not found: ${conversation.providerId}")
+
+        // Resolve the effective system prompt: persona overrides global
+        val effectiveSystemPrompt = if (conversation.personaId != null) {
+            val persona = personaRepository.getPersonaById(conversation.personaId)
+            persona?.systemPrompt ?: systemPrompt
+        } else {
+            systemPrompt
+        }
 
         // Get current messages
         val messages = conversationRepository.getMessages(conversationId)
@@ -91,7 +101,7 @@ class RegenerateResponseUseCase @Inject constructor(
             messages = updatedMessages,
             model = modelToUse,
             reasoningEffort = reasoningEffort,
-            systemPrompt = systemPrompt
+            systemPrompt = effectiveSystemPrompt
         ).onEach { state ->
             when (state) {
                 is StreamingState.Streaming -> {

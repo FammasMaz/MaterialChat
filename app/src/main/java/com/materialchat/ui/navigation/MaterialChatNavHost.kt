@@ -21,6 +21,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.materialchat.ui.screens.chat.ChatScreen
 import com.materialchat.ui.screens.conversations.ConversationsScreen
+import com.materialchat.ui.screens.personas.PersonaStudioScreen
 import com.materialchat.ui.screens.settings.SettingsScreen
 import com.materialchat.ui.theme.ExpressiveMotion
 
@@ -206,9 +207,11 @@ fun MaterialChatNavHost(
                 // Placeholder: InsightsScreen will be provided by the insights feature module
             }
 
-            // Persona studio screen (placeholder — replaced by personas-agent)
+            // Persona studio screen
             composable(route = Screen.PersonaStudio.route) {
-                // Placeholder: PersonaStudioScreen will be provided by the personas feature module
+                PersonaStudioScreen(
+                    onNavigateBack = { navController.popBackStack() }
+                )
             }
 
             // Bookmarks knowledge base screen (placeholder — replaced by bookmarks-agent)

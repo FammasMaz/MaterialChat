@@ -2,9 +2,11 @@ package com.materialchat.di
 
 import com.materialchat.data.repository.ChatRepositoryImpl
 import com.materialchat.data.repository.ConversationRepositoryImpl
+import com.materialchat.data.repository.PersonaRepositoryImpl
 import com.materialchat.data.repository.ProviderRepositoryImpl
 import com.materialchat.domain.repository.ChatRepository
 import com.materialchat.domain.repository.ConversationRepository
+import com.materialchat.domain.repository.PersonaRepository
 import com.materialchat.domain.repository.ProviderRepository
 import dagger.Binds
 import dagger.Module
@@ -72,4 +74,18 @@ abstract class RepositoryModule {
     abstract fun bindChatRepository(
         impl: ChatRepositoryImpl
     ): ChatRepository
+
+    /**
+     * Binds [PersonaRepositoryImpl] to [PersonaRepository] interface.
+     *
+     * The implementation handles:
+     * - Persona CRUD operations (Room database)
+     * - Built-in persona seeding
+     * - Observable persona list
+     */
+    @Binds
+    @Singleton
+    abstract fun bindPersonaRepository(
+        impl: PersonaRepositoryImpl
+    ): PersonaRepository
 }
