@@ -215,14 +215,25 @@ interface ConversationDao {
     // ========== Insights Aggregate Queries ==========
 
     /**
-     * Get total conversation count (for insights dashboard).
+     * Get count of root conversations (no parent).
+     * Only counts conversations that have at least one message.
      */
-    @Query("SELECT COUNT(*) FROM conversations WHERE parent_id IS NULL")
+    @Query("""
+        SELECT COUNT(*) FROM conversations c
+        WHERE c.parent_id IS NULL
+        AND EXISTS (SELECT 1 FROM messages m WHERE m.conversation_id = c.id)
+    """)
     suspend fun getRootConversationCount(): Int
 
     /**
-     * Get conversation count within a time range.
+     * Get count of root conversations created since a timestamp.
+     * Only counts conversations that have at least one message.
      */
-    @Query("SELECT COUNT(*) FROM conversations WHERE created_at >= :sinceTimestamp AND parent_id IS NULL")
-    suspend fun getConversationCountSince(sinceTimestamp: Long): Int
+    @Query("""
+        SELECT COUNT(*) FROM conversations c
+        WHERE c.parent_id IS NULL
+        AND c.created_at >= :timestamp
+        AND EXISTS (SELECT 1 FROM messages m WHERE m.conversation_id = c.id)
+    """)
+    suspend fun getConversationCountSince(timestamp: Long): Int
 }

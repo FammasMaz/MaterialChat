@@ -24,6 +24,7 @@ import com.materialchat.ui.screens.arena.components.ArenaLeaderboard
 import com.materialchat.ui.screens.bookmarks.BookmarksScreen
 import com.materialchat.ui.screens.chat.ChatScreen
 import com.materialchat.ui.screens.conversations.ConversationsScreen
+import com.materialchat.ui.screens.insights.InsightsScreen
 import com.materialchat.ui.screens.personas.PersonaStudioScreen
 import com.materialchat.ui.screens.settings.SettingsScreen
 import com.materialchat.ui.theme.ExpressiveMotion
@@ -212,9 +213,11 @@ fun MaterialChatNavHost(
                 )
             }
 
-            // Insights dashboard screen (placeholder — replaced by insights-agent)
+            // Insights dashboard screen
             composable(route = Screen.Insights.route) {
-                // Placeholder: InsightsScreen will be provided by the insights feature module
+                InsightsScreen(
+                    onNavigateBack = { navController.popBackStack() }
+                )
             }
 
             // Persona studio screen
