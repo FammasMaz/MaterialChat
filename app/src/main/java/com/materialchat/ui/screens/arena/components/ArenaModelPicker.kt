@@ -13,6 +13,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ArrowDropDown
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import com.materialchat.ui.theme.CustomShapes
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
@@ -154,7 +155,8 @@ private fun ProviderDropdown(
 
     DropdownMenu(
         expanded = expanded,
-        onDismissRequest = { expanded = false }
+        onDismissRequest = { expanded = false },
+        shape = CustomShapes.ModelPicker
     ) {
         providers.forEach { provider ->
             DropdownMenuItem(
@@ -207,7 +209,8 @@ private fun ModelDropdown(
 
     DropdownMenu(
         expanded = expanded,
-        onDismissRequest = { expanded = false }
+        onDismissRequest = { expanded = false },
+        shape = CustomShapes.ModelPicker
     ) {
         models.forEach { model ->
             DropdownMenuItem(

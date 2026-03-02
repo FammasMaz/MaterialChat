@@ -25,6 +25,7 @@ import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import com.materialchat.ui.theme.CustomShapes
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -213,6 +214,7 @@ private fun ModelDropdownMenu(
     DropdownMenu(
         expanded = expanded,
         onDismissRequest = onDismiss,
+        shape = CustomShapes.ModelPicker,
         modifier = Modifier
             .heightIn(max = 300.dp)
     ) {

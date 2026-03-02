@@ -33,6 +33,7 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import com.materialchat.ui.theme.CustomShapes
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -419,6 +420,7 @@ private fun ProviderFilterBadge(
         DropdownMenu(
             expanded = isDropdownExpanded,
             onDismissRequest = { onDropdownToggle(false) },
+            shape = CustomShapes.ModelPicker,
             modifier = Modifier
                 .heightIn(max = 350.dp)
                 .width(240.dp)
@@ -724,6 +726,7 @@ private fun ModelPickerBadge(
         DropdownMenu(
             expanded = isPickerExpanded,
             onDismissRequest = { onPickerToggle(false) },
+            shape = CustomShapes.ModelPicker,
             modifier = Modifier
                 .heightIn(max = 400.dp)
                 .width(280.dp)

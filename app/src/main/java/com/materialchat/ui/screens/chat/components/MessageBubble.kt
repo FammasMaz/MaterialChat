@@ -78,6 +78,7 @@ import com.materialchat.ui.components.MarkdownText
 import com.materialchat.ui.screens.chat.MessageUiItem
 import com.materialchat.ui.screens.chat.MessageGroupPosition
 import com.materialchat.ui.screens.chat.SiblingInfo
+import com.materialchat.ui.theme.CustomShapes
 import com.materialchat.ui.theme.MessageBubbleShapes
 
 /**
@@ -242,7 +243,8 @@ fun MessageBubble(
                 if (isUser && !isEditing) {
                     DropdownMenu(
                         expanded = showUserContextMenu,
-                        onDismissRequest = { showUserContextMenu = false }
+                        onDismissRequest = { showUserContextMenu = false },
+                        shape = CustomShapes.Dropdown
                     ) {
                         Row(
                             modifier = Modifier.padding(horizontal = 4.dp),
