@@ -388,7 +388,7 @@ fun ExpressiveFab(
 
     // M3 Expressive EFFECTS spring for elevation (no bounce)
     val elevation by animateDpAsState(
-        targetValue = if (isPressed) 2.dp else 6.dp,
+        targetValue = if (isPressed) 12.dp else 6.dp,
         animationSpec = ExpressiveMotion.Effects.elevation(),
         label = "fabElevation"
     )
@@ -493,7 +493,7 @@ fun AnimatedExtendedFab(
 
     // M3 Expressive EFFECTS spring for elevation (no bounce)
     val elevation by animateDpAsState(
-        targetValue = if (isPressed) 2.dp else 6.dp,
+        targetValue = if (isPressed) 12.dp else 6.dp,
         animationSpec = ExpressiveMotion.Effects.elevation(),
         label = "fabElevation"
     )

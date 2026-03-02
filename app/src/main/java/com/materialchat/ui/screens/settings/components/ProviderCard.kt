@@ -89,7 +89,7 @@ fun ProviderCard(
     // Animate background color for active state
     val backgroundColor by animateColorAsState(
         targetValue = if (provider.isActive) {
-            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+            MaterialTheme.colorScheme.secondaryContainer
         } else {
             MaterialTheme.colorScheme.surfaceContainerLow
         },
@@ -282,7 +282,7 @@ private fun ApiKeyStatusIndicator(
             tint = if (hasApiKey) {
                 MaterialTheme.colorScheme.primary
             } else {
-                MaterialTheme.colorScheme.error.copy(alpha = 0.7f)
+                MaterialTheme.colorScheme.error
             },
             modifier = Modifier.size(14.dp)
         )
@@ -292,7 +292,7 @@ private fun ApiKeyStatusIndicator(
             color = if (hasApiKey) {
                 MaterialTheme.colorScheme.onSurfaceVariant
             } else {
-                MaterialTheme.colorScheme.error.copy(alpha = 0.7f)
+                MaterialTheme.colorScheme.error
             }
         )
     }

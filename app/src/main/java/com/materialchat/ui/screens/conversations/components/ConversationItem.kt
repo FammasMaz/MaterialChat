@@ -174,7 +174,7 @@ fun ConversationItem(
                         color = MaterialTheme.colorScheme.onPrimaryContainer,
                         modifier = Modifier
                             .clip(RoundedCornerShape(50)) // M3: full (pill)
-                            .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f))
+                            .background(MaterialTheme.colorScheme.primaryContainer)
                             .padding(horizontal = 8.dp, vertical = 2.dp)
                     )
 
@@ -219,7 +219,7 @@ fun ConversationItem(
                     .fillMaxWidth()
                     .padding(start = 72.dp, end = 16.dp)
                     .height(1.dp)
-                    .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                    .background(MaterialTheme.colorScheme.outlineVariant)
             )
         }
     }

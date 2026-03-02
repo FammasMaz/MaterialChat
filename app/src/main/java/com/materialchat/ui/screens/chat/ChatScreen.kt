@@ -768,7 +768,7 @@ private fun MessageList(
         ) { _, messageItem ->
             val topSpacing = when (messageItem.groupPosition) {
                 MessageGroupPosition.Middle,
-                MessageGroupPosition.Last -> 2.dp
+                MessageGroupPosition.Last -> 4.dp
                 MessageGroupPosition.First,
                 MessageGroupPosition.Single -> 10.dp
             }

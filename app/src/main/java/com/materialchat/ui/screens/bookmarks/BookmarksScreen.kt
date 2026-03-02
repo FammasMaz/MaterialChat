@@ -284,20 +284,20 @@ private fun EmptyBookmarksContent(hasFilters: Boolean) {
                 imageVector = Icons.Outlined.BookmarkBorder,
                 contentDescription = null,
                 modifier = Modifier.size(48.dp),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                tint = MaterialTheme.colorScheme.outline
             )
             Text(
                 text = if (hasFilters) "No bookmarks match your filters"
                        else "No bookmarks yet",
                 style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center
             )
             if (!hasFilters) {
                 Text(
                     text = "Bookmark messages from any conversation\nto build your knowledge base",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                    color = MaterialTheme.colorScheme.outline,
                     textAlign = TextAlign.Center
                 )
             }
