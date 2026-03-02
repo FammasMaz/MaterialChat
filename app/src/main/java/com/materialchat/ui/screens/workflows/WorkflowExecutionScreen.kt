@@ -118,30 +118,40 @@ fun WorkflowExecutionScreen(
             )
         }
     ) { paddingValues ->
+        Surface(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(top = paddingValues.calculateTopPadding()),
+            shape = RoundedCornerShape(
+                topStart = 28.dp,
+                topEnd = 28.dp,
+                bottomStart = 0.dp,
+                bottomEnd = 0.dp
+            ),
+            color = MaterialTheme.colorScheme.surfaceContainerLow
+        ) {
         when {
             uiState.isLoading -> {
-                ExecutionLoadingContent(paddingValues = paddingValues)
+                ExecutionLoadingContent()
             }
 
             uiState.error != null && uiState.execution == null -> {
                 ExecutionErrorContent(
                     message = uiState.error!!,
-                    paddingValues = paddingValues,
                     onNavigateBack = onNavigateBack
                 )
             }
 
             uiState.execution != null -> {
                 ExecutionContent(
-                    uiState = uiState,
-                    paddingValues = paddingValues
+                    uiState = uiState
                 )
             }
 
             !uiState.showInputDialog && uiState.execution == null && !uiState.isLoading -> {
-                // Waiting state before dialog or after dismiss
-                ExecutionIdleContent(paddingValues = paddingValues)
+                ExecutionIdleContent()
             }
+        }
         }
     }
 }
@@ -222,11 +232,9 @@ private fun WorkflowInputDialog(
  */
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun ExecutionLoadingContent(paddingValues: PaddingValues) {
+private fun ExecutionLoadingContent() {
     Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(paddingValues),
+        modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
     ) {
         LoadingIndicator(
@@ -242,13 +250,11 @@ private fun ExecutionLoadingContent(paddingValues: PaddingValues) {
 @Composable
 private fun ExecutionErrorContent(
     message: String,
-    paddingValues: PaddingValues,
     onNavigateBack: () -> Unit
 ) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(paddingValues)
             .padding(32.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
@@ -284,11 +290,9 @@ private fun ExecutionErrorContent(
  * Idle content shown before execution starts.
  */
 @Composable
-private fun ExecutionIdleContent(paddingValues: PaddingValues) {
+private fun ExecutionIdleContent() {
     Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(paddingValues),
+        modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
     ) {
         Text(
@@ -306,16 +310,13 @@ private fun ExecutionIdleContent(paddingValues: PaddingValues) {
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun ExecutionContent(
-    uiState: WorkflowExecutionUiState,
-    paddingValues: PaddingValues
+    uiState: WorkflowExecutionUiState
 ) {
     val execution = uiState.execution ?: return
     val completedSteps = execution.stepResults.keys
 
     LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(paddingValues),
+        modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(
             start = 16.dp,
             end = 16.dp,

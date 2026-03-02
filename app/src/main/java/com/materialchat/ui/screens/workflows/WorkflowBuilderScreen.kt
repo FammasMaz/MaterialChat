@@ -23,6 +23,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
@@ -96,13 +97,24 @@ fun WorkflowBuilderScreen(
             )
         }
     ) { paddingValues ->
-        Column(
+        Surface(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues)
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp)
+                .padding(top = paddingValues.calculateTopPadding()),
+            shape = RoundedCornerShape(
+                topStart = 28.dp,
+                topEnd = 28.dp,
+                bottomStart = 0.dp,
+                bottomEnd = 0.dp
+            ),
+            color = MaterialTheme.colorScheme.surfaceContainerLow
         ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 16.dp)
+            ) {
             Spacer(modifier = Modifier.height(8.dp))
 
             // Workflow name
@@ -180,6 +192,7 @@ fun WorkflowBuilderScreen(
 
             // Bottom spacing for comfortable scrolling
             Spacer(modifier = Modifier.height(32.dp))
+        }
         }
     }
 }

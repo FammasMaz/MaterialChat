@@ -29,6 +29,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
@@ -101,22 +102,34 @@ fun WorkflowsScreen(
             )
         }
     ) { paddingValues ->
-        when (val state = uiState) {
-            is WorkflowsUiState.Loading -> {
-                WorkflowsLoadingContent(paddingValues = paddingValues)
-            }
+        Surface(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(top = paddingValues.calculateTopPadding()),
+            shape = RoundedCornerShape(
+                topStart = 28.dp,
+                topEnd = 28.dp,
+                bottomStart = 0.dp,
+                bottomEnd = 0.dp
+            ),
+            color = MaterialTheme.colorScheme.surfaceContainerLow
+        ) {
+            when (val state = uiState) {
+                is WorkflowsUiState.Loading -> {
+                    WorkflowsLoadingContent()
+                }
 
-            is WorkflowsUiState.Success -> {
-                if (state.workflows.isEmpty()) {
-                    WorkflowsEmptyContent(paddingValues = paddingValues)
-                } else {
-                    WorkflowsListContent(
-                        state = state,
-                        paddingValues = paddingValues,
-                        onNavigateToExecution = onNavigateToExecution,
-                        onNavigateToBuilder = onNavigateToBuilder,
-                        onDeleteWorkflow = { viewModel.deleteWorkflow(it) }
-                    )
+                is WorkflowsUiState.Success -> {
+                    if (state.workflows.isEmpty()) {
+                        WorkflowsEmptyContent()
+                    } else {
+                        WorkflowsListContent(
+                            state = state,
+                            onNavigateToExecution = onNavigateToExecution,
+                            onNavigateToBuilder = onNavigateToBuilder,
+                            onDeleteWorkflow = { viewModel.deleteWorkflow(it) }
+                        )
+                    }
                 }
             }
         }
@@ -128,11 +141,9 @@ fun WorkflowsScreen(
  */
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun WorkflowsLoadingContent(paddingValues: PaddingValues) {
+private fun WorkflowsLoadingContent() {
     Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(paddingValues),
+        modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
     ) {
         LoadingIndicator(
@@ -146,11 +157,9 @@ private fun WorkflowsLoadingContent(paddingValues: PaddingValues) {
  * Empty state content when no workflows exist.
  */
 @Composable
-private fun WorkflowsEmptyContent(paddingValues: PaddingValues) {
+private fun WorkflowsEmptyContent() {
     Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(paddingValues),
+        modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
     ) {
         Column(
@@ -186,15 +195,12 @@ private fun WorkflowsEmptyContent(paddingValues: PaddingValues) {
 @Composable
 private fun WorkflowsListContent(
     state: WorkflowsUiState.Success,
-    paddingValues: PaddingValues,
     onNavigateToExecution: (String) -> Unit,
     onNavigateToBuilder: (String?) -> Unit,
     onDeleteWorkflow: (String) -> Unit
 ) {
     LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(paddingValues),
+        modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(
             start = 16.dp,
             end = 16.dp,
