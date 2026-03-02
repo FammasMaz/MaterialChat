@@ -16,6 +16,7 @@ import com.materialchat.domain.model.BookmarkCategory
 import com.materialchat.domain.model.FusionConfig
 import com.materialchat.domain.model.FusionModelSelection
 import com.materialchat.domain.usecase.ExportConversationUseCase
+import com.materialchat.domain.repository.ConversationRepository
 import com.materialchat.domain.usecase.BranchConversationUseCase
 import com.materialchat.domain.usecase.GetConversationsUseCase
 import com.materialchat.domain.usecase.ManagePersonasUseCase
@@ -63,6 +64,7 @@ class ChatViewModel @Inject constructor(
     private val sendMessageUseCase: SendMessageUseCase,
     private val regenerateResponseUseCase: RegenerateResponseUseCase,
     private val exportConversationUseCase: ExportConversationUseCase,
+    private val conversationRepository: ConversationRepository,
     private val branchConversationUseCase: BranchConversationUseCase,
     private val redoWithModelUseCase: RedoWithModelUseCase,
     private val manageBookmarksUseCase: ManageBookmarksUseCase,
@@ -207,7 +209,9 @@ class ChatViewModel @Inject constructor(
                                 groupPosition = resolveGroupPosition(messages, index),
                                 siblingInfo = if (isSiblingTarget) siblingInfo else null,
                                 showModelLabel = message.modelName != null &&
-                                        message.modelName != conversation.modelName
+                                        message.modelName != conversation.modelName,
+                                isErrored = message.role == MessageRole.ASSISTANT &&
+                                        message.content.isEmpty() && !message.isStreaming
                             )
                         }
 
@@ -234,7 +238,9 @@ class ChatViewModel @Inject constructor(
                             beautifulModelNamesEnabled = currentBeautifulModelNamesEnabled,
                             alwaysShowThinking = currentAlwaysShowThinking,
                             slideDirection = slideDirection,
-                            persona = currentPersona
+                            persona = currentPersona,
+                            editingMessageId = (currentState as? ChatUiState.Success)?.editingMessageId,
+                            editingText = (currentState as? ChatUiState.Success)?.editingText ?: ""
                         )
 
                         // Only scroll to bottom when a NEW message is added, not during streaming updates
@@ -712,6 +718,96 @@ class ChatViewModel @Inject constructor(
                         message = e.message ?: "Failed to create branch"
                     )
                 )
+            }
+        }
+    }
+
+    // ========== Edit & Resend ==========
+
+    /**
+     * Starts editing a user message.
+     */
+    fun startEditingMessage(messageId: String) {
+        val currentState = _uiState.value
+        if (currentState !is ChatUiState.Success) return
+        val message = currentState.messages.find { it.message.id == messageId }?.message ?: return
+        _uiState.value = currentState.copy(
+            editingMessageId = messageId,
+            editingText = message.content
+        )
+    }
+
+    /**
+     * Updates the editing text.
+     */
+    fun updateEditingText(text: String) {
+        val currentState = _uiState.value
+        if (currentState is ChatUiState.Success) {
+            _uiState.value = currentState.copy(editingText = text)
+        }
+    }
+
+    /**
+     * Cancels the current editing operation.
+     */
+    fun cancelEditing() {
+        val currentState = _uiState.value
+        if (currentState is ChatUiState.Success) {
+            _uiState.value = currentState.copy(editingMessageId = null, editingText = "")
+        }
+    }
+
+    /**
+     * Submits the edited message by creating a branch.
+     */
+    fun submitEditedMessage() {
+        val currentState = _uiState.value
+        if (currentState !is ChatUiState.Success) return
+        val editingMessageId = currentState.editingMessageId ?: return
+        val editedText = currentState.editingText.trim()
+        if (editedText.isEmpty()) return
+
+        val messages = currentState.messages.map { it.message }
+        val editingIndex = messages.indexOfFirst { it.id == editingMessageId }
+        if (editingIndex == -1) return
+
+        if (editingIndex == 0) {
+            viewModelScope.launch {
+                _events.emit(ChatEvent.ShowSnackbar(
+                    message = "Cannot edit the first message"
+                ))
+            }
+            return
+        }
+
+        val branchFromId = messages[editingIndex - 1].id
+
+        // Clear editing state
+        _uiState.value = currentState.copy(editingMessageId = null, editingText = "")
+
+        viewModelScope.launch {
+            try {
+                val newConversationId = branchConversationUseCase(
+                    sourceConversationId = activeConversationId.value,
+                    upToMessageId = branchFromId
+                )
+
+                val editedMessage = Message(
+                    id = java.util.UUID.randomUUID().toString(),
+                    conversationId = newConversationId,
+                    role = MessageRole.USER,
+                    content = editedText
+                )
+                conversationRepository.addMessage(editedMessage)
+
+                _events.emit(ChatEvent.NavigateToBranch(
+                    conversationId = newConversationId,
+                    autoSend = true
+                ))
+            } catch (e: Exception) {
+                _events.emit(ChatEvent.ShowSnackbar(
+                    message = e.message ?: "Failed to submit edited message"
+                ))
             }
         }
     }

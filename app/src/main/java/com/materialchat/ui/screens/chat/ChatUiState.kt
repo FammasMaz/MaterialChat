@@ -68,7 +68,9 @@ sealed interface ChatUiState {
         val fusionConfig: FusionConfig = FusionConfig(),
         val fusionResult: FusionResult? = null,
         val showFusionModelSelector: Boolean = false,
-        val isFusionRunning: Boolean = false
+        val isFusionRunning: Boolean = false,
+        val editingMessageId: String? = null,
+        val editingText: String = ""
     ) : ChatUiState {
         /**
          * Whether a message is currently streaming.
@@ -115,7 +117,8 @@ data class MessageUiItem(
     val showActions: Boolean = false,
     val groupPosition: MessageGroupPosition = MessageGroupPosition.Single,
     val siblingInfo: SiblingInfo? = null,
-    val showModelLabel: Boolean = false
+    val showModelLabel: Boolean = false,
+    val isErrored: Boolean = false
 )
 
 /**

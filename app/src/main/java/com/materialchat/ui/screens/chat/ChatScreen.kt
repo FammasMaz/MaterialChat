@@ -73,6 +73,7 @@ import androidx.core.content.FileProvider
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.materialchat.domain.model.Attachment
+import com.materialchat.domain.model.MessageRole
 import com.materialchat.domain.model.ReasoningEffort
 import com.materialchat.domain.model.StreamingState
 import com.materialchat.ui.components.HapticPattern
@@ -372,7 +373,13 @@ fun ChatScreen(
                         viewModel.updateInputText(starter)
                     },
                     onFusionToggle = { viewModel.toggleFusionMode() },
-                    onShowFusionSelector = { viewModel.showFusionModelSelector() }
+                    onShowFusionSelector = { viewModel.showFusionModelSelector() },
+                    editingMessageId = state.editingMessageId,
+                    editingText = state.editingText,
+                    onStartEditing = { viewModel.startEditingMessage(it) },
+                    onUpdateEditingText = { viewModel.updateEditingText(it) },
+                    onSubmitEdit = { viewModel.submitEditedMessage() },
+                    onCancelEdit = { viewModel.cancelEditing() }
                 )
 
                 // Export bottom sheet
@@ -512,7 +519,13 @@ private fun ChatContent(
     onReasoningEffortChange: (ReasoningEffort) -> Unit,
     onConversationStarterSelected: (String) -> Unit,
     onFusionToggle: () -> Unit,
-    onShowFusionSelector: () -> Unit
+    onShowFusionSelector: () -> Unit,
+    editingMessageId: String?,
+    editingText: String,
+    onStartEditing: (String) -> Unit,
+    onUpdateEditingText: (String) -> Unit,
+    onSubmitEdit: () -> Unit,
+    onCancelEdit: () -> Unit
 ) {
     val haptics = rememberHapticFeedback()
     val density = LocalDensity.current
@@ -683,6 +696,12 @@ private fun ChatContent(
                 onNavigatePrevious = onNavigatePrevious,
                 onNavigateNext = onNavigateNext,
                 alwaysShowThinking = state.alwaysShowThinking,
+                editingMessageId = editingMessageId,
+                editingText = editingText,
+                onStartEditing = onStartEditing,
+                onUpdateEditingText = onUpdateEditingText,
+                onSubmitEdit = onSubmitEdit,
+                onCancelEdit = onCancelEdit,
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxWidth()
@@ -749,6 +768,12 @@ private fun MessageList(
     onNavigatePrevious: (SiblingInfo) -> Unit,
     onNavigateNext: (SiblingInfo) -> Unit,
     alwaysShowThinking: Boolean = false,
+    editingMessageId: String? = null,
+    editingText: String = "",
+    onStartEditing: (String) -> Unit = {},
+    onUpdateEditingText: (String) -> Unit = {},
+    onSubmitEdit: () -> Unit = {},
+    onCancelEdit: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     LazyColumn(
@@ -813,6 +838,17 @@ private fun MessageList(
                     } else null
                 },
                 alwaysShowThinking = alwaysShowThinking,
+                onRetry = if (messageItem.isLastAssistantMessage && messageItem.isErrored && !messageItem.message.isStreaming) {
+                    { onRegenerateResponse() }
+                } else null,
+                onEdit = if (messageItem.message.role == MessageRole.USER && !messageItem.message.isStreaming) {
+                    { onStartEditing(messageItem.message.id) }
+                } else null,
+                isEditing = editingMessageId == messageItem.message.id,
+                editingText = if (editingMessageId == messageItem.message.id) editingText else "",
+                onEditingTextChange = onUpdateEditingText,
+                onSubmitEdit = onSubmitEdit,
+                onCancelEdit = onCancelEdit,
                 modifier = Modifier.padding(top = topSpacing)
             )
         }

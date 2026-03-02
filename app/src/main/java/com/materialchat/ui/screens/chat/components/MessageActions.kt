@@ -14,6 +14,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.CallSplit
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.SwapHoriz
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -61,10 +62,12 @@ fun MessageActions(
     showRegenerate: Boolean = false,
     showBranch: Boolean = false,
     showRedoWithModel: Boolean = false,
+    showEdit: Boolean = false,
     onCopy: () -> Unit,
     onRegenerate: (() -> Unit)? = null,
     onBranch: (() -> Unit)? = null,
     onRedoWithModel: (() -> Unit)? = null,
+    onEdit: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     Row(
@@ -91,6 +94,29 @@ fun MessageActions(
                 icon = Icons.Default.ContentCopy,
                 contentDescription = "Copy message",
                 onClick = onCopy
+            )
+        }
+
+        // Edit button
+        AnimatedVisibility(
+            visible = showEdit && onEdit != null,
+            enter = fadeIn(
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                    stiffness = Spring.StiffnessMedium
+                )
+            ) + scaleIn(
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                    stiffness = Spring.StiffnessMedium
+                )
+            ),
+            exit = fadeOut() + scaleOut()
+        ) {
+            ActionButton(
+                icon = Icons.Outlined.Edit,
+                contentDescription = "Edit message",
+                onClick = { onEdit?.invoke() }
             )
         }
 

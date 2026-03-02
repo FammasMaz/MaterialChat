@@ -25,20 +25,31 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.automirrored.outlined.CallSplit
 import androidx.compose.material.icons.filled.Bookmark
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.outlined.BookmarkBorder
+import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material.icons.outlined.ErrorOutline
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -47,6 +58,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.lerp
@@ -103,6 +116,13 @@ fun MessageBubble(
     onNavigatePrevious: (() -> Unit)? = null,
     onNavigateNext: (() -> Unit)? = null,
     alwaysShowThinking: Boolean = false,
+    onRetry: (() -> Unit)? = null,
+    onEdit: (() -> Unit)? = null,
+    isEditing: Boolean = false,
+    editingText: String = "",
+    onEditingTextChange: ((String) -> Unit)? = null,
+    onSubmitEdit: (() -> Unit)? = null,
+    onCancelEdit: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val message = messageItem.message
@@ -110,11 +130,15 @@ fun MessageBubble(
     val isAssistant = message.role == MessageRole.ASSISTANT
     val isSystem = message.role == MessageRole.SYSTEM
 
+    // Context menu state for user messages (long-press floating bar)
+    var showUserContextMenu by remember { mutableStateOf(false) }
+
     val bubbleStyle = getBubbleStyle(
         isUser = isUser,
         isAssistant = isAssistant,
         isSystem = isSystem,
-        groupPosition = messageItem.groupPosition
+        groupPosition = messageItem.groupPosition,
+        isErrored = messageItem.isErrored
     )
 
     val alignment = when {
@@ -130,18 +154,27 @@ fun MessageBubble(
         Column(
             horizontalAlignment = if (isUser) Alignment.End else Alignment.Start
         ) {
-            Surface(
-                shape = bubbleStyle.shape,
-                color = bubbleStyle.backgroundColor,
-                modifier = Modifier
-                    .widthIn(min = 40.dp, max = bubbleStyle.maxWidth)
-                    .animateContentSize(
-                        animationSpec = spring(
-                            dampingRatio = Spring.DampingRatioMediumBouncy,
-                            stiffness = Spring.StiffnessMediumLow
+            Box {
+                Surface(
+                    shape = bubbleStyle.shape,
+                    color = bubbleStyle.backgroundColor,
+                    modifier = Modifier
+                        .widthIn(min = 40.dp, max = bubbleStyle.maxWidth)
+                        .animateContentSize(
+                            animationSpec = spring(
+                                dampingRatio = Spring.DampingRatioMediumBouncy,
+                                stiffness = Spring.StiffnessMediumLow
+                            )
                         )
-                    )
-            ) {
+                        .then(
+                            if (isUser && !isEditing && !message.isStreaming && message.content.isNotEmpty()) {
+                                Modifier.combinedClickable(
+                                    onClick = {},
+                                    onLongClick = { showUserContextMenu = true }
+                                )
+                            } else Modifier
+                        )
+                ) {
                 Column(
                     modifier = Modifier.padding(
                         horizontal = 14.dp,
@@ -173,13 +206,24 @@ fun MessageBubble(
                         }
                     }
 
-                    // Message content
-                    MessageContent(
-                        content = message.content,
-                        isStreaming = message.isStreaming,
-                        textColor = bubbleStyle.textColor,
-                        isAssistant = isAssistant
-                    )
+                    // Message content or inline editing / error state
+                    if (isUser && isEditing) {
+                        EditingContent(
+                            editingText = editingText,
+                            onEditingTextChange = onEditingTextChange ?: {},
+                            onSubmitEdit = onSubmitEdit ?: {},
+                            onCancelEdit = onCancelEdit ?: {}
+                        )
+                    } else if (isAssistant && !message.isStreaming && message.content.isEmpty() && messageItem.isErrored) {
+                        ErrorStateContent()
+                    } else {
+                        MessageContent(
+                            content = message.content,
+                            isStreaming = message.isStreaming,
+                            textColor = bubbleStyle.textColor,
+                            isAssistant = isAssistant
+                        )
+                    }
 
                     // Streaming indicator
                     if (message.isStreaming) {
@@ -191,6 +235,55 @@ fun MessageBubble(
                         )
                     }
 
+                }
+                }
+
+                // User message floating context menu (long-press)
+                if (isUser && !isEditing) {
+                    DropdownMenu(
+                        expanded = showUserContextMenu,
+                        onDismissRequest = { showUserContextMenu = false }
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            IconButton(
+                                onClick = { onCopy(); showUserContextMenu = false },
+                                modifier = Modifier.size(48.dp)
+                            ) {
+                                Icon(
+                                    Icons.Default.ContentCopy, "Copy",
+                                    modifier = Modifier.size(20.dp),
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            if (onEdit != null) {
+                                IconButton(
+                                    onClick = { onEdit(); showUserContextMenu = false },
+                                    modifier = Modifier.size(48.dp)
+                                ) {
+                                    Icon(
+                                        Icons.Outlined.Edit, "Edit",
+                                        modifier = Modifier.size(20.dp),
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                            if (onBranch != null) {
+                                IconButton(
+                                    onClick = { onBranch(); showUserContextMenu = false },
+                                    modifier = Modifier.size(48.dp)
+                                ) {
+                                    Icon(
+                                        Icons.AutoMirrored.Outlined.CallSplit, "Branch",
+                                        modifier = Modifier.size(20.dp),
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                        }
+                    }
                 }
             }
 
@@ -275,16 +368,10 @@ fun MessageBubble(
                         )
                     }
                 }
-            } else if (!isAssistant && messageItem.showActions && message.content.isNotEmpty() && !message.isStreaming) {
-                Spacer(modifier = Modifier.height(4.dp))
-                MessageActions(
-                    showCopy = true,
-                    showRegenerate = false,
-                    showBranch = onBranch != null,
-                    onCopy = onCopy,
-                    onRegenerate = onRegenerate,
-                    onBranch = onBranch
-                )
+            } else if (isAssistant && !message.isStreaming && message.content.isEmpty() && messageItem.isErrored && onRetry != null) {
+                // Error/empty response: show retry button
+                Spacer(modifier = Modifier.height(8.dp))
+                RetryButton(onRetry = onRetry)
             }
         }
     }
@@ -340,7 +427,8 @@ private fun getBubbleStyle(
     isUser: Boolean,
     isAssistant: Boolean,
     isSystem: Boolean,
-    groupPosition: MessageGroupPosition
+    groupPosition: MessageGroupPosition,
+    isErrored: Boolean = false
 ): BubbleStyle {
     val configuration = LocalConfiguration.current
     val maxBubbleWidth = (configuration.screenWidthDp * 0.82f).dp
@@ -369,7 +457,7 @@ private fun getBubbleStyle(
                 MessageGroupPosition.Last -> MessageBubbleShapes.Grouped.AssistantLast
                 MessageGroupPosition.Single -> MessageBubbleShapes.AssistantBubble
             },
-            backgroundColor = assistantBubble,
+            backgroundColor = if (isErrored) lerp(assistantBubble, MaterialTheme.colorScheme.errorContainer, 0.3f) else assistantBubble,
             textColor = MaterialTheme.colorScheme.onSurface,
             maxWidth = maxBubbleWidth
         )
@@ -608,4 +696,99 @@ private fun AttachmentImage(
             .size(120.dp)
             .clip(RoundedCornerShape(8.dp))
     )
+}
+
+/**
+ * Error state content shown inside assistant bubble when response fails.
+ */
+@Composable
+private fun ErrorStateContent() {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Icon(
+            imageVector = Icons.Outlined.ErrorOutline,
+            contentDescription = null,
+            modifier = Modifier.size(18.dp),
+            tint = MaterialTheme.colorScheme.error
+        )
+        Text(
+            text = "Response failed",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.error
+        )
+    }
+}
+
+/**
+ * Retry button shown below errored assistant messages.
+ * Uses errorContainer M3 color tokens.
+ */
+@Composable
+private fun RetryButton(onRetry: () -> Unit) {
+    FilledTonalButton(
+        onClick = onRetry,
+        colors = ButtonDefaults.filledTonalButtonColors(
+            containerColor = MaterialTheme.colorScheme.errorContainer,
+            contentColor = MaterialTheme.colorScheme.onErrorContainer
+        )
+    ) {
+        Icon(
+            imageVector = Icons.Default.Refresh,
+            contentDescription = null,
+            modifier = Modifier.size(18.dp)
+        )
+        Spacer(modifier = Modifier.size(8.dp))
+        Text("Retry")
+    }
+}
+
+/**
+ * Inline editing content for user messages.
+ * Shows a text field with Cancel and Save & Submit buttons.
+ */
+@Composable
+private fun EditingContent(
+    editingText: String,
+    onEditingTextChange: (String) -> Unit,
+    onSubmitEdit: () -> Unit,
+    onCancelEdit: () -> Unit
+) {
+    val focusRequester = remember { FocusRequester() }
+    LaunchedEffect(Unit) {
+        focusRequester.requestFocus()
+    }
+
+    Column {
+        BasicTextField(
+            value = editingText,
+            onValueChange = onEditingTextChange,
+            modifier = Modifier
+                .fillMaxWidth()
+                .focusRequester(focusRequester),
+            textStyle = MaterialTheme.typography.bodyLarge.copy(
+                color = MaterialTheme.colorScheme.onPrimaryContainer
+            ),
+            decorationBox = { innerTextField ->
+                Box(modifier = Modifier.padding(vertical = 4.dp)) {
+                    innerTextField()
+                }
+            }
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.End,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            TextButton(onClick = onCancelEdit) {
+                Text("Cancel")
+            }
+            Spacer(modifier = Modifier.size(8.dp))
+            FilledTonalButton(onClick = onSubmitEdit) {
+                Text("Save & Submit")
+            }
+        }
+    }
 }
