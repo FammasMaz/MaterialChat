@@ -14,8 +14,6 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.onStart
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -32,11 +30,6 @@ class ChatRepositoryImpl @Inject constructor(
     private val encryptedPreferences: EncryptedPreferences
 ) : ChatRepository {
 
-    // Track the current streaming message for state management
-    private var currentMessageId: String? = null
-    private var accumulatedContent = StringBuilder()
-    private var accumulatedThinking = StringBuilder()
-
     override fun sendMessage(
         provider: Provider,
         messages: List<Message>,
@@ -44,10 +37,9 @@ class ChatRepositoryImpl @Inject constructor(
         reasoningEffort: ReasoningEffort,
         systemPrompt: String?
     ): Flow<StreamingState> = flow {
-        // Reset state for new message
-        currentMessageId = null
-        accumulatedContent.clear()
-        accumulatedThinking.clear()
+        // Use local state so parallel calls (e.g. arena) don't interfere
+        val accumulatedContent = StringBuilder()
+        val accumulatedThinking = StringBuilder()
 
         // Get API key if required
         val apiKey = if (provider.requiresApiKey) {
@@ -58,7 +50,6 @@ class ChatRepositoryImpl @Inject constructor(
 
         // Create a placeholder message ID for tracking
         val messageId = java.util.UUID.randomUUID().toString()
-        currentMessageId = messageId
 
         // Emit starting state
         emit(StreamingState.Starting)
@@ -115,16 +106,11 @@ class ChatRepositoryImpl @Inject constructor(
     }.catch { exception ->
         when (exception) {
             is CancellationException -> {
-                emit(StreamingState.Cancelled(
-                    partialContent = accumulatedContent.toString().takeIf { it.isNotEmpty() },
-                    messageId = currentMessageId
-                ))
+                emit(StreamingState.Cancelled())
             }
             else -> {
                 emit(StreamingState.Error(
-                    error = exception,
-                    partialContent = accumulatedContent.toString().takeIf { it.isNotEmpty() },
-                    messageId = currentMessageId
+                    error = exception
                 ))
             }
         }

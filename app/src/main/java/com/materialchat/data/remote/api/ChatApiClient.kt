@@ -15,7 +15,6 @@ import com.materialchat.domain.model.MessageRole
 import com.materialchat.domain.model.Provider
 import com.materialchat.domain.model.ProviderType
 import com.materialchat.domain.model.ReasoningEffort
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
@@ -35,7 +34,6 @@ import java.io.BufferedReader
 import java.io.IOException
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
-import java.util.concurrent.atomic.AtomicReference
 
 /**
  * API client for streaming chat completions from AI providers.
@@ -57,8 +55,7 @@ class ChatApiClient(
     private val sseEventParser: SseEventParser = SseEventParser.default
 ) {
 
-    private val activeCall = AtomicReference<Call?>(null)
-    private val isCancelled = AtomicBoolean(false)
+    private val activeCalls = java.util.concurrent.CopyOnWriteArraySet<Call>()
 
     /**
      * Streams a chat completion from the given provider.
@@ -124,7 +121,8 @@ class ChatApiClient(
         temperature: Double = 0.7,
         reasoningEffort: ReasoningEffort = ReasoningEffort.HIGH
     ): Flow<StreamingEvent> = callbackFlow {
-        isCancelled.set(false)
+        // Per-flow cancel flag so parallel streams don't interfere
+        val cancelled = AtomicBoolean(false)
 
         // Build the message list with optional system prompt
         val openAiMessages = buildOpenAiMessages(messages, systemPrompt)
@@ -153,11 +151,11 @@ class ChatApiClient(
             .build()
 
         val call = okHttpClient.newCall(httpRequest)
-        activeCall.set(call)
+        activeCalls.add(call)
 
         call.enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
-                if (!isCancelled.get()) {
+                if (!cancelled.get()) {
                     trySend(StreamingEvent.fromException(e))
                 }
                 close()
@@ -187,14 +185,14 @@ class ChatApiClient(
 
                     try {
                         body.source().inputStream().bufferedReader().use { reader ->
-                            processOpenAiStream(reader) { event ->
-                                if (!isCancelled.get() && isActive) {
+                            processOpenAiStream(reader, cancelled) { event ->
+                                if (!cancelled.get() && isActive) {
                                     trySend(event)
                                 }
                             }
                         }
                     } catch (e: IOException) {
-                        if (!isCancelled.get()) {
+                        if (!cancelled.get()) {
                             trySend(StreamingEvent.fromException(e))
                         }
                     } finally {
@@ -205,7 +203,9 @@ class ChatApiClient(
         })
 
         awaitClose {
-            cancelStreaming()
+            cancelled.set(true)
+            activeCalls.remove(call)
+            call.cancel()
         }
     }
 
@@ -229,7 +229,8 @@ class ChatApiClient(
         temperature: Double = 0.7,
         reasoningEffort: ReasoningEffort = ReasoningEffort.HIGH
     ): Flow<StreamingEvent> = callbackFlow {
-        isCancelled.set(false)
+        // Per-flow cancel flag so parallel streams don't interfere
+        val cancelled = AtomicBoolean(false)
 
         // Build the message list with optional system prompt
         val ollamaMessages = buildOllamaMessages(messages, systemPrompt)
@@ -257,11 +258,11 @@ class ChatApiClient(
             .build()
 
         val call = okHttpClient.newCall(httpRequest)
-        activeCall.set(call)
+        activeCalls.add(call)
 
         call.enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
-                if (!isCancelled.get()) {
+                if (!cancelled.get()) {
                     trySend(StreamingEvent.fromException(e))
                 }
                 close()
@@ -289,14 +290,14 @@ class ChatApiClient(
 
                     try {
                         body.source().inputStream().bufferedReader().use { reader ->
-                            processOllamaStream(reader) { event ->
-                                if (!isCancelled.get() && isActive) {
+                            processOllamaStream(reader, cancelled) { event ->
+                                if (!cancelled.get() && isActive) {
                                     trySend(event)
                                 }
                             }
                         }
                     } catch (e: IOException) {
-                        if (!isCancelled.get()) {
+                        if (!cancelled.get()) {
                             trySend(StreamingEvent.fromException(e))
                         }
                     } finally {
@@ -307,7 +308,9 @@ class ChatApiClient(
         })
 
         awaitClose {
-            cancelStreaming()
+            cancelled.set(true)
+            activeCalls.remove(call)
+            call.cancel()
         }
     }
 
@@ -315,8 +318,8 @@ class ChatApiClient(
      * Cancels any active streaming request.
      */
     fun cancelStreaming() {
-        isCancelled.set(true)
-        activeCall.getAndSet(null)?.cancel()
+        activeCalls.forEach { it.cancel() }
+        activeCalls.clear()
     }
 
     /**
@@ -514,13 +517,14 @@ class ChatApiClient(
      */
     private fun processOpenAiStream(
         reader: BufferedReader,
+        cancelled: AtomicBoolean,
         onEvent: (StreamingEvent) -> Unit
     ) {
         var hasContent = false
         var lastModel: String? = null
 
         reader.lineSequence().forEach { line ->
-            if (isCancelled.get()) return
+            if (cancelled.get()) return
 
             android.util.Log.d("ChatApiClient", "SSE line: $line")
             val event = sseEventParser.parseOpenAiEvent(line)
@@ -553,7 +557,7 @@ class ChatApiClient(
 
         // If stream ended naturally without explicit Done (some APIs combine content+finish in one chunk)
         // emit Done to properly finalize the message
-        if (hasContent && !isCancelled.get()) {
+        if (hasContent && !cancelled.get()) {
             android.util.Log.d("ChatApiClient", "Stream ended, emitting implicit Done")
             onEvent(StreamingEvent.Done(model = lastModel))
         }
@@ -564,10 +568,11 @@ class ChatApiClient(
      */
     private fun processOllamaStream(
         reader: BufferedReader,
+        cancelled: AtomicBoolean,
         onEvent: (StreamingEvent) -> Unit
     ) {
         reader.lineSequence().forEach { line ->
-            if (isCancelled.get()) return
+            if (cancelled.get()) return
 
             val event = sseEventParser.parseOllamaEvent(line)
 
