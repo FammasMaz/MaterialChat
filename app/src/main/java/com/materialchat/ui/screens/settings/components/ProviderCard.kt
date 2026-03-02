@@ -21,6 +21,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.outlined.Cloud
 import androidx.compose.material.icons.outlined.Computer
+import androidx.compose.material.icons.outlined.SmartToy
 import androidx.compose.material.icons.outlined.Key
 import androidx.compose.material.icons.outlined.KeyOff
 import androidx.compose.material3.Card
@@ -176,8 +177,8 @@ fun ProviderCard(
                 overflow = TextOverflow.Ellipsis
             )
 
-            // API Key status (only for OpenAI-compatible providers)
-            if (provider.type == ProviderType.OPENAI_COMPATIBLE) {
+            // API Key / Gateway Token status
+            if (provider.type == ProviderType.OPENAI_COMPATIBLE || provider.type == ProviderType.OPENCLAW) {
                 Spacer(modifier = Modifier.height(4.dp))
                 ApiKeyStatusIndicator(hasApiKey = providerItem.hasApiKey)
             }
@@ -229,10 +230,12 @@ private fun ProviderTypeIcon(
             imageVector = when (type) {
                 ProviderType.OPENAI_COMPATIBLE -> Icons.Outlined.Cloud
                 ProviderType.OLLAMA_NATIVE -> Icons.Outlined.Computer
+                ProviderType.OPENCLAW -> Icons.Outlined.SmartToy
             },
             contentDescription = when (type) {
                 ProviderType.OPENAI_COMPATIBLE -> "OpenAI-compatible provider"
                 ProviderType.OLLAMA_NATIVE -> "Ollama local provider"
+                ProviderType.OPENCLAW -> "OpenClaw gateway provider"
             },
             tint = MaterialTheme.colorScheme.onPrimaryContainer,
             modifier = Modifier.size(24.dp)

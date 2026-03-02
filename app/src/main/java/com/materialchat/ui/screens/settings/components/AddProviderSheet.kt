@@ -31,6 +31,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.outlined.Cloud
 import androidx.compose.material.icons.outlined.Computer
+import androidx.compose.material.icons.outlined.SmartToy
 import androidx.compose.material.icons.outlined.Key
 import androidx.compose.material.icons.outlined.Link
 import androidx.compose.material.icons.outlined.Memory
@@ -221,6 +222,7 @@ private fun AddProviderSheetContent(
             placeholder = when (formState.type) {
                 ProviderType.OPENAI_COMPATIBLE -> "https://api.openai.com"
                 ProviderType.OLLAMA_NATIVE -> "http://localhost:11434"
+                ProviderType.OPENCLAW -> "http://localhost:18789"
             },
             leadingIcon = Icons.Outlined.Link,
             error = formState.baseUrlError,
@@ -241,12 +243,13 @@ private fun AddProviderSheetContent(
             placeholder = when (formState.type) {
                 ProviderType.OPENAI_COMPATIBLE -> "gpt-4o"
                 ProviderType.OLLAMA_NATIVE -> "llama3.2"
+                ProviderType.OPENCLAW -> "openclaw"
             },
             leadingIcon = Icons.Outlined.Memory,
             error = formState.defaultModelError,
             enabled = !isSaving,
             keyboardOptions = KeyboardOptions(
-                imeAction = if (formState.type == ProviderType.OPENAI_COMPATIBLE) {
+                imeAction = if (formState.type == ProviderType.OPENAI_COMPATIBLE || formState.type == ProviderType.OPENCLAW) {
                     ImeAction.Next
                 } else {
                     ImeAction.Done
@@ -300,9 +303,9 @@ private fun AddProviderSheetContent(
             )
         }
 
-        // API Key (only for OpenAI-compatible providers)
+        // API Key / Gateway Token
         AnimatedVisibility(
-            visible = formState.type == ProviderType.OPENAI_COMPATIBLE,
+            visible = formState.type == ProviderType.OPENAI_COMPATIBLE || formState.type == ProviderType.OPENCLAW,
             enter = fadeIn() + expandVertically(
                 animationSpec = spring(
                     dampingRatio = Spring.DampingRatioMediumBouncy,
@@ -321,12 +324,20 @@ private fun AddProviderSheetContent(
                 FormTextField(
                     value = formState.apiKey,
                     onValueChange = { onFieldChange(null, null, null, null, it) },
-                    label = if (isEditing && formState.hasExistingKey) {
-                        "API Key (leave blank to keep existing)"
-                    } else {
-                        "API Key"
+                    label = when {
+                        formState.type == ProviderType.OPENCLAW && isEditing && formState.hasExistingKey ->
+                            "Gateway Token (leave blank to keep existing)"
+                        formState.type == ProviderType.OPENCLAW ->
+                            "Gateway Token"
+                        isEditing && formState.hasExistingKey ->
+                            "API Key (leave blank to keep existing)"
+                        else -> "API Key"
                     },
-                    placeholder = "sk-...",
+                    placeholder = if (formState.type == ProviderType.OPENCLAW) {
+                        "Enter your OpenClaw gateway token"
+                    } else {
+                        "sk-..."
+                    },
                     leadingIcon = Icons.Outlined.Key,
                     error = formState.apiKeyError,
                     enabled = !isSaving,
@@ -416,6 +427,7 @@ private fun ProviderTypeSelector(
                             text = when (type) {
                                 ProviderType.OPENAI_COMPATIBLE -> "OpenAI-compatible"
                                 ProviderType.OLLAMA_NATIVE -> "Ollama"
+                                ProviderType.OPENCLAW -> "OpenClaw"
                             }
                         )
                     },
@@ -424,6 +436,7 @@ private fun ProviderTypeSelector(
                             imageVector = when (type) {
                                 ProviderType.OPENAI_COMPATIBLE -> Icons.Outlined.Cloud
                                 ProviderType.OLLAMA_NATIVE -> Icons.Outlined.Computer
+                                ProviderType.OPENCLAW -> Icons.Outlined.SmartToy
                             },
                             contentDescription = null,
                             modifier = Modifier.size(18.dp)

@@ -268,14 +268,17 @@ class SettingsViewModel @Inject constructor(
             return
         }
 
-        if (currentFormState.type == ProviderType.OPENAI_COMPATIBLE) {
+        if (currentFormState.type == ProviderType.OPENAI_COMPATIBLE || currentFormState.type == ProviderType.OPENCLAW) {
             val hasExistingKey = currentState.editingProvider?.let { provider ->
                 currentState.providers.find { it.provider.id == provider.id }?.hasApiKey
             } ?: false
             val hasApiKey = currentFormState.apiKey.isNotBlank() || hasExistingKey
             if (!hasApiKey) {
                 viewModelScope.launch {
-                    _events.emit(SettingsEvent.ShowSnackbar("API key is required to fetch models."))
+                    _events.emit(SettingsEvent.ShowSnackbar(
+                        if (currentFormState.type == ProviderType.OPENCLAW) "Gateway token is required to fetch models."
+                        else "API key is required to fetch models."
+                    ))
                 }
                 return
             }
@@ -353,14 +356,18 @@ class SettingsViewModel @Inject constructor(
             hasErrors = true
         }
 
-        if (form.type == ProviderType.OPENAI_COMPATIBLE) {
+        if (form.type == ProviderType.OPENAI_COMPATIBLE || form.type == ProviderType.OPENCLAW) {
             val editingProvider = currentState.editingProvider
             val hasExistingKey = editingProvider?.let { provider ->
                 currentState.providers.find { it.provider.id == provider.id }?.hasApiKey
             } ?: false
 
             if (form.apiKey.isBlank() && !hasExistingKey) {
-                apiKeyError = "API key is required for OpenAI-compatible providers"
+                apiKeyError = if (form.type == ProviderType.OPENCLAW) {
+                    "Gateway token is required"
+                } else {
+                    "API key is required for OpenAI-compatible providers"
+                }
                 hasErrors = true
             }
         }

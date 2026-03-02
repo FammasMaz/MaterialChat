@@ -61,5 +61,18 @@ data class Provider(
             requiresApiKey = true,
             isActive = false
         )
+
+        /**
+         * Creates a default OpenClaw Gateway provider template.
+         */
+        fun openClawTemplate(): Provider = Provider(
+            id = "openclaw-default",
+            name = "OpenClaw",
+            type = ProviderType.OPENCLAW,
+            baseUrl = "http://localhost:18789",
+            defaultModel = "openclaw",
+            requiresApiKey = true,
+            isActive = false
+        )
     }
 }
