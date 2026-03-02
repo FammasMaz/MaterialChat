@@ -22,11 +22,16 @@ import androidx.navigation.navArgument
 import com.materialchat.ui.screens.arena.ArenaScreen
 import com.materialchat.ui.screens.arena.components.ArenaLeaderboard
 import com.materialchat.ui.screens.bookmarks.BookmarksScreen
+import com.materialchat.ui.screens.canvas.SmartCanvasScreen
 import com.materialchat.ui.screens.chat.ChatScreen
 import com.materialchat.ui.screens.conversations.ConversationsScreen
 import com.materialchat.ui.screens.insights.InsightsScreen
+import com.materialchat.ui.screens.mindmap.MindMapScreen
 import com.materialchat.ui.screens.personas.PersonaStudioScreen
 import com.materialchat.ui.screens.settings.SettingsScreen
+import com.materialchat.ui.screens.workflows.WorkflowBuilderScreen
+import com.materialchat.ui.screens.workflows.WorkflowExecutionScreen
+import com.materialchat.ui.screens.workflows.WorkflowsScreen
 import com.materialchat.ui.theme.ExpressiveMotion
 
 /**
@@ -150,6 +155,9 @@ fun MaterialChatNavHost(
                         },
                         onNavigateToBookmarks = {
                             navController.navigate(Screen.Bookmarks.route)
+                        },
+                        onNavigateToWorkflows = {
+                            navController.navigate(Screen.Workflows.route)
                         }
                     )
                 }
@@ -184,6 +192,13 @@ fun MaterialChatNavHost(
                         onNavigateToBranch = { newId, autoSend, overrideModel ->
                             navController.popBackStack()
                             navController.navigate(Screen.Chat.createRoute(newId, autoSend, overrideModel))
+                        },
+                        onNavigateToCanvas = { artifact ->
+                            val artifactData = "${artifact.type.name}:::${artifact.language ?: ""}:::${artifact.code}"
+                            navController.navigate(Screen.Canvas.createRoute(artifactData))
+                        },
+                        onNavigateToMindMap = { conversationId ->
+                            navController.navigate(Screen.MindMap.createRoute(conversationId))
                         }
                     )
                 }
@@ -234,6 +249,79 @@ fun MaterialChatNavHost(
                     onNavigateToConversation = { conversationId ->
                         navController.navigate(Screen.Chat.createRoute(conversationId))
                     }
+                )
+            }
+
+            // Smart Canvas screen for rendering live artifacts
+            composable(
+                route = Screen.Canvas.route,
+                arguments = listOf(
+                    navArgument(Screen.Canvas.ARG_ARTIFACT_DATA) {
+                        type = NavType.StringType
+                    }
+                )
+            ) {
+                SmartCanvasScreen(
+                    onNavigateBack = { navController.popBackStack() }
+                )
+            }
+
+            // Mind Map screen for conversation branch visualization
+            composable(
+                route = Screen.MindMap.route,
+                arguments = listOf(
+                    navArgument(Screen.MindMap.ARG_CONVERSATION_ID) {
+                        type = NavType.StringType
+                    }
+                )
+            ) {
+                MindMapScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onNavigateToConversation = { conversationId ->
+                        navController.popBackStack()
+                        navController.navigate(Screen.Chat.createRoute(conversationId))
+                    }
+                )
+            }
+
+            // Workflows list screen
+            composable(route = Screen.Workflows.route) {
+                WorkflowsScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onNavigateToBuilder = { workflowId ->
+                        navController.navigate(Screen.WorkflowBuilder.createRoute(workflowId))
+                    },
+                    onNavigateToExecution = { workflowId ->
+                        navController.navigate(Screen.WorkflowExecution.createRoute(workflowId))
+                    }
+                )
+            }
+
+            // Workflow builder screen
+            composable(
+                route = Screen.WorkflowBuilder.route,
+                arguments = listOf(
+                    navArgument(Screen.WorkflowBuilder.ARG_WORKFLOW_ID) {
+                        type = NavType.StringType
+                    }
+                )
+            ) {
+                WorkflowBuilderScreen(
+                    onNavigateBack = { navController.popBackStack() }
+                )
+            }
+
+            // Workflow execution screen
+            composable(
+                route = Screen.WorkflowExecution.route,
+                arguments = listOf(
+                    navArgument(Screen.WorkflowExecution.ARG_WORKFLOW_ID) {
+                        type = NavType.StringType
+                    }
+                )
+            ) {
+                WorkflowExecutionScreen(
+                    onNavigateBack = { navController.popBackStack() }
                 )
             }
         }

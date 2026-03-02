@@ -1,0 +1,534 @@
+package com.materialchat.ui.screens.workflows
+
+import androidx.compose.animation.animateContentSize
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Cancel
+import androidx.compose.material.icons.filled.Error
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.LoadingIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.materialchat.domain.model.WorkflowStatus
+import com.materialchat.ui.components.MarkdownText
+import com.materialchat.ui.screens.workflows.components.StepProgressIndicator
+import com.materialchat.ui.screens.workflows.components.StepResultCard
+import com.materialchat.ui.theme.ExpressiveMotion
+
+/**
+ * Workflow Execution screen.
+ *
+ * Shows an initial input dialog, then displays step-by-step execution
+ * progress including a step progress indicator, completed step results,
+ * and streaming content for the current step.
+ *
+ * @param onNavigateBack Callback to navigate back
+ * @param viewModel The ViewModel for this screen
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun WorkflowExecutionScreen(
+    onNavigateBack: () -> Unit,
+    viewModel: WorkflowExecutionViewModel = hiltViewModel()
+) {
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+
+    // Input dialog
+    if (uiState.showInputDialog && uiState.workflow != null) {
+        WorkflowInputDialog(
+            workflowName = uiState.workflow!!.name,
+            workflowDescription = uiState.workflow!!.description,
+            onExecute = { viewModel.execute(it) },
+            onDismiss = onNavigateBack
+        )
+    }
+
+    Scaffold(
+        containerColor = MaterialTheme.colorScheme.surfaceContainer,
+        topBar = {
+            TopAppBar(
+                title = {
+                    Text(
+                        text = uiState.workflow?.name ?: "Workflow",
+                        style = MaterialTheme.typography.titleLarge
+                    )
+                },
+                navigationIcon = {
+                    IconButton(onClick = onNavigateBack) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Navigate back"
+                        )
+                    }
+                },
+                actions = {
+                    val execution = uiState.execution
+                    if (execution != null && execution.status == WorkflowStatus.RUNNING) {
+                        IconButton(onClick = { viewModel.cancel() }) {
+                            Icon(
+                                imageVector = Icons.Default.Cancel,
+                                contentDescription = "Cancel execution",
+                                tint = MaterialTheme.colorScheme.error
+                            )
+                        }
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainer
+                )
+            )
+        }
+    ) { paddingValues ->
+        when {
+            uiState.isLoading -> {
+                ExecutionLoadingContent(paddingValues = paddingValues)
+            }
+
+            uiState.error != null && uiState.execution == null -> {
+                ExecutionErrorContent(
+                    message = uiState.error!!,
+                    paddingValues = paddingValues,
+                    onNavigateBack = onNavigateBack
+                )
+            }
+
+            uiState.execution != null -> {
+                ExecutionContent(
+                    uiState = uiState,
+                    paddingValues = paddingValues
+                )
+            }
+
+            !uiState.showInputDialog && uiState.execution == null && !uiState.isLoading -> {
+                // Waiting state before dialog or after dismiss
+                ExecutionIdleContent(paddingValues = paddingValues)
+            }
+        }
+    }
+}
+
+/**
+ * Dialog for entering the initial input to start workflow execution.
+ */
+@Composable
+private fun WorkflowInputDialog(
+    workflowName: String,
+    workflowDescription: String,
+    onExecute: (String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    var inputText by rememberSaveable { mutableStateOf("") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        shape = RoundedCornerShape(24.dp),
+        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+        title = {
+            Text(
+                text = workflowName,
+                style = MaterialTheme.typography.headlineSmall
+            )
+        },
+        text = {
+            Column {
+                if (workflowDescription.isNotBlank()) {
+                    Text(
+                        text = workflowDescription,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                }
+
+                OutlinedTextField(
+                    value = inputText,
+                    onValueChange = { inputText = it },
+                    label = { Text("Your input") },
+                    placeholder = { Text("Enter your prompt to start the workflow...") },
+                    minLines = 3,
+                    maxLines = 6,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                        unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
+                    )
+                )
+            }
+        },
+        confirmButton = {
+            FilledTonalButton(
+                onClick = { onExecute(inputText) },
+                enabled = inputText.isNotBlank()
+            ) {
+                Icon(
+                    imageVector = Icons.Default.PlayArrow,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text("Run")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
+}
+
+/**
+ * Loading content while the workflow metadata is being fetched.
+ */
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun ExecutionLoadingContent(paddingValues: PaddingValues) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(paddingValues),
+        contentAlignment = Alignment.Center
+    ) {
+        LoadingIndicator(
+            modifier = Modifier.size(48.dp),
+            color = MaterialTheme.colorScheme.primary
+        )
+    }
+}
+
+/**
+ * Error content when workflow loading fails.
+ */
+@Composable
+private fun ExecutionErrorContent(
+    message: String,
+    paddingValues: PaddingValues,
+    onNavigateBack: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(paddingValues)
+            .padding(32.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Icon(
+            imageVector = Icons.Default.Error,
+            contentDescription = null,
+            modifier = Modifier.size(48.dp),
+            tint = MaterialTheme.colorScheme.error
+        )
+        Spacer(modifier = Modifier.height(12.dp))
+        Text(
+            text = "Something went wrong",
+            style = MaterialTheme.typography.titleLarge,
+            color = MaterialTheme.colorScheme.error,
+            textAlign = TextAlign.Center
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = message,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        TextButton(onClick = onNavigateBack) {
+            Text("Go Back")
+        }
+    }
+}
+
+/**
+ * Idle content shown before execution starts.
+ */
+@Composable
+private fun ExecutionIdleContent(paddingValues: PaddingValues) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(paddingValues),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = "Ready to run workflow",
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+}
+
+/**
+ * Main execution content showing step progress, completed results,
+ * and streaming content for the current step.
+ */
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun ExecutionContent(
+    uiState: WorkflowExecutionUiState,
+    paddingValues: PaddingValues
+) {
+    val execution = uiState.execution ?: return
+    val completedSteps = execution.stepResults.keys
+
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(paddingValues),
+        contentPadding = PaddingValues(
+            start = 16.dp,
+            end = 16.dp,
+            top = 0.dp,
+            bottom = 24.dp
+        ),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        // Step progress indicator
+        item(key = "progress") {
+            StepProgressIndicator(
+                totalSteps = execution.totalSteps,
+                currentStep = execution.currentStepIndex,
+                completedSteps = completedSteps
+            )
+        }
+
+        // Status banner for terminal states
+        when (execution.status) {
+            WorkflowStatus.COMPLETED -> {
+                item(key = "status_completed") {
+                    StatusBanner(
+                        text = "Workflow completed",
+                        containerColor = MaterialTheme.colorScheme.primaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                }
+            }
+            WorkflowStatus.FAILED -> {
+                item(key = "status_failed") {
+                    StatusBanner(
+                        text = "Failed: ${execution.error ?: "Unknown error"}",
+                        containerColor = MaterialTheme.colorScheme.errorContainer,
+                        contentColor = MaterialTheme.colorScheme.onErrorContainer
+                    )
+                }
+            }
+            WorkflowStatus.CANCELLED -> {
+                item(key = "status_cancelled") {
+                    StatusBanner(
+                        text = "Workflow cancelled",
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+            else -> { /* IDLE, RUNNING — no banner */ }
+        }
+
+        // Completed step results
+        val sortedStepResults = execution.stepResults.toSortedMap()
+        sortedStepResults.forEach { (stepIndex, content) ->
+            item(key = "result_$stepIndex") {
+                StepResultCard(
+                    stepNumber = stepIndex + 1,
+                    content = content,
+                    initiallyExpanded = stepIndex == sortedStepResults.keys.last()
+                )
+            }
+        }
+
+        // Current step streaming content
+        if (execution.status == WorkflowStatus.RUNNING &&
+            execution.currentStepContent.isNotBlank()
+        ) {
+            item(key = "streaming") {
+                CurrentStepStreamingCard(
+                    stepNumber = execution.currentStepIndex + 1,
+                    content = execution.currentStepContent
+                )
+            }
+        }
+
+        // Loading indicator for running step with no content yet
+        if (execution.status == WorkflowStatus.RUNNING &&
+            execution.currentStepContent.isBlank()
+        ) {
+            item(key = "loading_step") {
+                CurrentStepLoadingCard(
+                    stepNumber = execution.currentStepIndex + 1
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Status banner for terminal execution states.
+ */
+@Composable
+private fun StatusBanner(
+    text: String,
+    containerColor: androidx.compose.ui.graphics.Color,
+    contentColor: androidx.compose.ui.graphics.Color
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(14.dp),
+        color = containerColor
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.labelLarge,
+            fontWeight = FontWeight.Medium,
+            color = contentColor,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
+        )
+    }
+}
+
+/**
+ * Card showing streaming content for the currently executing step.
+ */
+@Composable
+private fun CurrentStepStreamingCard(
+    stepNumber: Int,
+    content: String
+) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .animateContentSize(animationSpec = ExpressiveMotion.Spatial.container()),
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        tonalElevation = 1.dp
+    ) {
+        Column(
+            modifier = Modifier.padding(14.dp)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Step badge
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = MaterialTheme.colorScheme.tertiary,
+                    modifier = Modifier.size(26.dp)
+                ) {
+                    Text(
+                        text = "$stepNumber",
+                        color = MaterialTheme.colorScheme.onTertiary,
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(6.dp),
+                        textAlign = TextAlign.Center
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(10.dp))
+
+                Text(
+                    text = "Step $stepNumber — Running...",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            MarkdownText(
+                markdown = content,
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+    }
+}
+
+/**
+ * Card showing a loading indicator for a step that hasn't started streaming yet.
+ */
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun CurrentStepLoadingCard(stepNumber: Int) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        tonalElevation = 1.dp
+    ) {
+        Row(
+            modifier = Modifier.padding(14.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Step badge
+            Surface(
+                shape = RoundedCornerShape(8.dp),
+                color = MaterialTheme.colorScheme.tertiary,
+                modifier = Modifier.size(26.dp)
+            ) {
+                Text(
+                    text = "$stepNumber",
+                    color = MaterialTheme.colorScheme.onTertiary,
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(6.dp),
+                    textAlign = TextAlign.Center
+                )
+            }
+
+            Spacer(modifier = Modifier.width(10.dp))
+
+            Text(
+                text = "Step $stepNumber — Waiting for response...",
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.weight(1f)
+            )
+
+            LoadingIndicator(
+                modifier = Modifier.size(24.dp),
+                color = MaterialTheme.colorScheme.primary
+            )
+        }
+    }
+}

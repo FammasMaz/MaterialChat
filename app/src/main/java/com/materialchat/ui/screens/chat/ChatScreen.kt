@@ -133,6 +133,8 @@ private const val MAX_ATTACHMENTS = 4
 fun ChatScreen(
     onNavigateBack: () -> Unit,
     onNavigateToBranch: (String, Boolean, String?) -> Unit = { _, _, _ -> },
+    onNavigateToCanvas: (com.materialchat.domain.model.CanvasArtifact) -> Unit = {},
+    onNavigateToMindMap: (String) -> Unit = {},
     viewModel: ChatViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -283,10 +285,12 @@ fun ChatScreen(
                         availableModels = state.availableModels,
                         isLoadingModels = state.isLoadingModels,
                         beautifulModelNamesEnabled = state.beautifulModelNamesEnabled,
+                        hasBranches = state.hasBranches,
                         onNavigateBack = { viewModel.navigateBack() },
                         onExportClick = { viewModel.showExportOptions() },
                         onModelSelected = { model -> viewModel.changeModel(model) },
                         onLoadModels = { viewModel.loadModels() },
+                        onMindMapClick = { onNavigateToMindMap(state.conversationId) },
                         scrollBehavior = scrollBehavior
                     )
                 }
@@ -379,7 +383,8 @@ fun ChatScreen(
                     onStartEditing = { viewModel.startEditingMessage(it) },
                     onUpdateEditingText = { viewModel.updateEditingText(it) },
                     onSubmitEdit = { viewModel.submitEditedMessage() },
-                    onCancelEdit = { viewModel.cancelEditing() }
+                    onCancelEdit = { viewModel.cancelEditing() },
+                    onOpenCanvas = onNavigateToCanvas
                 )
 
                 // Export bottom sheet
@@ -525,7 +530,8 @@ private fun ChatContent(
     onStartEditing: (String) -> Unit,
     onUpdateEditingText: (String) -> Unit,
     onSubmitEdit: () -> Unit,
-    onCancelEdit: () -> Unit
+    onCancelEdit: () -> Unit,
+    onOpenCanvas: (com.materialchat.domain.model.CanvasArtifact) -> Unit = {}
 ) {
     val haptics = rememberHapticFeedback()
     val density = LocalDensity.current
@@ -702,6 +708,7 @@ private fun ChatContent(
                 onUpdateEditingText = onUpdateEditingText,
                 onSubmitEdit = onSubmitEdit,
                 onCancelEdit = onCancelEdit,
+                onOpenCanvas = onOpenCanvas,
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxWidth()
@@ -774,6 +781,7 @@ private fun MessageList(
     onUpdateEditingText: (String) -> Unit = {},
     onSubmitEdit: () -> Unit = {},
     onCancelEdit: () -> Unit = {},
+    onOpenCanvas: (com.materialchat.domain.model.CanvasArtifact) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     LazyColumn(
@@ -849,6 +857,7 @@ private fun MessageList(
                 onEditingTextChange = onUpdateEditingText,
                 onSubmitEdit = onSubmitEdit,
                 onCancelEdit = onCancelEdit,
+                onOpenCanvas = onOpenCanvas,
                 modifier = Modifier.padding(top = topSpacing)
             )
         }

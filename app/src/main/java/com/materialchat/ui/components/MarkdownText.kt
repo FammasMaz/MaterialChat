@@ -4,18 +4,29 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.OpenInNew
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import com.materialchat.domain.model.CanvasArtifact
+import com.materialchat.ui.screens.canvas.ArtifactDetector
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
@@ -53,7 +64,8 @@ fun MarkdownText(
     markdown: String,
     modifier: Modifier = Modifier,
     textColor: Color = MaterialTheme.colorScheme.onSurface,
-    style: TextStyle = MaterialTheme.typography.bodyLarge
+    style: TextStyle = MaterialTheme.typography.bodyLarge,
+    onOpenCanvas: ((CanvasArtifact) -> Unit)? = null
 ) {
     val isDarkTheme = isSystemInDarkTheme()
     val codeBlockBackground = if (isDarkTheme) CodeBlockBackgroundDark else CodeBlockBackgroundLight
@@ -74,7 +86,8 @@ fun MarkdownText(
             content = parsedContent,
             modifier = modifier,
             style = style,
-            codeBlockBackground = codeBlockBackground
+            codeBlockBackground = codeBlockBackground,
+            onOpenCanvas = onOpenCanvas
         )
     }
 }
@@ -95,7 +108,8 @@ private fun MarkdownContent(
     content: List<MarkdownElement>,
     modifier: Modifier = Modifier,
     style: TextStyle,
-    codeBlockBackground: Color
+    codeBlockBackground: Color,
+    onOpenCanvas: ((CanvasArtifact) -> Unit)? = null
 ) {
     androidx.compose.foundation.layout.Column(modifier = modifier) {
         content.forEach { element ->
@@ -113,7 +127,8 @@ private fun MarkdownContent(
                     CodeBlockView(
                         code = element.code,
                         language = element.language,
-                        backgroundColor = codeBlockBackground
+                        backgroundColor = codeBlockBackground,
+                        onOpenCanvas = onOpenCanvas
                     )
                 }
             }
@@ -128,7 +143,8 @@ private fun MarkdownContent(
 private fun CodeBlockView(
     code: String,
     language: String?,
-    backgroundColor: Color
+    backgroundColor: Color,
+    onOpenCanvas: ((CanvasArtifact) -> Unit)? = null
 ) {
     val isDarkTheme = isSystemInDarkTheme()
     val textColor = if (isDarkTheme) Color(0xFFD4D4D4) else Color(0xFF1E1E1E)
@@ -136,6 +152,11 @@ private fun CodeBlockView(
     val stringColor = if (isDarkTheme) Color(0xFFCE9178) else Color(0xFFA31515)
     val commentColor = if (isDarkTheme) Color(0xFF6A9955) else Color(0xFF008000)
     val numberColor = if (isDarkTheme) Color(0xFFB5CEA8) else Color(0xFF098658)
+
+    // Detect if this code block is a renderable artifact
+    val artifact = remember(code, language) {
+        ArtifactDetector.detect(code, language)
+    }
 
     Box(
         modifier = Modifier
@@ -166,7 +187,32 @@ private fun CodeBlockView(
             modifier = Modifier
                 .horizontalScroll(rememberScrollState())
                 .padding(12.dp)
+                .then(
+                    if (artifact != null && onOpenCanvas != null) {
+                        Modifier.padding(end = 40.dp)
+                    } else Modifier
+                )
         )
+
+        // "Open in Canvas" button for eligible code blocks
+        if (artifact != null && onOpenCanvas != null) {
+            IconButton(
+                onClick = { onOpenCanvas(artifact) },
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(4.dp)
+                    .size(32.dp),
+                colors = IconButtonDefaults.iconButtonColors(
+                    contentColor = MaterialTheme.colorScheme.primary
+                )
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Outlined.OpenInNew,
+                    contentDescription = "Open in Canvas",
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+        }
     }
 }
 

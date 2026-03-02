@@ -6,12 +6,14 @@ import com.materialchat.data.repository.ChatRepositoryImpl
 import com.materialchat.data.repository.ConversationRepositoryImpl
 import com.materialchat.data.repository.PersonaRepositoryImpl
 import com.materialchat.data.repository.ProviderRepositoryImpl
+import com.materialchat.data.repository.WorkflowRepositoryImpl
 import com.materialchat.domain.repository.ArenaRepository
 import com.materialchat.domain.repository.BookmarkRepository
 import com.materialchat.domain.repository.ChatRepository
 import com.materialchat.domain.repository.ConversationRepository
 import com.materialchat.domain.repository.PersonaRepository
 import com.materialchat.domain.repository.ProviderRepository
+import com.materialchat.domain.repository.WorkflowRepository
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
@@ -60,4 +62,10 @@ abstract class RepositoryModule {
     abstract fun bindBookmarkRepository(
         impl: BookmarkRepositoryImpl
     ): BookmarkRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindWorkflowRepository(
+        impl: WorkflowRepositoryImpl
+    ): WorkflowRepository
 }

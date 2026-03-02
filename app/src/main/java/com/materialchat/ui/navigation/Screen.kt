@@ -56,11 +56,57 @@ sealed class Screen(val route: String) {
     data object PersonaStudio : Screen("personas")
     data object Bookmarks : Screen("bookmarks")
 
+    /**
+     * Smart Canvas screen for rendering live artifacts (HTML, Mermaid, SVG, LaTeX).
+     */
+    data object Canvas : Screen("canvas/{artifactData}") {
+        fun createRoute(artifactData: String): String {
+            return "canvas/${java.net.URLEncoder.encode(artifactData, "UTF-8")}"
+        }
+        const val ARG_ARTIFACT_DATA = "artifactData"
+    }
+
+    /**
+     * Mind Map screen for visualizing conversation branches as a tree graph.
+     */
+    data object MindMap : Screen("mindmap/{conversationId}") {
+        fun createRoute(conversationId: String): String {
+            return "mindmap/$conversationId"
+        }
+        const val ARG_CONVERSATION_ID = "conversationId"
+    }
+
+    /**
+     * Workflows list screen showing all prompt chain workflows.
+     */
+    data object Workflows : Screen("workflows")
+
+    /**
+     * Workflow builder screen for creating/editing a workflow.
+     */
+    data object WorkflowBuilder : Screen("workflow-builder/{workflowId}") {
+        fun createRoute(workflowId: String? = null): String {
+            return "workflow-builder/${workflowId ?: "new"}"
+        }
+        const val ARG_WORKFLOW_ID = "workflowId"
+    }
+
+    /**
+     * Workflow execution screen for running a workflow step-by-step.
+     */
+    data object WorkflowExecution : Screen("workflow-execution/{workflowId}") {
+        fun createRoute(workflowId: String): String {
+            return "workflow-execution/$workflowId"
+        }
+        const val ARG_WORKFLOW_ID = "workflowId"
+    }
+
     companion object {
         val startDestination: String = Conversations.route
         val allScreens: List<Screen> = listOf(
             Conversations, Chat, Settings,
-            Arena, ArenaLeaderboard, Insights, PersonaStudio, Bookmarks
+            Arena, ArenaLeaderboard, Insights, PersonaStudio, Bookmarks,
+            Canvas, MindMap, Workflows, WorkflowBuilder, WorkflowExecution
         )
     }
 }

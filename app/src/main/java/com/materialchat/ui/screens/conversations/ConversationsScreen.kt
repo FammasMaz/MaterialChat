@@ -43,6 +43,7 @@ import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.outlined.Bookmark
+import androidx.compose.material.icons.outlined.AccountTree
 import androidx.compose.material.icons.outlined.ChatBubbleOutline
 import androidx.compose.material.icons.outlined.EmojiEvents
 import androidx.compose.material.icons.outlined.Insights
@@ -135,6 +136,7 @@ fun ConversationsScreen(
     onNavigateToArena: () -> Unit = {},
     onNavigateToInsights: () -> Unit = {},
     onNavigateToBookmarks: () -> Unit = {},
+    onNavigateToWorkflows: () -> Unit = {},
     viewModel: ConversationsViewModel = hiltViewModel(),
     searchViewModel: SearchViewModel = hiltViewModel()
 ) {
@@ -256,7 +258,8 @@ fun ConversationsScreen(
                         onSettingsClick = { viewModel.navigateToSettings() },
                         onArenaClick = onNavigateToArena,
                         onInsightsClick = onNavigateToInsights,
-                        onBookmarksClick = onNavigateToBookmarks
+                        onBookmarksClick = onNavigateToBookmarks,
+                        onWorkflowsClick = onNavigateToWorkflows
                     )
                 }
             }
@@ -320,7 +323,8 @@ private fun ConversationsTopBar(
     onSettingsClick: () -> Unit,
     onArenaClick: () -> Unit = {},
     onInsightsClick: () -> Unit = {},
-    onBookmarksClick: () -> Unit = {}
+    onBookmarksClick: () -> Unit = {},
+    onWorkflowsClick: () -> Unit = {}
 ) {
     val expandedHeight = 140.dp
     val collapsedHeight = 72.dp
@@ -461,6 +465,20 @@ private fun ConversationsTopBar(
                         Icon(
                             imageVector = Icons.Outlined.Bookmark,
                             contentDescription = "Bookmarks"
+                        )
+                    }
+                }
+                Surface(
+                    onClick = onWorkflowsClick,
+                    shape = RoundedCornerShape(iconCornerRadius),
+                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(48.dp)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = Icons.Outlined.AccountTree,
+                            contentDescription = "Workflows"
                         )
                     }
                 }

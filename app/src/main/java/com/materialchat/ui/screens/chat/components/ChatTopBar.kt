@@ -20,6 +20,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.outlined.AccountTree
 import androidx.compose.material.icons.outlined.CloudDownload
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -83,10 +84,12 @@ fun ChatTopBar(
     availableModels: List<AiModel>,
     isLoadingModels: Boolean,
     beautifulModelNamesEnabled: Boolean = false,
+    hasBranches: Boolean = false,
     onNavigateBack: () -> Unit,
     onExportClick: () -> Unit,
     onModelSelected: (AiModel) -> Unit,
     onLoadModels: () -> Unit,
+    onMindMapClick: () -> Unit = {},
     scrollBehavior: TopAppBarScrollBehavior? = null
 ) {
     var showMenu by remember { mutableStateOf(false) }
@@ -230,6 +233,21 @@ fun ChatTopBar(
                         )
                     }
                 )
+                if (hasBranches) {
+                    DropdownMenuItem(
+                        text = { Text("Mind Map") },
+                        onClick = {
+                            showMenu = false
+                            onMindMapClick()
+                        },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Outlined.AccountTree,
+                                contentDescription = null
+                            )
+                        }
+                    )
+                }
             }
         },
         colors = TopAppBarDefaults.topAppBarColors(

@@ -124,6 +124,7 @@ fun MessageBubble(
     onEditingTextChange: ((String) -> Unit)? = null,
     onSubmitEdit: (() -> Unit)? = null,
     onCancelEdit: (() -> Unit)? = null,
+    onOpenCanvas: ((com.materialchat.domain.model.CanvasArtifact) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val message = messageItem.message
@@ -222,7 +223,8 @@ fun MessageBubble(
                             content = message.content,
                             isStreaming = message.isStreaming,
                             textColor = bubbleStyle.textColor,
-                            isAssistant = isAssistant
+                            isAssistant = isAssistant,
+                            onOpenCanvas = onOpenCanvas
                         )
                     }
 
@@ -389,7 +391,8 @@ private fun MessageContent(
     content: String,
     isStreaming: Boolean,
     textColor: Color,
-    isAssistant: Boolean
+    isAssistant: Boolean,
+    onOpenCanvas: ((com.materialchat.domain.model.CanvasArtifact) -> Unit)? = null
 ) {
     val displayContent = content.ifEmpty { "" }
 
@@ -398,7 +401,8 @@ private fun MessageContent(
         MarkdownText(
             markdown = displayContent,
             textColor = textColor,
-            style = MaterialTheme.typography.bodyLarge
+            style = MaterialTheme.typography.bodyLarge,
+            onOpenCanvas = onOpenCanvas
         )
     } else {
         // Render user messages as plain text

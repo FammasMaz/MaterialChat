@@ -9,6 +9,7 @@ import com.materialchat.data.local.database.dao.ConversationDao
 import com.materialchat.data.local.database.dao.MessageDao
 import com.materialchat.data.local.database.dao.PersonaDao
 import com.materialchat.data.local.database.dao.ProviderDao
+import com.materialchat.data.local.database.dao.WorkflowDao
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -109,5 +110,14 @@ object DatabaseModule {
     @Singleton
     fun provideBookmarkDao(database: MaterialChatDatabase): BookmarkDao {
         return database.bookmarkDao()
+    }
+
+    /**
+     * Provides the WorkflowDao for workflow CRUD operations.
+     */
+    @Provides
+    @Singleton
+    fun provideWorkflowDao(database: MaterialChatDatabase): WorkflowDao {
+        return database.workflowDao()
     }
 }

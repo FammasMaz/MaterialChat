@@ -110,6 +110,7 @@ class ChatViewModel @Inject constructor(
         loadSiblings()
         loadPersona()
         loadBookmarkStates()
+        loadBranchState()
     }
 
     /**
@@ -240,7 +241,8 @@ class ChatViewModel @Inject constructor(
                             slideDirection = slideDirection,
                             persona = currentPersona,
                             editingMessageId = (currentState as? ChatUiState.Success)?.editingMessageId,
-                            editingText = (currentState as? ChatUiState.Success)?.editingText ?: ""
+                            editingText = (currentState as? ChatUiState.Success)?.editingText ?: "",
+                            hasBranches = (currentState as? ChatUiState.Success)?.hasBranches ?: false
                         )
 
                         // Only scroll to bottom when a NEW message is added, not during streaming updates
@@ -1142,6 +1144,24 @@ class ChatViewModel @Inject constructor(
                 } catch (_: Exception) {
                     // Bookmark state loading is best-effort
                 }
+            }
+        }
+    }
+
+    /**
+     * Loads and observes branch state for the current conversation.
+     */
+    private fun loadBranchState() {
+        viewModelScope.launch(ioDispatcher) {
+            try {
+                val branchCount = conversationRepository.getBranchCount(conversationId)
+                _uiState.update { currentState ->
+                    if (currentState is ChatUiState.Success) {
+                        currentState.copy(hasBranches = branchCount > 0)
+                    } else currentState
+                }
+            } catch (_: Exception) {
+                // Branch state loading is best-effort
             }
         }
     }

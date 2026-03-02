@@ -12,6 +12,7 @@ import com.materialchat.data.local.database.dao.ConversationDao
 import com.materialchat.data.local.database.dao.MessageDao
 import com.materialchat.data.local.database.dao.PersonaDao
 import com.materialchat.data.local.database.dao.ProviderDao
+import com.materialchat.data.local.database.dao.WorkflowDao
 import com.materialchat.data.local.database.entity.ArenaBattleEntity
 import com.materialchat.data.local.database.entity.BookmarkEntity
 import com.materialchat.data.local.database.entity.ConversationEntity
@@ -19,6 +20,8 @@ import com.materialchat.data.local.database.entity.MessageEntity
 import com.materialchat.data.local.database.entity.ModelRatingEntity
 import com.materialchat.data.local.database.entity.PersonaEntity
 import com.materialchat.data.local.database.entity.ProviderEntity
+import com.materialchat.data.local.database.entity.WorkflowEntity
+import com.materialchat.data.local.database.entity.WorkflowStepEntity
 
 /**
  * Room database for MaterialChat application.
@@ -42,9 +45,11 @@ import com.materialchat.data.local.database.entity.ProviderEntity
         ArenaBattleEntity::class,
         ModelRatingEntity::class,
         PersonaEntity::class,
-        BookmarkEntity::class
+        BookmarkEntity::class,
+        WorkflowEntity::class,
+        WorkflowStepEntity::class
     ],
-    version = 8,
+    version = 9,
     exportSchema = true
 )
 abstract class MaterialChatDatabase : RoomDatabase() {
@@ -78,6 +83,11 @@ abstract class MaterialChatDatabase : RoomDatabase() {
      * DAO for bookmark operations.
      */
     abstract fun bookmarkDao(): BookmarkDao
+
+    /**
+     * DAO for workflow operations.
+     */
+    abstract fun workflowDao(): WorkflowDao
 
     companion object {
         private const val DATABASE_NAME = "materialchat.db"
@@ -137,6 +147,38 @@ abstract class MaterialChatDatabase : RoomDatabase() {
          * Migration from version 7 to 8: Add arena battles, model ratings, personas, bookmarks,
          * persona_id on conversations, and fusion_metadata on messages.
          */
+        /**
+         * Migration from version 8 to 9: Add workflows and workflow_steps tables.
+         */
+        private val MIGRATION_8_9 = object : Migration(8, 9) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS workflows (
+                        id TEXT NOT NULL PRIMARY KEY,
+                        name TEXT NOT NULL,
+                        description TEXT NOT NULL DEFAULT '',
+                        icon TEXT NOT NULL DEFAULT '🔗',
+                        is_template INTEGER NOT NULL DEFAULT 0,
+                        created_at INTEGER NOT NULL,
+                        updated_at INTEGER NOT NULL
+                    )
+                """)
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS workflow_steps (
+                        id TEXT NOT NULL PRIMARY KEY,
+                        workflow_id TEXT NOT NULL,
+                        step_order INTEGER NOT NULL,
+                        prompt_template TEXT NOT NULL,
+                        model_name TEXT DEFAULT NULL,
+                        provider_id TEXT DEFAULT NULL,
+                        system_prompt TEXT DEFAULT NULL,
+                        FOREIGN KEY (workflow_id) REFERENCES workflows(id) ON DELETE CASCADE
+                    )
+                """)
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_workflow_steps_workflow_id ON workflow_steps(workflow_id)")
+            }
+        }
+
         private val MIGRATION_7_8 = object : Migration(7, 8) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 // Arena battles table
@@ -222,7 +264,8 @@ abstract class MaterialChatDatabase : RoomDatabase() {
             MIGRATION_4_5,
             MIGRATION_5_6,
             MIGRATION_6_7,
-            MIGRATION_7_8
+            MIGRATION_7_8,
+            MIGRATION_8_9
         )
 
         /**
