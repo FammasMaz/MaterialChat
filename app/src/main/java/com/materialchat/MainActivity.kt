@@ -143,10 +143,10 @@ class MainActivity : ComponentActivity() {
  * Only top-level screens show the nav bar; detail screens hide it.
  */
 private val topLevelRoutes = setOf(
-    Screen.Conversations.route,
-    Screen.OpenClawDashboard.route,
-    Screen.Explore.route,
-    Screen.Settings.route
+    "conversations",
+    "openclaw",
+    "explore",
+    "settings"
 )
 
 /**

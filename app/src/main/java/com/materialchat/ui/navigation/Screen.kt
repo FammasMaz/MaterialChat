@@ -128,23 +128,27 @@ sealed class Screen(val route: String) {
     data object Explore : Screen("explore")
 
     companion object {
-        val startDestination: String = Conversations.route
-        val allScreens: List<Screen> = listOf(
-            Conversations, Chat, Settings,
-            Arena, ArenaLeaderboard, Insights, PersonaStudio, Bookmarks,
-            Canvas, MindMap, Workflows, WorkflowBuilder, WorkflowExecution,
-            OpenClawDashboard, OpenClawChat, OpenClawSessions, Explore
-        )
+        val startDestination: String = "conversations"
+        val allScreens: List<Screen>
+            get() = listOf(
+                Conversations, Chat, Settings,
+                Arena, ArenaLeaderboard, Insights, PersonaStudio, Bookmarks,
+                Canvas, MindMap, Workflows, WorkflowBuilder, WorkflowExecution,
+                OpenClawDashboard, OpenClawChat, OpenClawSessions, Explore
+            )
     }
 }
 
 /**
  * Top-level navigation tabs for the bottom Navigation Bar.
  * Maps each tab to its root screen route and display label.
+ *
+ * Uses string literals for routes to avoid static initialization order issues
+ * with the Screen sealed class data objects.
  */
 enum class TopLevelTab(val route: String, val label: String) {
-    CHAT(Screen.Conversations.route, "Chat"),
-    OPENCLAW(Screen.OpenClawDashboard.route, "OpenClaw"),
-    EXPLORE(Screen.Explore.route, "Explore"),
-    SETTINGS(Screen.Settings.route, "Settings")
+    CHAT("conversations", "Chat"),
+    OPENCLAW("openclaw", "OpenClaw"),
+    EXPLORE("explore", "Explore"),
+    SETTINGS("settings", "Settings")
 }
