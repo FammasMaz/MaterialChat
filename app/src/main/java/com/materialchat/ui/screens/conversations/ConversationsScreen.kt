@@ -24,6 +24,9 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -364,18 +367,39 @@ private fun ConversationsTopBar(
                 )
             }
 
-            // Search icon button - aligned to bottom right
-            IconButton(
+            // Search icon button - M3 Expressive: encircled tonal container
+            val searchInteractionSource = remember { MutableInteractionSource() }
+            val isSearchPressed by searchInteractionSource.collectIsPressedAsState()
+            val searchScale by animateFloatAsState(
+                targetValue = if (isSearchPressed) 0.9f else 1f,
+                animationSpec = ExpressiveMotion.Spatial.scale(),
+                label = "searchScale"
+            )
+
+            Surface(
                 onClick = onSearchClick,
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
                     .padding(bottom = baseBottomPadding)
+                    .size(40.dp)
+                    .graphicsLayer {
+                        scaleX = searchScale
+                        scaleY = searchScale
+                    },
+                shape = CircleShape,
+                color = MaterialTheme.colorScheme.surfaceContainerHighest,
+                interactionSource = searchInteractionSource
             ) {
-                Icon(
-                    imageVector = Icons.Default.Search,
-                    contentDescription = "Search",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Search,
+                        contentDescription = "Search",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
         }
     }

@@ -42,6 +42,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.materialchat.domain.model.openclaw.GatewayConnectionState
 import com.materialchat.domain.model.openclaw.GatewayStatus
+import com.materialchat.ui.components.ExpressiveButton
+import com.materialchat.ui.components.ExpressiveButtonStyle
 import com.materialchat.ui.theme.ExpressiveMotion
 
 /**
@@ -138,9 +140,9 @@ fun GatewayStatusCard(
                             fontWeight = FontWeight.SemiBold,
                             color = contentColor
                         )
-                        if (isConnected && status != null) {
+                        if (isConnected && status != null && status.version.isNotBlank()) {
                             Text(
-                                text = "v${status.version}",
+                                text = "Version ${status.version}",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = contentColor.copy(alpha = 0.7f)
                             )
@@ -204,38 +206,20 @@ fun GatewayStatusCard(
                 horizontalArrangement = Arrangement.End
             ) {
                 if (isConnected) {
-                    OutlinedButton(
+                    ExpressiveButton(
                         onClick = onDisconnect,
-                        shape = RoundedCornerShape(50),
-                        modifier = Modifier.height(48.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Filled.LinkOff,
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Disconnect")
-                    }
+                        text = "Disconnect",
+                        leadingIcon = Icons.Filled.LinkOff,
+                        style = ExpressiveButtonStyle.Outlined
+                    )
                 } else {
-                    Button(
+                    ExpressiveButton(
                         onClick = onConnect,
                         enabled = !isConnecting,
-                        shape = RoundedCornerShape(50),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.primary,
-                            contentColor = MaterialTheme.colorScheme.onPrimary
-                        ),
-                        modifier = Modifier.height(48.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Filled.Link,
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(if (isConnecting) "Connecting..." else "Connect")
-                    }
+                        text = if (isConnecting) "Connecting..." else "Connect",
+                        leadingIcon = Icons.Filled.Link,
+                        style = ExpressiveButtonStyle.Filled
+                    )
                 }
             }
         }

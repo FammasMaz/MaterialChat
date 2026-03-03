@@ -1,7 +1,10 @@
 package com.materialchat.ui.navigation
 
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Chat
@@ -20,9 +23,12 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
+import com.materialchat.ui.theme.ExpressiveMotion
 
 /**
  * M3 Expressive floating toolbar navigation for MaterialChat.
@@ -71,6 +77,16 @@ fun MaterialChatNavBar(
                 val isSelected = currentRoute == tab.route
                 val icon = tabIcon(tab)
 
+                val interactionSource = remember { MutableInteractionSource() }
+                val isPressed by interactionSource.collectIsPressedAsState()
+
+                // M3 Expressive: Spatial spring for scale press feedback
+                val scale by animateFloatAsState(
+                    targetValue = if (isPressed) 0.85f else 1f,
+                    animationSpec = ExpressiveMotion.Spatial.scale(),
+                    label = "navScale_${tab.name}"
+                )
+
                 // M3 Expressive: Effects spring for icon tint (smooth, no bounce)
                 val tint by animateColorAsState(
                     targetValue = if (isSelected) {
@@ -85,7 +101,14 @@ fun MaterialChatNavBar(
                     label = "navTint_${tab.name}"
                 )
 
-                IconButton(onClick = { onTabSelected(tab) }) {
+                IconButton(
+                    onClick = { onTabSelected(tab) },
+                    modifier = Modifier.graphicsLayer {
+                        scaleX = scale
+                        scaleY = scale
+                    },
+                    interactionSource = interactionSource
+                ) {
                     // OpenClaw tab gets a connection status badge
                     if (tab == TopLevelTab.OPENCLAW) {
                         BadgedBox(

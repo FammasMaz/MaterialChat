@@ -36,6 +36,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
+import com.materialchat.ui.components.MorphingSendButton
 import com.materialchat.ui.theme.CustomShapes
 
 /**
@@ -125,107 +126,13 @@ fun OpenClawChatInput(
             )
         }
 
-        // Send / Abort button — using Column to avoid RowScope.AnimatedVisibility ambiguity
-        SendAbortButton(
+        // M3 Expressive: Morphing send button that transforms into loading indicator
+        MorphingSendButton(
             isStreaming = isStreaming,
             canSend = canSend,
             onSend = onSend,
-            onAbort = onAbort
+            onCancel = onAbort
         )
     }
 }
 
-/**
- * Animated send/abort button that morphs between states.
- * Extracted to avoid RowScope.AnimatedVisibility ambiguity.
- */
-@Composable
-private fun SendAbortButton(
-    isStreaming: Boolean,
-    canSend: Boolean,
-    onSend: () -> Unit,
-    onAbort: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Box(
-        modifier = modifier.size(48.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        // Abort button (shown during streaming)
-        AnimatedVisibility(
-            visible = isStreaming,
-            enter = scaleIn(
-                animationSpec = spring(dampingRatio = 0.7f, stiffness = 500f)
-            ) + fadeIn(
-                animationSpec = spring(dampingRatio = 1.0f, stiffness = 500f)
-            ),
-            exit = scaleOut(
-                animationSpec = spring(dampingRatio = 0.7f, stiffness = 500f)
-            ) + fadeOut(
-                animationSpec = spring(dampingRatio = 1.0f, stiffness = 500f)
-            )
-        ) {
-            Surface(
-                onClick = onAbort,
-                modifier = Modifier.size(48.dp),
-                shape = CircleShape,
-                color = MaterialTheme.colorScheme.errorContainer
-            ) {
-                Box(
-                    contentAlignment = Alignment.Center,
-                    modifier = Modifier.fillMaxSize()
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.Stop,
-                        contentDescription = "Stop generating",
-                        tint = MaterialTheme.colorScheme.onErrorContainer
-                    )
-                }
-            }
-        }
-
-        // Send button (shown when not streaming)
-        AnimatedVisibility(
-            visible = !isStreaming,
-            enter = scaleIn(
-                animationSpec = spring(dampingRatio = 0.7f, stiffness = 500f)
-            ) + fadeIn(
-                animationSpec = spring(dampingRatio = 1.0f, stiffness = 500f)
-            ),
-            exit = scaleOut(
-                animationSpec = spring(dampingRatio = 0.7f, stiffness = 500f)
-            ) + fadeOut(
-                animationSpec = spring(dampingRatio = 1.0f, stiffness = 500f)
-            )
-        ) {
-            Surface(
-                onClick = {
-                    if (canSend) onSend()
-                },
-                enabled = canSend,
-                modifier = Modifier.size(48.dp),
-                shape = CircleShape,
-                color = if (canSend) {
-                    MaterialTheme.colorScheme.primaryContainer
-                } else {
-                    MaterialTheme.colorScheme.surfaceContainerHigh
-                }
-            ) {
-                Box(
-                    contentAlignment = Alignment.Center,
-                    modifier = Modifier.fillMaxSize()
-                ) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.Send,
-                        contentDescription = "Send message",
-                        tint = if (canSend) {
-                            MaterialTheme.colorScheme.onPrimaryContainer
-                        } else {
-                            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
-                        }
-                    )
-                }
-            }
-        }
-    }
-}

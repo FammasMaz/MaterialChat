@@ -56,6 +56,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.materialchat.domain.model.openclaw.GatewayConnectionState
 import com.materialchat.ui.screens.openclaw.components.ChannelStatusList
 import com.materialchat.ui.screens.openclaw.components.GatewayStatusCard
+import com.materialchat.ui.components.ExpressiveFab
 import com.materialchat.ui.screens.openclaw.components.OpenClawSetupSheet
 import com.materialchat.ui.theme.CustomShapes
 
@@ -139,19 +140,13 @@ fun OpenClawDashboardScreen(
         floatingActionButton = {
             val currentState = uiState
             if (currentState is OpenClawDashboardUiState.Success && currentState.isConnected) {
-                ExtendedFloatingActionButton(
+                ExpressiveFab(
                     onClick = viewModel::navigateToChat,
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                    shape = RoundedCornerShape(16.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.Chat,
-                        contentDescription = null
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Chat with Agent")
-                }
+                    icon = Icons.AutoMirrored.Filled.Chat,
+                    contentDescription = "Chat with Agent",
+                    expanded = true,
+                    text = "Chat with Agent"
+                )
             }
         },
         snackbarHost = {

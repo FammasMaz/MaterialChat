@@ -40,6 +40,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import com.materialchat.domain.model.openclaw.OpenClawConfig
+import com.materialchat.ui.theme.CustomShapes
 
 /**
  * Modal bottom sheet for configuring the OpenClaw Gateway connection.
@@ -69,10 +70,7 @@ fun OpenClawSetupSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
         containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-        shape = RoundedCornerShape(
-            topStart = 28.dp,
-            topEnd = 28.dp
-        )
+        shape = CustomShapes.BottomSheet
     ) {
         Column(
             modifier = Modifier

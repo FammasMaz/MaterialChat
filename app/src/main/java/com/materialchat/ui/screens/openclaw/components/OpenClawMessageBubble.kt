@@ -35,6 +35,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.materialchat.domain.model.openclaw.OpenClawChatMessage
 import com.materialchat.domain.model.openclaw.OpenClawChatRole
+import com.materialchat.ui.components.MarkdownText
 import com.materialchat.ui.theme.MessageBubbleShapes
 
 /**
@@ -121,12 +122,12 @@ fun OpenClawMessageBubble(
                     )
                 }
 
-                // Main message content
+                // Main message content with markdown rendering
                 if (message.content.isNotBlank()) {
-                    Text(
-                        text = message.content,
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = contentColor
+                    MarkdownText(
+                        markdown = message.content,
+                        textColor = contentColor,
+                        style = MaterialTheme.typography.bodyLarge
                     )
                 }
 
@@ -196,11 +197,11 @@ private fun ThinkingSection(
                 color = contentColor.copy(alpha = 0.08f),
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text(
-                    text = thinkingContent,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = contentColor.copy(alpha = 0.7f),
-                    modifier = Modifier.padding(12.dp)
+                MarkdownText(
+                    markdown = thinkingContent,
+                    modifier = Modifier.padding(12.dp),
+                    textColor = contentColor.copy(alpha = 0.7f),
+                    style = MaterialTheme.typography.bodySmall
                 )
             }
         }
