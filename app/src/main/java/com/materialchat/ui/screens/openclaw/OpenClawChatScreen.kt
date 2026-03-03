@@ -25,6 +25,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.outlined.AddComment
 import androidx.compose.material.icons.outlined.Hub
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -87,12 +88,22 @@ fun OpenClawChatScreen(
         }
     }
 
-    // Auto-scroll to bottom when new messages arrive
+    // Auto-scroll to bottom when new messages arrive or during streaming
     val activeState = uiState as? OpenClawChatUiState.Active
-    LaunchedEffect(activeState?.messages?.size, activeState?.messages?.lastOrNull()?.content?.length) {
-        val messages = activeState?.messages ?: return@LaunchedEffect
-        if (messages.isNotEmpty()) {
-            listState.animateScrollToItem(messages.size - 1)
+    val messageCount = activeState?.messages?.size ?: 0
+    val isStreaming = activeState?.isStreaming == true
+
+    // Animate scroll when a new message is added
+    LaunchedEffect(messageCount) {
+        if (messageCount > 0) {
+            listState.animateScrollToItem(messageCount - 1)
+        }
+    }
+
+    // Snap (no animation) to bottom during streaming content updates
+    LaunchedEffect(isStreaming, activeState?.messages?.lastOrNull()?.content?.length) {
+        if (isStreaming && messageCount > 0) {
+            listState.scrollToItem(messageCount - 1)
         }
     }
 
@@ -142,6 +153,16 @@ fun OpenClawChatScreen(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back"
                         )
+                    }
+                },
+                actions = {
+                    if (activeState != null) {
+                        IconButton(onClick = viewModel::startNewSession) {
+                            Icon(
+                                imageVector = Icons.Outlined.AddComment,
+                                contentDescription = "New Chat"
+                            )
+                        }
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(

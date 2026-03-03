@@ -137,6 +137,10 @@ class OpenClawGatewayClient(
     }
 
     private fun doConnect(config: OpenClawConfig, token: String) {
+        // Close any existing WebSocket to prevent duplicates
+        webSocket?.close(1000, "Reconnecting")
+        webSocket = null
+
         _connectionState.value = GatewayConnectionState.Connecting
 
         val client = if (config.allowSelfSignedCerts) {
@@ -167,12 +171,14 @@ class OpenClawGatewayClient(
 
             override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
                 Log.d(TAG, "WebSocket closed: $code $reason")
-                handleDisconnect("Closed: $code $reason")
+                // Don't reconnect for intentional or permanent closures
+                val permanent = code == 1000 || code == 1008 || code == 1003
+                handleDisconnect("Closed: $code $reason", reconnect = !permanent)
             }
 
             override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
                 Log.e(TAG, "WebSocket failure: ${t.message}", t)
-                handleDisconnect(t.message ?: "Connection failed", t)
+                handleDisconnect(t.message ?: "Connection failed", cause = t)
             }
         })
     }
@@ -194,8 +200,10 @@ class OpenClawGatewayClient(
     private fun handleEvent(frame: GenericFrame, token: String) {
         when (frame.event) {
             "connect.challenge" -> {
-                // Send connect request
-                sendConnectHandshake(token)
+                // Only send handshake if not already connected
+                if (_connectionState.value !is GatewayConnectionState.Connected) {
+                    sendConnectHandshake(token)
+                }
             }
             "tick" -> {
                 val ts = frame.payload?.get("ts")?.jsonPrimitive?.longOrNull
@@ -314,10 +322,17 @@ class OpenClawGatewayClient(
                     Log.i(TAG, "Connected to gateway: connId=$connId, version=${hello?.server?.version}")
                 } else {
                     val errorMsg = response.error?.message ?: "Connect rejected"
+                    val retryable = response.error?.retryable ?: false
                     _connectionState.value = GatewayConnectionState.Error(
                         message = errorMsg,
-                        isRetryable = response.error?.retryable ?: false
+                        isRetryable = retryable
                     )
+                    // Stop reconnecting on permanent rejection
+                    if (!retryable) {
+                        shouldReconnect.set(false)
+                        webSocket?.close(1000, "Handshake rejected")
+                        webSocket = null
+                    }
                 }
             } catch (e: TimeoutCancellationException) {
                 _connectionState.value = GatewayConnectionState.Error(
@@ -417,8 +432,9 @@ class OpenClawGatewayClient(
         message: String,
         thinking: String = "enabled"
     ): String {
+        val effectiveSessionKey = if (sessionKey.isNullOrEmpty()) UUID.randomUUID().toString() else sessionKey
         val params = buildJsonObject {
-            sessionKey?.let { put("sessionKey", it) }
+            put("sessionKey", effectiveSessionKey)
             put("message", message)
             put("thinking", thinking)
             put("idempotencyKey", UUID.randomUUID().toString())
@@ -575,7 +591,7 @@ class OpenClawGatewayClient(
 
     // ========== Reconnection ==========
 
-    private fun handleDisconnect(reason: String, cause: Throwable? = null) {
+    private fun handleDisconnect(reason: String, cause: Throwable? = null, reconnect: Boolean = true) {
         webSocket = null
         connId = null
         pendingRequests.values.forEach { it.cancel() }
@@ -584,10 +600,10 @@ class OpenClawGatewayClient(
         _connectionState.value = GatewayConnectionState.Error(
             message = reason,
             cause = cause,
-            isRetryable = true
+            isRetryable = reconnect
         )
 
-        if (shouldReconnect.get()) {
+        if (reconnect && shouldReconnect.get()) {
             scheduleReconnect()
         }
     }
@@ -620,6 +636,7 @@ class OpenClawGatewayClient(
             override fun onAvailable(network: Network) {
                 Log.d(TAG, "Network available — checking connection")
                 if (_connectionState.value !is GatewayConnectionState.Connected &&
+                    _connectionState.value !is GatewayConnectionState.Connecting &&
                     shouldReconnect.get()
                 ) {
                     reconnectJob?.cancel()

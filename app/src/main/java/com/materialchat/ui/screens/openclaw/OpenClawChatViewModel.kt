@@ -42,8 +42,9 @@ class OpenClawChatViewModel @Inject constructor(
     private val _events = MutableSharedFlow<OpenClawChatEvent>()
     val events: SharedFlow<OpenClawChatEvent> = _events.asSharedFlow()
 
-    /** Session key from navigation arguments. */
+    /** Session key from navigation arguments. Treat "new" as null (new session). */
     private val initialSessionKey: String? = savedStateHandle.get<String>("sessionKey")
+        ?.takeIf { it != "new" }
 
     /** Current active run ID for correlating streaming events. */
     private var activeRunId: String? = null
@@ -65,7 +66,12 @@ class OpenClawChatViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 val messages = if (initialSessionKey != null) {
-                    manageOpenClawSessionsUseCase.getChatHistory(initialSessionKey)
+                    try {
+                        manageOpenClawSessionsUseCase.getChatHistory(initialSessionKey)
+                    } catch (e: Exception) {
+                        // History load failed — start fresh with this session key
+                        emptyList()
+                    }
                 } else {
                     emptyList()
                 }
@@ -317,6 +323,18 @@ class OpenClawChatViewModel @Inject constructor(
     }
 
     /**
+     * Starts a new chat session by clearing messages and resetting state.
+     */
+    fun startNewSession() {
+        activeRunId = null
+        _uiState.value = OpenClawChatUiState.Active(
+            messages = emptyList(),
+            sessionKey = null,
+            connectionState = connectGatewayUseCase.connectionState.value
+        )
+    }
+
+    /**
      * Updates the current input text.
      */
     fun updateInput(text: String) {
@@ -337,8 +355,9 @@ class OpenClawChatViewModel @Inject constructor(
     ): List<OpenClawChatMessage> {
         val lastMessage = messages.lastOrNull()
         return if (lastMessage?.role == OpenClawChatRole.ASSISTANT && lastMessage.runId == runId) {
+            // Replace content — server sends full accumulated text, not just the new chunk
             messages.dropLast(1) + lastMessage.copy(
-                content = lastMessage.content + delta
+                content = delta
             )
         } else {
             messages + OpenClawChatMessage(
