@@ -39,6 +39,13 @@ android {
         }
     }
 
+    lint {
+        // Workaround: NonNullableMutableLiveDataDetector crashes due to
+        // Kotlin Analysis API incompatibility with AGP 8.7.x + Kotlin 2.1.x.
+        // This app uses Compose + Flow, not LiveData, so the check is irrelevant.
+        disable += "NullSafeMutableLiveData"
+    }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
