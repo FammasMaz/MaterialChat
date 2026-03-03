@@ -107,7 +107,6 @@ import com.materialchat.ui.theme.CustomShapes
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
-    onNavigateBack: () -> Unit,
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -119,9 +118,7 @@ fun SettingsScreen(
     LaunchedEffect(Unit) {
         viewModel.events.collect { event ->
             when (event) {
-                is SettingsEvent.NavigateBack -> {
-                    onNavigateBack()
-                }
+                is SettingsEvent.NavigateBack -> { /* No-op: Settings is a top-level tab */ }
                 is SettingsEvent.ShowSnackbar -> {
                     coroutineScope.launch {
                         snackbarHostState.showSnackbar(
@@ -193,14 +190,6 @@ fun SettingsScreen(
                         text = "Settings",
                         style = MaterialTheme.typography.headlineLarge
                     )
-                },
-                navigationIcon = {
-                    IconButton(onClick = { viewModel.navigateBack() }) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back"
-                        )
-                    }
                 },
                 scrollBehavior = scrollBehavior,
                 colors = TopAppBarDefaults.largeTopAppBarColors(

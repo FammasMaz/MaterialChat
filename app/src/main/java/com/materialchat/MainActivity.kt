@@ -11,10 +11,12 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.FloatingToolbarDefaults
+import androidx.compose.material3.FloatingToolbarExitDirection
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -26,16 +28,19 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.navigation.NavHostController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.materialchat.data.local.preferences.AppPreferences
 import com.materialchat.data.repository.UpdateManager
 import com.materialchat.di.AppInitializer
 import com.materialchat.domain.model.UpdateState
+import com.materialchat.ui.MainViewModel
 import com.materialchat.ui.components.UpdateBanner
 import com.materialchat.ui.navigation.MaterialChatNavBar
 import com.materialchat.ui.navigation.MaterialChatNavHost
@@ -152,13 +157,14 @@ private val topLevelRoutes = setOf(
 /**
  * Root composable for the MaterialChat application.
  * Sets up navigation with Material 3 Expressive transitions.
- * Wraps the NavHost in a Scaffold with a bottom Navigation Bar
- * that is shown only on top-level screens.
+ * Uses a Box overlay layout with HorizontalFloatingToolbar for navigation
+ * (replaces deprecated Scaffold + bottomBar pattern per M3 Expressive).
  * Includes update banner overlay for non-blocking update notifications.
  *
  * @param updateManager Manager for app updates
  * @param initialConversationId Optional conversation ID to navigate to on launch (from assistant)
  */
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun MaterialChatApp(
     updateManager: UpdateManager? = null,
@@ -166,6 +172,12 @@ fun MaterialChatApp(
 ) {
     val navController = rememberNavController()
     val scope = rememberCoroutineScope()
+    val mainViewModel: MainViewModel = hiltViewModel()
+
+    // M3 Expressive: Floating toolbar scroll behavior - hides on scroll down, shows on scroll up
+    val toolbarScrollBehavior = FloatingToolbarDefaults.exitAlwaysScrollBehavior(
+        exitDirection = FloatingToolbarExitDirection.Bottom
+    )
 
     // Navigate to chat if launched from assistant with a conversation ID
     LaunchedEffect(initialConversationId) {
@@ -179,13 +191,24 @@ fun MaterialChatApp(
         }
     }
 
+    // Handle MainViewModel navigation events (New Chat FAB in floating toolbar)
+    LaunchedEffect(Unit) {
+        mainViewModel.navigateToChat.collect { conversationId ->
+            navController.navigate(Screen.Chat.createRoute(conversationId)) {
+                popUpTo(Screen.Conversations.route) {
+                    inclusive = false
+                }
+            }
+        }
+    }
+
     // Track current route for nav bar visibility and tab highlighting
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute by remember {
         derivedStateOf { navBackStackEntry?.destination?.route }
     }
 
-    // Determine whether the bottom nav bar should be visible
+    // Determine whether the floating toolbar should be visible
     val showBottomBar by remember {
         derivedStateOf { currentRoute in topLevelRoutes }
     }
@@ -199,61 +222,58 @@ fun MaterialChatApp(
         ?: remember { mutableStateOf(UpdateState.Idle) }
 
     Box(modifier = Modifier.fillMaxSize()) {
-        Scaffold(
-            bottomBar = {
-                // M3 Expressive: Spring-animated nav bar entrance/exit
-                AnimatedVisibility(
-                    visible = showBottomBar,
-                    enter = slideInVertically(
-                        animationSpec = spring(
-                            stiffness = 500f,
-                            dampingRatio = 0.7f  // Spatial - subtle bounce
-                        ),
-                        initialOffsetY = { it }  // Slide up from bottom
-                    ),
-                    exit = slideOutVertically(
-                        animationSpec = spring(
-                            stiffness = 500f,
-                            dampingRatio = 1.0f  // Effects - smooth exit
-                        ),
-                        targetOffsetY = { it }  // Slide down off screen
-                    )
-                ) {
-                    MaterialChatNavBar(
-                        currentRoute = currentRoute,
-                        onTabSelected = { tab ->
-                            // Avoid re-navigating to the current tab
-                            if (currentRoute != tab.route) {
-                                navController.navigate(tab.route) {
-                                    // Pop up to the start destination to avoid building
-                                    // up a large back stack of top-level destinations
-                                    popUpTo(Screen.startDestination) {
-                                        saveState = true
-                                    }
-                                    // Avoid multiple copies of the same destination
-                                    launchSingleTop = true
-                                    // Restore state when re-selecting a previously selected tab
-                                    restoreState = true
-                                }
+        // Main content - each screen handles its own Scaffold and insets
+        MaterialChatNavHost(
+            navController = navController,
+            modifier = Modifier
+                .fillMaxSize()
+                .nestedScroll(toolbarScrollBehavior)
+        )
+
+        // M3 Expressive: Floating toolbar navigation overlay
+        AnimatedVisibility(
+            visible = showBottomBar,
+            modifier = Modifier.align(Alignment.BottomCenter),
+            enter = slideInVertically(
+                animationSpec = spring(
+                    stiffness = 500f,
+                    dampingRatio = 0.7f  // Spatial - subtle bounce
+                ),
+                initialOffsetY = { it }  // Slide up from bottom
+            ),
+            exit = slideOutVertically(
+                animationSpec = spring(
+                    stiffness = 500f,
+                    dampingRatio = 1.0f  // Effects - smooth exit
+                ),
+                targetOffsetY = { it }  // Slide down off screen
+            )
+        ) {
+            MaterialChatNavBar(
+                currentRoute = currentRoute,
+                onTabSelected = { tab ->
+                    // Avoid re-navigating to the current tab
+                    if (currentRoute != tab.route) {
+                        navController.navigate(tab.route) {
+                            // Pop up to the start destination to avoid building
+                            // up a large back stack of top-level destinations
+                            popUpTo(Screen.startDestination) {
+                                saveState = true
                             }
-                        },
-                        isOpenClawConnected = isOpenClawConnected
-                    )
-                }
-            }
-        ) { paddingValues ->
-            // Main app content
-            Surface(
+                            // Avoid multiple copies of the same destination
+                            launchSingleTop = true
+                            // Restore state when re-selecting a previously selected tab
+                            restoreState = true
+                        }
+                    }
+                },
+                onNewChat = { mainViewModel.createNewConversation() },
+                isOpenClawConnected = isOpenClawConnected,
+                scrollBehavior = toolbarScrollBehavior,
                 modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues),
-                color = MaterialTheme.colorScheme.background
-            ) {
-                MaterialChatNavHost(
-                    navController = navController,
-                    modifier = Modifier.fillMaxSize()
-                )
-            }
+                    .navigationBarsPadding()
+                    .padding(bottom = 16.dp)
+            )
         }
 
         // Update banner overlay (top)

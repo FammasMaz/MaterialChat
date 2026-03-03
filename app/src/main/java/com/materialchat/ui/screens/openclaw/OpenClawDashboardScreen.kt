@@ -74,7 +74,6 @@ import com.materialchat.ui.theme.CustomShapes
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun OpenClawDashboardScreen(
-    onNavigateBack: () -> Unit,
     onNavigateToChat: (String?) -> Unit,
     onNavigateToSessions: () -> Unit,
     modifier: Modifier = Modifier,
@@ -113,14 +112,6 @@ fun OpenClawDashboardScreen(
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text("OpenClaw Gateway")
-                    }
-                },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back"
-                        )
                     }
                 },
                 actions = {
@@ -179,7 +170,7 @@ fun OpenClawDashboardScreen(
         Surface(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(top = innerPadding.calculateTopPadding()),
+                .padding(innerPadding),
             shape = RoundedCornerShape(
                 topStart = 28.dp,
                 topEnd = 28.dp,
@@ -349,8 +340,7 @@ private fun DashboardContent(
             }
         }
 
-        // Bottom spacing for FAB
-        Spacer(modifier = Modifier.height(80.dp))
+        Spacer(modifier = Modifier.height(16.dp))
     }
 }
 

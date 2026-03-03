@@ -11,7 +11,6 @@ import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
@@ -144,8 +143,8 @@ fun MaterialChatTheme(
         if (activity != null) {
             SideEffect {
                 val window = activity.window
-                window.statusBarColor = colorScheme.surface.toArgb()
-                window.navigationBarColor = colorScheme.surface.toArgb()
+                window.statusBarColor = android.graphics.Color.TRANSPARENT
+                window.navigationBarColor = android.graphics.Color.TRANSPARENT
 
                 // Set light/dark appearance for status bar icons
                 val insetsController = WindowCompat.getInsetsController(window, view)

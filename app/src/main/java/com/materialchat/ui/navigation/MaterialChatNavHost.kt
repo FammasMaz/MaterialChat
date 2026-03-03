@@ -199,9 +199,7 @@ fun MaterialChatNavHost(
 
             // Settings screen
             composable(route = Screen.Settings.route) {
-                SettingsScreen(
-                    onNavigateBack = { navController.popBackStack() }
-                )
+                SettingsScreen()
             }
 
             // Arena mode screen
@@ -321,7 +319,6 @@ fun MaterialChatNavHost(
             // OpenClaw Gateway dashboard screen
             composable(route = Screen.OpenClawDashboard.route) {
                 OpenClawDashboardScreen(
-                    onNavigateBack = { navController.popBackStack() },
                     onNavigateToChat = { sessionKey ->
                         navController.navigate(Screen.OpenClawChat.createRoute(sessionKey))
                     },

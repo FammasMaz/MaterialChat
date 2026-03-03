@@ -253,7 +253,7 @@ fun MessageInput(
                 with(sharedTransitionScope) {
                     basePillModifier
                         .sharedElement(
-                            state = sharedContentState,
+                            sharedContentState = sharedContentState,
                             animatedVisibilityScope = animatedVisibilityScope,
                             boundsTransform = { _, _ ->
                                 spring(

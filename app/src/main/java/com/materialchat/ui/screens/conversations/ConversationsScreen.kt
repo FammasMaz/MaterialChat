@@ -2,19 +2,12 @@ package com.materialchat.ui.screens.conversations
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.ExperimentalSharedTransitionApi
-import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.Row
-import com.materialchat.ui.navigation.LocalAnimatedVisibilityScope
-import com.materialchat.ui.navigation.LocalSharedTransitionScope
-import com.materialchat.ui.navigation.SHARED_ELEMENT_FAB_TO_INPUT
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
@@ -27,32 +20,21 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Chat
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.outlined.Bookmark
-import androidx.compose.material.icons.outlined.AccountTree
 import androidx.compose.material.icons.outlined.ChatBubbleOutline
-import androidx.compose.material.icons.outlined.EmojiEvents
-import androidx.compose.material.icons.outlined.Insights
 import androidx.compose.material.icons.outlined.SearchOff
-import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.ExtendedFloatingActionButton
-import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LoadingIndicator
@@ -77,7 +59,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
@@ -97,7 +78,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalDensity
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.materialchat.ui.components.AnimatedExtendedFab
 import com.materialchat.ui.components.HapticPattern
 import com.materialchat.ui.components.rememberHapticFeedback
 import com.materialchat.ui.screens.conversations.components.ConversationItem
@@ -133,10 +113,6 @@ import kotlin.math.roundToInt
 fun ConversationsScreen(
     onNavigateToChat: (String) -> Unit,
     onNavigateToSettings: () -> Unit,
-    onNavigateToArena: () -> Unit = {},
-    onNavigateToInsights: () -> Unit = {},
-    onNavigateToBookmarks: () -> Unit = {},
-    onNavigateToWorkflows: () -> Unit = {},
     viewModel: ConversationsViewModel = hiltViewModel(),
     searchViewModel: SearchViewModel = hiltViewModel()
 ) {
@@ -146,27 +122,6 @@ fun ConversationsScreen(
 
     // Shared list state for scroll detection (M3 Expressive FAB behavior)
     val conversationListState = rememberLazyListState()
-
-    // M3 Expressive: FAB expand/collapse with stable state
-    // Start expanded, only update when USER actively scrolls (not data changes)
-    var fabExpanded by rememberSaveable { mutableStateOf(true) }
-
-    // Only update FAB state during active user scrolling
-    val isScrolling = conversationListState.isScrollInProgress
-    LaunchedEffect(isScrolling, conversationListState.firstVisibleItemIndex) {
-        if (isScrolling) {
-            // Collapse when scrolled past first item
-            fabExpanded = conversationListState.firstVisibleItemIndex == 0
-        }
-    }
-
-    // Always expand when at the very top (even after scroll stops)
-    LaunchedEffect(conversationListState.firstVisibleItemIndex, conversationListState.firstVisibleItemScrollOffset) {
-        if (conversationListState.firstVisibleItemIndex == 0 &&
-            conversationListState.firstVisibleItemScrollOffset < 20) {
-            fabExpanded = true
-        }
-    }
 
     // Search state
     var isSearchActive by remember { mutableStateOf(false) }
@@ -254,28 +209,10 @@ fun ConversationsScreen(
                     // Normal mode - show regular top bar
                     ConversationsTopBar(
                         scrollBehavior = scrollBehavior,
-                        onSearchClick = { isSearchActive = true },
-                        onSettingsClick = { viewModel.navigateToSettings() },
-                        onArenaClick = onNavigateToArena,
-                        onInsightsClick = onNavigateToInsights,
-                        onBookmarksClick = onNavigateToBookmarks,
-                        onWorkflowsClick = onNavigateToWorkflows
+                        onSearchClick = { isSearchActive = true }
                     )
                 }
             }
-        },
-        floatingActionButton = {
-            val hapticsEnabled = when (val state = uiState) {
-                is ConversationsUiState.Success -> state.hapticsEnabled
-                is ConversationsUiState.Empty -> state.hapticsEnabled
-                else -> true
-            }
-            NewChatFab(
-                onClick = { viewModel.createNewConversation() },
-                visible = uiState !is ConversationsUiState.Loading,
-                expanded = fabExpanded,
-                hapticsEnabled = hapticsEnabled
-            )
         },
         snackbarHost = {
             SnackbarHost(hostState = snackbarHostState) { snackbarData ->
@@ -319,14 +256,9 @@ fun ConversationsScreen(
 @Composable
 private fun ConversationsTopBar(
     scrollBehavior: TopAppBarScrollBehavior,
-    onSearchClick: () -> Unit,
-    onSettingsClick: () -> Unit,
-    onArenaClick: () -> Unit = {},
-    onInsightsClick: () -> Unit = {},
-    onBookmarksClick: () -> Unit = {},
-    onWorkflowsClick: () -> Unit = {}
+    onSearchClick: () -> Unit = {}
 ) {
-    val expandedHeight = 140.dp
+    val expandedHeight = 100.dp
     val collapsedHeight = 72.dp
     val collapseFraction = scrollBehavior.state.collapsedFraction.coerceIn(0f, 1f)
     val barHeight = expandedHeight - (expandedHeight - collapsedHeight) * collapseFraction
@@ -335,7 +267,6 @@ private fun ConversationsTopBar(
     val materialWidthTarget = (1f - collapseFraction * 1.25f).coerceIn(0f, 1f)
     val suffixWidthTarget = ((collapseFraction - 0.2f) / 0.8f).coerceIn(0f, 1f)
 
-    val spatialDpSpec = ExpressiveMotion.Spatial.container<Dp>()
     val spatialFloatSpec = ExpressiveMotion.Spatial.container<Float>()
     val alphaFloatSpec = ExpressiveMotion.Effects.alpha<Float>()
     
@@ -365,21 +296,6 @@ private fun ConversationsTopBar(
         label = "suffixAlpha"
     )
 
-    // M3 Expressive: Icon row collapses in sync with title
-    // Spatial spring for scale (can overshoot), effects spring for opacity (no overshoot)
-    val iconRowScaleTarget = (1f - collapseFraction * 1.5f).coerceIn(0f, 1f)
-    val iconRowAlphaTarget = (1f - collapseFraction * 2.5f).coerceIn(0f, 1f)
-    val iconRowScale by animateFloatAsState(
-        targetValue = iconRowScaleTarget,
-        animationSpec = spatialFloatSpec,
-        label = "iconRowScale"
-    )
-    val iconRowAlpha by animateFloatAsState(
-        targetValue = iconRowAlphaTarget,
-        animationSpec = alphaFloatSpec,
-        label = "iconRowAlpha"
-    )
-
     val density = LocalDensity.current
     SideEffect {
         scrollBehavior.state.heightOffsetLimit = with(density) {
@@ -398,120 +314,8 @@ private fun ConversationsTopBar(
                 .height(barHeight)
                 .padding(horizontal = 16.dp)
         ) {
-            // M3 Expressive: Icon button corner radius morphs from squircle to pill when collapsed
-            val iconCornerRadius by animateDpAsState(
-                targetValue = if (collapseFraction > 0.5f) 12.dp else 16.dp,
-                animationSpec = spatialDpSpec,
-                label = "iconCornerRadius"
-            )
-
             val baseBottomPadding = 12.dp
 
-            // Icons row - collapses when scrolling with M3 Expressive spring motion
-            // Scales from top-right origin and fades out as bar collapses
-            val iconTopPadding = 20.dp - 8.dp * collapseFraction
-
-            Row(
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(top = iconTopPadding)
-                    .graphicsLayer {
-                        scaleX = iconRowScale
-                        scaleY = iconRowScale
-                        alpha = iconRowAlpha
-                        transformOrigin = TransformOrigin(1f, 0f)
-                    },
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                // M3 Expressive: Enclosed icon buttons with surface container
-                // 48dp minimum touch target per M3 accessibility requirements
-                Surface(
-                    onClick = onInsightsClick,
-                    shape = RoundedCornerShape(iconCornerRadius),
-                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(48.dp)
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(
-                            imageVector = Icons.Outlined.Insights,
-                            contentDescription = "Insights"
-                        )
-                    }
-                }
-                Surface(
-                    onClick = onArenaClick,
-                    shape = RoundedCornerShape(iconCornerRadius),
-                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(48.dp)
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(
-                            imageVector = Icons.Outlined.EmojiEvents,
-                            contentDescription = "Arena"
-                        )
-                    }
-                }
-                Surface(
-                    onClick = onBookmarksClick,
-                    shape = RoundedCornerShape(iconCornerRadius),
-                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(48.dp)
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(
-                            imageVector = Icons.Outlined.Bookmark,
-                            contentDescription = "Bookmarks"
-                        )
-                    }
-                }
-                Surface(
-                    onClick = onWorkflowsClick,
-                    shape = RoundedCornerShape(iconCornerRadius),
-                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(48.dp)
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(
-                            imageVector = Icons.Outlined.AccountTree,
-                            contentDescription = "Workflows"
-                        )
-                    }
-                }
-                Surface(
-                    onClick = onSearchClick,
-                    shape = RoundedCornerShape(iconCornerRadius),
-                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(48.dp)
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(
-                            imageVector = Icons.Default.Search,
-                            contentDescription = "Search"
-                        )
-                    }
-                }
-                Surface(
-                    onClick = onSettingsClick,
-                    shape = RoundedCornerShape(iconCornerRadius),
-                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(48.dp)
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(
-                            imageVector = Icons.Outlined.Settings,
-                            contentDescription = "Settings"
-                        )
-                    }
-                }
-            }
-            
             // Title row - aligned to bottom left with fixed padding
             Row(
                 modifier = Modifier
@@ -559,6 +363,20 @@ private fun ConversationsTopBar(
                     overflow = TextOverflow.Ellipsis
                 )
             }
+
+            // Search icon button - aligned to bottom right
+            IconButton(
+                onClick = onSearchClick,
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(bottom = baseBottomPadding)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Search,
+                    contentDescription = "Search",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         }
     }
 }
@@ -568,80 +386,6 @@ private fun Modifier.shrinkWidth(factor: Float): Modifier = layout { measurable,
     val width = (placeable.width * factor.coerceIn(0f, 1f)).roundToInt()
     layout(width, placeable.height) {
         placeable.placeRelative(0, 0)
-    }
-}
-
-@OptIn(ExperimentalSharedTransitionApi::class)
-@Composable
-private fun NewChatFab(
-    onClick: () -> Unit,
-    visible: Boolean,
-    expanded: Boolean = true,
-    hapticsEnabled: Boolean = true
-) {
-    val haptics = rememberHapticFeedback()
-    val sharedTransitionScope = LocalSharedTransitionScope.current
-    val animatedVisibilityScope = LocalAnimatedVisibilityScope.current
-
-    AnimatedVisibility(
-        visible = visible,
-        enter = fadeIn(
-            animationSpec = spring(
-                dampingRatio = Spring.DampingRatioMediumBouncy,
-                stiffness = Spring.StiffnessMedium
-            )
-        ),
-        exit = fadeOut()
-    ) {
-        Box(
-            modifier = Modifier
-                .wrapContentSize()
-                .navigationBarsPadding()
-                .padding(12.dp)
-        ) {
-            // Apply sharedElement modifier for FAB-to-Input morph
-            val fabModifier = if (sharedTransitionScope != null && animatedVisibilityScope != null) {
-                with(sharedTransitionScope) {
-                    Modifier.sharedElement(
-                        state = rememberSharedContentState(key = SHARED_ELEMENT_FAB_TO_INPUT),
-                        animatedVisibilityScope = animatedVisibilityScope,
-                        boundsTransform = { _, _ ->
-                            spring(
-                                dampingRatio = 0.65f,
-                                stiffness = 340f
-                            )
-                        }
-                    )
-                }
-            } else {
-                Modifier
-            }
-
-            AnimatedExtendedFab(
-                expanded = expanded,
-                onClick = {
-                    haptics.perform(HapticPattern.CLICK, hapticsEnabled)
-                    onClick()
-                },
-                icon = {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.Chat,
-                        contentDescription = null
-                    )
-                },
-                text = {
-                    Text(
-                        text = "New Chat",
-                        maxLines = 1,
-                        softWrap = false,
-                        overflow = TextOverflow.Clip
-                    )
-                },
-                modifier = fabModifier,
-                containerColor = MaterialTheme.colorScheme.primaryContainer,
-                contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-            )
-        }
     }
 }
 
