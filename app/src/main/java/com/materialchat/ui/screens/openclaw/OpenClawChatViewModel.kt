@@ -10,6 +10,7 @@ import com.materialchat.domain.model.openclaw.OpenClawChatRole
 import com.materialchat.domain.usecase.openclaw.ConnectGatewayUseCase
 import com.materialchat.domain.usecase.openclaw.ManageOpenClawSessionsUseCase
 import com.materialchat.domain.usecase.openclaw.OpenClawChatUseCase
+import com.materialchat.data.local.preferences.AppPreferences
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -33,7 +34,8 @@ class OpenClawChatViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val openClawChatUseCase: OpenClawChatUseCase,
     private val manageOpenClawSessionsUseCase: ManageOpenClawSessionsUseCase,
-    private val connectGatewayUseCase: ConnectGatewayUseCase
+    private val connectGatewayUseCase: ConnectGatewayUseCase,
+    private val appPreferences: AppPreferences
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<OpenClawChatUiState>(OpenClawChatUiState.Loading)
@@ -57,6 +59,7 @@ class OpenClawChatViewModel @Inject constructor(
         observeConnectionState()
         observeChatEvents()
         observeAgentEvents()
+        observeHapticsPreference()
     }
 
     /**
@@ -98,6 +101,21 @@ class OpenClawChatViewModel @Inject constructor(
                 _uiState.update { state ->
                     if (state is OpenClawChatUiState.Active) {
                         state.copy(connectionState = connectionState)
+                    } else state
+                }
+            }
+        }
+    }
+
+    /**
+     * Observes the haptics preference from app settings.
+     */
+    private fun observeHapticsPreference() {
+        viewModelScope.launch {
+            appPreferences.hapticsEnabled.collect { enabled ->
+                _uiState.update { state ->
+                    if (state is OpenClawChatUiState.Active) {
+                        state.copy(hapticsEnabled = enabled)
                     } else state
                 }
             }

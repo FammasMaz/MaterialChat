@@ -6,7 +6,9 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
@@ -98,7 +100,14 @@ fun MarkdownText(
 private sealed class MarkdownElement {
     data class TextBlock(val text: AnnotatedString) : MarkdownElement()
     data class CodeBlock(val code: String, val language: String?) : MarkdownElement()
+    data class Table(
+        val headers: List<String>,
+        val rows: List<List<String>>,
+        val alignments: List<TableAlignment>
+    ) : MarkdownElement()
 }
+
+private enum class TableAlignment { LEFT, CENTER, RIGHT }
 
 /**
  * Renders the parsed markdown content with proper layout for code blocks.
@@ -129,6 +138,13 @@ private fun MarkdownContent(
                         language = element.language,
                         backgroundColor = codeBlockBackground,
                         onOpenCanvas = onOpenCanvas
+                    )
+                }
+                is MarkdownElement.Table -> {
+                    TableView(
+                        headers = element.headers,
+                        rows = element.rows,
+                        alignments = element.alignments
                     )
                 }
             }
@@ -217,6 +233,99 @@ private fun CodeBlockView(
 }
 
 /**
+ * Renders a markdown table with M3 Expressive styling.
+ */
+@Composable
+private fun TableView(
+    headers: List<String>,
+    rows: List<List<String>>,
+    alignments: List<TableAlignment>
+) {
+    val outlineColor = MaterialTheme.colorScheme.outlineVariant
+    val headerBackground = MaterialTheme.colorScheme.surfaceContainerHigh
+    val alternateRowColor = MaterialTheme.colorScheme.surfaceContainerLow
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainer)
+    ) {
+        val scrollState = rememberScrollState()
+        androidx.compose.foundation.layout.Column(
+            modifier = Modifier.horizontalScroll(scrollState)
+        ) {
+            // Header row
+            Row(
+                modifier = Modifier
+                    .background(headerBackground)
+                    .padding(horizontal = 4.dp)
+            ) {
+                headers.forEachIndexed { index, header ->
+                    Text(
+                        text = header,
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                        textAlign = tableTextAlign(alignments.getOrElse(index) { TableAlignment.LEFT }),
+                        modifier = Modifier
+                            .defaultMinSize(minWidth = 80.dp)
+                            .padding(horizontal = 12.dp, vertical = 8.dp)
+                    )
+                }
+            }
+
+            // Header divider
+            Spacer(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(1.dp)
+                    .background(outlineColor)
+            )
+
+            // Data rows
+            rows.forEachIndexed { rowIndex, row ->
+                Row(
+                    modifier = Modifier
+                        .then(
+                            if (rowIndex % 2 == 0) Modifier.background(alternateRowColor)
+                            else Modifier
+                        )
+                        .padding(horizontal = 4.dp)
+                ) {
+                    row.forEachIndexed { colIndex, cell ->
+                        Text(
+                            text = cell,
+                            style = MaterialTheme.typography.bodyMedium,
+                            textAlign = tableTextAlign(alignments.getOrElse(colIndex) { TableAlignment.LEFT }),
+                            modifier = Modifier
+                                .defaultMinSize(minWidth = 80.dp)
+                                .padding(horizontal = 12.dp, vertical = 8.dp)
+                        )
+                    }
+                }
+                if (rowIndex < rows.lastIndex) {
+                    Spacer(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(1.dp)
+                            .background(outlineColor.copy(alpha = 0.5f))
+                    )
+                }
+            }
+        }
+    }
+}
+
+private fun tableTextAlign(alignment: TableAlignment): androidx.compose.ui.text.style.TextAlign {
+    return when (alignment) {
+        TableAlignment.LEFT -> androidx.compose.ui.text.style.TextAlign.Start
+        TableAlignment.CENTER -> androidx.compose.ui.text.style.TextAlign.Center
+        TableAlignment.RIGHT -> androidx.compose.ui.text.style.TextAlign.End
+    }
+}
+
+/**
  * Parse markdown string into a list of MarkdownElements.
  */
 private fun parseMarkdown(
@@ -232,15 +341,11 @@ private fun parseMarkdown(
     var lastIndex = 0
 
     codeBlockPattern.findAll(markdown).forEach { match ->
-        // Add text before code block
+        // Add text before code block (with table detection)
         if (match.range.first > lastIndex) {
             val textBefore = markdown.substring(lastIndex, match.range.first)
             if (textBefore.isNotBlank()) {
-                elements.add(
-                    MarkdownElement.TextBlock(
-                        parseInlineMarkdown(textBefore, baseColor, codeColor, linkColor)
-                    )
-                )
+                elements.addAll(parseTextWithTables(textBefore, baseColor, codeColor, linkColor))
             }
         }
 
@@ -252,28 +357,102 @@ private fun parseMarkdown(
         lastIndex = match.range.last + 1
     }
 
-    // Add remaining text after last code block
+    // Add remaining text after last code block (with table detection)
     if (lastIndex < markdown.length) {
         val remainingText = markdown.substring(lastIndex)
         if (remainingText.isNotBlank()) {
-            elements.add(
-                MarkdownElement.TextBlock(
-                    parseInlineMarkdown(remainingText, baseColor, codeColor, linkColor)
-                )
-            )
+            elements.addAll(parseTextWithTables(remainingText, baseColor, codeColor, linkColor))
         }
     }
 
-    // If no code blocks found, parse entire text
+    // If no code blocks found, parse entire text (with table detection)
     if (elements.isEmpty() && markdown.isNotBlank()) {
-        elements.add(
-            MarkdownElement.TextBlock(
-                parseInlineMarkdown(markdown, baseColor, codeColor, linkColor)
-            )
-        )
+        elements.addAll(parseTextWithTables(markdown, baseColor, codeColor, linkColor))
     }
 
     return elements
+}
+
+/**
+ * Parses a text segment for tables, splitting into text blocks and table elements.
+ */
+private fun parseTextWithTables(
+    text: String,
+    baseColor: Color,
+    codeColor: Color,
+    linkColor: Color
+): List<MarkdownElement> {
+    val elements = mutableListOf<MarkdownElement>()
+    val lines = text.lines()
+    var i = 0
+    val textBuffer = mutableListOf<String>()
+
+    fun flushTextBuffer() {
+        if (textBuffer.isNotEmpty()) {
+            val joined = textBuffer.joinToString("\n")
+            if (joined.isNotBlank()) {
+                elements.add(
+                    MarkdownElement.TextBlock(
+                        parseInlineMarkdown(joined, baseColor, codeColor, linkColor)
+                    )
+                )
+            }
+            textBuffer.clear()
+        }
+    }
+
+    while (i < lines.size) {
+        // Check if this line starts a table (has | and next line is separator)
+        if (i + 1 < lines.size && isTableRow(lines[i]) && isTableSeparator(lines[i + 1])) {
+            flushTextBuffer()
+
+            val headers = parseTableRow(lines[i])
+            val alignments = parseTableAlignments(lines[i + 1])
+            val rows = mutableListOf<List<String>>()
+
+            i += 2 // Skip header and separator
+            while (i < lines.size && isTableRow(lines[i])) {
+                rows.add(parseTableRow(lines[i]))
+                i++
+            }
+
+            elements.add(MarkdownElement.Table(headers, rows, alignments))
+        } else {
+            textBuffer.add(lines[i])
+            i++
+        }
+    }
+
+    flushTextBuffer()
+    return elements
+}
+
+private fun isTableRow(line: String): Boolean {
+    val trimmed = line.trim()
+    return trimmed.startsWith("|") && trimmed.endsWith("|") && trimmed.count { it == '|' } >= 2
+}
+
+private fun isTableSeparator(line: String): Boolean {
+    val trimmed = line.trim()
+    if (!trimmed.startsWith("|") || !trimmed.endsWith("|")) return false
+    return trimmed.split("|").drop(1).dropLast(1).all { cell ->
+        cell.trim().matches(Regex(":?-{1,}:?"))
+    }
+}
+
+private fun parseTableRow(line: String): List<String> {
+    return line.trim().removeSurrounding("|").split("|").map { it.trim() }
+}
+
+private fun parseTableAlignments(line: String): List<TableAlignment> {
+    return line.trim().removeSurrounding("|").split("|").map { cell ->
+        val trimmed = cell.trim()
+        when {
+            trimmed.startsWith(":") && trimmed.endsWith(":") -> TableAlignment.CENTER
+            trimmed.endsWith(":") -> TableAlignment.RIGHT
+            else -> TableAlignment.LEFT
+        }
+    }
 }
 
 /**
@@ -311,25 +490,25 @@ private fun AnnotatedString.Builder.parseLine(
     // Handle headers
     when {
         trimmedLine.startsWith("#### ") -> {
-            withStyle(SpanStyle(fontWeight = FontWeight.Bold, fontSize = 14.sp, color = baseColor)) {
+            withStyle(SpanStyle(fontWeight = FontWeight.SemiBold, fontSize = 14.sp, color = baseColor)) {
                 parseInlineFormatting(trimmedLine.removePrefix("#### "), baseColor, codeColor, linkColor)
             }
             return
         }
         trimmedLine.startsWith("### ") -> {
-            withStyle(SpanStyle(fontWeight = FontWeight.Bold, fontSize = 16.sp, color = baseColor)) {
+            withStyle(SpanStyle(fontWeight = FontWeight.SemiBold, fontSize = 16.sp, color = baseColor)) {
                 parseInlineFormatting(trimmedLine.removePrefix("### "), baseColor, codeColor, linkColor)
             }
             return
         }
         trimmedLine.startsWith("## ") -> {
-            withStyle(SpanStyle(fontWeight = FontWeight.Bold, fontSize = 18.sp, color = baseColor)) {
+            withStyle(SpanStyle(fontWeight = FontWeight.Bold, fontSize = 22.sp, color = baseColor)) {
                 parseInlineFormatting(trimmedLine.removePrefix("## "), baseColor, codeColor, linkColor)
             }
             return
         }
         trimmedLine.startsWith("# ") -> {
-            withStyle(SpanStyle(fontWeight = FontWeight.Bold, fontSize = 20.sp, color = baseColor)) {
+            withStyle(SpanStyle(fontWeight = FontWeight.Bold, fontSize = 24.sp, color = baseColor)) {
                 parseInlineFormatting(trimmedLine.removePrefix("# "), baseColor, codeColor, linkColor)
             }
             return

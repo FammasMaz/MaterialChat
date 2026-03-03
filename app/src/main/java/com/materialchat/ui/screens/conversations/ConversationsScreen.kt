@@ -33,6 +33,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.outlined.ChatBubbleOutline
 import androidx.compose.material.icons.outlined.SearchOff
@@ -81,8 +82,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalDensity
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.animation.ExperimentalSharedTransitionApi
+import com.materialchat.ui.components.AnimatedExtendedFab
 import com.materialchat.ui.components.HapticPattern
 import com.materialchat.ui.components.rememberHapticFeedback
+import com.materialchat.ui.navigation.SHARED_ELEMENT_FAB_TO_INPUT
+import com.materialchat.ui.navigation.LocalSharedTransitionScope
+import com.materialchat.ui.navigation.LocalAnimatedVisibilityScope
 import com.materialchat.ui.screens.conversations.components.ConversationItem
 import com.materialchat.ui.screens.conversations.components.ExpandableConversationGroup
 import com.materialchat.ui.screens.conversations.components.SwipeToDeleteBox
@@ -111,7 +117,7 @@ import kotlin.math.roundToInt
  * @param viewModel The ViewModel for this screen
  * @param searchViewModel The ViewModel for search functionality
  */
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalSharedTransitionApi::class)
 @Composable
 fun ConversationsScreen(
     onNavigateToChat: (String) -> Unit,
@@ -227,6 +233,46 @@ fun ConversationsScreen(
                     actionColor = MaterialTheme.colorScheme.inversePrimary
                 )
             }
+        },
+        floatingActionButton = {
+            val isFabExpanded by remember {
+                derivedStateOf { conversationListState.firstVisibleItemIndex == 0 }
+            }
+            val sharedTransitionScope = LocalSharedTransitionScope.current
+            val animatedVisibilityScope = LocalAnimatedVisibilityScope.current
+
+            AnimatedExtendedFab(
+                expanded = isFabExpanded,
+                onClick = { onNavigateToChat("new") },
+                icon = {
+                    Icon(
+                        imageVector = Icons.Filled.Add,
+                        contentDescription = null,
+                        modifier = Modifier.size(24.dp)
+                    )
+                },
+                text = {
+                    Text(
+                        text = "New Chat",
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.Medium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                },
+                modifier = Modifier
+                    .padding(bottom = 80.dp)
+                    .then(
+                        if (sharedTransitionScope != null && animatedVisibilityScope != null) {
+                            with(sharedTransitionScope) {
+                                Modifier.sharedElement(
+                                    rememberSharedContentState(key = SHARED_ELEMENT_FAB_TO_INPUT),
+                                    animatedVisibilityScope = animatedVisibilityScope
+                                )
+                            }
+                        } else Modifier
+                    )
+            )
         }
     ) { paddingValues ->
         // Show search results when search is active, otherwise show conversation list

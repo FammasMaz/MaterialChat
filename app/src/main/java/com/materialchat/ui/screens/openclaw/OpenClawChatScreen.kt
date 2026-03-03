@@ -52,6 +52,10 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.materialchat.domain.model.openclaw.GatewayConnectionState
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.setValue
+import com.materialchat.ui.components.HapticPattern
+import com.materialchat.ui.components.rememberHapticFeedback
 import com.materialchat.ui.screens.openclaw.components.OpenClawChatInput
 import com.materialchat.ui.screens.openclaw.components.OpenClawMessageBubble
 import com.materialchat.ui.theme.CustomShapes
@@ -76,6 +80,7 @@ fun OpenClawChatScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     val listState = rememberLazyListState()
+    val haptics = rememberHapticFeedback()
 
     // Handle one-time events
     LaunchedEffect(Unit) {
@@ -107,6 +112,21 @@ fun OpenClawChatScreen(
         }
     }
 
+    // Track content length for haptic feedback during streaming
+    var lastContentLength by remember { mutableIntStateOf(0) }
+    LaunchedEffect(isStreaming, activeState?.messages?.lastOrNull()?.content?.length) {
+        val hapticsOn = activeState?.hapticsEnabled ?: true
+        if (isStreaming) {
+            val currentLength = activeState?.messages?.lastOrNull()?.content?.length ?: 0
+            if (currentLength > lastContentLength && lastContentLength > 0) {
+                haptics.perform(HapticPattern.CONTENT_TICK, hapticsOn)
+            }
+            lastContentLength = currentLength
+        } else {
+            lastContentLength = 0
+        }
+    }
+
     Scaffold(
         containerColor = MaterialTheme.colorScheme.surfaceContainer,
         topBar = {
@@ -123,7 +143,7 @@ fun OpenClawChatScreen(
                         Column {
                             Text(
                                 text = "OpenClaw Agent",
-                                style = MaterialTheme.typography.titleMedium
+                                style = MaterialTheme.typography.titleLarge
                             )
                             // Agent status subtitle
                             if (activeState != null) {
@@ -148,7 +168,10 @@ fun OpenClawChatScreen(
                     }
                 },
                 navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
+                    IconButton(onClick = {
+                        haptics.perform(HapticPattern.CLICK, activeState?.hapticsEnabled ?: true)
+                        onNavigateBack()
+                    }) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back"
@@ -157,7 +180,10 @@ fun OpenClawChatScreen(
                 },
                 actions = {
                     if (activeState != null) {
-                        IconButton(onClick = viewModel::startNewSession) {
+                        IconButton(onClick = {
+                            haptics.perform(HapticPattern.CLICK, activeState?.hapticsEnabled ?: true)
+                            viewModel.startNewSession()
+                        }) {
                             Icon(
                                 imageVector = Icons.Outlined.AddComment,
                                 contentDescription = "New Chat"
@@ -338,6 +364,7 @@ private fun ChatContent(
             onInputChange = onInputChange,
             onSend = onSend,
             onAbort = onAbort,
+            hapticsEnabled = state.hapticsEnabled,
             modifier = Modifier.fillMaxWidth()
         )
     }

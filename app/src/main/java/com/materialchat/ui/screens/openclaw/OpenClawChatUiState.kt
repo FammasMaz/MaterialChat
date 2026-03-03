@@ -29,7 +29,8 @@ sealed interface OpenClawChatUiState {
         val sessionKey: String? = null,
         val agentStatus: AgentStatus = AgentStatus.IDLE,
         val connectionState: GatewayConnectionState = GatewayConnectionState.Disconnected,
-        val currentInput: String = ""
+        val currentInput: String = "",
+        val hapticsEnabled: Boolean = true
     ) : OpenClawChatUiState {
 
         /** Whether a message can be sent. */

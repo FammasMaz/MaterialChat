@@ -51,6 +51,7 @@ fun MaterialChatNavBar(
     onTabSelected: (TopLevelTab) -> Unit,
     onNewChat: () -> Unit,
     isOpenClawConnected: Boolean,
+    showFab: Boolean = true,
     scrollBehavior: FloatingToolbarScrollBehavior? = null,
     modifier: Modifier = Modifier
 ) {
@@ -59,17 +60,31 @@ fun MaterialChatNavBar(
     HorizontalFloatingToolbar(
         expanded = true,
         modifier = modifier,
-        colors = FloatingToolbarDefaults.standardFloatingToolbarColors(),
+        colors = FloatingToolbarDefaults.vibrantFloatingToolbarColors(),
         scrollBehavior = scrollBehavior,
         floatingActionButton = {
-            // M3 Expressive: VibrantFloatingActionButton with primaryContainer colors
-            FloatingToolbarDefaults.VibrantFloatingActionButton(
-                onClick = onNewChat
-            ) {
-                Icon(
-                    imageVector = Icons.Filled.Add,
-                    contentDescription = "New Chat"
+            if (showFab) {
+                val fabInteractionSource = remember { MutableInteractionSource() }
+                val isFabPressed by fabInteractionSource.collectIsPressedAsState()
+                val fabScale by animateFloatAsState(
+                    targetValue = if (isFabPressed) 0.92f else 1f,
+                    animationSpec = ExpressiveMotion.Spatial.playful(),
+                    label = "fabScale"
                 )
+                // M3 Expressive: VibrantFloatingActionButton with press animation
+                FloatingToolbarDefaults.VibrantFloatingActionButton(
+                    onClick = onNewChat,
+                    interactionSource = fabInteractionSource,
+                    modifier = Modifier.graphicsLayer {
+                        scaleX = fabScale
+                        scaleY = fabScale
+                    }
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Add,
+                        contentDescription = "New Chat"
+                    )
+                }
             }
         },
         content = {

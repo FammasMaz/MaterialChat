@@ -112,7 +112,10 @@ fun OpenClawDashboardScreen(
                             tint = MaterialTheme.colorScheme.primary
                         )
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("OpenClaw Gateway")
+                        Text(
+                            "OpenClaw Gateway",
+                            style = MaterialTheme.typography.headlineLarge
+                        )
                     }
                 },
                 actions = {
@@ -145,7 +148,8 @@ fun OpenClawDashboardScreen(
                     icon = Icons.AutoMirrored.Filled.Chat,
                     contentDescription = "Chat with Agent",
                     expanded = true,
-                    text = "Chat with Agent"
+                    text = "Chat with Agent",
+                    modifier = Modifier.padding(bottom = 80.dp)
                 )
             }
         },
@@ -335,7 +339,7 @@ private fun DashboardContent(
             }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(80.dp))
     }
 }
 

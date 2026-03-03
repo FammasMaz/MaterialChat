@@ -36,7 +36,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
+import com.materialchat.ui.components.HapticPattern
 import com.materialchat.ui.components.MorphingSendButton
+import com.materialchat.ui.components.rememberHapticFeedback
 import com.materialchat.ui.theme.CustomShapes
 
 /**
@@ -62,8 +64,10 @@ fun OpenClawChatInput(
     onInputChange: (String) -> Unit,
     onSend: () -> Unit,
     onAbort: () -> Unit,
+    hapticsEnabled: Boolean = true,
     modifier: Modifier = Modifier
 ) {
+    val haptics = rememberHapticFeedback()
     val textScrollState = rememberScrollState()
 
     Row(
@@ -130,8 +134,14 @@ fun OpenClawChatInput(
         MorphingSendButton(
             isStreaming = isStreaming,
             canSend = canSend,
-            onSend = onSend,
-            onCancel = onAbort
+            onSend = {
+                haptics.perform(HapticPattern.CLICK, hapticsEnabled)
+                onSend()
+            },
+            onCancel = {
+                haptics.perform(HapticPattern.CLICK, hapticsEnabled)
+                onAbort()
+            }
         )
     }
 }
