@@ -54,6 +54,24 @@ class OpenClawGatewayClient(
         private const val MAX_RECONNECT_DELAY_MS = 30_000L
         private const val INITIAL_RECONNECT_DELAY_MS = 1_000L
         private val JSON_MEDIA_TYPE = "application/json".toMediaType()
+
+        /**
+         * Extracts text from a content field that can be either a plain string
+         * or an array of content blocks: [{"type":"text","text":"..."}]
+         */
+        fun extractTextContent(content: JsonElement?): String? {
+            if (content == null) return null
+            if (content is JsonPrimitive && content.isString) return content.content
+            if (content is JsonArray) {
+                return content
+                    .filterIsInstance<JsonObject>()
+                    .filter { it["type"]?.jsonPrimitive?.contentOrNull == "text" }
+                    .mapNotNull { it["text"]?.jsonPrimitive?.contentOrNull }
+                    .joinToString("")
+                    .ifEmpty { null }
+            }
+            return null
+        }
     }
 
     // ========== State ==========
@@ -208,7 +226,7 @@ class OpenClawGatewayClient(
                                 sessionKey = payload.sessionKey ?: "",
                                 seq = payload.seq,
                                 state = payload.state ?: "delta",
-                                content = payload.message?.content,
+                                content = extractTextContent(payload.message?.content),
                                 errorMessage = payload.errorMessage,
                                 toolCalls = toolCalls
                             )
@@ -397,7 +415,7 @@ class OpenClawGatewayClient(
     suspend fun sendChatMessage(
         sessionKey: String?,
         message: String,
-        thinking: Boolean = true
+        thinking: String = "enabled"
     ): String {
         val params = buildJsonObject {
             sessionKey?.let { put("sessionKey", it) }
@@ -437,7 +455,7 @@ class OpenClawGatewayClient(
         return payload?.messages?.map { m ->
             OpenClawChatMessage(
                 role = parseRole(m.role),
-                content = m.content ?: "",
+                content = extractTextContent(m.content) ?: "",
                 thinkingContent = m.thinking,
                 toolCalls = m.toolCalls?.map { tc ->
                     ToolCallInfo(tc.name ?: "unknown", tc.arguments, tc.result)
@@ -684,3 +702,4 @@ class OpenClawGatewayClient(
         scope.cancel()
     }
 }
+

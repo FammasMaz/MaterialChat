@@ -95,7 +95,7 @@ data class ConnectParams(
 
 @Serializable
 data class ClientInfo(
-    val id: String = "materialchat-android",
+    val id: String = "openclaw-android",
     val displayName: String = "MaterialChat",
     val version: String = "1.0.0",
     val platform: String = "android",
@@ -104,8 +104,7 @@ data class ClientInfo(
 
 @Serializable
 data class ConnectAuth(
-    val token: String? = null,
-    val deviceToken: String? = null
+    val token: String? = null
 )
 
 /**
@@ -158,7 +157,7 @@ data class GatewayPolicy(
 data class ChatSendParams(
     val sessionKey: String? = null,
     val message: String,
-    val thinking: Boolean = true,
+    val thinking: String = "enabled",
     val timeoutMs: Long? = null,
     val idempotencyKey: String? = null
 )
@@ -181,7 +180,7 @@ data class ChatEventPayload(
 @Serializable
 data class ChatMessagePayload(
     val role: String? = null,
-    val content: String? = null,
+    val content: JsonElement? = null,
     val toolCalls: List<ToolCallPayload>? = null
 )
 
@@ -247,7 +246,7 @@ data class ChatHistoryPayload(
 @Serializable
 data class ChatHistoryMessage(
     val role: String? = null,
-    val content: String? = null,
+    val content: JsonElement? = null,
     val thinking: String? = null,
     val toolCalls: List<ToolCallPayload>? = null,
     val ts: Long? = null,

@@ -104,11 +104,19 @@ class OpenClawChatViewModel @Inject constructor(
     private fun observeChatEvents() {
         viewModelScope.launch {
             openClawChatUseCase.observeChatEvents().collect { event ->
-                val runId = activeRunId ?: return@collect
-                if (event.runId != runId) return@collect
-
                 val currentState = _uiState.value
                 if (currentState !is OpenClawChatUiState.Active) return@collect
+                if (!currentState.isStreaming) return@collect
+
+                // Accept events if activeRunId hasn't been set yet (race with RPC response)
+                // or if it matches the event's runId
+                val runId = activeRunId
+                if (runId != null && runId.isNotEmpty() && event.runId.isNotEmpty() && event.runId != runId) return@collect
+
+                // Capture runId from the first event if we don't have one yet
+                if (runId == null && event.runId.isNotEmpty()) {
+                    activeRunId = event.runId
+                }
 
                 when (event.state) {
                     "delta" -> {
@@ -180,8 +188,12 @@ class OpenClawChatViewModel @Inject constructor(
     private fun observeAgentEvents() {
         viewModelScope.launch {
             openClawChatUseCase.observeAgentEvents().collect { event ->
-                val runId = activeRunId ?: return@collect
-                if (event.runId != runId) return@collect
+                val currentState = _uiState.value
+                if (currentState !is OpenClawChatUiState.Active) return@collect
+                if (!currentState.isStreaming) return@collect
+
+                val runId = activeRunId
+                if (runId != null && runId.isNotEmpty() && event.runId.isNotEmpty() && event.runId != runId) return@collect
 
                 val agentStatus = when (event.stream) {
                     "thinking" -> AgentStatus.THINKING
