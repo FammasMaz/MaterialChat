@@ -49,7 +49,7 @@ import com.materialchat.data.local.database.entity.WorkflowStepEntity
         WorkflowEntity::class,
         WorkflowStepEntity::class
     ],
-    version = 9,
+    version = 10,
     exportSchema = true
 )
 abstract class MaterialChatDatabase : RoomDatabase() {
@@ -258,6 +258,16 @@ abstract class MaterialChatDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * Migration from version 9 to 10: Remove OPENCLAW providers.
+         * OpenClaw is no longer a provider type — it has its own independent subsystem.
+         */
+        private val MIGRATION_9_10 = object : Migration(9, 10) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("DELETE FROM providers WHERE type = 'OPENCLAW'")
+            }
+        }
+
         internal val MIGRATIONS = arrayOf(
             MIGRATION_2_3,
             MIGRATION_3_4,
@@ -265,7 +275,8 @@ abstract class MaterialChatDatabase : RoomDatabase() {
             MIGRATION_5_6,
             MIGRATION_6_7,
             MIGRATION_7_8,
-            MIGRATION_8_9
+            MIGRATION_8_9,
+            MIGRATION_9_10
         )
 
         /**

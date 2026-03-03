@@ -37,15 +37,23 @@ fun Provider.toEntity(): ProviderEntity = ProviderEntity(
 /**
  * Converts a [ProviderEntity] from the database to a [Provider] domain model.
  */
-fun ProviderEntity.toDomain(): Provider = Provider(
-    id = id,
-    name = name,
-    type = ProviderType.valueOf(type),
-    baseUrl = baseUrl,
-    defaultModel = defaultModel,
-    requiresApiKey = requiresApiKey,
-    isActive = isActive
-)
+fun ProviderEntity.toDomain(): Provider {
+    val providerType = try {
+        ProviderType.valueOf(type)
+    } catch (e: IllegalArgumentException) {
+        // Fallback for removed enum values (e.g., OPENCLAW)
+        ProviderType.OPENAI_COMPATIBLE
+    }
+    return Provider(
+        id = id,
+        name = name,
+        type = providerType,
+        baseUrl = baseUrl,
+        defaultModel = defaultModel,
+        requiresApiKey = requiresApiKey,
+        isActive = isActive
+    )
+}
 
 /**
  * Converts a list of [ProviderEntity] to a list of [Provider] domain models.

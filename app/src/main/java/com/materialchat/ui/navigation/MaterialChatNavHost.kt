@@ -25,8 +25,12 @@ import com.materialchat.ui.screens.bookmarks.BookmarksScreen
 import com.materialchat.ui.screens.canvas.SmartCanvasScreen
 import com.materialchat.ui.screens.chat.ChatScreen
 import com.materialchat.ui.screens.conversations.ConversationsScreen
+import com.materialchat.ui.screens.explore.ExploreScreen
 import com.materialchat.ui.screens.insights.InsightsScreen
 import com.materialchat.ui.screens.mindmap.MindMapScreen
+import com.materialchat.ui.screens.openclaw.OpenClawChatScreen
+import com.materialchat.ui.screens.openclaw.OpenClawDashboardScreen
+import com.materialchat.ui.screens.openclaw.OpenClawSessionsScreen
 import com.materialchat.ui.screens.personas.PersonaStudioScreen
 import com.materialchat.ui.screens.settings.SettingsScreen
 import com.materialchat.ui.screens.workflows.WorkflowBuilderScreen
@@ -52,7 +56,8 @@ const val SHARED_ELEMENT_FAB_TO_INPUT = "fab_to_input_container"
 
 /**
  * Main navigation host for MaterialChat app.
- * Handles navigation between Conversations, Chat, and Settings screens.
+ * Handles navigation between all screens including Conversations, Chat, Settings,
+ * OpenClaw Gateway screens, and the Explore hub.
  *
  * Uses Material 3 Expressive spring-physics animations for transitions:
  * - Spatial springs for position/slide (can bounce)
@@ -146,18 +151,6 @@ fun MaterialChatNavHost(
                         },
                         onNavigateToSettings = {
                             navController.navigate(Screen.Settings.route)
-                        },
-                        onNavigateToArena = {
-                            navController.navigate(Screen.Arena.route)
-                        },
-                        onNavigateToInsights = {
-                            navController.navigate(Screen.Insights.route)
-                        },
-                        onNavigateToBookmarks = {
-                            navController.navigate(Screen.Bookmarks.route)
-                        },
-                        onNavigateToWorkflows = {
-                            navController.navigate(Screen.Workflows.route)
                         }
                     )
                 }
@@ -322,6 +315,66 @@ fun MaterialChatNavHost(
             ) {
                 WorkflowExecutionScreen(
                     onNavigateBack = { navController.popBackStack() }
+                )
+            }
+
+            // OpenClaw Gateway dashboard screen
+            composable(route = Screen.OpenClawDashboard.route) {
+                OpenClawDashboardScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onNavigateToChat = { sessionKey ->
+                        navController.navigate(Screen.OpenClawChat.createRoute(sessionKey))
+                    },
+                    onNavigateToSessions = {
+                        navController.navigate(Screen.OpenClawSessions.route)
+                    }
+                )
+            }
+
+            // OpenClaw chat screen with optional session key
+            composable(
+                route = Screen.OpenClawChat.route,
+                arguments = listOf(
+                    navArgument(Screen.OpenClawChat.ARG_SESSION_KEY) {
+                        type = NavType.StringType
+                        nullable = true
+                        defaultValue = null
+                    }
+                )
+            ) {
+                OpenClawChatScreen(
+                    onNavigateBack = { navController.popBackStack() }
+                )
+            }
+
+            // OpenClaw sessions list screen
+            composable(route = Screen.OpenClawSessions.route) {
+                OpenClawSessionsScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onNavigateToChat = { sessionKey ->
+                        navController.navigate(Screen.OpenClawChat.createRoute(sessionKey))
+                    }
+                )
+            }
+
+            // Explore hub screen
+            composable(route = Screen.Explore.route) {
+                ExploreScreen(
+                    onNavigateToArena = {
+                        navController.navigate(Screen.Arena.route)
+                    },
+                    onNavigateToInsights = {
+                        navController.navigate(Screen.Insights.route)
+                    },
+                    onNavigateToBookmarks = {
+                        navController.navigate(Screen.Bookmarks.route)
+                    },
+                    onNavigateToWorkflows = {
+                        navController.navigate(Screen.Workflows.route)
+                    },
+                    onNavigateToPersonas = {
+                        navController.navigate(Screen.PersonaStudio.route)
+                    }
                 )
             }
         }

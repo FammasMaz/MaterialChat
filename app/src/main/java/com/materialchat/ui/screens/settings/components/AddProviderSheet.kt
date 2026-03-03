@@ -222,7 +222,6 @@ private fun AddProviderSheetContent(
             placeholder = when (formState.type) {
                 ProviderType.OPENAI_COMPATIBLE -> "https://api.openai.com"
                 ProviderType.OLLAMA_NATIVE -> "http://localhost:11434"
-                ProviderType.OPENCLAW -> "http://localhost:18789"
             },
             leadingIcon = Icons.Outlined.Link,
             error = formState.baseUrlError,
@@ -243,13 +242,12 @@ private fun AddProviderSheetContent(
             placeholder = when (formState.type) {
                 ProviderType.OPENAI_COMPATIBLE -> "gpt-4o"
                 ProviderType.OLLAMA_NATIVE -> "llama3.2"
-                ProviderType.OPENCLAW -> "openclaw"
             },
             leadingIcon = Icons.Outlined.Memory,
             error = formState.defaultModelError,
             enabled = !isSaving,
             keyboardOptions = KeyboardOptions(
-                imeAction = if (formState.type == ProviderType.OPENAI_COMPATIBLE || formState.type == ProviderType.OPENCLAW) {
+                imeAction = if (formState.type == ProviderType.OPENAI_COMPATIBLE) {
                     ImeAction.Next
                 } else {
                     ImeAction.Done
@@ -305,7 +303,7 @@ private fun AddProviderSheetContent(
 
         // API Key / Gateway Token
         AnimatedVisibility(
-            visible = formState.type == ProviderType.OPENAI_COMPATIBLE || formState.type == ProviderType.OPENCLAW,
+            visible = formState.type == ProviderType.OPENAI_COMPATIBLE,
             enter = fadeIn() + expandVertically(
                 animationSpec = spring(
                     dampingRatio = Spring.DampingRatioMediumBouncy,
@@ -325,19 +323,11 @@ private fun AddProviderSheetContent(
                     value = formState.apiKey,
                     onValueChange = { onFieldChange(null, null, null, null, it) },
                     label = when {
-                        formState.type == ProviderType.OPENCLAW && isEditing && formState.hasExistingKey ->
-                            "Gateway Token (leave blank to keep existing)"
-                        formState.type == ProviderType.OPENCLAW ->
-                            "Gateway Token"
                         isEditing && formState.hasExistingKey ->
                             "API Key (leave blank to keep existing)"
                         else -> "API Key"
                     },
-                    placeholder = if (formState.type == ProviderType.OPENCLAW) {
-                        "Enter your OpenClaw gateway token"
-                    } else {
-                        "sk-..."
-                    },
+                    placeholder = "sk-...",
                     leadingIcon = Icons.Outlined.Key,
                     error = formState.apiKeyError,
                     enabled = !isSaving,
@@ -427,7 +417,6 @@ private fun ProviderTypeSelector(
                             text = when (type) {
                                 ProviderType.OPENAI_COMPATIBLE -> "OpenAI-compatible"
                                 ProviderType.OLLAMA_NATIVE -> "Ollama"
-                                ProviderType.OPENCLAW -> "OpenClaw"
                             }
                         )
                     },
@@ -436,7 +425,6 @@ private fun ProviderTypeSelector(
                             imageVector = when (type) {
                                 ProviderType.OPENAI_COMPATIBLE -> Icons.Outlined.Cloud
                                 ProviderType.OLLAMA_NATIVE -> Icons.Outlined.Computer
-                                ProviderType.OPENCLAW -> Icons.Outlined.SmartToy
                             },
                             contentDescription = null,
                             modifier = Modifier.size(18.dp)

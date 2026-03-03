@@ -199,5 +199,5 @@ data class ProviderFormState(
     val canSubmit: Boolean
         get() = name.isNotBlank() && baseUrl.isNotBlank() &&
                 defaultModel.isNotBlank() && !hasErrors &&
-                (type != com.materialchat.domain.model.ProviderType.OPENAI_COMPATIBLE && type != com.materialchat.domain.model.ProviderType.OPENCLAW || apiKey.isNotBlank() || hasExistingKey)
+                (type != com.materialchat.domain.model.ProviderType.OPENAI_COMPATIBLE || apiKey.isNotBlank() || hasExistingKey)
 }

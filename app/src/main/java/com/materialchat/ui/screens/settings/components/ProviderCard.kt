@@ -178,7 +178,7 @@ fun ProviderCard(
             )
 
             // API Key / Gateway Token status
-            if (provider.type == ProviderType.OPENAI_COMPATIBLE || provider.type == ProviderType.OPENCLAW) {
+            if (provider.type == ProviderType.OPENAI_COMPATIBLE) {
                 Spacer(modifier = Modifier.height(4.dp))
                 ApiKeyStatusIndicator(hasApiKey = providerItem.hasApiKey)
             }
@@ -230,12 +230,10 @@ private fun ProviderTypeIcon(
             imageVector = when (type) {
                 ProviderType.OPENAI_COMPATIBLE -> Icons.Outlined.Cloud
                 ProviderType.OLLAMA_NATIVE -> Icons.Outlined.Computer
-                ProviderType.OPENCLAW -> Icons.Outlined.SmartToy
             },
             contentDescription = when (type) {
                 ProviderType.OPENAI_COMPATIBLE -> "OpenAI-compatible provider"
                 ProviderType.OLLAMA_NATIVE -> "Ollama local provider"
-                ProviderType.OPENCLAW -> "OpenClaw gateway provider"
             },
             tint = MaterialTheme.colorScheme.onPrimaryContainer,
             modifier = Modifier.size(24.dp)

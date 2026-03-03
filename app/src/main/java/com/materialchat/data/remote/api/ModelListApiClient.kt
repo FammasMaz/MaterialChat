@@ -46,11 +46,6 @@ class ModelListApiClient(
                 providerId = provider.id,
                 apiKey = apiKey ?: ""
             )
-            ProviderType.OPENCLAW -> fetchOpenClawModels(
-                baseUrl = provider.baseUrl,
-                providerId = provider.id,
-                apiKey = apiKey ?: ""
-            )
             ProviderType.OLLAMA_NATIVE -> fetchOllamaModels(
                 baseUrl = provider.baseUrl,
                 providerId = provider.id
@@ -218,37 +213,6 @@ class ModelListApiClient(
                     cause = e
                 )
             )
-        }
-    }
-
-    /**
-     * Fetches models from an OpenClaw Gateway.
-     *
-     * Tries the OpenAI-compatible /v1/models endpoint first.
-     * Falls back to a default agent if the Gateway doesn't expose model listing.
-     *
-     * @param baseUrl The Gateway URL
-     * @param providerId The provider ID for model association
-     * @param apiKey The Gateway auth token
-     * @return Result containing list of AiModels
-     */
-    private suspend fun fetchOpenClawModels(
-        baseUrl: String,
-        providerId: String,
-        apiKey: String
-    ): Result<List<AiModel>> = withContext(Dispatchers.IO) {
-        val result = fetchOpenAiModels(baseUrl, providerId, apiKey)
-        if (result.isSuccess) {
-            result
-        } else {
-            // Gateway may not expose /v1/models — return default agent
-            Result.success(listOf(
-                AiModel(
-                    id = "openclaw",
-                    name = "OpenClaw Default Agent",
-                    providerId = providerId
-                )
-            ))
         }
     }
 

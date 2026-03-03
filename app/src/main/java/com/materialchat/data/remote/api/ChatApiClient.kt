@@ -78,8 +78,7 @@ class ChatApiClient(
         reasoningEffort: ReasoningEffort = ReasoningEffort.HIGH
     ): Flow<StreamingEvent> {
         return when (provider.type) {
-            ProviderType.OPENAI_COMPATIBLE,
-            ProviderType.OPENCLAW -> streamOpenAiChat(
+            ProviderType.OPENAI_COMPATIBLE -> streamOpenAiChat(
                 baseUrl = provider.baseUrl,
                 model = model,
                 messages = messages,
@@ -340,8 +339,7 @@ class ChatApiClient(
     ): Result<String> = withContext(Dispatchers.IO) {
         try {
             when (provider.type) {
-                ProviderType.OPENAI_COMPATIBLE,
-                ProviderType.OPENCLAW -> generateOpenAiCompletion(
+                ProviderType.OPENAI_COMPATIBLE -> generateOpenAiCompletion(
                     baseUrl = provider.baseUrl,
                     model = model,
                     prompt = prompt,
@@ -486,8 +484,7 @@ class ChatApiClient(
     ): Result<Boolean> = withContext(Dispatchers.IO) {
         try {
             val url = when (provider.type) {
-                ProviderType.OPENAI_COMPATIBLE,
-                ProviderType.OPENCLAW -> buildModelsUrl(provider.baseUrl)
+                ProviderType.OPENAI_COMPATIBLE -> buildModelsUrl(provider.baseUrl)
                 ProviderType.OLLAMA_NATIVE -> "${provider.baseUrl.trimEnd('/')}/api/tags"
             }
 
@@ -495,7 +492,7 @@ class ChatApiClient(
                 .url(url)
                 .get()
 
-            if ((provider.type == ProviderType.OPENAI_COMPATIBLE || provider.type == ProviderType.OPENCLAW) && !apiKey.isNullOrBlank()) {
+            if (provider.type == ProviderType.OPENAI_COMPATIBLE && !apiKey.isNullOrBlank()) {
                 requestBuilder.addHeader("Authorization", "Bearer $apiKey")
             }
 

@@ -101,12 +101,50 @@ sealed class Screen(val route: String) {
         const val ARG_WORKFLOW_ID = "workflowId"
     }
 
+    /**
+     * OpenClaw Gateway dashboard screen - shows connection status and quick actions.
+     */
+    data object OpenClawDashboard : Screen("openclaw")
+
+    /**
+     * OpenClaw chat screen for a gateway session.
+     * @property sessionKey Optional session key; null starts a new session.
+     */
+    data object OpenClawChat : Screen("openclaw/chat/{sessionKey}") {
+        fun createRoute(sessionKey: String? = null): String {
+            return "openclaw/chat/${sessionKey ?: "new"}"
+        }
+        const val ARG_SESSION_KEY = "sessionKey"
+    }
+
+    /**
+     * OpenClaw sessions list screen showing all gateway chat sessions.
+     */
+    data object OpenClawSessions : Screen("openclaw/sessions")
+
+    /**
+     * Explore hub screen - central navigation for Arena, Insights, Bookmarks, Workflows, Personas.
+     */
+    data object Explore : Screen("explore")
+
     companion object {
         val startDestination: String = Conversations.route
         val allScreens: List<Screen> = listOf(
             Conversations, Chat, Settings,
             Arena, ArenaLeaderboard, Insights, PersonaStudio, Bookmarks,
-            Canvas, MindMap, Workflows, WorkflowBuilder, WorkflowExecution
+            Canvas, MindMap, Workflows, WorkflowBuilder, WorkflowExecution,
+            OpenClawDashboard, OpenClawChat, OpenClawSessions, Explore
         )
     }
+}
+
+/**
+ * Top-level navigation tabs for the bottom Navigation Bar.
+ * Maps each tab to its root screen route and display label.
+ */
+enum class TopLevelTab(val route: String, val label: String) {
+    CHAT(Screen.Conversations.route, "Chat"),
+    OPENCLAW(Screen.OpenClawDashboard.route, "OpenClaw"),
+    EXPLORE(Screen.Explore.route, "Explore"),
+    SETTINGS(Screen.Settings.route, "Settings")
 }

@@ -14,11 +14,5 @@ enum class ProviderType {
      * Native Ollama API for local LLM inference.
      * Uses /api/chat endpoint with NDJSON streaming.
      */
-    OLLAMA_NATIVE,
-
-    /**
-     * OpenClaw Gateway channel using /v1/chat/completions with SSE streaming.
-     * Routes messages to OpenClaw agents via the Gateway.
-     */
-    OPENCLAW
+    OLLAMA_NATIVE
 }

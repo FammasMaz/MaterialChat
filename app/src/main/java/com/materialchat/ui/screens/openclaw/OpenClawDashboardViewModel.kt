@@ -1,0 +1,285 @@
+package com.materialchat.ui.screens.openclaw
+
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.materialchat.domain.model.openclaw.GatewayConnectionState
+import com.materialchat.domain.model.openclaw.GatewayEvent
+import com.materialchat.domain.model.openclaw.OpenClawChannel
+import com.materialchat.domain.model.openclaw.OpenClawConfig
+import com.materialchat.domain.usecase.openclaw.ConnectGatewayUseCase
+import com.materialchat.domain.usecase.openclaw.GetGatewayStatusUseCase
+import com.materialchat.domain.usecase.openclaw.ManageOpenClawConfigUseCase
+import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+import javax.inject.Inject
+
+/**
+ * ViewModel for the OpenClaw Dashboard screen.
+ *
+ * Manages gateway connection state, status polling, channel health,
+ * and initial setup configuration.
+ */
+@HiltViewModel
+class OpenClawDashboardViewModel @Inject constructor(
+    private val connectGatewayUseCase: ConnectGatewayUseCase,
+    private val getGatewayStatusUseCase: GetGatewayStatusUseCase,
+    private val manageOpenClawConfigUseCase: ManageOpenClawConfigUseCase
+) : ViewModel() {
+
+    private val _uiState = MutableStateFlow<OpenClawDashboardUiState>(OpenClawDashboardUiState.Loading)
+    val uiState: StateFlow<OpenClawDashboardUiState> = _uiState.asStateFlow()
+
+    private val _events = MutableSharedFlow<OpenClawDashboardEvent>()
+    val events: SharedFlow<OpenClawDashboardEvent> = _events.asSharedFlow()
+
+    init {
+        observeConfig()
+        observeConnectionState()
+        observeLatency()
+        observeGatewayEvents()
+    }
+
+    /**
+     * Observes the OpenClaw config and initializes the UI state.
+     */
+    private fun observeConfig() {
+        viewModelScope.launch {
+            manageOpenClawConfigUseCase.observeConfig()
+                .catch { e ->
+                    _uiState.value = OpenClawDashboardUiState.Error(
+                        message = e.message ?: "Failed to load configuration"
+                    )
+                }
+                .collect { config ->
+                    val isConfigured = manageOpenClawConfigUseCase.isConfigured()
+                    val currentState = _uiState.value
+                    if (currentState is OpenClawDashboardUiState.Success) {
+                        _uiState.update { state ->
+                            if (state is OpenClawDashboardUiState.Success) {
+                                state.copy(
+                                    config = config,
+                                    showSetupSheet = !isConfigured && state.showSetupSheet
+                                )
+                            } else state
+                        }
+                    } else {
+                        _uiState.value = OpenClawDashboardUiState.Success(
+                            config = config,
+                            showSetupSheet = !isConfigured
+                        )
+                    }
+                }
+        }
+    }
+
+    /**
+     * Observes the gateway connection state.
+     */
+    private fun observeConnectionState() {
+        viewModelScope.launch {
+            connectGatewayUseCase.connectionState.collect { connectionState ->
+                _uiState.update { state ->
+                    if (state is OpenClawDashboardUiState.Success) {
+                        state.copy(connectionState = connectionState)
+                    } else state
+                }
+
+                // Auto-fetch status on connection
+                if (connectionState is GatewayConnectionState.Connected) {
+                    refreshStatus()
+                }
+            }
+        }
+    }
+
+    /**
+     * Observes connection latency updates.
+     */
+    private fun observeLatency() {
+        viewModelScope.launch {
+            getGatewayStatusUseCase.latencyMs.collect { latency ->
+                _uiState.update { state ->
+                    if (state is OpenClawDashboardUiState.Success) {
+                        state.copy(latencyMs = latency)
+                    } else state
+                }
+            }
+        }
+    }
+
+    /**
+     * Observes gateway events for health and status updates.
+     */
+    private fun observeGatewayEvents() {
+        viewModelScope.launch {
+            getGatewayStatusUseCase.events
+                .catch { /* Silently handle event stream errors */ }
+                .collect { event ->
+                    when (event) {
+                        is GatewayEvent.ShutdownEvent -> {
+                            _events.emit(
+                                OpenClawDashboardEvent.ShowSnackbar(
+                                    "Gateway shutting down: ${event.reason}"
+                                )
+                            )
+                        }
+                        else -> { /* Other events handled elsewhere */ }
+                    }
+                }
+        }
+    }
+
+    /**
+     * Connects to the OpenClaw Gateway.
+     */
+    fun connect() {
+        viewModelScope.launch {
+            try {
+                connectGatewayUseCase.connect()
+            } catch (e: Exception) {
+                _events.emit(
+                    OpenClawDashboardEvent.ShowSnackbar(
+                        "Failed to connect: ${e.message}"
+                    )
+                )
+            }
+        }
+    }
+
+    /**
+     * Disconnects from the OpenClaw Gateway.
+     */
+    fun disconnect() {
+        connectGatewayUseCase.disconnect()
+    }
+
+    /**
+     * Refreshes the gateway status.
+     */
+    fun refreshStatus() {
+        val currentState = _uiState.value
+        if (currentState !is OpenClawDashboardUiState.Success) return
+
+        _uiState.update { state ->
+            if (state is OpenClawDashboardUiState.Success) {
+                state.copy(isRefreshing = true)
+            } else state
+        }
+
+        viewModelScope.launch {
+            try {
+                val status = getGatewayStatusUseCase.getStatus()
+                _uiState.update { state ->
+                    if (state is OpenClawDashboardUiState.Success) {
+                        state.copy(
+                            status = status,
+                            isRefreshing = false
+                        )
+                    } else state
+                }
+            } catch (e: Exception) {
+                _uiState.update { state ->
+                    if (state is OpenClawDashboardUiState.Success) {
+                        state.copy(isRefreshing = false)
+                    } else state
+                }
+                _events.emit(
+                    OpenClawDashboardEvent.ShowSnackbar(
+                        "Failed to fetch status: ${e.message}"
+                    )
+                )
+            }
+        }
+    }
+
+    /**
+     * Shows the setup bottom sheet.
+     */
+    fun showSetup() {
+        _uiState.update { state ->
+            if (state is OpenClawDashboardUiState.Success) {
+                state.copy(showSetupSheet = true)
+            } else state
+        }
+    }
+
+    /**
+     * Hides the setup bottom sheet.
+     */
+    fun hideSetup() {
+        _uiState.update { state ->
+            if (state is OpenClawDashboardUiState.Success) {
+                state.copy(showSetupSheet = false)
+            } else state
+        }
+    }
+
+    /**
+     * Saves the OpenClaw Gateway configuration.
+     *
+     * @param url The gateway URL
+     * @param token The authentication token
+     * @param agentId The target agent ID
+     * @param selfSigned Whether to allow self-signed certificates
+     */
+    fun saveConfig(url: String, token: String, agentId: String, selfSigned: Boolean) {
+        viewModelScope.launch {
+            try {
+                val config = OpenClawConfig(
+                    gatewayUrl = url.trim(),
+                    agentId = agentId.ifBlank { "main" },
+                    isEnabled = true,
+                    autoConnect = false,
+                    allowSelfSignedCerts = selfSigned
+                )
+                manageOpenClawConfigUseCase.updateConfig(config)
+
+                if (token.isNotBlank()) {
+                    manageOpenClawConfigUseCase.setToken(token.trim())
+                }
+
+                _uiState.update { state ->
+                    if (state is OpenClawDashboardUiState.Success) {
+                        state.copy(showSetupSheet = false)
+                    } else state
+                }
+
+                _events.emit(
+                    OpenClawDashboardEvent.ShowSnackbar("Configuration saved")
+                )
+            } catch (e: Exception) {
+                _events.emit(
+                    OpenClawDashboardEvent.ShowSnackbar(
+                        "Failed to save config: ${e.message}"
+                    )
+                )
+            }
+        }
+    }
+
+    /**
+     * Navigates to the agent chat.
+     */
+    fun navigateToChat() {
+        viewModelScope.launch {
+            _events.emit(OpenClawDashboardEvent.NavigateToChat())
+        }
+    }
+
+    /**
+     * Navigates to the sessions list.
+     */
+    fun navigateToSessions() {
+        viewModelScope.launch {
+            _events.emit(OpenClawDashboardEvent.NavigateToSessions)
+        }
+    }
+}

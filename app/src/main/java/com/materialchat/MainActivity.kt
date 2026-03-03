@@ -5,13 +5,20 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -23,14 +30,17 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
+import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.materialchat.data.local.preferences.AppPreferences
 import com.materialchat.data.repository.UpdateManager
 import com.materialchat.di.AppInitializer
 import com.materialchat.domain.model.UpdateState
 import com.materialchat.ui.components.UpdateBanner
+import com.materialchat.ui.navigation.MaterialChatNavBar
 import com.materialchat.ui.navigation.MaterialChatNavHost
 import com.materialchat.ui.navigation.Screen
+import com.materialchat.ui.navigation.TopLevelTab
 import com.materialchat.ui.theme.MaterialChatTheme
 import com.materialchat.ui.theme.isDynamicColorSupported
 import dagger.hilt.android.AndroidEntryPoint
@@ -129,8 +139,21 @@ class MainActivity : ComponentActivity() {
 }
 
 /**
+ * Routes where the bottom Navigation Bar should be visible.
+ * Only top-level screens show the nav bar; detail screens hide it.
+ */
+private val topLevelRoutes = setOf(
+    Screen.Conversations.route,
+    Screen.OpenClawDashboard.route,
+    Screen.Explore.route,
+    Screen.Settings.route
+)
+
+/**
  * Root composable for the MaterialChat application.
  * Sets up navigation with Material 3 Expressive transitions.
+ * Wraps the NavHost in a Scaffold with a bottom Navigation Bar
+ * that is shown only on top-level screens.
  * Includes update banner overlay for non-blocking update notifications.
  *
  * @param updateManager Manager for app updates
@@ -156,20 +179,81 @@ fun MaterialChatApp(
         }
     }
 
+    // Track current route for nav bar visibility and tab highlighting
+    val navBackStackEntry by navController.currentBackStackEntryAsState()
+    val currentRoute by remember {
+        derivedStateOf { navBackStackEntry?.destination?.route }
+    }
+
+    // Determine whether the bottom nav bar should be visible
+    val showBottomBar by remember {
+        derivedStateOf { currentRoute in topLevelRoutes }
+    }
+
+    // OpenClaw connection status - simple state for now
+    // In production this would be observed from a ViewModel or repository
+    var isOpenClawConnected by remember { mutableStateOf(false) }
+
     // Collect update state if updateManager is provided
     val updateState by updateManager?.updateState?.collectAsStateWithLifecycle()
         ?: remember { mutableStateOf(UpdateState.Idle) }
 
     Box(modifier = Modifier.fillMaxSize()) {
-        // Main app content
-        Surface(
-            modifier = Modifier.fillMaxSize(),
-            color = MaterialTheme.colorScheme.background
-        ) {
-            MaterialChatNavHost(
-                navController = navController,
-                modifier = Modifier.fillMaxSize()
-            )
+        Scaffold(
+            bottomBar = {
+                // M3 Expressive: Spring-animated nav bar entrance/exit
+                AnimatedVisibility(
+                    visible = showBottomBar,
+                    enter = slideInVertically(
+                        animationSpec = spring(
+                            stiffness = 500f,
+                            dampingRatio = 0.7f  // Spatial - subtle bounce
+                        ),
+                        initialOffsetY = { it }  // Slide up from bottom
+                    ),
+                    exit = slideOutVertically(
+                        animationSpec = spring(
+                            stiffness = 500f,
+                            dampingRatio = 1.0f  // Effects - smooth exit
+                        ),
+                        targetOffsetY = { it }  // Slide down off screen
+                    )
+                ) {
+                    MaterialChatNavBar(
+                        currentRoute = currentRoute,
+                        onTabSelected = { tab ->
+                            // Avoid re-navigating to the current tab
+                            if (currentRoute != tab.route) {
+                                navController.navigate(tab.route) {
+                                    // Pop up to the start destination to avoid building
+                                    // up a large back stack of top-level destinations
+                                    popUpTo(Screen.startDestination) {
+                                        saveState = true
+                                    }
+                                    // Avoid multiple copies of the same destination
+                                    launchSingleTop = true
+                                    // Restore state when re-selecting a previously selected tab
+                                    restoreState = true
+                                }
+                            }
+                        },
+                        isOpenClawConnected = isOpenClawConnected
+                    )
+                }
+            }
+        ) { paddingValues ->
+            // Main app content
+            Surface(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues),
+                color = MaterialTheme.colorScheme.background
+            ) {
+                MaterialChatNavHost(
+                    navController = navController,
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
         }
 
         // Update banner overlay (top)
