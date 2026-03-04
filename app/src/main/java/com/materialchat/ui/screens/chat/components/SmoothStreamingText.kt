@@ -1,8 +1,5 @@
 package com.materialchat.ui.screens.chat.components
 
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.spring
-import androidx.compose.foundation.layout.Box
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -12,7 +9,6 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontStyle
@@ -31,13 +27,12 @@ import kotlinx.coroutines.delay
  * buffers incoming text and drips it out at a smooth, consistent rate
  * so the experience feels uniform regardless of provider behavior.
  *
- * Haptic feedback fires every [HAPTIC_WORD_INTERVAL] revealed words,
+ * Each word transitions from "not yet in the string" to "rendered at full opacity",
+ * creating a natural "appearing from nothing" effect without any translucency.
+ *
+ * Haptic feedback fires on every revealed word,
  * synced to the visual dripping rather than raw provider chunks, giving
  * a consistent tactile rhythm that matches what the user sees.
- *
- * Motion follows M3 Expressive guidelines:
- * - Spring physics for all opacity transitions (no easing/duration)
- * - spring.fast.effects (stiffness=1400, damping=1.0) for trailing opacity
  *
  * @param rawText The full accumulated text from the streaming provider
  * @param isStreaming Whether the provider is actively streaming
@@ -111,48 +106,16 @@ fun SmoothStreamingText(
         rawText.takeWords(revealedWordCount)
     }
 
-    // Subtle trailing opacity: when words are buffered, the content renders at
-    // reduced opacity to create a gentle "materializing" feel.
-    // This does NOT clip or mask content — just an alpha reduction.
-    val isBuffering = revealedWordCount < totalWordCount
-    val trailingAlpha = remember { Animatable(1f) }
-
-    // Per-reveal pulse: snaps to a lower alpha on each word reveal
-    // and springs back, creating visible word-by-word materialization.
-    val revealPulseAlpha = remember { Animatable(1f) }
-
-    LaunchedEffect(isBuffering) {
-        trailingAlpha.animateTo(
-            targetValue = if (isBuffering) BUFFERING_ALPHA else 1f,
-            animationSpec = spring(
-                stiffness = SPRING_FAST_EFFECTS_STIFFNESS,
-                dampingRatio = SPRING_EFFECTS_DAMPING
-            )
-        )
-    }
-
-    LaunchedEffect(revealedWordCount) {
-        if (isBuffering && revealedWordCount > 0) {
-            revealPulseAlpha.snapTo(0.65f)
-            revealPulseAlpha.animateTo(
-                targetValue = trailingAlpha.value,
-                animationSpec = spring(
-                    stiffness = SPRING_FAST_EFFECTS_STIFFNESS,
-                    dampingRatio = SPRING_EFFECTS_DAMPING
-                )
-            )
-        }
-    }
-
+    // Render at full opacity — each word goes from "not in the string" to "in the string"
+    // which IS "appearing from nothing into existing"
     if (displayedText.isNotEmpty()) {
-        Box(modifier = modifier.alpha(revealPulseAlpha.value)) {
-            MarkdownText(
-                markdown = displayedText,
-                textColor = textColor,
-                style = style,
-                onOpenCanvas = onOpenCanvas
-            )
-        }
+        MarkdownText(
+            markdown = displayedText,
+            textColor = textColor,
+            style = style,
+            onOpenCanvas = onOpenCanvas,
+            modifier = modifier
+        )
     }
 }
 
@@ -223,56 +186,16 @@ fun SmoothStreamingThinkingText(
         rawText.takeWords(revealedWordCount)
     }
 
-    val isBuffering = revealedWordCount < totalWordCount
-    val trailingAlpha = remember { Animatable(1f) }
-
-    // Per-reveal pulse for thinking text materialization
-    val revealPulseAlpha = remember { Animatable(1f) }
-
-    LaunchedEffect(isBuffering) {
-        trailingAlpha.animateTo(
-            targetValue = if (isBuffering) BUFFERING_ALPHA else 1f,
-            animationSpec = spring(
-                stiffness = SPRING_FAST_EFFECTS_STIFFNESS,
-                dampingRatio = SPRING_EFFECTS_DAMPING
-            )
-        )
-    }
-
-    LaunchedEffect(revealedWordCount) {
-        if (isBuffering && revealedWordCount > 0) {
-            revealPulseAlpha.snapTo(0.65f)
-            revealPulseAlpha.animateTo(
-                targetValue = trailingAlpha.value,
-                animationSpec = spring(
-                    stiffness = SPRING_FAST_EFFECTS_STIFFNESS,
-                    dampingRatio = SPRING_EFFECTS_DAMPING
-                )
-            )
-        }
-    }
-
     if (displayedText.isNotEmpty()) {
         Text(
             text = displayedText,
             style = style,
             color = textColor,
             fontStyle = FontStyle.Italic,
-            modifier = modifier.alpha(revealPulseAlpha.value)
+            modifier = modifier
         )
     }
 }
-
-// ---- M3 Expressive Motion Constants ----
-
-/** M3 spring.fast.effects: stiffness for opacity/color transitions */
-private const val SPRING_FAST_EFFECTS_STIFFNESS = 1400f
-
-/** M3 effects damping: no overshoot/bounce for opacity changes */
-private const val SPRING_EFFECTS_DAMPING = 1.0f
-
-/** Alpha reduction while words are still buffered (visible fade-in materialization) */
-private const val BUFFERING_ALPHA = 0.55f
 
 // ---- Word Tokenization Utilities ----
 

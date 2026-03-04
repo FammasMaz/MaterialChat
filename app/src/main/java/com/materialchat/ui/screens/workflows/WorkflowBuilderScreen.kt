@@ -16,7 +16,8 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilledTonalButton
+import com.materialchat.ui.components.ExpressiveButton
+import com.materialchat.ui.components.ExpressiveButtonStyle
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -180,18 +181,13 @@ fun WorkflowBuilderScreen(
             Spacer(modifier = Modifier.height(16.dp))
 
             // Add step button
-            FilledTonalButton(
+            ExpressiveButton(
                 onClick = { viewModel.addStep() },
-                modifier = Modifier.fillMaxWidth(),
-                contentPadding = PaddingValues(vertical = 12.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Add,
-                    contentDescription = null,
-                    modifier = Modifier.padding(end = 8.dp)
-                )
-                Text("Add Step")
-            }
+                text = "Add Step",
+                leadingIcon = Icons.Default.Add,
+                style = ExpressiveButtonStyle.FilledTonal,
+                modifier = Modifier.fillMaxWidth()
+            )
 
             // Bottom spacing for comfortable scrolling
             Spacer(modifier = Modifier.height(32.dp))

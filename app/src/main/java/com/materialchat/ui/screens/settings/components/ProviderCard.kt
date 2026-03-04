@@ -29,7 +29,8 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import com.materialchat.ui.components.ExpressiveButton
+import com.materialchat.ui.components.ExpressiveButtonStyle
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -195,20 +196,11 @@ fun ProviderCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 if (!provider.isActive) {
-                    TextButton(onClick = { haptics.perform(HapticPattern.CLICK); onActivate() }) {
-                        Text("Set Active")
-                    }
+                    ExpressiveButton(onClick = { onActivate() }, text = "Set Active", style = ExpressiveButtonStyle.Text)
                 }
-                TextButton(onClick = { haptics.perform(HapticPattern.CLICK); onTestConnection() }) {
-                    Text("Test")
-                }
+                ExpressiveButton(onClick = { onTestConnection() }, text = "Test", style = ExpressiveButtonStyle.Text)
                 Spacer(modifier = Modifier.weight(1f))
-                TextButton(onClick = { haptics.perform(HapticPattern.REJECT); onDelete() }) {
-                    Text(
-                        text = "Delete",
-                        color = MaterialTheme.colorScheme.error
-                    )
-                }
+                ExpressiveButton(onClick = { onDelete() }, text = "Delete", style = ExpressiveButtonStyle.Text)
             }
         }
     }

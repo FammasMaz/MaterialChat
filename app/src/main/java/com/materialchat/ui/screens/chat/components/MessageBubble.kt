@@ -40,14 +40,14 @@ import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.ErrorOutline
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.FilledTonalButton
+import com.materialchat.ui.components.ExpressiveButton
+import com.materialchat.ui.components.ExpressiveButtonStyle
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -747,22 +747,12 @@ private fun ErrorStateContent() {
  */
 @Composable
 private fun RetryButton(onRetry: () -> Unit) {
-    val haptics = rememberHapticFeedback()
-    FilledTonalButton(
-        onClick = { haptics.perform(HapticPattern.CLICK); onRetry() },
-        colors = ButtonDefaults.filledTonalButtonColors(
-            containerColor = MaterialTheme.colorScheme.errorContainer,
-            contentColor = MaterialTheme.colorScheme.onErrorContainer
-        )
-    ) {
-        Icon(
-            imageVector = Icons.Default.Refresh,
-            contentDescription = null,
-            modifier = Modifier.size(18.dp)
-        )
-        Spacer(modifier = Modifier.size(8.dp))
-        Text("Retry")
-    }
+    ExpressiveButton(
+        onClick = { onRetry() },
+        text = "Retry",
+        leadingIcon = Icons.Default.Refresh,
+        style = ExpressiveButtonStyle.FilledTonal
+    )
 }
 
 /**
@@ -804,13 +794,9 @@ private fun EditingContent(
             horizontalArrangement = Arrangement.End,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            TextButton(onClick = { haptics.perform(HapticPattern.CLICK); onCancelEdit() }) {
-                Text("Cancel")
-            }
+            ExpressiveButton(onClick = { onCancelEdit() }, text = "Cancel", style = ExpressiveButtonStyle.Text)
             Spacer(modifier = Modifier.size(8.dp))
-            FilledTonalButton(onClick = { haptics.perform(HapticPattern.CLICK); onSubmitEdit() }) {
-                Text("Save & Submit")
-            }
+            ExpressiveButton(onClick = { onSubmitEdit() }, text = "Save & Submit", style = ExpressiveButtonStyle.FilledTonal)
         }
     }
 }

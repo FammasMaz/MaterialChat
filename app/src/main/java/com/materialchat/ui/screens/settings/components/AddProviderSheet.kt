@@ -49,7 +49,8 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.SheetState
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import com.materialchat.ui.components.ExpressiveButton
+import com.materialchat.ui.components.ExpressiveButtonStyle
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -272,12 +273,12 @@ private fun AddProviderSheetContent(
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-            TextButton(
+            ExpressiveButton(
                 onClick = onFetchModels,
+                text = "Fetch",
+                style = ExpressiveButtonStyle.Text,
                 enabled = !formState.isFetchingModels && !isSaving
-            ) {
-                Text("Fetch")
-            }
+            )
         }
 
         ModelPickerDropdown(

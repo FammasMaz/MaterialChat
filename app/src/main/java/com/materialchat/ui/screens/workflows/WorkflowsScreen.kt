@@ -23,7 +23,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.outlined.AccountTree
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.ExtendedFloatingActionButton
+import com.materialchat.ui.components.ExpressiveFab
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LoadingIndicator
@@ -96,12 +96,12 @@ fun WorkflowsScreen(
             )
         },
         floatingActionButton = {
-            ExtendedFloatingActionButton(
+            ExpressiveFab(
                 onClick = { onNavigateToBuilder(null) },
-                icon = { Icon(Icons.Filled.Add, contentDescription = "Create") },
-                text = { Text("New Workflow") },
-                containerColor = MaterialTheme.colorScheme.primaryContainer,
-                contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                icon = Icons.Filled.Add,
+                contentDescription = "Create",
+                expanded = true,
+                text = "New Workflow"
             )
         }
     ) { paddingValues ->

@@ -63,6 +63,7 @@ import com.materialchat.ui.navigation.MaterialChatNavBar
 import com.materialchat.ui.navigation.MaterialChatNavHost
 import com.materialchat.ui.navigation.Screen
 import com.materialchat.ui.navigation.TopLevelTab
+import com.materialchat.ui.screens.personas.components.PersonaPickerSheet
 import com.materialchat.ui.theme.MaterialChatTheme
 import com.materialchat.ui.theme.isDynamicColorSupported
 import dagger.hilt.android.AndroidEntryPoint
@@ -240,6 +241,10 @@ fun MaterialChatApp(
     // OpenClaw connection status from gateway
     val isOpenClawConnected by mainViewModel.isOpenClawConnected.collectAsStateWithLifecycle()
 
+    // Persona picker state
+    val showPersonaPicker by mainViewModel.showPersonaPicker.collectAsStateWithLifecycle()
+    val personas by mainViewModel.personas.collectAsStateWithLifecycle(initialValue = emptyList())
+
     // Collect update state if updateManager is provided
     val updateState by updateManager?.updateState?.collectAsStateWithLifecycle()
         ?: remember { mutableStateOf(UpdateState.Idle) }
@@ -304,6 +309,7 @@ fun MaterialChatApp(
                         }
                     },
                     onNewChat = { mainViewModel.createNewConversation() },
+                    onNewChatLongPress = { mainViewModel.showPersonaPicker() },
                     isOpenClawConnected = isOpenClawConnected,
                     expanded = isToolbarExpanded
                 )
@@ -347,6 +353,20 @@ fun MaterialChatApp(
                 }
             }
             }
+        }
+
+        // Persona picker bottom sheet
+        if (showPersonaPicker) {
+            PersonaPickerSheet(
+                personas = personas,
+                isVisible = true,
+                onDismiss = {
+                    mainViewModel.hidePersonaPicker()
+                },
+                onPersonaSelected = { persona ->
+                    mainViewModel.createNewConversationWithPersona(persona.id)
+                }
+            )
         }
 
         // Update banner overlay (top)

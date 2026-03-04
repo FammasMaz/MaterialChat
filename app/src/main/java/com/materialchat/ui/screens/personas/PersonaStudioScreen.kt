@@ -34,7 +34,8 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import com.materialchat.ui.components.ExpressiveButton
+import com.materialchat.ui.components.ExpressiveButtonStyle
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -254,9 +255,7 @@ private fun PersonaStudioErrorContent(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        TextButton(onClick = { haptics.perform(HapticPattern.CLICK); onNavigateBack() }) {
-            Text("Go Back")
-        }
+        ExpressiveButton(onClick = { onNavigateBack() }, text = "Go Back", style = ExpressiveButtonStyle.Text)
     }
 }
 

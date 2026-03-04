@@ -50,8 +50,8 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.FilledTonalButton
-import androidx.compose.material3.TextButton
+import com.materialchat.ui.components.ExpressiveButton
+import com.materialchat.ui.components.ExpressiveButtonStyle
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.runtime.Composable
@@ -545,9 +545,7 @@ private fun EmptyContent(
         if (!hasActiveProvider) {
             Spacer(modifier = Modifier.height(16.dp))
 
-            FilledTonalButton(onClick = { haptics.perform(HapticPattern.CLICK); onNavigateToSettings() }) {
-                Text("Go to Settings")
-            }
+            ExpressiveButton(onClick = { onNavigateToSettings() }, text = "Go to Settings", style = ExpressiveButtonStyle.FilledTonal)
         }
     }
 }
@@ -712,9 +710,7 @@ private fun ErrorContent(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        TextButton(onClick = { haptics.perform(HapticPattern.CLICK); onRetry() }) {
-            Text("Retry")
-        }
+        ExpressiveButton(onClick = { onRetry() }, text = "Retry", style = ExpressiveButtonStyle.Text)
     }
 }
 

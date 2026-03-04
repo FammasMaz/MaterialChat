@@ -25,7 +25,8 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.FilledTonalButton
+import com.materialchat.ui.components.ExpressiveButton
+import com.materialchat.ui.components.ExpressiveButtonStyle
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LoadingIndicator
@@ -212,23 +213,16 @@ private fun WorkflowInputDialog(
             }
         },
         confirmButton = {
-            FilledTonalButton(
+            ExpressiveButton(
                 onClick = { onExecute(inputText) },
+                text = "Run",
+                leadingIcon = Icons.Default.PlayArrow,
+                style = ExpressiveButtonStyle.FilledTonal,
                 enabled = inputText.isNotBlank()
-            ) {
-                Icon(
-                    imageVector = Icons.Default.PlayArrow,
-                    contentDescription = null,
-                    modifier = Modifier.size(18.dp)
-                )
-                Spacer(modifier = Modifier.width(6.dp))
-                Text("Run")
-            }
+            )
         },
         dismissButton = {
-            TextButton(onClick = { haptics.perform(HapticPattern.CLICK); onDismiss() }) {
-                Text("Cancel")
-            }
+            ExpressiveButton(onClick = { onDismiss() }, text = "Cancel", style = ExpressiveButtonStyle.Text)
         }
     )
 }
@@ -288,9 +282,7 @@ private fun ExecutionErrorContent(
             textAlign = TextAlign.Center
         )
         Spacer(modifier = Modifier.height(16.dp))
-        TextButton(onClick = { haptics.perform(HapticPattern.CLICK); onNavigateBack() }) {
-            Text("Go Back")
-        }
+        ExpressiveButton(onClick = { onNavigateBack() }, text = "Go Back", style = ExpressiveButtonStyle.Text)
     }
 }
 

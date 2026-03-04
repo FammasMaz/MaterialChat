@@ -4,8 +4,11 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.filled.Add
@@ -30,6 +33,7 @@ import androidx.compose.ui.unit.dp
 import com.materialchat.ui.theme.ExpressiveMotion
 import com.materialchat.ui.components.HapticPattern
 import com.materialchat.ui.components.rememberHapticFeedback
+import kotlinx.coroutines.withTimeoutOrNull
 
 /**
  * M3 Expressive floating toolbar navigation for MaterialChat.
@@ -41,6 +45,7 @@ import com.materialchat.ui.components.rememberHapticFeedback
  * @param currentRoute The current navigation route for highlighting the active tab
  * @param onTabSelected Callback when a tab is selected
  * @param onNewChat Callback to create a new conversation
+ * @param onNewChatLongPress Callback when the New Chat FAB is long-pressed (e.g. show persona picker)
  * @param isOpenClawConnected Whether the OpenClaw Gateway is currently connected
  * @param expanded Whether the toolbar is expanded (showing icons) or collapsed (FAB only)
  * @param modifier Optional modifier
@@ -51,6 +56,7 @@ fun MaterialChatNavBar(
     currentRoute: String?,
     onTabSelected: (TopLevelTab) -> Unit,
     onNewChat: () -> Unit,
+    onNewChatLongPress: () -> Unit = {},
     isOpenClawConnected: Boolean,
     expanded: Boolean = true,
     modifier: Modifier = Modifier
@@ -119,7 +125,34 @@ fun MaterialChatNavBar(
             FloatingToolbarDefaults.VibrantFloatingActionButton(
                 onClick = { haptics.perform(HapticPattern.CLICK); onNewChat() },
                 interactionSource = fabInteractionSource,
-                modifier = fabModifier
+                modifier = fabModifier.pointerInput(onNewChatLongPress) {
+                    awaitEachGesture {
+                        // Observe down at Initial pass (parent first) without consuming
+                        val first = awaitPointerEvent(PointerEventPass.Initial)
+                        if (first.changes.none { it.pressed }) return@awaitEachGesture
+
+                        // Race: release before timeout = tap (let FAB handle), timeout = long press
+                        val timeout = viewConfiguration.longPressTimeoutMillis
+                        val releasedBeforeTimeout = withTimeoutOrNull(timeout) {
+                            while (true) {
+                                val ev = awaitPointerEvent(PointerEventPass.Initial)
+                                if (ev.changes.all { !it.pressed }) break
+                            }
+                            true
+                        }
+
+                        if (releasedBeforeTimeout == null) {
+                            // Long press detected — fire callback
+                            onNewChatLongPress()
+                            // Consume remaining events at Initial pass to prevent FAB onClick
+                            while (true) {
+                                val ev = awaitPointerEvent(PointerEventPass.Initial)
+                                ev.changes.forEach { it.consume() }
+                                if (ev.changes.all { !it.pressed }) break
+                            }
+                        }
+                    }
+                }
             ) {
                 Icon(
                     imageVector = Icons.Filled.Add,

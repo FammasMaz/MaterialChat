@@ -37,7 +37,8 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import com.materialchat.ui.components.ExpressiveButton
+import com.materialchat.ui.components.ExpressiveButtonStyle
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -123,14 +124,12 @@ fun ArenaScreen(
                     }
                 },
                 actions = {
-                    TextButton(onClick = { haptics.perform(HapticPattern.CLICK); onNavigateToLeaderboard() }) {
-                        Icon(
-                            imageVector = Icons.Filled.EmojiEvents,
-                            contentDescription = null
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("Leaderboard")
-                    }
+                    ExpressiveButton(
+                        onClick = { onNavigateToLeaderboard() },
+                        text = "Leaderboard",
+                        leadingIcon = Icons.Filled.EmojiEvents,
+                        style = ExpressiveButtonStyle.Text
+                    )
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surfaceContainer
@@ -332,19 +331,15 @@ private fun ArenaReadyContent(
                         initialOffsetY = { it / 4 }
                     )
                 ) {
-                    TextButton(
-                        onClick = { haptics.perform(HapticPattern.CLICK); onNewBattle() },
+                    ExpressiveButton(
+                        onClick = { onNewBattle() },
+                        text = "New Battle",
+                        leadingIcon = Icons.Filled.Add,
+                        style = ExpressiveButtonStyle.FilledTonal,
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(top = 8.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Filled.Add,
-                            contentDescription = null
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("New Battle")
-                    }
+                    )
                 }
             }
         }

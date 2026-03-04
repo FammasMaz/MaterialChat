@@ -15,14 +15,14 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import com.materialchat.ui.components.ExpressiveButton
+import com.materialchat.ui.components.ExpressiveButtonStyle
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -199,10 +199,8 @@ fun PersonaEditorSheet(
                 horizontalArrangement = Arrangement.End,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                TextButton(onClick = { haptics.perform(HapticPattern.CLICK); onDismiss() }) {
-                    Text("Cancel")
-                }
-                Button(
+                ExpressiveButton(onClick = { onDismiss() }, text = "Cancel", style = ExpressiveButtonStyle.Text)
+                ExpressiveButton(
                     onClick = {
                         val tags = tagsText
                             .split(",")
@@ -228,11 +226,10 @@ fun PersonaEditorSheet(
                         )
                         onSave(saved)
                     },
-                    enabled = name.isNotBlank() && systemPrompt.isNotBlank(),
-                    shape = RoundedCornerShape(16.dp)
-                ) {
-                    Text(if (isEditing) "Update" else "Create")
-                }
+                    text = if (isEditing) "Update" else "Create",
+                    style = ExpressiveButtonStyle.Filled,
+                    enabled = name.isNotBlank() && systemPrompt.isNotBlank()
+                )
             }
         }
     }

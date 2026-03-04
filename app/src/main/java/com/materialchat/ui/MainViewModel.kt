@@ -2,14 +2,19 @@ package com.materialchat.ui
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.materialchat.domain.model.Persona
 import com.materialchat.domain.model.openclaw.GatewayConnectionState
 import com.materialchat.domain.usecase.CreateConversationUseCase
+import com.materialchat.domain.usecase.ManagePersonasUseCase
 import com.materialchat.domain.usecase.openclaw.ConnectGatewayUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -22,6 +27,7 @@ import javax.inject.Inject
 @HiltViewModel
 class MainViewModel @Inject constructor(
     private val createConversationUseCase: CreateConversationUseCase,
+    private val managePersonasUseCase: ManagePersonasUseCase,
     connectGatewayUseCase: ConnectGatewayUseCase
 ) : ViewModel() {
 
@@ -36,6 +42,16 @@ class MainViewModel @Inject constructor(
     private val _showError = MutableSharedFlow<String>()
     val showError = _showError.asSharedFlow()
 
+    /** Whether the persona picker bottom sheet is visible. */
+    private val _showPersonaPicker = MutableStateFlow(false)
+    val showPersonaPicker: StateFlow<Boolean> = _showPersonaPicker.asStateFlow()
+
+    /** Reactive list of all personas for the picker. */
+    val personas: Flow<List<Persona>> = managePersonasUseCase.observeAllPersonas()
+
+    fun showPersonaPicker() { _showPersonaPicker.value = true }
+    fun hidePersonaPicker() { _showPersonaPicker.value = false }
+
     fun createNewConversation() {
         viewModelScope.launch {
             try {
@@ -46,6 +62,20 @@ class MainViewModel @Inject constructor(
             } catch (e: Exception) {
                 _showError.emit(e.message ?: "Failed to create conversation")
             }
+        }
+    }
+
+    fun createNewConversationWithPersona(personaId: String) {
+        viewModelScope.launch {
+            try {
+                val conversationId = createConversationUseCase.withPersona(personaId)
+                _navigateToChat.emit(conversationId)
+            } catch (e: IllegalStateException) {
+                _showError.emit("No provider configured")
+            } catch (e: Exception) {
+                _showError.emit(e.message ?: "Failed to create conversation")
+            }
+            _showPersonaPicker.value = false
         }
     }
 }

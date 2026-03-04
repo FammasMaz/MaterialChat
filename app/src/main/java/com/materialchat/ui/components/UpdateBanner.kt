@@ -24,17 +24,13 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.SystemUpdate
 import androidx.compose.material.icons.outlined.NewReleases
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.ProgressIndicatorDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -45,8 +41,6 @@ import androidx.compose.ui.unit.dp
 import com.materialchat.domain.model.AppUpdate
 import com.materialchat.domain.model.UpdateState
 import com.materialchat.domain.model.shouldShowBanner
-import com.materialchat.ui.components.HapticPattern
-import com.materialchat.ui.components.rememberHapticFeedback
 
 /**
  * Non-blocking update banner that slides in from the top.
@@ -180,33 +174,20 @@ private fun AvailableBannerContent(
             horizontalArrangement = Arrangement.End,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            TextButton(
+            ExpressiveButton(
                 onClick = onSkipVersion,
-                colors = ButtonDefaults.textButtonColors(
-                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
-                )
-            ) {
-                Text("Skip version")
-            }
+                text = "Skip version",
+                style = ExpressiveButtonStyle.Text
+            )
 
             Spacer(modifier = Modifier.width(8.dp))
 
-            Button(
+            ExpressiveButton(
                 onClick = onDownload,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary
-                ),
-                shape = RoundedCornerShape(20.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Download,
-                    contentDescription = null,
-                    modifier = Modifier.size(18.dp)
-                )
-                Spacer(modifier = Modifier.width(6.dp))
-                Text("Download")
-            }
+                text = "Download",
+                leadingIcon = Icons.Default.Download,
+                style = ExpressiveButtonStyle.Filled
+            )
         }
     }
 }
@@ -259,12 +240,11 @@ private fun DownloadingBannerContent(
                 }
             }
 
-            OutlinedButton(
+            ExpressiveButton(
                 onClick = onCancel,
-                shape = RoundedCornerShape(20.dp)
-            ) {
-                Text("Cancel")
-            }
+                text = "Cancel",
+                style = ExpressiveButtonStyle.Outlined
+            )
         }
 
         Spacer(modifier = Modifier.height(12.dp))
@@ -341,33 +321,20 @@ private fun ReadyToInstallBannerContent(
             horizontalArrangement = Arrangement.End,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            TextButton(
+            ExpressiveButton(
                 onClick = onDismiss,
-                colors = ButtonDefaults.textButtonColors(
-                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
-                )
-            ) {
-                Text("Later")
-            }
+                text = "Later",
+                style = ExpressiveButtonStyle.Text
+            )
 
             Spacer(modifier = Modifier.width(8.dp))
 
-            Button(
+            ExpressiveButton(
                 onClick = onInstall,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary
-                ),
-                shape = RoundedCornerShape(20.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.SystemUpdate,
-                    contentDescription = null,
-                    modifier = Modifier.size(18.dp)
-                )
-                Spacer(modifier = Modifier.width(6.dp))
-                Text("Install Now")
-            }
+                text = "Install Now",
+                leadingIcon = Icons.Default.SystemUpdate,
+                style = ExpressiveButtonStyle.Filled
+            )
         }
     }
 }

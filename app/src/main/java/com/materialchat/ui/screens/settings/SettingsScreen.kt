@@ -54,16 +54,16 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
+import com.materialchat.ui.components.ExpressiveButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Snackbar
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
+import com.materialchat.ui.components.ExpressiveSwitch
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import com.materialchat.ui.components.ExpressiveButtonStyle
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -85,8 +85,7 @@ import com.materialchat.data.local.preferences.AppPreferences
 import com.materialchat.domain.model.AppUpdate
 import com.materialchat.domain.model.Provider
 import com.materialchat.domain.model.UpdateState
-import com.materialchat.ui.components.HapticPattern
-import com.materialchat.ui.components.rememberHapticFeedback
+
 import com.materialchat.ui.screens.settings.components.AddProviderSheet
 import com.materialchat.ui.screens.settings.components.ProviderCard
 import com.materialchat.ui.screens.settings.components.SystemPromptField
@@ -610,19 +609,13 @@ private fun SectionHeader(title: String) {
 
 @Composable
 private fun AddProviderButton(onClick: () -> Unit) {
-    OutlinedButton(
+    ExpressiveButton(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp)
-    ) {
-        Icon(
-            imageVector = Icons.Default.Add,
-            contentDescription = null,
-            modifier = Modifier.size(20.dp)
-        )
-        Spacer(modifier = Modifier.width(8.dp))
-        Text("Add Provider")
-    }
+        text = "Add Provider",
+        leadingIcon = Icons.Default.Add,
+        style = ExpressiveButtonStyle.Outlined
+    )
 }
 
 @Composable
@@ -689,8 +682,6 @@ private fun DynamicColorToggle(
     enabled: Boolean,
     onToggle: (Boolean) -> Unit
 ) {
-    val haptics = rememberHapticFeedback()
-
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
@@ -729,9 +720,9 @@ private fun DynamicColorToggle(
                 }
             }
 
-            Switch(
+            ExpressiveSwitch(
                 checked = enabled,
-                onCheckedChange = { haptics.perform(HapticPattern.TOGGLE); onToggle(it) }
+                onCheckedChange = onToggle
             )
         }
     }
@@ -742,8 +733,6 @@ private fun HapticsToggle(
     enabled: Boolean,
     onToggle: (Boolean) -> Unit
 ) {
-    val haptics = rememberHapticFeedback()
-
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
@@ -782,13 +771,9 @@ private fun HapticsToggle(
                 }
             }
 
-            Switch(
+            ExpressiveSwitch(
                 checked = enabled,
-                onCheckedChange = { newValue ->
-                    // Provide haptic feedback when toggling (use the NEW value for enabled check)
-                    haptics.perform(HapticPattern.TOGGLE, enabled = newValue)
-                    onToggle(newValue)
-                }
+                onCheckedChange = onToggle
             )
         }
     }
@@ -800,8 +785,6 @@ private fun BeautifulModelNamesToggle(
     activeProviderName: String?,
     onToggle: (Boolean) -> Unit
 ) {
-    val haptics = rememberHapticFeedback()
-
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
@@ -845,9 +828,9 @@ private fun BeautifulModelNamesToggle(
                 }
             }
 
-            Switch(
+            ExpressiveSwitch(
                 checked = enabled,
-                onCheckedChange = { haptics.perform(HapticPattern.TOGGLE); onToggle(it) }
+                onCheckedChange = onToggle
             )
         }
     }
@@ -858,8 +841,6 @@ private fun RememberLastModelToggle(
     enabled: Boolean,
     onToggle: (Boolean) -> Unit
 ) {
-    val haptics = rememberHapticFeedback()
-
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
@@ -899,9 +880,9 @@ private fun RememberLastModelToggle(
                 }
             }
 
-            Switch(
+            ExpressiveSwitch(
                 checked = enabled,
-                onCheckedChange = { haptics.perform(HapticPattern.TOGGLE); onToggle(it) }
+                onCheckedChange = onToggle
             )
         }
     }
@@ -912,8 +893,6 @@ private fun AiGeneratedTitlesToggle(
     enabled: Boolean,
     onToggle: (Boolean) -> Unit
 ) {
-    val haptics = rememberHapticFeedback()
-
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
@@ -953,9 +932,9 @@ private fun AiGeneratedTitlesToggle(
                 }
             }
 
-            Switch(
+            ExpressiveSwitch(
                 checked = enabled,
-                onCheckedChange = { haptics.perform(HapticPattern.TOGGLE); onToggle(it) }
+                onCheckedChange = onToggle
             )
         }
     }
@@ -966,8 +945,6 @@ private fun AlwaysShowThinkingToggle(
     enabled: Boolean,
     onToggle: (Boolean) -> Unit
 ) {
-    val haptics = rememberHapticFeedback()
-
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
@@ -1007,9 +984,9 @@ private fun AlwaysShowThinkingToggle(
                 }
             }
 
-            Switch(
+            ExpressiveSwitch(
                 checked = enabled,
-                onCheckedChange = { haptics.perform(HapticPattern.TOGGLE); onToggle(it) }
+                onCheckedChange = onToggle
             )
         }
     }
@@ -1087,12 +1064,12 @@ private fun TitleGenerationModelField(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.End
             ) {
-                TextButton(
+                ExpressiveButton(
                     onClick = { onModelChange(text) },
-                    enabled = text != currentModel
-                ) {
-                    Text("Save")
-                }
+                    enabled = text != currentModel,
+                    text = "Save",
+                    style = ExpressiveButtonStyle.FilledTonal
+                )
             }
         }
     }
@@ -1104,8 +1081,6 @@ private fun DeleteProviderDialog(
     onConfirm: () -> Unit,
     onDismiss: () -> Unit
 ) {
-    val haptics = rememberHapticFeedback()
-
     AlertDialog(
         onDismissRequest = onDismiss,
         title = {
@@ -1121,19 +1096,18 @@ private fun DeleteProviderDialog(
             )
         },
         confirmButton = {
-            TextButton(
-                onClick = onConfirm
-            ) {
-                Text(
-                    text = "Delete",
-                    color = MaterialTheme.colorScheme.error
-                )
-            }
+            ExpressiveButton(
+                onClick = onConfirm,
+                text = "Delete",
+                style = ExpressiveButtonStyle.Text
+            )
         },
         dismissButton = {
-            TextButton(onClick = { haptics.perform(HapticPattern.CLICK); onDismiss() }) {
-                Text("Cancel")
-            }
+            ExpressiveButton(
+                onClick = onDismiss,
+                text = "Cancel",
+                style = ExpressiveButtonStyle.Text
+            )
         },
         shape = MaterialTheme.shapes.extraLarge,
         containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
@@ -1147,8 +1121,6 @@ private fun ErrorContent(
     message: String,
     onRetry: () -> Unit
 ) {
-    val haptics = rememberHapticFeedback()
-
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -1174,9 +1146,11 @@ private fun ErrorContent(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        TextButton(onClick = { haptics.perform(HapticPattern.CLICK); onRetry() }) {
-            Text("Retry")
-        }
+        ExpressiveButton(
+            onClick = onRetry,
+            text = "Retry",
+            style = ExpressiveButtonStyle.Text
+        )
     }
 }
 
@@ -1192,8 +1166,6 @@ private fun AboutSection(
     onCancelDownload: () -> Unit,
     onSkipVersion: () -> Unit
 ) {
-    val haptics = rememberHapticFeedback()
-
     Column(
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
@@ -1278,9 +1250,9 @@ private fun AboutSection(
                     }
                 }
 
-                Switch(
+                ExpressiveSwitch(
                     checked = autoCheckUpdates,
-                    onCheckedChange = { haptics.perform(HapticPattern.TOGGLE); onAutoCheckUpdatesChange(it) }
+                    onCheckedChange = onAutoCheckUpdatesChange
                 )
             }
         }
@@ -1363,9 +1335,11 @@ private fun AboutSection(
                             horizontalArrangement = Arrangement.End,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            TextButton(onClick = { haptics.perform(HapticPattern.CLICK); onSkipVersion() }) {
-                                Text("Skip")
-                            }
+                            ExpressiveButton(
+                                onClick = onSkipVersion,
+                                text = "Skip version",
+                                style = ExpressiveButtonStyle.Text
+                            )
                             Spacer(modifier = Modifier.width(8.dp))
                             com.materialchat.ui.components.ExpressiveButton(
                                 onClick = { onDownloadUpdate(updateState.update) },
@@ -1380,9 +1354,11 @@ private fun AboutSection(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.End
                         ) {
-                            TextButton(onClick = { haptics.perform(HapticPattern.CLICK); onCancelDownload() }) {
-                                Text("Cancel")
-                            }
+                            ExpressiveButton(
+                                onClick = onCancelDownload,
+                                text = "Cancel",
+                                style = ExpressiveButtonStyle.Text
+                            )
                         }
                     }
                     is UpdateState.ReadyToInstall -> {
@@ -1436,7 +1412,6 @@ private fun AssistantSection(
     onTtsEnabledChange: (Boolean) -> Unit
 ) {
     val context = LocalContext.current
-    val haptics = rememberHapticFeedback()
 
     Column(
         verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -1481,9 +1456,9 @@ private fun AssistantSection(
                     }
                 }
 
-                Switch(
+                ExpressiveSwitch(
                     checked = assistantEnabled,
-                    onCheckedChange = { haptics.perform(HapticPattern.TOGGLE); onAssistantEnabledChange(it) }
+                    onCheckedChange = onAssistantEnabledChange
                 )
             }
         }
@@ -1516,15 +1491,14 @@ private fun AssistantSection(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
-                    OutlinedButton(
+                    ExpressiveButton(
                         onClick = {
                             val intent = Intent(Settings.ACTION_VOICE_INPUT_SETTINGS)
                             context.startActivity(intent)
                         },
-                        shape = RoundedCornerShape(20.dp)
-                    ) {
-                        Text("Open")
-                    }
+                        text = "Open",
+                        style = ExpressiveButtonStyle.Outlined
+                    )
                 }
             }
 
@@ -1568,9 +1542,9 @@ private fun AssistantSection(
                         }
                     }
 
-                    Switch(
+                    ExpressiveSwitch(
                         checked = voiceEnabled,
-                        onCheckedChange = { haptics.perform(HapticPattern.TOGGLE); onVoiceEnabledChange(it) }
+                        onCheckedChange = onVoiceEnabledChange
                     )
                 }
             }
@@ -1615,9 +1589,9 @@ private fun AssistantSection(
                         }
                     }
 
-                    Switch(
+                    ExpressiveSwitch(
                         checked = ttsEnabled,
-                        onCheckedChange = { haptics.perform(HapticPattern.TOGGLE); onTtsEnabledChange(it) }
+                        onCheckedChange = onTtsEnabledChange
                     )
                 }
             }

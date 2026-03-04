@@ -16,18 +16,18 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.SmartToy
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
+import com.materialchat.ui.components.HapticPattern
+import com.materialchat.ui.components.rememberHapticFeedback
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
+import com.materialchat.ui.components.ExpressiveSwitch
+import com.materialchat.ui.components.ExpressiveButton
+import com.materialchat.ui.components.ExpressiveButtonStyle
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -180,13 +180,9 @@ fun OpenClawSetupSheet(
                     )
                 }
                 Spacer(modifier = Modifier.width(16.dp))
-                Switch(
+                ExpressiveSwitch(
                     checked = allowSelfSigned,
-                    onCheckedChange = { allowSelfSigned = it },
-                    colors = SwitchDefaults.colors(
-                        checkedTrackColor = MaterialTheme.colorScheme.primary,
-                        checkedThumbColor = MaterialTheme.colorScheme.onPrimary
-                    )
+                    onCheckedChange = { allowSelfSigned = it }
                 )
             }
 
@@ -198,25 +194,18 @@ fun OpenClawSetupSheet(
                 horizontalArrangement = Arrangement.End,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                TextButton(
-                    onClick = onDismiss,
-                    modifier = Modifier.height(48.dp)
-                ) {
-                    Text("Cancel")
-                }
+                ExpressiveButton(
+                    onClick = { onDismiss() },
+                    text = "Cancel",
+                    style = ExpressiveButtonStyle.Text
+                )
                 Spacer(modifier = Modifier.width(12.dp))
-                Button(
+                ExpressiveButton(
                     onClick = { onSave(gatewayUrl, token, agentId, allowSelfSigned) },
-                    enabled = gatewayUrl.isNotBlank(),
-                    shape = RoundedCornerShape(50),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        contentColor = MaterialTheme.colorScheme.onPrimary
-                    ),
-                    modifier = Modifier.height(48.dp)
-                ) {
-                    Text("Save & Connect")
-                }
+                    text = "Save & Connect",
+                    style = ExpressiveButtonStyle.Filled,
+                    enabled = gatewayUrl.isNotBlank()
+                )
             }
 
             Spacer(modifier = Modifier.height(16.dp))
