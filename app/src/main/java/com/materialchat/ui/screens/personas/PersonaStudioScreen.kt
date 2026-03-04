@@ -9,12 +9,15 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
@@ -29,6 +32,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Snackbar
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -49,6 +53,8 @@ import com.materialchat.ui.screens.personas.components.PersonaEditorSheet
 import kotlinx.coroutines.launch
 import com.materialchat.ui.components.HapticPattern
 import com.materialchat.ui.components.rememberHapticFeedback
+import androidx.compose.material.icons.filled.Lightbulb
+import androidx.compose.ui.text.font.FontWeight
 
 /**
  * Persona Studio screen displaying a grid of AI personas with create/edit/delete capabilities.
@@ -101,12 +107,12 @@ fun PersonaStudioScreen(
             )
         },
         floatingActionButton = {
-            ExtendedFloatingActionButton(
+            com.materialchat.ui.components.ExpressiveFab(
                 onClick = { haptics.perform(HapticPattern.CLICK); viewModel.showCreateEditor() },
-                icon = { Icon(Icons.Filled.Add, contentDescription = "Create") },
-                text = { Text("New Persona") },
-                containerColor = MaterialTheme.colorScheme.primaryContainer,
-                contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                icon = Icons.Filled.Add,
+                contentDescription = "Create",
+                expanded = true,
+                text = "New Persona"
             )
         },
         snackbarHost = {
@@ -149,6 +155,9 @@ fun PersonaStudioScreen(
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
+                    item(span = { GridItemSpan(maxLineSpan) }) {
+                        PersonaOnboardingCard()
+                    }
                     items(
                         items = state.personas,
                         key = { it.id }
@@ -247,6 +256,41 @@ private fun PersonaStudioErrorContent(
 
         TextButton(onClick = { haptics.perform(HapticPattern.CLICK); onNavigateBack() }) {
             Text("Go Back")
+        }
+    }
+}
+
+/**
+ * Onboarding tip card explaining how to use personas.
+ */
+@Composable
+private fun PersonaOnboardingCard() {
+    Surface(
+        shape = RoundedCornerShape(20.dp),
+        color = MaterialTheme.colorScheme.secondaryContainer,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(
+            modifier = Modifier.padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Filled.Lightbulb,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                modifier = Modifier.size(24.dp)
+            )
+            Text(
+                text = "How to use Personas",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSecondaryContainer
+            )
+            Text(
+                text = "Create a persona below, then select it when starting a new chat. Your persona will shape how the AI responds.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSecondaryContainer
+            )
         }
     }
 }
