@@ -74,7 +74,6 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.materialchat.domain.model.Attachment
 import com.materialchat.domain.model.MessageRole
-import com.materialchat.ui.components.MarkdownText
 import com.materialchat.ui.screens.chat.MessageUiItem
 import com.materialchat.ui.screens.chat.MessageGroupPosition
 import com.materialchat.ui.screens.chat.SiblingInfo
@@ -165,9 +164,10 @@ fun MessageBubble(
                     modifier = Modifier
                         .widthIn(min = 40.dp, max = bubbleStyle.maxWidth)
                         .animateContentSize(
+                            // M3 Expressive: spring.default.spatial for content size transitions
                             animationSpec = spring(
-                                dampingRatio = Spring.DampingRatioMediumBouncy,
-                                stiffness = Spring.StiffnessMediumLow
+                                dampingRatio = 0.7f,   // Expressive spatial: slight overshoot
+                                stiffness = 500f       // Default speed for partial-screen elements
                             )
                         )
                         .then(
@@ -385,8 +385,10 @@ fun MessageBubble(
 
 /**
  * Message content text component.
- * Uses MarkdownText for assistant messages to render formatting,
- * and plain Text for user messages.
+ * Uses SmoothStreamingText for streaming assistant messages to normalize
+ * patchy token delivery into fluid word-by-word reveal with trailing fade.
+ * Uses MarkdownText for completed assistant messages with full formatting.
+ * Uses plain Text for user messages.
  */
 @Composable
 private fun MessageContent(
@@ -399,9 +401,12 @@ private fun MessageContent(
     val displayContent = content.ifEmpty { "" }
 
     if (isAssistant && displayContent.isNotEmpty()) {
-        // Render assistant messages with Markdown
-        MarkdownText(
-            markdown = displayContent,
+        // Smooth streaming text handles both streaming and completed states:
+        // - Streaming: word-by-word dripping with trailing fade
+        // - Completed: direct MarkdownText rendering
+        SmoothStreamingText(
+            rawText = displayContent,
+            isStreaming = isStreaming,
             textColor = textColor,
             style = MaterialTheme.typography.bodyLarge,
             onOpenCanvas = onOpenCanvas
