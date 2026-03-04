@@ -367,6 +367,7 @@ private fun ReasoningEffortSelector(
     val itemAnimations = remember { options.map { Animatable(0f) } }
     val scope = rememberCoroutineScope()
     var selectedEffort by remember { mutableStateOf(reasoningEffort) }
+    val haptics = rememberHapticFeedback()
 
     LaunchedEffect(reasoningEffort) {
         selectedEffort = reasoningEffort
@@ -464,7 +465,7 @@ private fun ReasoningEffortSelector(
 
     Box(modifier = modifier) {
         Surface(
-            onClick = { if (enabled) expanded = !expanded },
+            onClick = { if (enabled) { haptics.perform(HapticPattern.CLICK); expanded = !expanded } },
             enabled = enabled,
             shape = RoundedCornerShape(cornerRadius),
             color = containerColor,
@@ -549,6 +550,7 @@ private fun ReasoningOptionPill(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val haptics = rememberHapticFeedback()
     // M3 Expressive: Use tertiary container for unselected to create better contrast
     // and primary container for selected state
     val containerColor by animateColorAsState(
@@ -572,7 +574,7 @@ private fun ReasoningOptionPill(
 
     // M3 Expressive: Use tonal differentiation without shadows
     Surface(
-        onClick = onClick,
+        onClick = { haptics.perform(HapticPattern.CLICK); onClick() },
         shape = RoundedCornerShape(999.dp),
         color = containerColor,
         contentColor = contentColor,
@@ -645,6 +647,7 @@ private fun AttachmentPreviewItem(
     attachment: Attachment,
     onRemove: () -> Unit
 ) {
+    val haptics = rememberHapticFeedback()
     Box(
         modifier = Modifier.size(72.dp)
     ) {
@@ -668,7 +671,7 @@ private fun AttachmentPreviewItem(
                 .size(48.dp)
                 .align(Alignment.TopEnd)
                 .offset(x = 12.dp, y = (-12).dp)
-                .clickable { onRemove() },
+                .clickable { haptics.perform(HapticPattern.CLICK); onRemove() },
             contentAlignment = Alignment.Center
         ) {
             Box(

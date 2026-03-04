@@ -137,6 +137,8 @@ fun MessageBubble(
     // Context menu state for user messages (long-press floating bar)
     var showUserContextMenu by remember { mutableStateOf(false) }
 
+    val haptics = rememberHapticFeedback()
+
     val bubbleStyle = getBubbleStyle(
         isUser = isUser,
         isAssistant = isAssistant,
@@ -175,7 +177,7 @@ fun MessageBubble(
                             if (isUser && !isEditing && !message.isStreaming && message.content.isNotEmpty()) {
                                 Modifier.combinedClickable(
                                     onClick = {},
-                                    onLongClick = { showUserContextMenu = true }
+                                    onLongClick = { haptics.perform(HapticPattern.CLICK, hapticsEnabled); showUserContextMenu = true }
                                 )
                             } else Modifier
                         )
@@ -258,7 +260,7 @@ fun MessageBubble(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             IconButton(
-                                onClick = { onCopy(); showUserContextMenu = false },
+                                onClick = { haptics.perform(HapticPattern.CLICK, hapticsEnabled); onCopy(); showUserContextMenu = false },
                                 modifier = Modifier.size(48.dp)
                             ) {
                                 Icon(
@@ -269,7 +271,7 @@ fun MessageBubble(
                             }
                             if (onEdit != null) {
                                 IconButton(
-                                    onClick = { onEdit(); showUserContextMenu = false },
+                                    onClick = { haptics.perform(HapticPattern.CLICK, hapticsEnabled); onEdit(); showUserContextMenu = false },
                                     modifier = Modifier.size(48.dp)
                                 ) {
                                     Icon(
@@ -281,7 +283,7 @@ fun MessageBubble(
                             }
                             if (onBranch != null) {
                                 IconButton(
-                                    onClick = { onBranch(); showUserContextMenu = false },
+                                    onClick = { haptics.perform(HapticPattern.CLICK, hapticsEnabled); onBranch(); showUserContextMenu = false },
                                     modifier = Modifier.size(48.dp)
                                 ) {
                                     Icon(
@@ -347,8 +349,8 @@ fun MessageBubble(
                                 modifier = Modifier
                                     .size(48.dp)
                                     .combinedClickable(
-                                        onClick = onBookmarkToggle,
-                                        onLongClick = onBookmarkLongPress
+                                        onClick = { haptics.perform(HapticPattern.CLICK, hapticsEnabled); onBookmarkToggle() },
+                                        onLongClick = { haptics.perform(HapticPattern.CLICK, hapticsEnabled); onBookmarkLongPress?.invoke() }
                                     ),
                                 contentAlignment = Alignment.Center
                             ) {
@@ -532,6 +534,7 @@ private fun ThinkingSection(
     // Determine the current phase to drive auto-collapse
     // Phase key: true = thinking-only (expanded), false = content arrived or done
     val isThinkingPhase = isStreaming && !hasContent
+    val haptics = rememberHapticFeedback()
 
     var isExpanded by remember(isThinkingPhase, isStreaming) {
         mutableStateOf(
@@ -556,7 +559,7 @@ private fun ThinkingSection(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(8.dp))
-                .clickable { isExpanded = !isExpanded }
+                .clickable { haptics.perform(HapticPattern.CLICK, hapticsEnabled); isExpanded = !isExpanded }
                 .padding(vertical = 4.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -625,6 +628,7 @@ private fun ModelSiblingRow(
     val canGoPrevious = siblingInfo.currentIndex > 0
     val canGoNext = siblingInfo.currentIndex < siblingInfo.totalCount - 1
     val displayName = modelName ?: siblingInfo.siblings.getOrNull(siblingInfo.currentIndex)?.modelName ?: ""
+    val haptics = rememberHapticFeedback()
 
     Row(
         modifier = Modifier.padding(start = 4.dp, bottom = 2.dp),
@@ -633,7 +637,7 @@ private fun ModelSiblingRow(
     ) {
         // Previous arrow
         IconButton(
-            onClick = { onNavigatePrevious?.invoke() },
+            onClick = { haptics.perform(HapticPattern.CLICK); onNavigatePrevious?.invoke() },
             enabled = canGoPrevious,
             modifier = Modifier.size(28.dp)
         ) {
@@ -656,7 +660,7 @@ private fun ModelSiblingRow(
 
         // Next arrow
         IconButton(
-            onClick = { onNavigateNext?.invoke() },
+            onClick = { haptics.perform(HapticPattern.CLICK); onNavigateNext?.invoke() },
             enabled = canGoNext,
             modifier = Modifier.size(28.dp)
         ) {
@@ -743,8 +747,9 @@ private fun ErrorStateContent() {
  */
 @Composable
 private fun RetryButton(onRetry: () -> Unit) {
+    val haptics = rememberHapticFeedback()
     FilledTonalButton(
-        onClick = onRetry,
+        onClick = { haptics.perform(HapticPattern.CLICK); onRetry() },
         colors = ButtonDefaults.filledTonalButtonColors(
             containerColor = MaterialTheme.colorScheme.errorContainer,
             contentColor = MaterialTheme.colorScheme.onErrorContainer
@@ -803,7 +808,7 @@ private fun EditingContent(
                 Text("Cancel")
             }
             Spacer(modifier = Modifier.size(8.dp))
-            FilledTonalButton(onClick = onSubmitEdit) {
+            FilledTonalButton(onClick = { haptics.perform(HapticPattern.CLICK); onSubmitEdit() }) {
                 Text("Save & Submit")
             }
         }
