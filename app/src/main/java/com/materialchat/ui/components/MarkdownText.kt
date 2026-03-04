@@ -6,11 +6,11 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
@@ -27,6 +27,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.rememberTextMeasurer
 import com.materialchat.domain.model.CanvasArtifact
 import com.materialchat.ui.screens.canvas.ArtifactDetector
 import androidx.compose.ui.text.AnnotatedString
@@ -245,6 +247,29 @@ private fun TableView(
     val headerBackground = MaterialTheme.colorScheme.surfaceContainerHigh
     val alternateRowColor = MaterialTheme.colorScheme.surfaceContainerLow
 
+    val numCols = headers.size
+    val textMeasurer = rememberTextMeasurer()
+    val headerStyle = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold)
+    val bodyStyle = MaterialTheme.typography.bodyMedium
+    val density = LocalDensity.current
+    val cellPaddingH = 12.dp
+
+    // Compute consistent column widths from measured text
+    val columnWidths = remember(headers, rows) {
+        val widths = IntArray(numCols)
+        headers.forEachIndexed { index, header ->
+            widths[index] = maxOf(widths[index], textMeasurer.measure(header, headerStyle).size.width)
+        }
+        rows.forEach { row ->
+            row.forEachIndexed { index, cell ->
+                if (index < numCols) {
+                    widths[index] = maxOf(widths[index], textMeasurer.measure(cell, bodyStyle).size.width)
+                }
+            }
+        }
+        widths.map { with(density) { it.toDp() + cellPaddingH * 2 } }
+    }
+
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -265,12 +290,11 @@ private fun TableView(
                 headers.forEachIndexed { index, header ->
                     Text(
                         text = header,
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold,
+                        style = headerStyle,
                         textAlign = tableTextAlign(alignments.getOrElse(index) { TableAlignment.LEFT }),
                         modifier = Modifier
-                            .defaultMinSize(minWidth = 80.dp)
-                            .padding(horizontal = 12.dp, vertical = 8.dp)
+                            .width(columnWidths.getOrElse(index) { 80.dp })
+                            .padding(horizontal = cellPaddingH, vertical = 8.dp)
                     )
                 }
             }
@@ -296,11 +320,11 @@ private fun TableView(
                     row.forEachIndexed { colIndex, cell ->
                         Text(
                             text = cell,
-                            style = MaterialTheme.typography.bodyMedium,
+                            style = bodyStyle,
                             textAlign = tableTextAlign(alignments.getOrElse(colIndex) { TableAlignment.LEFT }),
                             modifier = Modifier
-                                .defaultMinSize(minWidth = 80.dp)
-                                .padding(horizontal = 12.dp, vertical = 8.dp)
+                                .width(columnWidths.getOrElse(colIndex) { 80.dp })
+                                .padding(horizontal = cellPaddingH, vertical = 8.dp)
                         )
                     }
                 }
