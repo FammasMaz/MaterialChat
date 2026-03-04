@@ -1,6 +1,7 @@
 package com.materialchat.ui.navigation
 
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -16,7 +17,6 @@ import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FloatingToolbarDefaults
-import androidx.compose.material3.FloatingToolbarScrollBehavior
 import androidx.compose.material3.HorizontalFloatingToolbar
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -34,33 +34,32 @@ import com.materialchat.ui.theme.ExpressiveMotion
  * M3 Expressive floating toolbar navigation for MaterialChat.
  *
  * Uses HorizontalFloatingToolbar with VibrantFloatingActionButton for "New Chat",
- * scroll-to-hide behavior via FloatingToolbarScrollBehavior, and spring-animated
+ * collapse-to-FAB behavior on scroll, and spring-animated
  * color transitions per M3 Expressive guidelines.
  *
  * @param currentRoute The current navigation route for highlighting the active tab
  * @param onTabSelected Callback when a tab is selected
  * @param onNewChat Callback to create a new conversation
  * @param isOpenClawConnected Whether the OpenClaw Gateway is currently connected
- * @param scrollBehavior Scroll behavior for auto-hiding on scroll
+ * @param expanded Whether the toolbar is expanded (showing icons) or collapsed (FAB only)
  * @param modifier Optional modifier
  */
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalSharedTransitionApi::class)
 @Composable
 fun MaterialChatNavBar(
     currentRoute: String?,
     onTabSelected: (TopLevelTab) -> Unit,
     onNewChat: () -> Unit,
     isOpenClawConnected: Boolean,
-    scrollBehavior: FloatingToolbarScrollBehavior? = null,
+    expanded: Boolean = true,
     modifier: Modifier = Modifier
 ) {
     val tabs = TopLevelTab.entries
 
     HorizontalFloatingToolbar(
-        expanded = true,
+        expanded = expanded,
         modifier = modifier,
         colors = FloatingToolbarDefaults.vibrantFloatingToolbarColors(),
-        scrollBehavior = scrollBehavior,
         floatingActionButton = {
             val fabInteractionSource = remember { MutableInteractionSource() }
             val isFabPressed by fabInteractionSource.collectIsPressedAsState()
@@ -69,13 +68,36 @@ fun MaterialChatNavBar(
                 animationSpec = ExpressiveMotion.Spatial.playful(),
                 label = "fabScale"
             )
-            FloatingToolbarDefaults.VibrantFloatingActionButton(
-                onClick = onNewChat,
-                interactionSource = fabInteractionSource,
-                modifier = Modifier.graphicsLayer {
+
+            // Shared element transition: FAB morphs into MessageInput text field
+            val sharedTransitionScope = LocalSharedTransitionScope.current
+            val animatedVisibilityScope = LocalAnimatedVisibilityScope.current
+            val fabModifier = if (sharedTransitionScope != null && animatedVisibilityScope != null) {
+                with(sharedTransitionScope) {
+                    Modifier
+                        .sharedElement(
+                            sharedContentState = rememberSharedContentState(key = SHARED_ELEMENT_FAB_TO_INPUT),
+                            animatedVisibilityScope = animatedVisibilityScope,
+                            boundsTransform = { _, _ ->
+                                spring(dampingRatio = 0.7f, stiffness = 500f)
+                            }
+                        )
+                        .graphicsLayer {
+                            scaleX = fabScale
+                            scaleY = fabScale
+                        }
+                }
+            } else {
+                Modifier.graphicsLayer {
                     scaleX = fabScale
                     scaleY = fabScale
                 }
+            }
+
+            FloatingToolbarDefaults.VibrantFloatingActionButton(
+                onClick = onNewChat,
+                interactionSource = fabInteractionSource,
+                modifier = fabModifier
             ) {
                 Icon(
                     imageVector = Icons.Filled.Add,

@@ -3,7 +3,6 @@ package com.materialchat.ui.navigation
 import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.animation.ExperimentalSharedTransitionApi
-import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
@@ -70,12 +69,7 @@ fun MaterialChatNavHost(
     navController: NavHostController = rememberNavController(),
     startDestination: String = Screen.startDestination
 ) {
-    // SharedTransitionLayout enables container transform animations (FAB-to-Input morph)
-    SharedTransitionLayout {
-        // Provide SharedTransitionScope to child composables
-        CompositionLocalProvider(
-            LocalSharedTransitionScope provides this@SharedTransitionLayout
-        ) {
+    // SharedTransitionScope provided by parent (MaterialChatApp) for FAB-to-Input morph
             NavHost(
             navController = navController,
             startDestination = startDestination,
@@ -373,6 +367,4 @@ fun MaterialChatNavHost(
                 )
             }
         }
-        } // Close CompositionLocalProvider
-    }
 }

@@ -6,17 +6,20 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.animation.core.spring
-import androidx.compose.animation.expandHorizontally
+import androidx.compose.animation.scaleIn
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkHorizontally
+import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
@@ -24,10 +27,9 @@ import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.FloatingToolbarDefaults
-import androidx.compose.material3.FloatingToolbarExitDirection
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
@@ -38,6 +40,9 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -52,6 +57,8 @@ import com.materialchat.di.AppInitializer
 import com.materialchat.domain.model.UpdateState
 import com.materialchat.ui.MainViewModel
 import com.materialchat.ui.components.UpdateBanner
+import com.materialchat.ui.navigation.LocalAnimatedVisibilityScope
+import com.materialchat.ui.navigation.LocalSharedTransitionScope
 import com.materialchat.ui.navigation.MaterialChatNavBar
 import com.materialchat.ui.navigation.MaterialChatNavHost
 import com.materialchat.ui.navigation.Screen
@@ -174,7 +181,7 @@ private val topLevelRoutes = setOf(
  * @param updateManager Manager for app updates
  * @param initialConversationId Optional conversation ID to navigate to on launch (from assistant)
  */
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalSharedTransitionApi::class)
 @Composable
 fun MaterialChatApp(
     updateManager: UpdateManager? = null,
@@ -184,10 +191,17 @@ fun MaterialChatApp(
     val scope = rememberCoroutineScope()
     val mainViewModel: MainViewModel = hiltViewModel()
 
-    // M3 Expressive: Floating toolbar scroll behavior - hides on scroll down, shows on scroll up
-    val toolbarScrollBehavior = FloatingToolbarDefaults.exitAlwaysScrollBehavior(
-        exitDirection = FloatingToolbarExitDirection.Bottom
-    )
+    // M3 Expressive: Collapse toolbar to FAB-only on scroll down, expand on scroll up
+    var isToolbarExpanded by remember { mutableStateOf(true) }
+    val toolbarNestedScrollConnection = remember {
+        object : NestedScrollConnection {
+            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                if (available.y < -10f) isToolbarExpanded = false  // Scrolling down → collapse
+                else if (available.y > 10f) isToolbarExpanded = true  // Scrolling up → expand
+                return Offset.Zero  // Don't consume scroll
+            }
+        }
+    }
 
     // Navigate to chat if launched from assistant with a conversation ID
     LaunchedEffect(initialConversationId) {
@@ -230,13 +244,15 @@ fun MaterialChatApp(
     val updateState by updateManager?.updateState?.collectAsStateWithLifecycle()
         ?: remember { mutableStateOf(UpdateState.Idle) }
 
+    SharedTransitionLayout {
+    CompositionLocalProvider(LocalSharedTransitionScope provides this@SharedTransitionLayout) {
     Box(modifier = Modifier.fillMaxSize()) {
         // Main content - each screen handles its own Scaffold and insets
         MaterialChatNavHost(
             navController = navController,
             modifier = Modifier
                 .fillMaxSize()
-                .nestedScroll(toolbarScrollBehavior)
+                .nestedScroll(toolbarNestedScrollConnection)
         )
 
         // M3 Expressive: Floating toolbar navigation overlay
@@ -258,11 +274,13 @@ fun MaterialChatApp(
                 targetOffsetY = { it }  // Slide down off screen
             )
         ) {
+            CompositionLocalProvider(LocalAnimatedVisibilityScope provides this) {
             Row(
                 modifier = Modifier
+                    .fillMaxWidth()
                     .navigationBarsPadding()
                     .padding(bottom = 16.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 MaterialChatNavBar(
@@ -285,29 +303,31 @@ fun MaterialChatApp(
                     },
                     onNewChat = { mainViewModel.createNewConversation() },
                     isOpenClawConnected = isOpenClawConnected,
-                    scrollBehavior = toolbarScrollBehavior
+                    expanded = isToolbarExpanded
                 )
 
-                // "Chat with Agent" button — slides in alongside toolbar on OpenClaw dashboard
+                // "Chat with Agent" button — scales in alongside toolbar on OpenClaw dashboard
                 AnimatedVisibility(
                     visible = currentRoute == "openclaw" && isOpenClawConnected,
                     enter = fadeIn(
-                        animationSpec = spring(dampingRatio = 1.0f, stiffness = 400f)
-                    ) + expandHorizontally(
-                        animationSpec = spring(dampingRatio = 0.7f, stiffness = 400f)
+                        animationSpec = spring(dampingRatio = 1.0f, stiffness = 500f)
+                    ) + scaleIn(
+                        initialScale = 0.8f,
+                        animationSpec = spring(dampingRatio = 0.7f, stiffness = 500f)
                     ),
                     exit = fadeOut(
-                        animationSpec = spring(dampingRatio = 1.0f, stiffness = 400f)
-                    ) + shrinkHorizontally(
-                        animationSpec = spring(dampingRatio = 1.0f, stiffness = 400f)
+                        animationSpec = spring(dampingRatio = 1.0f, stiffness = 500f)
+                    ) + scaleOut(
+                        targetScale = 0.8f,
+                        animationSpec = spring(dampingRatio = 1.0f, stiffness = 500f)
                     )
                 ) {
                     FloatingActionButton(
                         onClick = {
                             navController.navigate(Screen.OpenClawChat.createRoute(null))
                         },
-                        containerColor = MaterialTheme.colorScheme.tertiaryContainer,
-                        contentColor = MaterialTheme.colorScheme.onTertiaryContainer
+                        containerColor = MaterialTheme.colorScheme.tertiary,
+                        contentColor = MaterialTheme.colorScheme.onTertiary
                     ) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.Chat,
@@ -315,6 +335,7 @@ fun MaterialChatApp(
                         )
                     }
                 }
+            }
             }
         }
 
@@ -346,6 +367,8 @@ fun MaterialChatApp(
                 modifier = Modifier.align(Alignment.TopCenter)
             )
         }
+    }
+    }
     }
 }
 
