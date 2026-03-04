@@ -304,9 +304,25 @@ class UpdateManager @Inject constructor(
 
     /**
      * Checks if the provided update is newer than the current version.
+     * Compares semantic version codes to match the format used by GitHubReleaseApiClient.
      */
     private fun isNewerVersion(update: AppUpdate): Boolean {
-        return update.versionCode > currentVersionCode
+        val currentParsed = parseSemanticVersionCode(currentVersionName)
+        return update.versionCode > currentParsed
+    }
+
+    /**
+     * Parses a semantic version string (e.g. "2.6.1") into a comparable integer.
+     * Mirrors the format used by [GitHubReleaseApiClient.parseVersionCode].
+     */
+    private fun parseSemanticVersionCode(version: String): Int {
+        val parts = version.split(".").mapNotNull { it.toIntOrNull() }
+        return when (parts.size) {
+            3 -> parts[0] * 1_000_000 + parts[1] * 1_000 + parts[2]
+            2 -> parts[0] * 1_000_000 + parts[1] * 1_000
+            1 -> parts[0] * 1_000_000
+            else -> 0
+        }
     }
 
     /**
