@@ -258,7 +258,9 @@ fun MaterialChatApp(
         // M3 Expressive: Floating toolbar navigation overlay
         AnimatedVisibility(
             visible = showBottomBar,
-            modifier = Modifier.align(Alignment.BottomCenter),
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth(),
             enter = slideInVertically(
                 animationSpec = spring(
                     stiffness = 500f,
