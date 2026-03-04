@@ -64,6 +64,7 @@ class OpenClawChatViewModel @Inject constructor(
 
     /**
      * Initializes the chat by loading history or resuming the most recent session.
+     * Includes defensive checks for gateway connectivity.
      */
     private fun initializeChat() {
         viewModelScope.launch {
@@ -80,19 +81,23 @@ class OpenClawChatViewModel @Inject constructor(
                     }
                 } else {
                     // No session key — try to resume the most recent session
-                    try {
-                        val sessions = manageOpenClawSessionsUseCase.listSessions()
-                        val latestSession = sessions.firstOrNull()
-                        if (latestSession != null) {
-                            sessionKey = latestSession.key
-                            messages = try {
-                                manageOpenClawSessionsUseCase.getChatHistory(latestSession.key)
-                            } catch (e: Exception) {
-                                emptyList()
+                    // Only attempt if the gateway is connected
+                    val connectionState = connectGatewayUseCase.connectionState.value
+                    if (connectionState is GatewayConnectionState.Connected) {
+                        try {
+                            val sessions = manageOpenClawSessionsUseCase.listSessions()
+                            val latestSession = sessions.firstOrNull()
+                            if (latestSession != null) {
+                                sessionKey = latestSession.key
+                                messages = try {
+                                    manageOpenClawSessionsUseCase.getChatHistory(latestSession.key)
+                                } catch (e: Exception) {
+                                    emptyList()
+                                }
                             }
+                        } catch (_: Exception) {
+                            // Can't list sessions — start fresh
                         }
-                    } catch (_: Exception) {
-                        // Can't list sessions (not connected, etc.) — start fresh
                     }
                 }
 

@@ -310,7 +310,7 @@ fun MaterialChatApp(
 
                 // "Chat with Agent" button — scales in alongside toolbar on OpenClaw dashboard
                 AnimatedVisibility(
-                    visible = currentRoute == "openclaw" && isOpenClawConnected,
+                    visible = currentRoute == "openclaw" && isOpenClawConnected && isToolbarExpanded,
                     enter = fadeIn(
                         animationSpec = spring(dampingRatio = 1.0f, stiffness = 500f)
                     ) + scaleIn(
@@ -326,7 +326,15 @@ fun MaterialChatApp(
                 ) {
                     FloatingActionButton(
                         onClick = {
-                            navController.navigate(Screen.OpenClawChat.createRoute(null))
+                            try {
+                                if (currentRoute != Screen.OpenClawChat.route) {
+                                    navController.navigate(Screen.OpenClawChat.createRoute(null)) {
+                                        launchSingleTop = true
+                                    }
+                                }
+                            } catch (_: Exception) {
+                                // Guard against navigation race conditions
+                            }
                         },
                         containerColor = MaterialTheme.colorScheme.tertiary,
                         contentColor = MaterialTheme.colorScheme.onTertiary
