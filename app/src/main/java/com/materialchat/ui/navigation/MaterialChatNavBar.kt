@@ -27,6 +27,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import com.materialchat.ui.theme.ExpressiveMotion
 import com.materialchat.ui.components.HapticPattern
@@ -59,9 +61,29 @@ fun MaterialChatNavBar(
     val haptics = rememberHapticFeedback()
     val tabs = TopLevelTab.entries
 
+    // M3 Expressive: Slide FAB toward end position (thumb zone) on toolbar collapse
+    val density = LocalDensity.current
+    val configuration = LocalConfiguration.current
+    val screenWidthPx = with(density) { configuration.screenWidthDp.dp.toPx() }
+    val endMarginPx = with(density) { 32.dp.toPx() } // Slightly inset from M3 ScreenOffset
+
+    // Spatial spring for smooth FAB repositioning on collapse
+    val collapseProgress by animateFloatAsState(
+        targetValue = if (expanded) 0f else 1f,
+        animationSpec = ExpressiveMotion.Spatial.fabExpand(),
+        label = "fabCollapseProgress"
+    )
+
     HorizontalFloatingToolbar(
         expanded = expanded,
-        modifier = modifier,
+        modifier = modifier
+            .graphicsLayer {
+                // M3 Expressive: Slide FAB toward bottom-end position on collapse
+                // Aligns with M3 standard FAB placement (ScreenOffset from end edge)
+                val endAlignShift = (screenWidthPx / 2f - endMarginPx - size.width / 2f)
+                    .coerceAtLeast(0f)
+                translationX = endAlignShift * collapseProgress
+            },
         colors = FloatingToolbarDefaults.vibrantFloatingToolbarColors(),
         floatingActionButton = {
             val fabInteractionSource = remember { MutableInteractionSource() }
