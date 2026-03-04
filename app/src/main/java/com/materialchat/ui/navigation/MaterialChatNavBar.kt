@@ -6,15 +6,12 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
-import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Explore
 import androidx.compose.material.icons.filled.Hub
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.Badge
-import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FloatingToolbarDefaults
 import androidx.compose.material3.HorizontalFloatingToolbar
@@ -168,41 +165,11 @@ fun MaterialChatNavBar(
                     },
                     interactionSource = interactionSource
                 ) {
-                    // OpenClaw tab gets a connection status badge
-                    if (tab == TopLevelTab.OPENCLAW) {
-                        BadgedBox(
-                            badge = {
-                                val badgeColor by animateColorAsState(
-                                    targetValue = if (isOpenClawConnected) {
-                                        MaterialTheme.colorScheme.tertiary
-                                    } else {
-                                        MaterialTheme.colorScheme.error
-                                    },
-                                    animationSpec = spring(
-                                        stiffness = 500f,
-                                        dampingRatio = 1.0f
-                                    ),
-                                    label = "badgeColor"
-                                )
-                                Badge(
-                                    modifier = Modifier.size(8.dp),
-                                    containerColor = badgeColor
-                                )
-                            }
-                        ) {
-                            Icon(
-                                imageVector = icon,
-                                contentDescription = tab.label,
-                                tint = tint
-                            )
-                        }
-                    } else {
-                        Icon(
-                            imageVector = icon,
-                            contentDescription = tab.label,
-                            tint = tint
-                        )
-                    }
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = tab.label,
+                        tint = tint
+                    )
                 }
             }
         }
