@@ -22,7 +22,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.outlined.Hub
@@ -56,7 +55,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.materialchat.domain.model.openclaw.GatewayConnectionState
 import com.materialchat.ui.screens.openclaw.components.ChannelStatusList
 import com.materialchat.ui.screens.openclaw.components.GatewayStatusCard
-import com.materialchat.ui.components.ExpressiveFab
 import com.materialchat.ui.screens.openclaw.components.OpenClawSetupSheet
 import com.materialchat.ui.theme.CustomShapes
 
@@ -140,19 +138,7 @@ fun OpenClawDashboardScreen(
                 )
             )
         },
-        floatingActionButton = {
-            val currentState = uiState
-            if (currentState is OpenClawDashboardUiState.Success && currentState.isConnected) {
-                ExpressiveFab(
-                    onClick = viewModel::navigateToChat,
-                    icon = Icons.AutoMirrored.Filled.Chat,
-                    contentDescription = "Chat with Agent",
-                    expanded = true,
-                    text = "Chat with Agent",
-                    modifier = Modifier.padding(bottom = 80.dp)
-                )
-            }
-        },
+        // FAB removed — "Chat with Agent" button is alongside the floating toolbar
         snackbarHost = {
             SnackbarHost(hostState = snackbarHostState) { snackbarData ->
                 Snackbar(
@@ -339,7 +325,7 @@ private fun DashboardContent(
             }
         }
 
-        Spacer(modifier = Modifier.height(80.dp))
+        Spacer(modifier = Modifier.height(72.dp))
     }
 }
 

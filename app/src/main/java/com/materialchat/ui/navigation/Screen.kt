@@ -112,7 +112,8 @@ sealed class Screen(val route: String) {
      */
     data object OpenClawChat : Screen("openclaw/chat/{sessionKey}") {
         fun createRoute(sessionKey: String? = null): String {
-            return "openclaw/chat/${sessionKey ?: "new"}"
+            val key = sessionKey ?: "new"
+            return "openclaw/chat/${java.net.URLEncoder.encode(key, "UTF-8")}"
         }
         const val ARG_SESSION_KEY = "sessionKey"
     }

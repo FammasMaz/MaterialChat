@@ -334,8 +334,6 @@ fun MaterialChatNavHost(
                 arguments = listOf(
                     navArgument(Screen.OpenClawChat.ARG_SESSION_KEY) {
                         type = NavType.StringType
-                        nullable = true
-                        defaultValue = null
                     }
                 )
             ) {

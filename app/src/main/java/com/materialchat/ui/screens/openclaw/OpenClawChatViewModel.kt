@@ -63,25 +63,42 @@ class OpenClawChatViewModel @Inject constructor(
     }
 
     /**
-     * Initializes the chat by loading history or starting a new session.
+     * Initializes the chat by loading history or resuming the most recent session.
      */
     private fun initializeChat() {
         viewModelScope.launch {
             try {
-                val messages = if (initialSessionKey != null) {
-                    try {
-                        manageOpenClawSessionsUseCase.getChatHistory(initialSessionKey)
+                var sessionKey = initialSessionKey
+                var messages: List<OpenClawChatMessage> = emptyList()
+
+                if (sessionKey != null) {
+                    // Explicit session key — load its history
+                    messages = try {
+                        manageOpenClawSessionsUseCase.getChatHistory(sessionKey)
                     } catch (e: Exception) {
-                        // History load failed — start fresh with this session key
                         emptyList()
                     }
                 } else {
-                    emptyList()
+                    // No session key — try to resume the most recent session
+                    try {
+                        val sessions = manageOpenClawSessionsUseCase.listSessions()
+                        val latestSession = sessions.firstOrNull()
+                        if (latestSession != null) {
+                            sessionKey = latestSession.key
+                            messages = try {
+                                manageOpenClawSessionsUseCase.getChatHistory(latestSession.key)
+                            } catch (e: Exception) {
+                                emptyList()
+                            }
+                        }
+                    } catch (_: Exception) {
+                        // Can't list sessions (not connected, etc.) — start fresh
+                    }
                 }
 
                 _uiState.value = OpenClawChatUiState.Active(
                     messages = messages,
-                    sessionKey = initialSessionKey,
+                    sessionKey = sessionKey,
                     connectionState = connectGatewayUseCase.connectionState.value
                 )
             } catch (e: Exception) {

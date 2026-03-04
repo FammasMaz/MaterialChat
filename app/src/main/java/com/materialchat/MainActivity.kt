@@ -7,12 +7,22 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.expandHorizontally
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Chat
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.Icon
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FloatingToolbarDefaults
 import androidx.compose.material3.FloatingToolbarExitDirection
@@ -213,9 +223,8 @@ fun MaterialChatApp(
         derivedStateOf { currentRoute in topLevelRoutes }
     }
 
-    // OpenClaw connection status - simple state for now
-    // In production this would be observed from a ViewModel or repository
-    var isOpenClawConnected by remember { mutableStateOf(false) }
+    // OpenClaw connection status from gateway
+    val isOpenClawConnected by mainViewModel.isOpenClawConnected.collectAsStateWithLifecycle()
 
     // Collect update state if updateManager is provided
     val updateState by updateManager?.updateState?.collectAsStateWithLifecycle()
@@ -249,31 +258,64 @@ fun MaterialChatApp(
                 targetOffsetY = { it }  // Slide down off screen
             )
         ) {
-            MaterialChatNavBar(
-                currentRoute = currentRoute,
-                onTabSelected = { tab ->
-                    // Avoid re-navigating to the current tab
-                    if (currentRoute != tab.route) {
-                        navController.navigate(tab.route) {
-                            // Pop up to the start destination to avoid building
-                            // up a large back stack of top-level destinations
-                            popUpTo(Screen.startDestination) {
-                                saveState = true
-                            }
-                            // Avoid multiple copies of the same destination
-                            launchSingleTop = true
-                            // Restore state when re-selecting a previously selected tab
-                            restoreState = true
-                        }
-                    }
-                },
-                onNewChat = { mainViewModel.createNewConversation() },
-                isOpenClawConnected = isOpenClawConnected,
-                scrollBehavior = toolbarScrollBehavior,
+            Row(
                 modifier = Modifier
                     .navigationBarsPadding()
-                    .padding(bottom = 16.dp)
-            )
+                    .padding(bottom = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                MaterialChatNavBar(
+                    currentRoute = currentRoute,
+                    onTabSelected = { tab ->
+                        // Avoid re-navigating to the current tab
+                        if (currentRoute != tab.route) {
+                            navController.navigate(tab.route) {
+                                // Pop up to the start destination to avoid building
+                                // up a large back stack of top-level destinations
+                                popUpTo(Screen.startDestination) {
+                                    saveState = true
+                                }
+                                // Avoid multiple copies of the same destination
+                                launchSingleTop = true
+                                // Restore state when re-selecting a previously selected tab
+                                restoreState = true
+                            }
+                        }
+                    },
+                    onNewChat = { mainViewModel.createNewConversation() },
+                    isOpenClawConnected = isOpenClawConnected,
+                    scrollBehavior = toolbarScrollBehavior
+                )
+
+                // "Chat with Agent" button — slides in alongside toolbar on OpenClaw dashboard
+                AnimatedVisibility(
+                    visible = currentRoute == "openclaw" && isOpenClawConnected,
+                    enter = fadeIn(
+                        animationSpec = spring(dampingRatio = 1.0f, stiffness = 400f)
+                    ) + expandHorizontally(
+                        animationSpec = spring(dampingRatio = 0.7f, stiffness = 400f)
+                    ),
+                    exit = fadeOut(
+                        animationSpec = spring(dampingRatio = 1.0f, stiffness = 400f)
+                    ) + shrinkHorizontally(
+                        animationSpec = spring(dampingRatio = 1.0f, stiffness = 400f)
+                    )
+                ) {
+                    FloatingActionButton(
+                        onClick = {
+                            navController.navigate(Screen.OpenClawChat.createRoute(null))
+                        },
+                        containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onTertiaryContainer
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.Chat,
+                            contentDescription = "Chat with Agent"
+                        )
+                    }
+                }
+            }
         }
 
         // Update banner overlay (top)
