@@ -328,7 +328,7 @@ private fun DashboardContent(
             }
         }
 
-        Spacer(modifier = Modifier.height(72.dp))
+        Spacer(modifier = Modifier.height(88.dp))
     }
 }
 

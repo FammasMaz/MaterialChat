@@ -591,9 +591,9 @@ private fun SuccessContent(
             )
         }
 
-        // Bottom padding for navigation bar
+        // Bottom padding for floating toolbar clearance
         item {
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(88.dp))
         }
     }
 }
@@ -1344,13 +1344,12 @@ private fun AboutSection(
                             )
                         }
                         else -> {
-                            OutlinedButton(
+                            com.materialchat.ui.components.ExpressiveButton(
                                 onClick = onCheckForUpdates,
-                                shape = RoundedCornerShape(20.dp),
+                                text = "Check",
+                                style = com.materialchat.ui.components.ExpressiveButtonStyle.Outlined,
                                 enabled = updateState !is UpdateState.Installing
-                            ) {
-                                Text("Check")
-                            }
+                            )
                         }
                     }
                 }
@@ -1368,12 +1367,11 @@ private fun AboutSection(
                                 Text("Skip")
                             }
                             Spacer(modifier = Modifier.width(8.dp))
-                            OutlinedButton(
+                            com.materialchat.ui.components.ExpressiveButton(
                                 onClick = { onDownloadUpdate(updateState.update) },
-                                shape = RoundedCornerShape(12.dp)
-                            ) {
-                                Text("Download v${updateState.update.versionName}")
-                            }
+                                text = "Download v${updateState.update.versionName}",
+                                style = com.materialchat.ui.components.ExpressiveButtonStyle.Outlined
+                            )
                         }
                     }
                     is UpdateState.Downloading -> {
@@ -1393,12 +1391,11 @@ private fun AboutSection(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.End
                         ) {
-                            OutlinedButton(
+                            com.materialchat.ui.components.ExpressiveButton(
                                 onClick = onInstallUpdate,
-                                shape = RoundedCornerShape(12.dp)
-                            ) {
-                                Text("Install Now")
-                            }
+                                text = "Install Now",
+                                style = com.materialchat.ui.components.ExpressiveButtonStyle.Outlined
+                            )
                         }
                     }
                     is UpdateState.Error -> {
