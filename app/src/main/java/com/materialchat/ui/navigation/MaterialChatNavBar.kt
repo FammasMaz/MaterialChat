@@ -59,7 +59,7 @@ fun MaterialChatNavBar(
     HorizontalFloatingToolbar(
         expanded = true,
         modifier = modifier,
-        colors = FloatingToolbarDefaults.standardFloatingToolbarColors(),
+        colors = FloatingToolbarDefaults.vibrantFloatingToolbarColors(),
         scrollBehavior = scrollBehavior,
         floatingActionButton = {
             val fabInteractionSource = remember { MutableInteractionSource() }
@@ -98,12 +98,13 @@ fun MaterialChatNavBar(
                     label = "navScale_${tab.name}"
                 )
 
-                // M3 Expressive: Effects spring for icon tint (smooth, no bounce)
+                // M3 Expressive: Effects spring for icon tint
+                // Vibrant toolbar uses primaryContainer background, so content must use onPrimaryContainer
                 val tint by animateColorAsState(
                     targetValue = if (isSelected) {
-                        MaterialTheme.colorScheme.primary
+                        MaterialTheme.colorScheme.onPrimaryContainer
                     } else {
-                        MaterialTheme.colorScheme.onSurfaceVariant
+                        MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.6f)
                     },
                     animationSpec = spring(
                         stiffness = 500f,
