@@ -82,22 +82,15 @@ fun SmoothStreamingText(
     // Track how many words we've revealed so far
     var revealedWordCount by remember { mutableIntStateOf(0) }
 
-    // Word counter for haptic batching — fire haptic every HAPTIC_WORD_INTERVAL words
-    var hapticWordAccumulator by remember { mutableIntStateOf(0) }
-
     // Drip words from the buffer at a smooth, adaptive rate.
     // When the buffer is large (provider sent a big chunk), speed up to catch up.
     // When the buffer is small (provider is slow), drip slowly for a natural feel.
     LaunchedEffect(totalWordCount) {
         while (revealedWordCount < totalWordCount) {
             revealedWordCount++
-            hapticWordAccumulator++
 
-            // Fire haptic every N words for tactile rhythm synced to visual dripping
-            if (hapticWordAccumulator >= HAPTIC_WORD_INTERVAL) {
-                hapticWordAccumulator = 0
-                haptics.perform(HapticPattern.CONTENT_TICK, hapticsEnabled)
-            }
+            // Fire haptic on every revealed word for tactile rhythm synced to visual dripping
+            haptics.perform(HapticPattern.CONTENT_TICK, hapticsEnabled)
 
             val buffered = totalWordCount - revealedWordCount
             delay(
@@ -187,18 +180,13 @@ fun SmoothStreamingThinkingText(
 
     val totalWordCount = remember(rawText) { rawText.wordCount() }
     var revealedWordCount by remember { mutableIntStateOf(0) }
-    var hapticWordAccumulator by remember { mutableIntStateOf(0) }
 
     LaunchedEffect(totalWordCount) {
         while (revealedWordCount < totalWordCount) {
             revealedWordCount++
-            hapticWordAccumulator++
 
-            // Thinking haptics at slower cadence — ultra-subtle
-            if (hapticWordAccumulator >= HAPTIC_THINKING_WORD_INTERVAL) {
-                hapticWordAccumulator = 0
-                haptics.perform(HapticPattern.THINKING_TICK, hapticsEnabled)
-            }
+            // Fire haptic on every revealed word — ultra-subtle thinking tick
+            haptics.perform(HapticPattern.THINKING_TICK, hapticsEnabled)
 
             val buffered = totalWordCount - revealedWordCount
             delay(
@@ -252,12 +240,6 @@ private const val SPRING_EFFECTS_DAMPING = 1.0f
 
 /** Slight alpha reduction while words are still buffered (subtle, no clipping) */
 private const val BUFFERING_ALPHA = 0.88f
-
-/** Fire content haptic every N revealed words (balanced cadence) */
-private const val HAPTIC_WORD_INTERVAL = 4
-
-/** Fire thinking haptic every N revealed words (slower, ultra-subtle) */
-private const val HAPTIC_THINKING_WORD_INTERVAL = 6
 
 // ---- Word Tokenization Utilities ----
 
