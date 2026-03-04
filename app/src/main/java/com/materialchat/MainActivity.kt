@@ -269,7 +269,6 @@ fun MaterialChatApp(
                 },
                 onNewChat = { mainViewModel.createNewConversation() },
                 isOpenClawConnected = isOpenClawConnected,
-                showFab = currentRoute != "conversations",
                 scrollBehavior = toolbarScrollBehavior,
                 modifier = Modifier
                     .navigationBarsPadding()
