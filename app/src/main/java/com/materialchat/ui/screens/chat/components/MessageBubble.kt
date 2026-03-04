@@ -126,6 +126,7 @@ fun MessageBubble(
     onSubmitEdit: (() -> Unit)? = null,
     onCancelEdit: (() -> Unit)? = null,
     onOpenCanvas: ((com.materialchat.domain.model.CanvasArtifact) -> Unit)? = null,
+    hapticsEnabled: Boolean = true,
     modifier: Modifier = Modifier
 ) {
     val message = messageItem.message
@@ -193,7 +194,8 @@ fun MessageBubble(
                             isStreaming = message.isStreaming,
                             hasContent = message.content.isNotEmpty(),
                             thinkingDurationMs = message.thinkingDurationMs,
-                            alwaysShowThinking = alwaysShowThinking
+                            alwaysShowThinking = alwaysShowThinking,
+                            hapticsEnabled = hapticsEnabled
                         )
                         if (message.content.isNotEmpty() || message.hasAttachments) {
                             Spacer(modifier = Modifier.height(8.dp))
@@ -226,7 +228,8 @@ fun MessageBubble(
                             isStreaming = message.isStreaming,
                             textColor = bubbleStyle.textColor,
                             isAssistant = isAssistant,
-                            onOpenCanvas = onOpenCanvas
+                            onOpenCanvas = onOpenCanvas,
+                            hapticsEnabled = hapticsEnabled
                         )
                     }
 
@@ -386,7 +389,7 @@ fun MessageBubble(
 /**
  * Message content text component.
  * Uses SmoothStreamingText for streaming assistant messages to normalize
- * patchy token delivery into fluid word-by-word reveal with trailing fade.
+ * patchy token delivery into fluid word-by-word reveal with per-word haptics.
  * Uses MarkdownText for completed assistant messages with full formatting.
  * Uses plain Text for user messages.
  */
@@ -396,23 +399,21 @@ private fun MessageContent(
     isStreaming: Boolean,
     textColor: Color,
     isAssistant: Boolean,
-    onOpenCanvas: ((com.materialchat.domain.model.CanvasArtifact) -> Unit)? = null
+    onOpenCanvas: ((com.materialchat.domain.model.CanvasArtifact) -> Unit)? = null,
+    hapticsEnabled: Boolean = true
 ) {
     val displayContent = content.ifEmpty { "" }
 
     if (isAssistant && displayContent.isNotEmpty()) {
-        // Smooth streaming text handles both streaming and completed states:
-        // - Streaming: word-by-word dripping with trailing fade
-        // - Completed: direct MarkdownText rendering
         SmoothStreamingText(
             rawText = displayContent,
             isStreaming = isStreaming,
             textColor = textColor,
             style = MaterialTheme.typography.bodyLarge,
+            hapticsEnabled = hapticsEnabled,
             onOpenCanvas = onOpenCanvas
         )
     } else {
-        // Render user messages as plain text
         Text(
             text = displayContent,
             style = MaterialTheme.typography.bodyLarge,
@@ -525,7 +526,8 @@ private fun ThinkingSection(
     isStreaming: Boolean,
     hasContent: Boolean = false,
     thinkingDurationMs: Long? = null,
-    alwaysShowThinking: Boolean = false
+    alwaysShowThinking: Boolean = false,
+    hapticsEnabled: Boolean = true
 ) {
     // Determine the current phase to drive auto-collapse
     // Phase key: true = thinking-only (expanded), false = content arrived or done
@@ -597,11 +599,12 @@ private fun ThinkingSection(
                 )
             )
         ) {
-            Text(
-                text = thinkingContent,
+            SmoothStreamingThinkingText(
+                rawText = thinkingContent,
+                isStreaming = isStreaming,
+                textColor = textColor.copy(alpha = 0.7f),
                 style = MaterialTheme.typography.bodyMedium,
-                color = textColor.copy(alpha = 0.7f),
-                fontStyle = FontStyle.Italic,
+                hapticsEnabled = hapticsEnabled,
                 modifier = Modifier.padding(start = 20.dp, top = 4.dp)
             )
         }

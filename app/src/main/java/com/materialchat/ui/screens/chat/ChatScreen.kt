@@ -75,7 +75,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.materialchat.domain.model.Attachment
 import com.materialchat.domain.model.MessageRole
 import com.materialchat.domain.model.ReasoningEffort
-import com.materialchat.domain.model.StreamingState
 import com.materialchat.ui.components.HapticPattern
 import com.materialchat.ui.components.rememberHapticFeedback
 import com.materialchat.ui.screens.bookmarks.components.AddBookmarkSheet
@@ -605,34 +604,9 @@ private fun ChatContent(
             }
     }
 
-    // Track content lengths for haptic feedback during streaming
-    var lastContentLength by remember { mutableIntStateOf(0) }
-    var lastThinkingLength by remember { mutableIntStateOf(0) }
-
-    // Trigger haptic feedback when streaming content changes
-    LaunchedEffect(state.streamingState) {
-        val streamingState = state.streamingState
-        if (streamingState is StreamingState.Streaming) {
-            val currentContentLength = streamingState.content.length
-            val currentThinkingLength = streamingState.thinkingContent?.length ?: 0
-
-            // Check if thinking content grew (lighter tap)
-            if (currentThinkingLength > lastThinkingLength && lastThinkingLength > 0) {
-                haptics.perform(HapticPattern.THINKING_TICK, state.hapticsEnabled)
-            }
-            // Check if regular content grew (slightly louder tap)
-            else if (currentContentLength > lastContentLength && lastContentLength > 0) {
-                haptics.perform(HapticPattern.CONTENT_TICK, state.hapticsEnabled)
-            }
-
-            lastContentLength = currentContentLength
-            lastThinkingLength = currentThinkingLength
-        } else if (streamingState is StreamingState.Idle || streamingState is StreamingState.Starting) {
-            // Reset tracking when not streaming
-            lastContentLength = 0
-            lastThinkingLength = 0
-        }
-    }
+    // Streaming haptics are now handled by SmoothStreamingText (per-word dripping)
+    // rather than here (per-provider-chunk). This gives consistent tactile rhythm
+    // regardless of provider chunk granularity.
 
     val lastMessage = state.messages.lastOrNull()?.message
     val lastContentHash = lastMessage?.content?.hashCode() ?: 0
@@ -711,6 +685,7 @@ private fun ChatContent(
                 onSubmitEdit = onSubmitEdit,
                 onCancelEdit = onCancelEdit,
                 onOpenCanvas = onOpenCanvas,
+                hapticsEnabled = state.hapticsEnabled,
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxWidth()
@@ -784,6 +759,7 @@ private fun MessageList(
     onSubmitEdit: () -> Unit = {},
     onCancelEdit: () -> Unit = {},
     onOpenCanvas: (com.materialchat.domain.model.CanvasArtifact) -> Unit = {},
+    hapticsEnabled: Boolean = true,
     modifier: Modifier = Modifier
 ) {
     LazyColumn(
@@ -860,6 +836,7 @@ private fun MessageList(
                 onSubmitEdit = onSubmitEdit,
                 onCancelEdit = onCancelEdit,
                 onOpenCanvas = onOpenCanvas,
+                hapticsEnabled = hapticsEnabled,
                 modifier = Modifier
                     .animateItem(
                         fadeInSpec = spring(

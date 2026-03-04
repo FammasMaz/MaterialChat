@@ -4,6 +4,7 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.layout.Box
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -11,36 +12,38 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.drawWithContent
-import androidx.compose.ui.graphics.BlendMode
-import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.CompositingStrategy
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.unit.dp
+import androidx.compose.ui.text.font.FontStyle
 import com.materialchat.domain.model.CanvasArtifact
+import com.materialchat.ui.components.HapticPattern
 import com.materialchat.ui.components.MarkdownText
+import com.materialchat.ui.components.rememberHapticFeedback
 import kotlinx.coroutines.delay
 
 /**
  * Smooth streaming text composable that normalizes patchy token delivery
- * into a consistent, fluid word-by-word reveal.
+ * into a consistent, fluid word-by-word reveal with per-word haptic feedback.
  *
  * Different AI providers deliver streaming tokens at varying granularities:
  * some send word-by-word, others send whole paragraphs. This composable
  * buffers incoming text and drips it out at a smooth, consistent rate
- * with a trailing fade effect for a polished "materializing" feel.
+ * so the experience feels uniform regardless of provider behavior.
+ *
+ * Haptic feedback fires every [HAPTIC_WORD_INTERVAL] revealed words,
+ * synced to the visual dripping rather than raw provider chunks, giving
+ * a consistent tactile rhythm that matches what the user sees.
  *
  * Motion follows M3 Expressive guidelines:
- * - Content size changes: spring.default.spatial (stiffness=500, damping=0.7)
- * - Trailing fade: spring.fast.effects (stiffness=1400, damping=1.0)
- * - Respects reduced motion preferences
+ * - Spring physics for all opacity transitions (no easing/duration)
+ * - spring.fast.effects (stiffness=1400, damping=1.0) for trailing opacity
  *
  * @param rawText The full accumulated text from the streaming provider
  * @param isStreaming Whether the provider is actively streaming
  * @param textColor The text color for rendering
  * @param style The text style for rendering
+ * @param hapticsEnabled Whether haptic feedback is enabled (user preference)
  * @param onOpenCanvas Callback for opening canvas artifacts
  * @param modifier Modifier for the container
  */
@@ -50,6 +53,7 @@ fun SmoothStreamingText(
     isStreaming: Boolean,
     textColor: Color,
     style: TextStyle = MaterialTheme.typography.bodyLarge,
+    hapticsEnabled: Boolean = true,
     onOpenCanvas: ((CanvasArtifact) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
@@ -70,11 +74,16 @@ fun SmoothStreamingText(
 
     // ---- Smooth streaming mode ----
 
+    val haptics = rememberHapticFeedback()
+
     // Count "word tokens" in the raw text (whitespace-delimited)
     val totalWordCount = remember(rawText) { rawText.wordCount() }
 
     // Track how many words we've revealed so far
     var revealedWordCount by remember { mutableIntStateOf(0) }
+
+    // Word counter for haptic batching — fire haptic every HAPTIC_WORD_INTERVAL words
+    var hapticWordAccumulator by remember { mutableIntStateOf(0) }
 
     // Drip words from the buffer at a smooth, adaptive rate.
     // When the buffer is large (provider sent a big chunk), speed up to catch up.
@@ -82,14 +91,22 @@ fun SmoothStreamingText(
     LaunchedEffect(totalWordCount) {
         while (revealedWordCount < totalWordCount) {
             revealedWordCount++
+            hapticWordAccumulator++
+
+            // Fire haptic every N words for tactile rhythm synced to visual dripping
+            if (hapticWordAccumulator >= HAPTIC_WORD_INTERVAL) {
+                hapticWordAccumulator = 0
+                haptics.perform(HapticPattern.CONTENT_TICK, hapticsEnabled)
+            }
+
             val buffered = totalWordCount - revealedWordCount
             delay(
                 when {
                     buffered > 50 -> 5L    // Very far behind — rapid catch-up
                     buffered > 30 -> 10L   // Far behind
                     buffered > 15 -> 18L   // Behind
-                    buffered > 8 -> 28L    // Slightly behind
-                    buffered > 3 -> 38L    // Normal streaming pace
+                    buffered > 8  -> 28L   // Slightly behind
+                    buffered > 3  -> 38L   // Normal streaming pace
                     else -> 48L            // Provider is slow, drip gently
                 }
             )
@@ -101,16 +118,15 @@ fun SmoothStreamingText(
         rawText.takeWords(revealedWordCount)
     }
 
-    // Trailing fade gradient: the last ~12dp of content fades from
-    // fully visible to transparent, creating a "words materializing" effect.
-    // Uses alpha compositing so it works regardless of background color.
+    // Subtle trailing opacity: when words are buffered, the content renders at
+    // slightly reduced opacity to create a gentle "materializing" feel.
+    // This does NOT clip or mask content — just a slight alpha reduction.
     val isBuffering = revealedWordCount < totalWordCount
-    val fadeAlpha = remember { Animatable(0f) }
+    val trailingAlpha = remember { Animatable(1f) }
 
-    // Animate the trailing fade in/out using M3 spring.fast.effects
     LaunchedEffect(isBuffering) {
-        fadeAlpha.animateTo(
-            targetValue = if (isBuffering) 1f else 0f,
+        trailingAlpha.animateTo(
+            targetValue = if (isBuffering) BUFFERING_ALPHA else 1f,
             animationSpec = spring(
                 stiffness = SPRING_FAST_EFFECTS_STIFFNESS,
                 dampingRatio = SPRING_EFFECTS_DAMPING
@@ -119,33 +135,7 @@ fun SmoothStreamingText(
     }
 
     if (displayedText.isNotEmpty()) {
-        Box(
-            modifier = modifier
-                .then(
-                    if (fadeAlpha.value > 0.01f) {
-                        Modifier
-                            .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
-                            .drawWithContent {
-                                drawContent()
-                                // Draw a small gradient mask at the bottom edge
-                                // This makes the newest text appear to "materialize"
-                                val fadeHeight = TRAILING_FADE_HEIGHT_DP.dp.toPx() * fadeAlpha.value
-                                if (fadeHeight > 0f) {
-                                    drawRect(
-                                        brush = Brush.verticalGradient(
-                                            colors = listOf(Color.White, Color.Transparent),
-                                            startY = size.height - fadeHeight,
-                                            endY = size.height
-                                        ),
-                                        blendMode = BlendMode.DstIn
-                                    )
-                                }
-                            }
-                    } else {
-                        Modifier
-                    }
-                )
-        ) {
+        Box(modifier = modifier.alpha(trailingAlpha.value)) {
             MarkdownText(
                 markdown = displayedText,
                 textColor = textColor,
@@ -156,22 +146,123 @@ fun SmoothStreamingText(
     }
 }
 
+/**
+ * Smooth streaming text for thinking/reasoning content.
+ *
+ * Same word-dripping behavior as [SmoothStreamingText] but renders as plain
+ * italic text instead of markdown, matching ThinkingSection's visual style.
+ * Fires ultra-subtle [HapticPattern.THINKING_TICK] at a slower cadence.
+ *
+ * @param rawText The full accumulated thinking text from the provider
+ * @param isStreaming Whether the provider is actively streaming
+ * @param textColor The text color (typically muted/alpha'd)
+ * @param style The text style
+ * @param hapticsEnabled Whether haptic feedback is enabled
+ * @param modifier Modifier for the container
+ */
+@Composable
+fun SmoothStreamingThinkingText(
+    rawText: String,
+    isStreaming: Boolean,
+    textColor: Color,
+    style: TextStyle = MaterialTheme.typography.bodyMedium,
+    hapticsEnabled: Boolean = true,
+    modifier: Modifier = Modifier
+) {
+    // When not streaming, show full text immediately
+    if (!isStreaming) {
+        Text(
+            text = rawText,
+            style = style,
+            color = textColor,
+            fontStyle = FontStyle.Italic,
+            modifier = modifier
+        )
+        return
+    }
+
+    if (rawText.isEmpty()) return
+
+    val haptics = rememberHapticFeedback()
+
+    val totalWordCount = remember(rawText) { rawText.wordCount() }
+    var revealedWordCount by remember { mutableIntStateOf(0) }
+    var hapticWordAccumulator by remember { mutableIntStateOf(0) }
+
+    LaunchedEffect(totalWordCount) {
+        while (revealedWordCount < totalWordCount) {
+            revealedWordCount++
+            hapticWordAccumulator++
+
+            // Thinking haptics at slower cadence — ultra-subtle
+            if (hapticWordAccumulator >= HAPTIC_THINKING_WORD_INTERVAL) {
+                hapticWordAccumulator = 0
+                haptics.perform(HapticPattern.THINKING_TICK, hapticsEnabled)
+            }
+
+            val buffered = totalWordCount - revealedWordCount
+            delay(
+                when {
+                    buffered > 50 -> 5L
+                    buffered > 30 -> 10L
+                    buffered > 15 -> 18L
+                    buffered > 8  -> 28L
+                    buffered > 3  -> 38L
+                    else -> 48L
+                }
+            )
+        }
+    }
+
+    val displayedText = remember(revealedWordCount, rawText) {
+        rawText.takeWords(revealedWordCount)
+    }
+
+    val isBuffering = revealedWordCount < totalWordCount
+    val trailingAlpha = remember { Animatable(1f) }
+
+    LaunchedEffect(isBuffering) {
+        trailingAlpha.animateTo(
+            targetValue = if (isBuffering) BUFFERING_ALPHA else 1f,
+            animationSpec = spring(
+                stiffness = SPRING_FAST_EFFECTS_STIFFNESS,
+                dampingRatio = SPRING_EFFECTS_DAMPING
+            )
+        )
+    }
+
+    if (displayedText.isNotEmpty()) {
+        Text(
+            text = displayedText,
+            style = style,
+            color = textColor,
+            fontStyle = FontStyle.Italic,
+            modifier = modifier.alpha(trailingAlpha.value)
+        )
+    }
+}
+
 // ---- M3 Expressive Motion Constants ----
 
-/** M3 spring.fast.effects: stiffness for opacity/color transitions on small components */
+/** M3 spring.fast.effects: stiffness for opacity/color transitions */
 private const val SPRING_FAST_EFFECTS_STIFFNESS = 1400f
 
 /** M3 effects damping: no overshoot/bounce for opacity changes */
 private const val SPRING_EFFECTS_DAMPING = 1.0f
 
-/** Height of the trailing fade gradient in dp */
-private const val TRAILING_FADE_HEIGHT_DP = 14f
+/** Slight alpha reduction while words are still buffered (subtle, no clipping) */
+private const val BUFFERING_ALPHA = 0.88f
+
+/** Fire content haptic every N revealed words (balanced cadence) */
+private const val HAPTIC_WORD_INTERVAL = 4
+
+/** Fire thinking haptic every N revealed words (slower, ultra-subtle) */
+private const val HAPTIC_THINKING_WORD_INTERVAL = 6
 
 // ---- Word Tokenization Utilities ----
 
 /**
  * Counts the number of whitespace-delimited word tokens in the string.
- * Handles multiple consecutive whitespace characters correctly.
  */
 private fun String.wordCount(): Int {
     if (isEmpty()) return 0
@@ -187,16 +278,13 @@ private fun String.wordCount(): Int {
             inWord = true
         }
     }
-    if (inWord) count++ // Count last word if not followed by whitespace
+    if (inWord) count++
     return count
 }
 
 /**
  * Returns a substring containing the first [n] whitespace-delimited words,
- * preserving original whitespace and formatting (including newlines, markdown, etc.).
- *
- * This approach preserves the original character-level structure of the text,
- * so markdown formatting, code blocks, and other syntax remain intact.
+ * preserving original whitespace and formatting (newlines, markdown, etc.).
  */
 private fun String.takeWords(n: Int): String {
     if (n <= 0) return ""
@@ -212,8 +300,6 @@ private fun String.takeWords(n: Int): String {
                 wordCount++
                 inWord = false
                 if (wordCount >= n) {
-                    // Include trailing whitespace after the nth word
-                    // so the text doesn't end abruptly mid-whitespace
                     while (i < length && this[i].isWhitespace()) i++
                     return substring(0, i)
                 }
@@ -224,6 +310,5 @@ private fun String.takeWords(n: Int): String {
         i++
     }
 
-    // Reached end of string — return everything
     return this
 }
