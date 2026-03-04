@@ -107,6 +107,7 @@ private sealed class MarkdownElement {
         val rows: List<List<String>>,
         val alignments: List<TableAlignment>
     ) : MarkdownElement()
+    data object HorizontalRule : MarkdownElement()
 }
 
 private enum class TableAlignment { LEFT, CENTER, RIGHT }
@@ -146,7 +147,18 @@ private fun MarkdownContent(
                     TableView(
                         headers = element.headers,
                         rows = element.rows,
-                        alignments = element.alignments
+                        alignments = element.alignments,
+                        baseColor = style.color.takeIf { it != Color.Unspecified }
+                            ?: MaterialTheme.colorScheme.onSurface,
+                        codeColor = if (isSystemInDarkTheme()) Color(0xFFD4D4D4) else Color(0xFF1E1E1E),
+                        linkColor = MaterialTheme.colorScheme.primary
+                    )
+                }
+                is MarkdownElement.HorizontalRule -> {
+                    androidx.compose.material3.HorizontalDivider(
+                        modifier = Modifier.padding(vertical = 12.dp),
+                        thickness = 1.dp,
+                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
                     )
                 }
             }
@@ -241,7 +253,10 @@ private fun CodeBlockView(
 private fun TableView(
     headers: List<String>,
     rows: List<List<String>>,
-    alignments: List<TableAlignment>
+    alignments: List<TableAlignment>,
+    baseColor: Color = Color.Unspecified,
+    codeColor: Color = Color.Unspecified,
+    linkColor: Color = Color.Unspecified
 ) {
     val outlineColor = MaterialTheme.colorScheme.outlineVariant
     val headerBackground = MaterialTheme.colorScheme.surfaceContainerHigh
@@ -289,7 +304,7 @@ private fun TableView(
             ) {
                 headers.forEachIndexed { index, header ->
                     Text(
-                        text = header,
+                        text = parseInlineMarkdown(header, baseColor, codeColor, linkColor),
                         style = headerStyle,
                         textAlign = tableTextAlign(alignments.getOrElse(index) { TableAlignment.LEFT }),
                         modifier = Modifier
@@ -319,7 +334,7 @@ private fun TableView(
                 ) {
                     row.forEachIndexed { colIndex, cell ->
                         Text(
-                            text = cell,
+                            text = parseInlineMarkdown(cell, baseColor, codeColor, linkColor),
                             style = bodyStyle,
                             textAlign = tableTextAlign(alignments.getOrElse(colIndex) { TableAlignment.LEFT }),
                             modifier = Modifier
@@ -426,6 +441,16 @@ private fun parseTextWithTables(
     }
 
     while (i < lines.size) {
+        val trimmedLine = lines[i].trim()
+
+        // Detect horizontal rule (---, ***, ___)
+        if (trimmedLine.matches(Regex("^[-*_]{3,}$"))) {
+            flushTextBuffer()
+            elements.add(MarkdownElement.HorizontalRule)
+            i++
+            continue
+        }
+
         // Check if this line starts a table (has | and next line is separator)
         if (i + 1 < lines.size && isTableRow(lines[i]) && isTableSeparator(lines[i + 1])) {
             flushTextBuffer()
