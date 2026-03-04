@@ -29,6 +29,8 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
 import com.materialchat.ui.theme.ExpressiveMotion
+import com.materialchat.ui.components.HapticPattern
+import com.materialchat.ui.components.rememberHapticFeedback
 
 /**
  * M3 Expressive floating toolbar navigation for MaterialChat.
@@ -54,6 +56,7 @@ fun MaterialChatNavBar(
     expanded: Boolean = true,
     modifier: Modifier = Modifier
 ) {
+    val haptics = rememberHapticFeedback()
     val tabs = TopLevelTab.entries
 
     HorizontalFloatingToolbar(
@@ -95,7 +98,7 @@ fun MaterialChatNavBar(
             }
 
             FloatingToolbarDefaults.VibrantFloatingActionButton(
-                onClick = onNewChat,
+                onClick = { haptics.perform(HapticPattern.CLICK); onNewChat() },
                 interactionSource = fabInteractionSource,
                 modifier = fabModifier
             ) {
@@ -136,7 +139,7 @@ fun MaterialChatNavBar(
                 )
 
                 IconButton(
-                    onClick = { onTabSelected(tab) },
+                    onClick = { haptics.perform(HapticPattern.CLICK); onTabSelected(tab) },
                     modifier = Modifier.graphicsLayer {
                         scaleX = scale
                         scaleY = scale

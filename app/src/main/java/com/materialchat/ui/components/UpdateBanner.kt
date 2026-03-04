@@ -45,6 +45,8 @@ import androidx.compose.ui.unit.dp
 import com.materialchat.domain.model.AppUpdate
 import com.materialchat.domain.model.UpdateState
 import com.materialchat.domain.model.shouldShowBanner
+import com.materialchat.ui.components.HapticPattern
+import com.materialchat.ui.components.rememberHapticFeedback
 
 /**
  * Non-blocking update banner that slides in from the top.
@@ -125,6 +127,7 @@ private fun AvailableBannerContent(
     onDismiss: () -> Unit,
     onSkipVersion: () -> Unit
 ) {
+    val haptics = rememberHapticFeedback()
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -161,7 +164,7 @@ private fun AvailableBannerContent(
                 }
             }
 
-            IconButton(onClick = onDismiss) {
+            IconButton(onClick = { haptics.perform(HapticPattern.CLICK); onDismiss() }) {
                 Icon(
                     imageVector = Icons.Default.Close,
                     contentDescription = "Dismiss",
@@ -283,6 +286,7 @@ private fun ReadyToInstallBannerContent(
     onInstall: () -> Unit,
     onDismiss: () -> Unit
 ) {
+    val haptics = rememberHapticFeedback()
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -321,7 +325,7 @@ private fun ReadyToInstallBannerContent(
                 }
             }
 
-            IconButton(onClick = onDismiss) {
+            IconButton(onClick = { haptics.perform(HapticPattern.CLICK); onDismiss() }) {
                 Icon(
                     imageVector = Icons.Default.Close,
                     contentDescription = "Later",

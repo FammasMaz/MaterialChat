@@ -34,6 +34,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.materialchat.domain.model.Persona
 import com.materialchat.domain.model.PersonaTone
+import com.materialchat.ui.components.HapticPattern
+import com.materialchat.ui.components.rememberHapticFeedback
 
 /**
  * Modal bottom sheet for creating or editing a persona.
@@ -50,6 +52,7 @@ fun PersonaEditorSheet(
     onSave: (Persona) -> Unit
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val haptics = rememberHapticFeedback()
     val isEditing = persona != null
 
     // Form state
@@ -196,7 +199,7 @@ fun PersonaEditorSheet(
                 horizontalArrangement = Arrangement.End,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                TextButton(onClick = onDismiss) {
+                TextButton(onClick = { haptics.perform(HapticPattern.CLICK); onDismiss() }) {
                     Text("Cancel")
                 }
                 Button(

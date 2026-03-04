@@ -55,6 +55,8 @@ import com.materialchat.ui.screens.arena.components.ArenaModelPicker
 import com.materialchat.ui.screens.arena.components.ArenaPromptInput
 import com.materialchat.ui.screens.arena.components.ArenaVotingBar
 import com.materialchat.ui.theme.CustomShapes
+import com.materialchat.ui.components.HapticPattern
+import com.materialchat.ui.components.rememberHapticFeedback
 
 /**
  * Main Arena screen composable.
@@ -78,6 +80,7 @@ fun ArenaScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
+    val haptics = rememberHapticFeedback()
 
     // Handle one-time events
     LaunchedEffect(Unit) {
@@ -112,7 +115,7 @@ fun ArenaScreen(
                     }
                 },
                 navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
+                    IconButton(onClick = { haptics.perform(HapticPattern.CLICK); onNavigateBack() }) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back"
@@ -120,7 +123,7 @@ fun ArenaScreen(
                     }
                 },
                 actions = {
-                    TextButton(onClick = onNavigateToLeaderboard) {
+                    TextButton(onClick = { haptics.perform(HapticPattern.CLICK); onNavigateToLeaderboard() }) {
                         Icon(
                             imageVector = Icons.Filled.EmojiEvents,
                             contentDescription = null
@@ -227,6 +230,8 @@ private fun ArenaReadyContent(
     onNewBattle: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val haptics = rememberHapticFeedback()
+
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -320,12 +325,15 @@ private fun ArenaReadyContent(
                 // New battle button after voting
                 AnimatedVisibility(
                     visible = state.voted,
-                    enter = fadeIn() + slideInVertically(
+                    enter = fadeIn(
+                        animationSpec = spring(dampingRatio = 1.0f, stiffness = 500f)
+                    ) + slideInVertically(
+                        animationSpec = spring(dampingRatio = 0.7f, stiffness = 500f),
                         initialOffsetY = { it / 4 }
                     )
                 ) {
                     TextButton(
-                        onClick = onNewBattle,
+                        onClick = { haptics.perform(HapticPattern.CLICK); onNewBattle() },
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(top = 8.dp)

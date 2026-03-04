@@ -175,8 +175,16 @@ fun MessageInput(
         // Attachment preview row (shown when there are pending attachments)
         AnimatedVisibility(
             visible = pendingAttachments.isNotEmpty(),
-            enter = expandVertically() + fadeIn(),
-            exit = shrinkVertically() + fadeOut()
+            enter = expandVertically(
+                animationSpec = spring(dampingRatio = 0.7f, stiffness = 500f)
+            ) + fadeIn(
+                animationSpec = spring(dampingRatio = 1.0f, stiffness = 500f)
+            ),
+            exit = shrinkVertically(
+                animationSpec = spring(dampingRatio = 1.0f, stiffness = 500f)
+            ) + fadeOut(
+                animationSpec = spring(dampingRatio = 1.0f, stiffness = 500f)
+            )
         ) {
             AttachmentPreviewRow(
                 attachments = pendingAttachments,

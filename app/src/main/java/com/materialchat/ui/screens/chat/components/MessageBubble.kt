@@ -78,6 +78,8 @@ import com.materialchat.ui.components.MarkdownText
 import com.materialchat.ui.screens.chat.MessageUiItem
 import com.materialchat.ui.screens.chat.MessageGroupPosition
 import com.materialchat.ui.screens.chat.SiblingInfo
+import com.materialchat.ui.components.HapticPattern
+import com.materialchat.ui.components.rememberHapticFeedback
 import com.materialchat.ui.theme.CustomShapes
 import com.materialchat.ui.theme.MessageBubbleShapes
 
@@ -573,7 +575,7 @@ private fun ThinkingSection(
             visible = isExpanded,
             // Spatial: spring with overshoot (expressive scheme, default speed)
             enter = fadeIn(
-                animationSpec = tween(durationMillis = 150)
+                animationSpec = spring(dampingRatio = 1.0f, stiffness = 500f)
             ) + expandVertically(
                 animationSpec = spring(
                     dampingRatio = Spring.DampingRatioLowBouncy,
@@ -582,7 +584,7 @@ private fun ThinkingSection(
             ),
             // Effects: no bounce for opacity; spatial spring for size
             exit = fadeOut(
-                animationSpec = tween(durationMillis = 120)
+                animationSpec = spring(dampingRatio = 1.0f, stiffness = 500f)
             ) + shrinkVertically(
                 animationSpec = spring(
                     dampingRatio = Spring.DampingRatioNoBouncy,
@@ -761,6 +763,7 @@ private fun EditingContent(
     onSubmitEdit: () -> Unit,
     onCancelEdit: () -> Unit
 ) {
+    val haptics = rememberHapticFeedback()
     val focusRequester = remember { FocusRequester() }
     LaunchedEffect(Unit) {
         focusRequester.requestFocus()
@@ -788,7 +791,7 @@ private fun EditingContent(
             horizontalArrangement = Arrangement.End,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            TextButton(onClick = onCancelEdit) {
+            TextButton(onClick = { haptics.perform(HapticPattern.CLICK); onCancelEdit() }) {
                 Text("Cancel")
             }
             Spacer(modifier = Modifier.size(8.dp))

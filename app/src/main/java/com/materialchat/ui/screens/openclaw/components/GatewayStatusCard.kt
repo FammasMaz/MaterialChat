@@ -44,6 +44,8 @@ import com.materialchat.domain.model.openclaw.GatewayConnectionState
 import com.materialchat.domain.model.openclaw.GatewayStatus
 import com.materialchat.ui.components.ExpressiveButton
 import com.materialchat.ui.components.ExpressiveButtonStyle
+import com.materialchat.ui.components.HapticPattern
+import com.materialchat.ui.components.rememberHapticFeedback
 import com.materialchat.ui.theme.ExpressiveMotion
 
 /**
@@ -73,6 +75,7 @@ fun GatewayStatusCard(
     onRefresh: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val haptics = rememberHapticFeedback()
     val isConnected = connectionState is GatewayConnectionState.Connected
     val isConnecting = connectionState is GatewayConnectionState.Connecting
     val isError = connectionState is GatewayConnectionState.Error
@@ -151,7 +154,7 @@ fun GatewayStatusCard(
                 }
 
                 if (isConnected) {
-                    IconButton(onClick = onRefresh) {
+                    IconButton(onClick = { haptics.perform(HapticPattern.CLICK); onRefresh() }) {
                         Icon(
                             imageVector = Icons.Filled.Refresh,
                             contentDescription = "Refresh status",

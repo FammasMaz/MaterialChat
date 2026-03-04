@@ -34,6 +34,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.materialchat.ui.components.HapticPattern
+import com.materialchat.ui.components.rememberHapticFeedback
 import com.materialchat.ui.screens.workflows.components.DraggableStepList
 import com.materialchat.ui.screens.workflows.components.StepEditor
 
@@ -54,6 +56,7 @@ fun WorkflowBuilderScreen(
     viewModel: WorkflowBuilderViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val haptics = rememberHapticFeedback()
 
     // Navigate back after successful save
     LaunchedEffect(uiState.savedSuccessfully) {
@@ -73,7 +76,7 @@ fun WorkflowBuilderScreen(
                     )
                 },
                 navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
+                    IconButton(onClick = { haptics.perform(HapticPattern.CLICK); onNavigateBack() }) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Navigate back"

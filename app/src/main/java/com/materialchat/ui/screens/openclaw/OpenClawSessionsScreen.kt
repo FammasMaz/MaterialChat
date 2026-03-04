@@ -51,6 +51,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.materialchat.ui.screens.openclaw.components.SessionCard
 import com.materialchat.ui.screens.conversations.components.SwipeToDeleteBox
 import com.materialchat.ui.theme.CustomShapes
+import com.materialchat.ui.components.HapticPattern
+import com.materialchat.ui.components.rememberHapticFeedback
 
 /**
  * OpenClaw Sessions screen composable.
@@ -73,6 +75,7 @@ fun OpenClawSessionsScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
+    val haptics = rememberHapticFeedback()
 
     // Handle one-time events
     LaunchedEffect(Unit) {
@@ -104,7 +107,7 @@ fun OpenClawSessionsScreen(
                     }
                 },
                 navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
+                    IconButton(onClick = { haptics.perform(HapticPattern.CLICK); onNavigateBack() }) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back"
@@ -176,7 +179,7 @@ fun OpenClawSessionsScreen(
                             textAlign = TextAlign.Center
                         )
                         Spacer(modifier = Modifier.height(16.dp))
-                        TextButton(onClick = viewModel::loadSessions) {
+                        TextButton(onClick = { haptics.perform(HapticPattern.CLICK); viewModel.loadSessions() }) {
                             Text("Retry")
                         }
                     }

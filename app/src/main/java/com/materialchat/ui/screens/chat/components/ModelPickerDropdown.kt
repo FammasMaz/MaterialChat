@@ -44,6 +44,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.materialchat.domain.model.AiModel
+import com.materialchat.ui.components.HapticPattern
+import com.materialchat.ui.components.rememberHapticFeedback
 
 /**
  * Model picker dropdown for selecting AI models.
@@ -70,6 +72,7 @@ fun ModelPickerDropdown(
     onLoadModels: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val haptics = rememberHapticFeedback()
     var expanded by remember { mutableStateOf(false) }
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
@@ -99,7 +102,7 @@ fun ModelPickerDropdown(
             isEnabled = !isStreaming,
             scale = scale,
             interactionSource = interactionSource,
-            onClick = { if (!isStreaming) expanded = true }
+            onClick = { if (!isStreaming) { haptics.perform(HapticPattern.CLICK); expanded = true } }
         )
 
         // Dropdown menu with models
@@ -291,6 +294,7 @@ private fun ModelMenuItem(
     isSelected: Boolean,
     onClick: () -> Unit
 ) {
+    val haptics = rememberHapticFeedback()
     // Animate text color on selection
     val textColor by animateColorAsState(
         targetValue = if (isSelected) {
@@ -333,7 +337,7 @@ private fun ModelMenuItem(
                 }
             }
         },
-        onClick = onClick,
+        onClick = { haptics.perform(HapticPattern.CLICK); onClick() },
         modifier = if (isSelected) {
             Modifier.background(
                 MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)

@@ -38,6 +38,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.materialchat.domain.usecase.ExportConversationUseCase
 import com.materialchat.ui.theme.CustomShapes
+import com.materialchat.ui.components.HapticPattern
+import com.materialchat.ui.components.rememberHapticFeedback
 
 /**
  * Bottom sheet for selecting export format.
@@ -181,6 +183,7 @@ private fun ExportFormatOption(
     description: String,
     onClick: () -> Unit
 ) {
+    val haptics = rememberHapticFeedback()
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
 
@@ -200,7 +203,7 @@ private fun ExportFormatOption(
             .clickable(
                 interactionSource = interactionSource,
                 indication = null,
-                onClick = onClick
+                onClick = { haptics.perform(HapticPattern.CLICK); onClick() }
             ),
         shape = CustomShapes.ProviderCard,
         color = MaterialTheme.colorScheme.surfaceContainerHigh,

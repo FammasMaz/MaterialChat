@@ -1,6 +1,8 @@
 package com.materialchat.ui.screens.workflows
 
 import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -49,6 +51,8 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.materialchat.domain.model.WorkflowStatus
+import com.materialchat.ui.components.HapticPattern
+import com.materialchat.ui.components.rememberHapticFeedback
 import com.materialchat.ui.components.MarkdownText
 import com.materialchat.ui.screens.workflows.components.StepProgressIndicator
 import com.materialchat.ui.screens.workflows.components.StepResultCard
@@ -71,6 +75,7 @@ fun WorkflowExecutionScreen(
     viewModel: WorkflowExecutionViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val haptics = rememberHapticFeedback()
 
     // Input dialog
     if (uiState.showInputDialog && uiState.workflow != null) {
@@ -93,7 +98,7 @@ fun WorkflowExecutionScreen(
                     )
                 },
                 navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
+                    IconButton(onClick = { haptics.perform(HapticPattern.CLICK); onNavigateBack() }) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Navigate back"
@@ -167,6 +172,7 @@ private fun WorkflowInputDialog(
     onDismiss: () -> Unit
 ) {
     var inputText by rememberSaveable { mutableStateOf("") }
+    val haptics = rememberHapticFeedback()
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -220,7 +226,7 @@ private fun WorkflowInputDialog(
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
+            TextButton(onClick = { haptics.perform(HapticPattern.CLICK); onDismiss() }) {
                 Text("Cancel")
             }
         }
@@ -252,6 +258,8 @@ private fun ExecutionErrorContent(
     message: String,
     onNavigateBack: () -> Unit
 ) {
+    val haptics = rememberHapticFeedback()
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -280,7 +288,7 @@ private fun ExecutionErrorContent(
             textAlign = TextAlign.Center
         )
         Spacer(modifier = Modifier.height(16.dp))
-        TextButton(onClick = onNavigateBack) {
+        TextButton(onClick = { haptics.perform(HapticPattern.CLICK); onNavigateBack() }) {
             Text("Go Back")
         }
     }
@@ -330,7 +338,17 @@ private fun ExecutionContent(
             StepProgressIndicator(
                 totalSteps = execution.totalSteps,
                 currentStep = execution.currentStepIndex,
-                completedSteps = completedSteps
+                completedSteps = completedSteps,
+                modifier = Modifier.animateItem(
+                    fadeInSpec = spring(
+                        dampingRatio = Spring.DampingRatioNoBouncy,
+                        stiffness = Spring.StiffnessMediumLow
+                    ),
+                    fadeOutSpec = spring(
+                        dampingRatio = Spring.DampingRatioNoBouncy,
+                        stiffness = Spring.StiffnessMediumLow
+                    )
+                )
             )
         }
 
@@ -338,29 +356,62 @@ private fun ExecutionContent(
         when (execution.status) {
             WorkflowStatus.COMPLETED -> {
                 item(key = "status_completed") {
-                    StatusBanner(
-                        text = "Workflow completed",
-                        containerColor = MaterialTheme.colorScheme.primaryContainer,
-                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                    )
+                    Box(modifier = Modifier.animateItem(
+                        fadeInSpec = spring(
+                            dampingRatio = Spring.DampingRatioNoBouncy,
+                            stiffness = Spring.StiffnessMediumLow
+                        ),
+                        fadeOutSpec = spring(
+                            dampingRatio = Spring.DampingRatioNoBouncy,
+                            stiffness = Spring.StiffnessMediumLow
+                        )
+                    )) {
+                        StatusBanner(
+                            text = "Workflow completed",
+                            containerColor = MaterialTheme.colorScheme.primaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                    }
                 }
             }
             WorkflowStatus.FAILED -> {
                 item(key = "status_failed") {
-                    StatusBanner(
-                        text = "Failed: ${execution.error ?: "Unknown error"}",
-                        containerColor = MaterialTheme.colorScheme.errorContainer,
-                        contentColor = MaterialTheme.colorScheme.onErrorContainer
-                    )
+                    Box(modifier = Modifier.animateItem(
+                        fadeInSpec = spring(
+                            dampingRatio = Spring.DampingRatioNoBouncy,
+                            stiffness = Spring.StiffnessMediumLow
+                        ),
+                        fadeOutSpec = spring(
+                            dampingRatio = Spring.DampingRatioNoBouncy,
+                            stiffness = Spring.StiffnessMediumLow
+                        )
+                    )) {
+                        StatusBanner(
+                            text = "Failed: ${execution.error ?: "Unknown error"}",
+                            containerColor = MaterialTheme.colorScheme.errorContainer,
+                            contentColor = MaterialTheme.colorScheme.onErrorContainer
+                        )
+                    }
                 }
             }
             WorkflowStatus.CANCELLED -> {
                 item(key = "status_cancelled") {
-                    StatusBanner(
-                        text = "Workflow cancelled",
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    Box(modifier = Modifier.animateItem(
+                        fadeInSpec = spring(
+                            dampingRatio = Spring.DampingRatioNoBouncy,
+                            stiffness = Spring.StiffnessMediumLow
+                        ),
+                        fadeOutSpec = spring(
+                            dampingRatio = Spring.DampingRatioNoBouncy,
+                            stiffness = Spring.StiffnessMediumLow
+                        )
+                    )) {
+                        StatusBanner(
+                            text = "Workflow cancelled",
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
             }
             else -> { /* IDLE, RUNNING — no banner */ }
@@ -373,6 +424,16 @@ private fun ExecutionContent(
                 StepResultCard(
                     stepNumber = stepIndex + 1,
                     content = content,
+                    modifier = Modifier.animateItem(
+                        fadeInSpec = spring(
+                            dampingRatio = Spring.DampingRatioNoBouncy,
+                            stiffness = Spring.StiffnessMediumLow
+                        ),
+                        fadeOutSpec = spring(
+                            dampingRatio = Spring.DampingRatioNoBouncy,
+                            stiffness = Spring.StiffnessMediumLow
+                        )
+                    ),
                     initiallyExpanded = stepIndex == sortedStepResults.keys.last()
                 )
             }
@@ -383,10 +444,21 @@ private fun ExecutionContent(
             execution.currentStepContent.isNotBlank()
         ) {
             item(key = "streaming") {
-                CurrentStepStreamingCard(
-                    stepNumber = execution.currentStepIndex + 1,
-                    content = execution.currentStepContent
-                )
+                Box(modifier = Modifier.animateItem(
+                    fadeInSpec = spring(
+                        dampingRatio = Spring.DampingRatioNoBouncy,
+                        stiffness = Spring.StiffnessMediumLow
+                    ),
+                    fadeOutSpec = spring(
+                        dampingRatio = Spring.DampingRatioNoBouncy,
+                        stiffness = Spring.StiffnessMediumLow
+                    )
+                )) {
+                    CurrentStepStreamingCard(
+                        stepNumber = execution.currentStepIndex + 1,
+                        content = execution.currentStepContent
+                    )
+                }
             }
         }
 
@@ -395,9 +467,20 @@ private fun ExecutionContent(
             execution.currentStepContent.isBlank()
         ) {
             item(key = "loading_step") {
-                CurrentStepLoadingCard(
-                    stepNumber = execution.currentStepIndex + 1
-                )
+                Box(modifier = Modifier.animateItem(
+                    fadeInSpec = spring(
+                        dampingRatio = Spring.DampingRatioNoBouncy,
+                        stiffness = Spring.StiffnessMediumLow
+                    ),
+                    fadeOutSpec = spring(
+                        dampingRatio = Spring.DampingRatioNoBouncy,
+                        stiffness = Spring.StiffnessMediumLow
+                    )
+                )) {
+                    CurrentStepLoadingCard(
+                        stepNumber = execution.currentStepIndex + 1
+                    )
+                }
             }
         }
     }

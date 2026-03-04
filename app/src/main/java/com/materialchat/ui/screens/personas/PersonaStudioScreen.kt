@@ -47,6 +47,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.materialchat.ui.screens.personas.components.PersonaCard
 import com.materialchat.ui.screens.personas.components.PersonaEditorSheet
 import kotlinx.coroutines.launch
+import com.materialchat.ui.components.HapticPattern
+import com.materialchat.ui.components.rememberHapticFeedback
 
 /**
  * Persona Studio screen displaying a grid of AI personas with create/edit/delete capabilities.
@@ -65,6 +67,7 @@ fun PersonaStudioScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
+    val haptics = rememberHapticFeedback()
 
     // Handle one-time events
     LaunchedEffect(Unit) {
@@ -85,7 +88,7 @@ fun PersonaStudioScreen(
             TopAppBar(
                 title = { Text("Persona Studio") },
                 navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
+                    IconButton(onClick = { haptics.perform(HapticPattern.CLICK); onNavigateBack() }) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back"
@@ -99,7 +102,7 @@ fun PersonaStudioScreen(
         },
         floatingActionButton = {
             ExtendedFloatingActionButton(
-                onClick = { viewModel.showCreateEditor() },
+                onClick = { haptics.perform(HapticPattern.CLICK); viewModel.showCreateEditor() },
                 icon = { Icon(Icons.Filled.Add, contentDescription = "Create") },
                 text = { Text("New Persona") },
                 containerColor = MaterialTheme.colorScheme.primaryContainer,
@@ -151,6 +154,16 @@ fun PersonaStudioScreen(
                         key = { it.id }
                     ) { persona ->
                         PersonaCard(
+                            modifier = Modifier.animateItem(
+                                fadeInSpec = spring(
+                                    dampingRatio = Spring.DampingRatioNoBouncy,
+                                    stiffness = Spring.StiffnessMediumLow
+                                ),
+                                fadeOutSpec = spring(
+                                    dampingRatio = Spring.DampingRatioNoBouncy,
+                                    stiffness = Spring.StiffnessMediumLow
+                                )
+                            ),
                             persona = persona,
                             onClick = { viewModel.showEditEditor(persona) },
                             onDelete = if (!persona.isBuiltin) {
@@ -204,6 +217,8 @@ private fun PersonaStudioErrorContent(
     onRetry: () -> Unit,
     onNavigateBack: () -> Unit
 ) {
+    val haptics = rememberHapticFeedback()
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -230,7 +245,7 @@ private fun PersonaStudioErrorContent(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        TextButton(onClick = onNavigateBack) {
+        TextButton(onClick = { haptics.perform(HapticPattern.CLICK); onNavigateBack() }) {
             Text("Go Back")
         }
     }

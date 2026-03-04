@@ -49,6 +49,8 @@ import androidx.compose.ui.unit.dp
 import com.materialchat.domain.model.AiModel
 import com.materialchat.ui.screens.chat.components.ModelPickerDropdown
 import com.materialchat.ui.util.ModelNameParser
+import com.materialchat.ui.components.HapticPattern
+import com.materialchat.ui.components.rememberHapticFeedback
 
 /**
  * Top app bar for the Chat screen.
@@ -92,6 +94,7 @@ fun ChatTopBar(
     onMindMapClick: () -> Unit = {},
     scrollBehavior: TopAppBarScrollBehavior? = null
 ) {
+    val haptics = rememberHapticFeedback()
     var showMenu by remember { mutableStateOf(false) }
     
     // Track title changes for reveal animation
@@ -201,7 +204,7 @@ fun ChatTopBar(
             }
         },
         navigationIcon = {
-            IconButton(onClick = onNavigateBack) {
+            IconButton(onClick = { haptics.perform(HapticPattern.CLICK); onNavigateBack() }) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                     contentDescription = "Back"
@@ -209,7 +212,7 @@ fun ChatTopBar(
             }
         },
         actions = {
-            IconButton(onClick = { showMenu = true }) {
+            IconButton(onClick = { haptics.perform(HapticPattern.CLICK); showMenu = true }) {
                 Icon(
                     imageVector = Icons.Default.MoreVert,
                     contentDescription = "More options"
@@ -223,6 +226,7 @@ fun ChatTopBar(
                 DropdownMenuItem(
                     text = { Text("Export") },
                     onClick = {
+                        haptics.perform(HapticPattern.CLICK)
                         showMenu = false
                         onExportClick()
                     },
@@ -237,6 +241,7 @@ fun ChatTopBar(
                     DropdownMenuItem(
                         text = { Text("Mind Map") },
                         onClick = {
+                            haptics.perform(HapticPattern.CLICK)
                             showMenu = false
                             onMindMapClick()
                         },

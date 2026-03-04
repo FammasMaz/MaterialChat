@@ -49,6 +49,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.materialchat.ui.theme.ExpressiveMotion
 import com.materialchat.ui.theme.MaterialChatMotion
+import com.materialchat.ui.components.HapticPattern
+import com.materialchat.ui.components.rememberHapticFeedback
 
 /**
  * Material 3 Expressive Button with shape morph and spring-physics animations.
@@ -74,6 +76,7 @@ fun ExpressiveButton(
     trailingIcon: ImageVector? = null,
     style: ExpressiveButtonStyle = ExpressiveButtonStyle.Filled
 ) {
+    val haptics = rememberHapticFeedback()
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
 
@@ -97,7 +100,7 @@ fun ExpressiveButton(
     when (style) {
         ExpressiveButtonStyle.Filled -> {
             Button(
-                onClick = onClick,
+                onClick = { haptics.perform(HapticPattern.CLICK); onClick() },
                 modifier = modifier.scale(scale),
                 enabled = enabled,
                 shape = shape,
@@ -114,7 +117,7 @@ fun ExpressiveButton(
 
         ExpressiveButtonStyle.FilledTonal -> {
             FilledTonalButton(
-                onClick = onClick,
+                onClick = { haptics.perform(HapticPattern.CLICK); onClick() },
                 modifier = modifier.scale(scale),
                 enabled = enabled,
                 shape = shape,
@@ -131,7 +134,7 @@ fun ExpressiveButton(
 
         ExpressiveButtonStyle.Outlined -> {
             OutlinedButton(
-                onClick = onClick,
+                onClick = { haptics.perform(HapticPattern.CLICK); onClick() },
                 modifier = modifier.scale(scale),
                 enabled = enabled,
                 shape = shape,
@@ -148,7 +151,7 @@ fun ExpressiveButton(
 
         ExpressiveButtonStyle.Text -> {
             TextButton(
-                onClick = onClick,
+                onClick = { haptics.perform(HapticPattern.CLICK); onClick() },
                 modifier = modifier.scale(scale),
                 enabled = enabled,
                 shape = shape,
@@ -232,6 +235,7 @@ fun ExpressiveIconButton(
     contentColor: Color = MaterialTheme.colorScheme.onPrimaryContainer,
     size: Dp = 48.dp
 ) {
+    val haptics = rememberHapticFeedback()
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
 
@@ -261,7 +265,7 @@ fun ExpressiveIconButton(
     )
 
     Surface(
-        onClick = onClick,
+        onClick = { haptics.perform(HapticPattern.CLICK); onClick() },
         modifier = modifier
             .size(size)
             .graphicsLayer {
@@ -304,6 +308,7 @@ fun ExpressiveActionButton(
     modifier: Modifier = Modifier,
     enabled: Boolean = true
 ) {
+    val haptics = rememberHapticFeedback()
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
 
@@ -323,7 +328,7 @@ fun ExpressiveActionButton(
     )
 
     Surface(
-        onClick = onClick,
+        onClick = { haptics.perform(HapticPattern.CLICK); onClick() },
         modifier = modifier
             .size(48.dp) // M3 Expressive: 48dp minimum touch target
             .graphicsLayer {
@@ -368,6 +373,7 @@ fun ExpressiveFab(
     expanded: Boolean = false,
     text: String = ""
 ) {
+    val haptics = rememberHapticFeedback()
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
 
@@ -394,7 +400,7 @@ fun ExpressiveFab(
     )
 
     Surface(
-        onClick = onClick,
+        onClick = { haptics.perform(HapticPattern.CLICK); onClick() },
         modifier = modifier
             .defaultMinSize(minWidth = 56.dp, minHeight = 56.dp)
             .graphicsLayer {
@@ -459,6 +465,7 @@ fun AnimatedExtendedFab(
     containerColor: Color = MaterialTheme.colorScheme.primaryContainer,
     contentColor: Color = MaterialTheme.colorScheme.onPrimaryContainer
 ) {
+    val haptics = rememberHapticFeedback()
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
 
@@ -499,7 +506,7 @@ fun AnimatedExtendedFab(
     )
 
     Surface(
-        onClick = onClick,
+        onClick = { haptics.perform(HapticPattern.CLICK); onClick() },
         modifier = modifier
             .width(width)
             .height(56.dp)

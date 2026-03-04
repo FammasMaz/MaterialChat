@@ -11,6 +11,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import com.materialchat.ui.components.HapticPattern
+import com.materialchat.ui.components.rememberHapticFeedback
 
 /**
  * Top app bar for the Mind Map screen.
@@ -24,6 +26,7 @@ fun MindMapTopBar(
     onNavigateBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val haptics = rememberHapticFeedback()
     CenterAlignedTopAppBar(
         title = {
             Text(
@@ -32,7 +35,7 @@ fun MindMapTopBar(
             )
         },
         navigationIcon = {
-            IconButton(onClick = onNavigateBack) {
+            IconButton(onClick = { haptics.perform(HapticPattern.CLICK); onNavigateBack() }) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                     contentDescription = "Navigate back"

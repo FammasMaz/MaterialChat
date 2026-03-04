@@ -1,6 +1,7 @@
 package com.materialchat.ui.screens.arena.components
 
 import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -38,6 +39,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.materialchat.domain.model.ModelRating
+import com.materialchat.ui.components.HapticPattern
+import com.materialchat.ui.components.rememberHapticFeedback
 
 /**
  * Leaderboard screen showing all model ELO ratings ranked.
@@ -55,6 +58,7 @@ fun ArenaLeaderboard(
     viewModel: ArenaLeaderboardViewModel = hiltViewModel()
 ) {
     val ratings by viewModel.ratings.collectAsState()
+    val haptics = rememberHapticFeedback()
 
     Scaffold(
         topBar = {
@@ -71,7 +75,7 @@ fun ArenaLeaderboard(
                     }
                 },
                 navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
+                    IconButton(onClick = { haptics.perform(HapticPattern.CLICK); onNavigateBack() }) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back"
@@ -130,6 +134,16 @@ fun ArenaLeaderboard(
                         rank = index + 1,
                         rating = rating,
                         modifier = Modifier
+                            .animateItem(
+                                fadeInSpec = spring(
+                                    dampingRatio = Spring.DampingRatioNoBouncy,
+                                    stiffness = Spring.StiffnessMediumLow
+                                ),
+                                fadeOutSpec = spring(
+                                    dampingRatio = Spring.DampingRatioNoBouncy,
+                                    stiffness = Spring.StiffnessMediumLow
+                                )
+                            )
                             .fillMaxWidth()
                             .animateContentSize(
                                 animationSpec = spring(

@@ -460,6 +460,8 @@ private fun ErrorContent(
     onRetry: () -> Unit,
     onNavigateBack: () -> Unit
 ) {
+    val haptics = rememberHapticFeedback()
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -487,10 +489,10 @@ private fun ErrorContent(
         Spacer(modifier = Modifier.height(16.dp))
 
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            TextButton(onClick = onNavigateBack) {
+            TextButton(onClick = { haptics.perform(HapticPattern.CLICK); onNavigateBack() }) {
                 Text("Go Back")
             }
-            TextButton(onClick = onRetry) {
+            TextButton(onClick = { haptics.perform(HapticPattern.CLICK); onRetry() }) {
                 Text("Retry")
             }
         }
@@ -858,7 +860,18 @@ private fun MessageList(
                 onSubmitEdit = onSubmitEdit,
                 onCancelEdit = onCancelEdit,
                 onOpenCanvas = onOpenCanvas,
-                modifier = Modifier.padding(top = topSpacing)
+                modifier = Modifier
+                    .animateItem(
+                        fadeInSpec = spring(
+                            dampingRatio = Spring.DampingRatioNoBouncy,
+                            stiffness = Spring.StiffnessMediumLow
+                        ),
+                        fadeOutSpec = spring(
+                            dampingRatio = Spring.DampingRatioNoBouncy,
+                            stiffness = Spring.StiffnessMediumLow
+                        )
+                    )
+                    .padding(top = topSpacing)
             )
         }
     }

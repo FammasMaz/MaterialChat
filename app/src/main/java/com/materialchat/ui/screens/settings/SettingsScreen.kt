@@ -430,7 +430,17 @@ private fun SuccessContent(
                 onActivate = { onSetActiveProvider(providerItem.provider.id) },
                 onEdit = { onEditProvider(providerItem.provider) },
                 onDelete = { onDeleteProvider(providerItem.provider) },
-                onTestConnection = { onTestConnection(providerItem.provider.id) }
+                onTestConnection = { onTestConnection(providerItem.provider.id) },
+                modifier = Modifier.animateItem(
+                    fadeInSpec = spring(
+                        dampingRatio = Spring.DampingRatioNoBouncy,
+                        stiffness = Spring.StiffnessMediumLow
+                    ),
+                    fadeOutSpec = spring(
+                        dampingRatio = Spring.DampingRatioNoBouncy,
+                        stiffness = Spring.StiffnessMediumLow
+                    )
+                )
             )
         }
 
@@ -679,6 +689,8 @@ private fun DynamicColorToggle(
     enabled: Boolean,
     onToggle: (Boolean) -> Unit
 ) {
+    val haptics = rememberHapticFeedback()
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
@@ -719,7 +731,7 @@ private fun DynamicColorToggle(
 
             Switch(
                 checked = enabled,
-                onCheckedChange = onToggle
+                onCheckedChange = { haptics.perform(HapticPattern.TOGGLE); onToggle(it) }
             )
         }
     }
@@ -788,6 +800,8 @@ private fun BeautifulModelNamesToggle(
     activeProviderName: String?,
     onToggle: (Boolean) -> Unit
 ) {
+    val haptics = rememberHapticFeedback()
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
@@ -833,7 +847,7 @@ private fun BeautifulModelNamesToggle(
 
             Switch(
                 checked = enabled,
-                onCheckedChange = onToggle
+                onCheckedChange = { haptics.perform(HapticPattern.TOGGLE); onToggle(it) }
             )
         }
     }
@@ -844,6 +858,8 @@ private fun RememberLastModelToggle(
     enabled: Boolean,
     onToggle: (Boolean) -> Unit
 ) {
+    val haptics = rememberHapticFeedback()
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
@@ -885,7 +901,7 @@ private fun RememberLastModelToggle(
 
             Switch(
                 checked = enabled,
-                onCheckedChange = onToggle
+                onCheckedChange = { haptics.perform(HapticPattern.TOGGLE); onToggle(it) }
             )
         }
     }
@@ -896,6 +912,8 @@ private fun AiGeneratedTitlesToggle(
     enabled: Boolean,
     onToggle: (Boolean) -> Unit
 ) {
+    val haptics = rememberHapticFeedback()
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
@@ -937,7 +955,7 @@ private fun AiGeneratedTitlesToggle(
 
             Switch(
                 checked = enabled,
-                onCheckedChange = onToggle
+                onCheckedChange = { haptics.perform(HapticPattern.TOGGLE); onToggle(it) }
             )
         }
     }
@@ -948,6 +966,8 @@ private fun AlwaysShowThinkingToggle(
     enabled: Boolean,
     onToggle: (Boolean) -> Unit
 ) {
+    val haptics = rememberHapticFeedback()
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
@@ -989,7 +1009,7 @@ private fun AlwaysShowThinkingToggle(
 
             Switch(
                 checked = enabled,
-                onCheckedChange = onToggle
+                onCheckedChange = { haptics.perform(HapticPattern.TOGGLE); onToggle(it) }
             )
         }
     }
@@ -1084,6 +1104,8 @@ private fun DeleteProviderDialog(
     onConfirm: () -> Unit,
     onDismiss: () -> Unit
 ) {
+    val haptics = rememberHapticFeedback()
+
     AlertDialog(
         onDismissRequest = onDismiss,
         title = {
@@ -1109,7 +1131,7 @@ private fun DeleteProviderDialog(
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
+            TextButton(onClick = { haptics.perform(HapticPattern.CLICK); onDismiss() }) {
                 Text("Cancel")
             }
         },
@@ -1125,6 +1147,8 @@ private fun ErrorContent(
     message: String,
     onRetry: () -> Unit
 ) {
+    val haptics = rememberHapticFeedback()
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -1150,7 +1174,7 @@ private fun ErrorContent(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        TextButton(onClick = onRetry) {
+        TextButton(onClick = { haptics.perform(HapticPattern.CLICK); onRetry() }) {
             Text("Retry")
         }
     }
@@ -1168,6 +1192,8 @@ private fun AboutSection(
     onCancelDownload: () -> Unit,
     onSkipVersion: () -> Unit
 ) {
+    val haptics = rememberHapticFeedback()
+
     Column(
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
@@ -1254,7 +1280,7 @@ private fun AboutSection(
 
                 Switch(
                     checked = autoCheckUpdates,
-                    onCheckedChange = onAutoCheckUpdatesChange
+                    onCheckedChange = { haptics.perform(HapticPattern.TOGGLE); onAutoCheckUpdatesChange(it) }
                 )
             }
         }
@@ -1338,7 +1364,7 @@ private fun AboutSection(
                             horizontalArrangement = Arrangement.End,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            TextButton(onClick = onSkipVersion) {
+                            TextButton(onClick = { haptics.perform(HapticPattern.CLICK); onSkipVersion() }) {
                                 Text("Skip")
                             }
                             Spacer(modifier = Modifier.width(8.dp))
@@ -1356,7 +1382,7 @@ private fun AboutSection(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.End
                         ) {
-                            TextButton(onClick = onCancelDownload) {
+                            TextButton(onClick = { haptics.perform(HapticPattern.CLICK); onCancelDownload() }) {
                                 Text("Cancel")
                             }
                         }
@@ -1413,6 +1439,7 @@ private fun AssistantSection(
     onTtsEnabledChange: (Boolean) -> Unit
 ) {
     val context = LocalContext.current
+    val haptics = rememberHapticFeedback()
 
     Column(
         verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -1459,7 +1486,7 @@ private fun AssistantSection(
 
                 Switch(
                     checked = assistantEnabled,
-                    onCheckedChange = onAssistantEnabledChange
+                    onCheckedChange = { haptics.perform(HapticPattern.TOGGLE); onAssistantEnabledChange(it) }
                 )
             }
         }
@@ -1546,7 +1573,7 @@ private fun AssistantSection(
 
                     Switch(
                         checked = voiceEnabled,
-                        onCheckedChange = onVoiceEnabledChange
+                        onCheckedChange = { haptics.perform(HapticPattern.TOGGLE); onVoiceEnabledChange(it) }
                     )
                 }
             }
@@ -1593,7 +1620,7 @@ private fun AssistantSection(
 
                     Switch(
                         checked = ttsEnabled,
-                        onCheckedChange = onTtsEnabledChange
+                        onCheckedChange = { haptics.perform(HapticPattern.TOGGLE); onTtsEnabledChange(it) }
                     )
                 }
             }

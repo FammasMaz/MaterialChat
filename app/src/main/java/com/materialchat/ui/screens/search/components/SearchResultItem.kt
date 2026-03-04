@@ -5,6 +5,8 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -188,8 +190,16 @@ fun SearchResultItem(
         // Matching messages (branched from title)
         AnimatedVisibility(
             visible = item.matchingMessages.isNotEmpty(),
-            enter = expandVertically(),
-            exit = shrinkVertically()
+            enter = expandVertically(
+                animationSpec = spring(dampingRatio = 0.7f, stiffness = 500f)
+            ) + fadeIn(
+                animationSpec = spring(dampingRatio = 1.0f, stiffness = 500f)
+            ),
+            exit = shrinkVertically(
+                animationSpec = spring(dampingRatio = 1.0f, stiffness = 500f)
+            ) + fadeOut(
+                animationSpec = spring(dampingRatio = 1.0f, stiffness = 500f)
+            )
         ) {
             val highlightColor = MaterialTheme.colorScheme.tertiaryContainer
             Column(

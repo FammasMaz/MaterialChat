@@ -66,6 +66,8 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import com.materialchat.domain.model.Provider
 import com.materialchat.domain.model.ProviderType
+import com.materialchat.ui.components.HapticPattern
+import com.materialchat.ui.components.rememberHapticFeedback
 import com.materialchat.ui.screens.chat.components.ModelPickerDropdown
 import com.materialchat.ui.screens.settings.ProviderFormState
 import com.materialchat.ui.theme.CustomShapes
@@ -365,6 +367,7 @@ private fun SheetHeader(
     title: String,
     onClose: () -> Unit
 ) {
+    val haptics = rememberHapticFeedback()
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -377,7 +380,7 @@ private fun SheetHeader(
             style = MaterialTheme.typography.headlineSmall,
             color = MaterialTheme.colorScheme.onSurface
         )
-        IconButton(onClick = onClose) {
+        IconButton(onClick = { haptics.perform(HapticPattern.CLICK); onClose() }) {
             Icon(
                 imageVector = Icons.Default.Close,
                 contentDescription = "Close",
@@ -496,8 +499,16 @@ private fun FormTextField(
         // Error message
         AnimatedVisibility(
             visible = error != null,
-            enter = fadeIn() + expandVertically(),
-            exit = fadeOut() + shrinkVertically()
+            enter = fadeIn(
+                animationSpec = spring(dampingRatio = 1.0f, stiffness = 500f)
+            ) + expandVertically(
+                animationSpec = spring(dampingRatio = 0.7f, stiffness = 500f)
+            ),
+            exit = fadeOut(
+                animationSpec = spring(dampingRatio = 1.0f, stiffness = 500f)
+            ) + shrinkVertically(
+                animationSpec = spring(dampingRatio = 1.0f, stiffness = 500f)
+            )
         ) {
             Text(
                 text = error ?: "",

@@ -44,6 +44,8 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.materialchat.domain.model.ProviderType
+import com.materialchat.ui.components.HapticPattern
+import com.materialchat.ui.components.rememberHapticFeedback
 import com.materialchat.ui.screens.settings.ProviderUiItem
 import com.materialchat.ui.theme.CustomShapes
 
@@ -76,6 +78,7 @@ fun ProviderCard(
 ) {
     val provider = providerItem.provider
     var isPressed by remember { mutableStateOf(false) }
+    val haptics = rememberHapticFeedback()
 
     // Spring-physics scale animation for press feedback
     val scale by animateFloatAsState(
@@ -192,15 +195,15 @@ fun ProviderCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 if (!provider.isActive) {
-                    TextButton(onClick = onActivate) {
+                    TextButton(onClick = { haptics.perform(HapticPattern.CLICK); onActivate() }) {
                         Text("Set Active")
                     }
                 }
-                TextButton(onClick = onTestConnection) {
+                TextButton(onClick = { haptics.perform(HapticPattern.CLICK); onTestConnection() }) {
                     Text("Test")
                 }
                 Spacer(modifier = Modifier.weight(1f))
-                TextButton(onClick = onDelete) {
+                TextButton(onClick = { haptics.perform(HapticPattern.REJECT); onDelete() }) {
                     Text(
                         text = "Delete",
                         color = MaterialTheme.colorScheme.error

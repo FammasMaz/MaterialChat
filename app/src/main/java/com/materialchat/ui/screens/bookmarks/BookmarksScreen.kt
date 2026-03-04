@@ -42,6 +42,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.materialchat.ui.screens.bookmarks.components.BookmarkCard
 import com.materialchat.ui.screens.bookmarks.components.BookmarkFilterBar
 import com.materialchat.ui.screens.bookmarks.components.BookmarkSearchBar
+import com.materialchat.ui.components.HapticPattern
+import com.materialchat.ui.components.rememberHapticFeedback
 
 /**
  * Bookmarks / Knowledge Base screen.
@@ -61,6 +63,7 @@ fun BookmarksScreen(
     onNavigateToConversation: (String) -> Unit = {},
     viewModel: BookmarksViewModel = hiltViewModel()
 ) {
+    val haptics = rememberHapticFeedback()
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
     Scaffold(
@@ -74,7 +77,7 @@ fun BookmarksScreen(
                     )
                 },
                 navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
+                    IconButton(onClick = { haptics.perform(HapticPattern.CLICK); onNavigateBack() }) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Navigate back"
@@ -151,6 +154,8 @@ private fun BookmarksErrorContent(
     onRetry: () -> Unit,
     onNavigateBack: () -> Unit
 ) {
+    val haptics = rememberHapticFeedback()
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -172,10 +177,10 @@ private fun BookmarksErrorContent(
             textAlign = TextAlign.Center
         )
         Spacer(modifier = Modifier.height(16.dp))
-        TextButton(onClick = onRetry) {
+        TextButton(onClick = { haptics.perform(HapticPattern.CLICK); onRetry() }) {
             Text("Retry")
         }
-        TextButton(onClick = onNavigateBack) {
+        TextButton(onClick = { haptics.perform(HapticPattern.CLICK); onNavigateBack() }) {
             Text("Go Back")
         }
     }

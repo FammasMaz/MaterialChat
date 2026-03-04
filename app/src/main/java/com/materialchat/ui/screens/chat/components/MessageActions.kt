@@ -31,6 +31,8 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
+import com.materialchat.ui.components.HapticPattern
+import com.materialchat.ui.components.rememberHapticFeedback
 
 /**
  * Action buttons for chat messages (copy, regenerate, branch, redo with model).
@@ -208,6 +210,7 @@ private fun ActionButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val haptics = rememberHapticFeedback()
     var isPressed by remember { mutableStateOf(false) }
 
     val scale by animateFloatAsState(
@@ -222,6 +225,7 @@ private fun ActionButton(
     IconButton(
         onClick = {
             isPressed = true
+            haptics.perform(HapticPattern.CLICK)
             onClick()
             isPressed = false
         },

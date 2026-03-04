@@ -16,6 +16,8 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import com.materialchat.domain.model.ArtifactType
+import com.materialchat.ui.components.HapticPattern
+import com.materialchat.ui.components.rememberHapticFeedback
 import com.materialchat.ui.screens.canvas.CanvasViewMode
 
 /**
@@ -50,6 +52,7 @@ fun CanvasTopBar(
     onCopy: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val haptics = rememberHapticFeedback()
     val title = when (artifactType) {
         ArtifactType.HTML -> "HTML Preview"
         ArtifactType.MERMAID -> "Mermaid Diagram"
@@ -75,7 +78,7 @@ fun CanvasTopBar(
             )
         },
         navigationIcon = {
-            IconButton(onClick = onNavigateBack) {
+            IconButton(onClick = { haptics.perform(HapticPattern.CLICK); onNavigateBack() }) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                     contentDescription = "Back"
@@ -83,19 +86,19 @@ fun CanvasTopBar(
             }
         },
         actions = {
-            IconButton(onClick = onToggleViewMode) {
+            IconButton(onClick = { haptics.perform(HapticPattern.CLICK); onToggleViewMode() }) {
                 Icon(
                     imageVector = toggleIcon,
                     contentDescription = toggleDescription
                 )
             }
-            IconButton(onClick = onCopy) {
+            IconButton(onClick = { haptics.perform(HapticPattern.CLICK); onCopy() }) {
                 Icon(
                     imageVector = Icons.Outlined.ContentCopy,
                     contentDescription = "Copy code"
                 )
             }
-            IconButton(onClick = onShare) {
+            IconButton(onClick = { haptics.perform(HapticPattern.CLICK); onShare() }) {
                 Icon(
                     imageVector = Icons.Outlined.Share,
                     contentDescription = "Share"

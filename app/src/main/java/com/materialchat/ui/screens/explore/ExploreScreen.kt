@@ -1,6 +1,7 @@
 package com.materialchat.ui.screens.explore
 
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -163,7 +164,19 @@ fun ExploreScreen(
                 modifier = Modifier.fillMaxSize()
             ) {
                 items(features, key = { it.title }) { feature ->
-                    ExploreFeatureCard(feature = feature)
+                    ExploreFeatureCard(
+                        feature = feature,
+                        modifier = Modifier.animateItem(
+                            fadeInSpec = spring(
+                                dampingRatio = Spring.DampingRatioNoBouncy,
+                                stiffness = Spring.StiffnessMediumLow
+                            ),
+                            fadeOutSpec = spring(
+                                dampingRatio = Spring.DampingRatioNoBouncy,
+                                stiffness = Spring.StiffnessMediumLow
+                            )
+                        )
+                    )
                 }
             }
         }

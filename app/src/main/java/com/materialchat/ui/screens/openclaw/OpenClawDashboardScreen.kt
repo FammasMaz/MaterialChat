@@ -57,6 +57,8 @@ import com.materialchat.ui.screens.openclaw.components.ChannelStatusList
 import com.materialchat.ui.screens.openclaw.components.GatewayStatusCard
 import com.materialchat.ui.screens.openclaw.components.OpenClawSetupSheet
 import com.materialchat.ui.theme.CustomShapes
+import com.materialchat.ui.components.HapticPattern
+import com.materialchat.ui.components.rememberHapticFeedback
 
 /**
  * OpenClaw Dashboard screen composable.
@@ -80,6 +82,7 @@ fun OpenClawDashboardScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
+    val haptics = rememberHapticFeedback()
 
     // Handle one-time events
     LaunchedEffect(Unit) {
@@ -119,13 +122,13 @@ fun OpenClawDashboardScreen(
                 actions = {
                     val currentState = uiState
                     if (currentState is OpenClawDashboardUiState.Success) {
-                        IconButton(onClick = viewModel::navigateToSessions) {
+                        IconButton(onClick = { haptics.perform(HapticPattern.CLICK); viewModel.navigateToSessions() }) {
                             Icon(
                                 imageVector = Icons.Filled.History,
                                 contentDescription = "Sessions"
                             )
                         }
-                        IconButton(onClick = viewModel::showSetup) {
+                        IconButton(onClick = { haptics.perform(HapticPattern.CLICK); viewModel.showSetup() }) {
                             Icon(
                                 imageVector = Icons.Filled.Settings,
                                 contentDescription = "Setup"

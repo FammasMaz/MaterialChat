@@ -45,6 +45,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.materialchat.ui.components.HapticPattern
+import com.materialchat.ui.components.rememberHapticFeedback
 import com.materialchat.ui.screens.workflows.components.WorkflowCard
 
 /**
@@ -68,6 +70,7 @@ fun WorkflowsScreen(
     viewModel: WorkflowsViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val haptics = rememberHapticFeedback()
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.surfaceContainer,
@@ -80,7 +83,7 @@ fun WorkflowsScreen(
                     )
                 },
                 navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
+                    IconButton(onClick = { haptics.perform(HapticPattern.CLICK); onNavigateBack() }) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Navigate back"

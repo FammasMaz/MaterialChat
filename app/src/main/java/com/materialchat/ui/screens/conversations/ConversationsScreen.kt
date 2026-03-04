@@ -300,6 +300,7 @@ private fun ConversationsTopBar(
     )
 
     val density = LocalDensity.current
+    val haptics = rememberHapticFeedback()
     SideEffect {
         scrollBehavior.state.heightOffsetLimit = with(density) {
             (collapsedHeight - expandedHeight).toPx()
@@ -377,7 +378,7 @@ private fun ConversationsTopBar(
             )
 
             Surface(
-                onClick = onSearchClick,
+                onClick = { haptics.perform(HapticPattern.CLICK); onSearchClick() },
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
                     .padding(bottom = baseBottomPadding)
@@ -501,6 +502,7 @@ private fun EmptyContent(
     hasActiveProvider: Boolean,
     onNavigateToSettings: () -> Unit
 ) {
+    val haptics = rememberHapticFeedback()
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -543,7 +545,7 @@ private fun EmptyContent(
         if (!hasActiveProvider) {
             Spacer(modifier = Modifier.height(16.dp))
 
-            FilledTonalButton(onClick = onNavigateToSettings) {
+            FilledTonalButton(onClick = { haptics.perform(HapticPattern.CLICK); onNavigateToSettings() }) {
                 Text("Go to Settings")
             }
         }
@@ -684,6 +686,7 @@ private fun ErrorContent(
     message: String,
     onRetry: () -> Unit
 ) {
+    val haptics = rememberHapticFeedback()
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -709,7 +712,7 @@ private fun ErrorContent(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        TextButton(onClick = onRetry) {
+        TextButton(onClick = { haptics.perform(HapticPattern.CLICK); onRetry() }) {
             Text("Retry")
         }
     }

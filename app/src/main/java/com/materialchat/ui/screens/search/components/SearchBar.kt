@@ -27,6 +27,8 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
+import com.materialchat.ui.components.HapticPattern
+import com.materialchat.ui.components.rememberHapticFeedback
 import com.materialchat.ui.theme.CustomShapes
 
 /**
@@ -54,6 +56,7 @@ fun ChatSearchBar(
 ) {
     val focusRequester = remember { FocusRequester() }
     val keyboardController = LocalSoftwareKeyboardController.current
+    val haptics = rememberHapticFeedback()
 
     // Auto-focus when the search bar appears
     LaunchedEffect(Unit) {
@@ -96,7 +99,7 @@ fun ChatSearchBar(
                     animationSpec = spring(stiffness = Spring.StiffnessMedium)
                 )
             ) {
-                IconButton(onClick = onClear) {
+                IconButton(onClick = { haptics.perform(HapticPattern.CLICK); onClear() }) {
                     Icon(
                         imageVector = Icons.Default.Close,
                         contentDescription = "Clear search",

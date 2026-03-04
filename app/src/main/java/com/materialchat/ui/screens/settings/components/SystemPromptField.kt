@@ -8,6 +8,8 @@ import androidx.compose.animation.core.spring
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -147,7 +149,21 @@ fun SystemPromptField(
                 }
 
                 // Edit/Save/Cancel buttons
-                AnimatedVisibility(visible = !isEditing) {
+                AnimatedVisibility(
+                    visible = !isEditing,
+                    enter = fadeIn(
+                        animationSpec = spring(dampingRatio = 1.0f, stiffness = 500f)
+                    ) + scaleIn(
+                        animationSpec = spring(dampingRatio = 0.7f, stiffness = 500f),
+                        initialScale = 0.8f
+                    ),
+                    exit = fadeOut(
+                        animationSpec = spring(dampingRatio = 1.0f, stiffness = 500f)
+                    ) + scaleOut(
+                        animationSpec = spring(dampingRatio = 1.0f, stiffness = 500f),
+                        targetScale = 0.8f
+                    )
+                ) {
                     EditButton(
                         onClick = {
                             editedPrompt = currentPrompt
@@ -162,8 +178,16 @@ fun SystemPromptField(
             // Content: either display or edit mode
             AnimatedVisibility(
                 visible = !isEditing,
-                enter = fadeIn() + expandVertically(),
-                exit = fadeOut() + shrinkVertically()
+                enter = fadeIn(
+                    animationSpec = spring(dampingRatio = 1.0f, stiffness = 500f)
+                ) + expandVertically(
+                    animationSpec = spring(dampingRatio = 0.7f, stiffness = 500f)
+                ),
+                exit = fadeOut(
+                    animationSpec = spring(dampingRatio = 1.0f, stiffness = 500f)
+                ) + shrinkVertically(
+                    animationSpec = spring(dampingRatio = 1.0f, stiffness = 500f)
+                )
             ) {
                 // Display mode
                 Text(
