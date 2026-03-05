@@ -20,7 +20,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -321,10 +321,12 @@ private fun ChatContent(
                 ),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                items(
+                itemsIndexed(
                     items = state.messages,
-                    key = { "${it.role}_${it.timestamp}_${it.runId}" }
-                ) { message ->
+                    key = { index, message ->
+                        "${message.role}_${message.timestamp}_${message.runId ?: "no_run"}_$index"
+                    }
+                ) { _, message ->
                     OpenClawMessageBubble(
                         message = message,
                         modifier = Modifier
