@@ -2,13 +2,18 @@ package com.materialchat.ui.screens.openclaw
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.materialchat.data.local.preferences.OpenClawPreferences
 import com.materialchat.domain.model.openclaw.GatewayConnectionState
 import com.materialchat.domain.model.openclaw.GatewayEvent
 import com.materialchat.domain.model.openclaw.OpenClawChannel
 import com.materialchat.domain.model.openclaw.OpenClawConfig
 import com.materialchat.domain.usecase.openclaw.ConnectGatewayUseCase
 import com.materialchat.domain.usecase.openclaw.GetGatewayStatusUseCase
+import com.materialchat.domain.usecase.openclaw.ManageOpenClawAgentsUseCase
 import com.materialchat.domain.usecase.openclaw.ManageOpenClawConfigUseCase
+import com.materialchat.domain.usecase.openclaw.ManageOpenClawSessionsUseCase
+import com.materialchat.notifications.OpenClawNotificationScheduler
+import com.materialchat.notifications.OpenClawPushSyncManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -31,7 +36,12 @@ import javax.inject.Inject
 class OpenClawDashboardViewModel @Inject constructor(
     private val connectGatewayUseCase: ConnectGatewayUseCase,
     private val getGatewayStatusUseCase: GetGatewayStatusUseCase,
-    private val manageOpenClawConfigUseCase: ManageOpenClawConfigUseCase
+    private val manageOpenClawAgentsUseCase: ManageOpenClawAgentsUseCase,
+    private val manageOpenClawConfigUseCase: ManageOpenClawConfigUseCase,
+    private val manageOpenClawSessionsUseCase: ManageOpenClawSessionsUseCase,
+    private val openClawNotificationScheduler: OpenClawNotificationScheduler,
+    private val openClawPreferences: OpenClawPreferences,
+    private val openClawPushSyncManager: OpenClawPushSyncManager
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<OpenClawDashboardUiState>(OpenClawDashboardUiState.Loading)
@@ -42,6 +52,7 @@ class OpenClawDashboardViewModel @Inject constructor(
 
     init {
         observeConfig()
+        observeAgentHistory()
         observeConnectionState()
         observeLatency()
         observeGatewayEvents()
@@ -66,6 +77,10 @@ class OpenClawDashboardViewModel @Inject constructor(
                             if (state is OpenClawDashboardUiState.Success) {
                                 state.copy(
                                     config = config,
+                                    agentHistory = mergeAgentHistory(
+                                        state.agentHistory,
+                                        listOf(config.agentId)
+                                    ),
                                     showSetupSheet = !isConfigured && state.showSetupSheet
                                 )
                             } else state
@@ -73,6 +88,7 @@ class OpenClawDashboardViewModel @Inject constructor(
                     } else {
                         _uiState.value = OpenClawDashboardUiState.Success(
                             config = config,
+                            agentHistory = mergeAgentHistory(listOf(config.agentId)),
                             showSetupSheet = !isConfigured
                         )
                     }
@@ -95,6 +111,24 @@ class OpenClawDashboardViewModel @Inject constructor(
                 // Auto-fetch status on connection
                 if (connectionState is GatewayConnectionState.Connected) {
                     refreshStatus()
+                }
+            }
+        }
+    }
+
+    private fun observeAgentHistory() {
+        viewModelScope.launch {
+            openClawPreferences.agentHistory.collect { history ->
+                _uiState.update { state ->
+                    if (state is OpenClawDashboardUiState.Success) {
+                        state.copy(
+                            agentHistory = mergeAgentHistory(
+                                listOf(state.config.agentId),
+                                history,
+                                state.agentHistory
+                            )
+                        )
+                    } else state
                 }
             }
         }
@@ -177,10 +211,24 @@ class OpenClawDashboardViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 val status = getGatewayStatusUseCase.getStatus()
+                val sessionAgents = try {
+                    manageOpenClawSessionsUseCase.listSessions().map { it.agentId }
+                } catch (_: Exception) {
+                    emptyList()
+                }
+                openClawPreferences.addAgentsToHistory(
+                    sessionAgents + listOf(status.agentId)
+                )
+
                 _uiState.update { state ->
                     if (state is OpenClawDashboardUiState.Success) {
                         state.copy(
                             status = status,
+                            agentHistory = mergeAgentHistory(
+                                state.agentHistory,
+                                sessionAgents,
+                                listOf(status.agentId, state.config.agentId)
+                            ),
                             isRefreshing = false
                         )
                     } else state
@@ -233,11 +281,12 @@ class OpenClawDashboardViewModel @Inject constructor(
     fun saveConfig(url: String, token: String, agentId: String, selfSigned: Boolean) {
         viewModelScope.launch {
             try {
+                val resolvedAgentId = agentId.ifBlank { "main" }
                 val config = OpenClawConfig(
                     gatewayUrl = url.trim(),
-                    agentId = agentId.ifBlank { "main" },
+                    agentId = resolvedAgentId,
                     isEnabled = true,
-                    autoConnect = false,
+                    autoConnect = true,
                     allowSelfSignedCerts = selfSigned
                 )
                 manageOpenClawConfigUseCase.updateConfig(config)
@@ -246,9 +295,53 @@ class OpenClawDashboardViewModel @Inject constructor(
                     manageOpenClawConfigUseCase.setToken(token.trim())
                 }
 
+                if (token.isNotBlank() || manageOpenClawConfigUseCase.hasToken()) {
+                    connectGatewayUseCase.connect()
+
+                    runCatching {
+                        manageOpenClawAgentsUseCase.ensureAgentExists(
+                            agentId = resolvedAgentId,
+                            workspaceDir = "~/.openclaw/workspace-$resolvedAgentId"
+                        )
+                    }.onSuccess { created ->
+                        if (created) {
+                            _events.emit(
+                                OpenClawDashboardEvent.ShowSnackbar(
+                                    "Created agent \"$resolvedAgentId\" on server"
+                                )
+                            )
+                        }
+                    }.onFailure {
+                        _events.emit(
+                            OpenClawDashboardEvent.ShowSnackbar(
+                                "Could not auto-create agent. Create it manually if needed."
+                            )
+                        )
+                    }
+                }
+
+                openClawNotificationScheduler.scheduleImmediate()
+
+                val pushEndpointAvailable = openClawPushSyncManager.checkServerPushEndpoint()
+                if (!pushEndpointAvailable) {
+                    _events.emit(
+                        OpenClawDashboardEvent.ShowSnackbar(
+                            "Push endpoint missing on server. Install MaterialChat push plugin."
+                        )
+                    )
+                }
+
+                openClawPushSyncManager.syncRegistration()
+
                 _uiState.update { state ->
                     if (state is OpenClawDashboardUiState.Success) {
-                        state.copy(showSetupSheet = false)
+                        state.copy(
+                            showSetupSheet = false,
+                            agentHistory = mergeAgentHistory(
+                                state.agentHistory,
+                                listOf(resolvedAgentId)
+                            )
+                        )
                     } else state
                 }
 
@@ -281,5 +374,13 @@ class OpenClawDashboardViewModel @Inject constructor(
         viewModelScope.launch {
             _events.emit(OpenClawDashboardEvent.NavigateToSessions)
         }
+    }
+
+    private fun mergeAgentHistory(vararg agentGroups: List<String>): List<String> {
+        return agentGroups
+            .flatMap { it }
+            .map { it.trim() }
+            .filter { it.isNotBlank() }
+            .distinct()
     }
 }

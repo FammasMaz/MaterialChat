@@ -396,7 +396,7 @@ class OpenClawGatewayClient(
         return payload?.sessions?.map { s ->
             OpenClawSession(
                 key = s.key,
-                agentId = s.agentId ?: "main",
+                agentId = parseSessionAgentId(s),
                 channelType = s.channel?.let { parseChannelType(it) },
                 label = s.label,
                 startedAt = s.startedAt ?: 0L,
@@ -424,6 +424,50 @@ class OpenClawGatewayClient(
                 lastActivity = c.lastActivity
             )
         } ?: emptyList()
+    }
+
+    /** List configured gateway agent IDs. */
+    suspend fun listAgentIds(): List<String> {
+        val response = sendRequest("agents.list", buildJsonObject { })
+        if (!response.ok) throw IOException(response.error?.message ?: "Failed to list agents")
+
+        return response.payload
+            ?.get("agents")
+            ?.jsonArray
+            ?.mapNotNull { element ->
+                element.jsonObject["id"]?.jsonPrimitive?.contentOrNull?.trim()
+            }
+            ?.filter { it.isNotBlank() }
+            ?: emptyList()
+    }
+
+    /**
+     * Ensures an agent exists on the gateway. Returns true if created, false if already present.
+     */
+    suspend fun ensureAgentExists(agentId: String, workspaceDir: String): Boolean {
+        val normalizedId = agentId.trim().lowercase()
+        if (normalizedId.isBlank()) return false
+
+        val existing = runCatching { listAgentIds() }.getOrDefault(emptyList())
+        if (existing.any { it.equals(normalizedId, ignoreCase = true) }) {
+            return false
+        }
+
+        val params = buildJsonObject {
+            put("name", normalizedId)
+            put("workspace", workspaceDir.trim())
+        }
+
+        val createResponse = sendRequest("agents.create", params)
+        if (!createResponse.ok) {
+            val message = createResponse.error?.message ?: "Failed to create agent"
+            if (message.contains("already exists", ignoreCase = true)) {
+                return false
+            }
+            throw IOException(message)
+        }
+
+        return true
     }
 
     /** Send a chat message via WebSocket. */
@@ -697,6 +741,23 @@ class OpenClawGatewayClient(
         }
     }
 
+    private fun parseSessionAgentId(session: SessionPayload): String {
+        val fromAgentObject = when (val agent = session.agent) {
+            is JsonPrimitive -> agent.contentOrNull
+            is JsonObject -> {
+                agent["id"]?.jsonPrimitive?.contentOrNull
+                    ?: agent["agentId"]?.jsonPrimitive?.contentOrNull
+                    ?: agent["name"]?.jsonPrimitive?.contentOrNull
+            }
+            else -> null
+        }
+
+        return session.agentId
+            ?: session.agentIdSnake
+            ?: fromAgentObject
+            ?: "main"
+    }
+
     private fun createInsecureClient(baseClient: OkHttpClient): OkHttpClient {
         val trustAllCerts = arrayOf<TrustManager>(object : X509TrustManager {
             override fun checkClientTrusted(chain: Array<out X509Certificate>?, authType: String?) {}
@@ -719,4 +780,3 @@ class OpenClawGatewayClient(
         scope.cancel()
     }
 }
-

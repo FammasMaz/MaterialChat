@@ -216,6 +216,9 @@ data class SessionListPayload(
 data class SessionPayload(
     val key: String,
     val agentId: String? = null,
+    @SerialName("agent_id")
+    val agentIdSnake: String? = null,
+    val agent: JsonElement? = null,
     val channel: String? = null,
     val label: String? = null,
     val startedAt: Long? = null,

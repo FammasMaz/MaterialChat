@@ -89,6 +89,10 @@ class OpenClawRepositoryImpl @Inject constructor(
         return gatewayClient.listSessions()
     }
 
+    override suspend fun ensureAgentExists(agentId: String, workspaceDir: String): Boolean {
+        return gatewayClient.ensureAgentExists(agentId, workspaceDir)
+    }
+
     override suspend fun deleteSession(sessionKey: String) {
         gatewayClient.deleteSession(sessionKey)
     }

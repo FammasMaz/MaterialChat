@@ -39,6 +39,7 @@ class AppPreferences(private val context: Context) {
         val THEME_MODE = stringPreferencesKey("theme_mode")
         val DYNAMIC_COLOR_ENABLED = booleanPreferencesKey("dynamic_color_enabled")
         val HAPTICS_ENABLED = booleanPreferencesKey("haptics_enabled")
+        val NOTIFICATIONS_ENABLED = booleanPreferencesKey("notifications_enabled")
         val REASONING_EFFORT = stringPreferencesKey("reasoning_effort")
         val FIRST_LAUNCH_COMPLETE = booleanPreferencesKey("first_launch_complete")
         val AI_GENERATED_TITLES_ENABLED = booleanPreferencesKey("ai_generated_titles_enabled")
@@ -54,6 +55,7 @@ class AppPreferences(private val context: Context) {
         val ASSISTANT_TTS_ENABLED = booleanPreferencesKey("assistant_tts_enabled")
         val BEAUTIFUL_MODEL_NAMES = booleanPreferencesKey("beautiful_model_names")
         val ALWAYS_SHOW_THINKING = booleanPreferencesKey("always_show_thinking")
+        val OPENCLAW_FCM_LAST_TOKEN = stringPreferencesKey("openclaw_fcm_last_token")
     }
 
     /**
@@ -73,6 +75,7 @@ class AppPreferences(private val context: Context) {
         val DEFAULT_THEME_MODE = ThemeMode.SYSTEM
         const val DEFAULT_DYNAMIC_COLOR_ENABLED = true
         const val DEFAULT_HAPTICS_ENABLED = true
+        const val DEFAULT_NOTIFICATIONS_ENABLED = false
         const val DEFAULT_AI_GENERATED_TITLES_ENABLED = true
         val DEFAULT_REASONING_EFFORT = ReasoningEffort.HIGH
         const val DEFAULT_REMEMBER_LAST_MODEL = true
@@ -153,6 +156,24 @@ class AppPreferences(private val context: Context) {
     suspend fun setHapticsEnabled(enabled: Boolean) {
         dataStore.edit { preferences ->
             preferences[Keys.HAPTICS_ENABLED] = enabled
+        }
+    }
+
+    // ========== Notifications ==========
+
+    /**
+     * Get whether app notifications are enabled as a Flow.
+     */
+    val notificationsEnabled: Flow<Boolean> = dataStore.data.map { preferences ->
+        preferences[Keys.NOTIFICATIONS_ENABLED] ?: DEFAULT_NOTIFICATIONS_ENABLED
+    }
+
+    /**
+     * Set whether app notifications are enabled.
+     */
+    suspend fun setNotificationsEnabled(enabled: Boolean) {
+        dataStore.edit { preferences ->
+            preferences[Keys.NOTIFICATIONS_ENABLED] = enabled
         }
     }
 
@@ -409,6 +430,22 @@ class AppPreferences(private val context: Context) {
     }
 
     // ========== Utility Methods ==========
+
+    /**
+     * Last FCM token registered with the OpenClaw push relay.
+     */
+    val openClawFcmLastToken: Flow<String> = dataStore.data.map { preferences ->
+        preferences[Keys.OPENCLAW_FCM_LAST_TOKEN] ?: ""
+    }
+
+    /**
+     * Persists the last FCM token registered with the OpenClaw push relay.
+     */
+    suspend fun setOpenClawFcmLastToken(token: String) {
+        dataStore.edit { preferences ->
+            preferences[Keys.OPENCLAW_FCM_LAST_TOKEN] = token
+        }
+    }
 
     /**
      * Clear all preferences (for testing or reset functionality).

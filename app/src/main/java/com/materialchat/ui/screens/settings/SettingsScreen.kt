@@ -1,7 +1,12 @@
 package com.materialchat.ui.screens.settings
 
+import android.Manifest
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Build
 import android.provider.Settings
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
@@ -34,6 +39,7 @@ import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.Psychology
 import androidx.compose.material.icons.outlined.RecordVoiceOver
 import androidx.compose.material.icons.outlined.History
+import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.SettingsSystemDaydream
 import androidx.compose.material.icons.outlined.SmartToy
@@ -81,6 +87,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.core.content.ContextCompat
 import com.materialchat.data.local.preferences.AppPreferences
 import com.materialchat.domain.model.AppUpdate
 import com.materialchat.domain.model.Provider
@@ -112,6 +119,21 @@ fun SettingsScreen(
     val formState by viewModel.formState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
+    val context = LocalContext.current
+
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        viewModel.updateNotificationsEnabled(granted)
+        if (!granted) {
+            coroutineScope.launch {
+                snackbarHostState.showSnackbar(
+                    message = "Notification permission denied",
+                    duration = SnackbarDuration.Short
+                )
+            }
+        }
+    }
 
     // Handle events
     LaunchedEffect(Unit) {
@@ -222,6 +244,22 @@ fun SettingsScreen(
             onThemeModeChange = { viewModel.updateThemeMode(it) },
             onDynamicColorChange = { viewModel.updateDynamicColorEnabled(it) },
             onHapticsChange = { viewModel.updateHapticsEnabled(it) },
+            onNotificationsChange = { enabled ->
+                if (enabled && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    val hasPermission = ContextCompat.checkSelfPermission(
+                        context,
+                        Manifest.permission.POST_NOTIFICATIONS
+                    ) == PackageManager.PERMISSION_GRANTED
+
+                    if (hasPermission) {
+                        viewModel.updateNotificationsEnabled(true)
+                    } else {
+                        notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                    }
+                } else {
+                    viewModel.updateNotificationsEnabled(enabled)
+                }
+            },
             onBeautifulModelNamesChange = { viewModel.updateBeautifulModelNamesEnabled(it) },
             onAiGeneratedTitlesChange = { viewModel.updateAiGeneratedTitlesEnabled(it) },
             onTitleGenerationModelChange = { viewModel.updateTitleGenerationModel(it) },
@@ -287,6 +325,7 @@ private fun SettingsContent(
     onThemeModeChange: (AppPreferences.ThemeMode) -> Unit,
     onDynamicColorChange: (Boolean) -> Unit,
     onHapticsChange: (Boolean) -> Unit,
+    onNotificationsChange: (Boolean) -> Unit,
     onBeautifulModelNamesChange: (Boolean) -> Unit,
     onAiGeneratedTitlesChange: (Boolean) -> Unit,
     onTitleGenerationModelChange: (String) -> Unit,
@@ -334,6 +373,7 @@ private fun SettingsContent(
                     onThemeModeChange = onThemeModeChange,
                     onDynamicColorChange = onDynamicColorChange,
                     onHapticsChange = onHapticsChange,
+                    onNotificationsChange = onNotificationsChange,
                     onBeautifulModelNamesChange = onBeautifulModelNamesChange,
                     onAiGeneratedTitlesChange = onAiGeneratedTitlesChange,
                     onTitleGenerationModelChange = onTitleGenerationModelChange,
@@ -387,6 +427,7 @@ private fun SuccessContent(
     onThemeModeChange: (AppPreferences.ThemeMode) -> Unit,
     onDynamicColorChange: (Boolean) -> Unit,
     onHapticsChange: (Boolean) -> Unit,
+    onNotificationsChange: (Boolean) -> Unit,
     onBeautifulModelNamesChange: (Boolean) -> Unit,
     onAiGeneratedTitlesChange: (Boolean) -> Unit,
     onTitleGenerationModelChange: (String) -> Unit,
@@ -478,6 +519,13 @@ private fun SuccessContent(
             HapticsToggle(
                 enabled = uiState.hapticsEnabled,
                 onToggle = onHapticsChange
+            )
+        }
+
+        item {
+            NotificationsToggle(
+                enabled = uiState.notificationsEnabled,
+                onToggle = onNotificationsChange
             )
         }
 
@@ -765,6 +813,58 @@ private fun HapticsToggle(
                     )
                     Text(
                         text = "Vibrate on interactions",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            ExpressiveSwitch(
+                checked = enabled,
+                onCheckedChange = onToggle
+            )
+        }
+    }
+}
+
+@Composable
+private fun NotificationsToggle(
+    enabled: Boolean,
+    onToggle: (Boolean) -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+        ),
+        shape = RoundedCornerShape(20.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.weight(1f)
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.Notifications,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(24.dp)
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                Column {
+                    Text(
+                        text = "Notifications",
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = "Show agent updates when app is in background",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

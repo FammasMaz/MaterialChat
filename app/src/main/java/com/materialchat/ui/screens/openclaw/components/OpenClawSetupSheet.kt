@@ -9,6 +9,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -19,6 +21,12 @@ import androidx.compose.material.icons.filled.SmartToy
 import com.materialchat.ui.components.HapticPattern
 import com.materialchat.ui.components.rememberHapticFeedback
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.ExposedDropdownMenuAnchorType
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
@@ -56,6 +64,7 @@ import com.materialchat.ui.theme.CustomShapes
 @Composable
 fun OpenClawSetupSheet(
     config: OpenClawConfig,
+    recentAgents: List<String> = emptyList(),
     onDismiss: () -> Unit,
     onSave: (url: String, token: String, agentId: String, selfSigned: Boolean) -> Unit
 ) {
@@ -65,6 +74,22 @@ fun OpenClawSetupSheet(
     var token by remember { mutableStateOf("") }
     var agentId by remember { mutableStateOf(config.agentId) }
     var allowSelfSigned by remember { mutableStateOf(config.allowSelfSignedCerts) }
+    var agentDropdownExpanded by remember { mutableStateOf(false) }
+
+    val recentAgentCandidates = remember(recentAgents) {
+        recentAgents
+            .map { it.trim() }
+            .filter { it.isNotBlank() }
+            .distinct()
+    }
+
+    val filteredAgents = remember(agentId, recentAgents) {
+        recentAgentCandidates
+            .filter { candidate ->
+                agentId.isBlank() || candidate.contains(agentId, ignoreCase = true)
+            }
+            .take(8)
+    }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -138,26 +163,87 @@ fun OpenClawSetupSheet(
                 modifier = Modifier.fillMaxWidth()
             )
 
-            // Agent ID field
-            OutlinedTextField(
-                value = agentId,
-                onValueChange = { agentId = it },
-                label = { Text("Agent ID") },
-                placeholder = { Text("main") },
-                leadingIcon = {
-                    Icon(
-                        imageVector = Icons.Filled.SmartToy,
-                        contentDescription = null
-                    )
-                },
-                singleLine = true,
-                shape = RoundedCornerShape(16.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = MaterialTheme.colorScheme.primary,
-                    unfocusedBorderColor = MaterialTheme.colorScheme.outline
-                ),
-                modifier = Modifier.fillMaxWidth()
-            )
+            // Default agent field with history suggestions
+            ExposedDropdownMenuBox(
+                expanded = agentDropdownExpanded && filteredAgents.isNotEmpty(),
+                onExpandedChange = { expanded ->
+                    agentDropdownExpanded = expanded && filteredAgents.isNotEmpty()
+                }
+            ) {
+                OutlinedTextField(
+                    value = agentId,
+                    onValueChange = {
+                        agentId = it
+                        agentDropdownExpanded = true
+                    },
+                    label = { Text("Default Agent ID") },
+                    placeholder = { Text("main") },
+                    leadingIcon = {
+                        Icon(
+                            imageVector = Icons.Filled.SmartToy,
+                            contentDescription = null
+                        )
+                    },
+                    trailingIcon = {
+                        ExposedDropdownMenuDefaults.TrailingIcon(
+                            expanded = agentDropdownExpanded && filteredAgents.isNotEmpty()
+                        )
+                    },
+                    singleLine = true,
+                    shape = RoundedCornerShape(16.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                        unfocusedBorderColor = MaterialTheme.colorScheme.outline
+                    ),
+                    modifier = Modifier
+                        .menuAnchor(
+                            ExposedDropdownMenuAnchorType.PrimaryEditable,
+                            enabled = true
+                        )
+                        .fillMaxWidth()
+                )
+
+                DropdownMenu(
+                    expanded = agentDropdownExpanded && filteredAgents.isNotEmpty(),
+                    onDismissRequest = { agentDropdownExpanded = false }
+                ) {
+                    filteredAgents.forEach { candidate ->
+                        DropdownMenuItem(
+                            text = { Text(candidate) },
+                            onClick = {
+                                agentId = candidate
+                                agentDropdownExpanded = false
+                            }
+                        )
+                    }
+                }
+            }
+
+            if (recentAgentCandidates.isNotEmpty()) {
+                Text(
+                    text = "Recent agents",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                LazyRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    items(
+                        items = recentAgentCandidates,
+                        key = { it }
+                    ) { candidate ->
+                        FilterChip(
+                            selected = agentId == candidate,
+                            onClick = {
+                                agentId = candidate
+                                agentDropdownExpanded = false
+                            },
+                            label = { Text(candidate) }
+                        )
+                    }
+                }
+            }
 
             // Self-signed certificate toggle
             Row(

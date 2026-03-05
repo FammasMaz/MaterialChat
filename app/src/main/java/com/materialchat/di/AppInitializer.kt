@@ -2,6 +2,8 @@ package com.materialchat.di
 
 import android.util.Log
 import com.materialchat.data.local.preferences.AppPreferences
+import com.materialchat.notifications.OpenClawNotificationScheduler
+import com.materialchat.notifications.OpenClawPushSyncManager
 import com.materialchat.domain.repository.OpenClawRepository
 import com.materialchat.domain.repository.PersonaRepository
 import com.materialchat.domain.repository.ProviderRepository
@@ -25,7 +27,9 @@ class AppInitializer @Inject constructor(
     private val personaRepository: PersonaRepository,
     private val openClawRepository: OpenClawRepository,
     private val getBuiltinPersonasUseCase: GetBuiltinPersonasUseCase,
-    private val appPreferences: AppPreferences
+    private val appPreferences: AppPreferences,
+    private val openClawNotificationScheduler: OpenClawNotificationScheduler,
+    private val openClawPushSyncManager: OpenClawPushSyncManager
 ) {
     /**
      * Initializes the app on first launch.
@@ -45,6 +49,9 @@ class AppInitializer @Inject constructor(
 
         // Auto-connect to OpenClaw Gateway if configured
         autoConnectOpenClawIfNeeded()
+
+        // Keep push + polling notification delivery in sync
+        syncNotificationDeliveryStrategy()
     }
 
     /**
@@ -89,6 +96,15 @@ class AppInitializer @Inject constructor(
         } catch (e: Exception) {
             Log.w("AppInitializer", "Failed to auto-connect to OpenClaw: ${e.message}")
         }
+    }
+
+    private suspend fun syncNotificationDeliveryStrategy() {
+        val notificationsEnabled = appPreferences.notificationsEnabled.first()
+        val pushHealthy = runCatching {
+            openClawPushSyncManager.syncRegistration()
+        }.getOrDefault(false)
+
+        openClawNotificationScheduler.setEnabled(notificationsEnabled && !pushHealthy)
     }
 
     /**

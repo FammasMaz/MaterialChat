@@ -59,6 +59,9 @@ interface OpenClawRepository {
     /** List all active sessions. */
     suspend fun listSessions(): List<OpenClawSession>
 
+    /** Ensure a gateway agent exists. Returns true if created. */
+    suspend fun ensureAgentExists(agentId: String, workspaceDir: String): Boolean
+
     /** Delete a session by key. */
     suspend fun deleteSession(sessionKey: String)
 

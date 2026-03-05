@@ -25,6 +25,7 @@ sealed interface SettingsUiState {
      * @property dynamicColorEnabled Whether dynamic color is enabled
      * @property isDynamicColorSupported Whether the device supports dynamic color (Android 12+)
      * @property hapticsEnabled Whether haptic feedback is enabled
+     * @property notificationsEnabled Whether local notifications are enabled
      * @property aiGeneratedTitlesEnabled Whether AI-generated conversation titles are enabled
      * @property titleGenerationModel Custom model for title generation (empty = use conversation model)
      * @property rememberLastModelEnabled Whether to use the last used model for new chats
@@ -43,6 +44,7 @@ sealed interface SettingsUiState {
         val dynamicColorEnabled: Boolean,
         val isDynamicColorSupported: Boolean,
         val hapticsEnabled: Boolean = true,
+        val notificationsEnabled: Boolean = false,
         val aiGeneratedTitlesEnabled: Boolean = true,
         val titleGenerationModel: String = "",
         val rememberLastModelEnabled: Boolean = true,

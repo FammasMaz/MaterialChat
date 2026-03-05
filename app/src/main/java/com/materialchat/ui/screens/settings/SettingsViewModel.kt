@@ -5,6 +5,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.materialchat.data.local.preferences.AppPreferences
 import com.materialchat.data.repository.UpdateManager
+import com.materialchat.notifications.OpenClawNotificationScheduler
+import com.materialchat.notifications.OpenClawPushSyncManager
 import com.materialchat.domain.model.AppUpdate
 import com.materialchat.domain.model.Provider
 import com.materialchat.domain.model.ProviderType
@@ -30,7 +32,9 @@ import javax.inject.Inject
 class SettingsViewModel @Inject constructor(
     private val manageProvidersUseCase: ManageProvidersUseCase,
     private val appPreferences: AppPreferences,
-    private val updateManager: UpdateManager
+    private val updateManager: UpdateManager,
+    private val openClawNotificationScheduler: OpenClawNotificationScheduler,
+    private val openClawPushSyncManager: OpenClawPushSyncManager
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<SettingsUiState>(SettingsUiState.Loading)
@@ -57,7 +61,12 @@ class SettingsViewModel @Inject constructor(
                 appPreferences.themeMode,
                 appPreferences.dynamicColorEnabled,
                 combine(
-                    appPreferences.hapticsEnabled,
+                    combine(
+                        appPreferences.hapticsEnabled,
+                        appPreferences.notificationsEnabled
+                    ) { haptics, notifications ->
+                        haptics to notifications
+                    },
                     appPreferences.aiGeneratedTitlesEnabled,
                     appPreferences.titleGenerationModel,
                     appPreferences.autoCheckUpdates,
@@ -84,8 +93,15 @@ class SettingsViewModel @Inject constructor(
                             alwaysShowThinking = alwaysShowThinking
                         )
                     }
-                ) { haptics, aiTitles, titleModel, autoCheck, assistantSettings ->
-                    SettingsToggles(haptics, aiTitles, titleModel, autoCheck, assistantSettings)
+                ) { hapticsWithNotifications, aiTitles, titleModel, autoCheck, assistantSettings ->
+                    SettingsToggles(
+                        haptics = hapticsWithNotifications.first,
+                        notifications = hapticsWithNotifications.second,
+                        aiTitles = aiTitles,
+                        titleModel = titleModel,
+                        autoCheck = autoCheck,
+                        assistantSettings = assistantSettings
+                    )
                 }
             ) { providers, systemPrompt, themeMode, dynamicColorEnabled, toggles ->
                 SettingsData(
@@ -94,6 +110,7 @@ class SettingsViewModel @Inject constructor(
                     themeMode = themeMode,
                     dynamicColorEnabled = dynamicColorEnabled,
                     hapticsEnabled = toggles.haptics,
+                    notificationsEnabled = toggles.notifications,
                     aiGeneratedTitlesEnabled = toggles.aiTitles,
                     titleGenerationModel = toggles.titleModel,
                     autoCheckUpdates = toggles.autoCheck,
@@ -132,6 +149,7 @@ class SettingsViewModel @Inject constructor(
                         dynamicColorEnabled = data.dynamicColorEnabled,
                         isDynamicColorSupported = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S,
                         hapticsEnabled = data.hapticsEnabled,
+                        notificationsEnabled = data.notificationsEnabled,
                         aiGeneratedTitlesEnabled = data.aiGeneratedTitlesEnabled,
                         titleGenerationModel = data.titleGenerationModel,
                         rememberLastModelEnabled = data.rememberLastModel,
@@ -567,6 +585,23 @@ class SettingsViewModel @Inject constructor(
     }
 
     /**
+     * Updates the notifications setting.
+     */
+    fun updateNotificationsEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            try {
+                appPreferences.setNotificationsEnabled(enabled)
+                val pushHealthy = openClawPushSyncManager.syncRegistration()
+                openClawNotificationScheduler.setEnabled(enabled && !pushHealthy)
+            } catch (e: Exception) {
+                _events.emit(SettingsEvent.ShowSnackbar(
+                    message = "Failed to save notifications setting"
+                ))
+            }
+        }
+    }
+
+    /**
      * Updates the AI-generated titles setting.
      */
     fun updateAiGeneratedTitlesEnabled(enabled: Boolean) {
@@ -787,6 +822,7 @@ class SettingsViewModel @Inject constructor(
         val themeMode: AppPreferences.ThemeMode,
         val dynamicColorEnabled: Boolean,
         val hapticsEnabled: Boolean,
+        val notificationsEnabled: Boolean,
         val aiGeneratedTitlesEnabled: Boolean,
         val titleGenerationModel: String,
         val autoCheckUpdates: Boolean,
@@ -804,6 +840,7 @@ class SettingsViewModel @Inject constructor(
      */
     private data class SettingsToggles(
         val haptics: Boolean,
+        val notifications: Boolean,
         val aiTitles: Boolean,
         val titleModel: String,
         val autoCheck: Boolean,

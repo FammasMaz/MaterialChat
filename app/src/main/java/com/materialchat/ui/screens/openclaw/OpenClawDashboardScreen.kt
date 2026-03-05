@@ -217,6 +217,7 @@ fun OpenClawDashboardScreen(
                     if (state.showSetupSheet) {
                         OpenClawSetupSheet(
                             config = state.config,
+                            recentAgents = state.agentHistory,
                             onDismiss = viewModel::hideSetup,
                             onSave = viewModel::saveConfig
                         )

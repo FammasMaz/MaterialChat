@@ -7,6 +7,10 @@ plugins {
     alias(libs.plugins.ksp)
 }
 
+if (file("google-services.json").exists()) {
+    apply(plugin = "com.google.gms.google-services")
+}
+
 android {
     namespace = "com.materialchat"
     compileSdk = 35
@@ -107,6 +111,12 @@ dependencies {
 
     // DataStore
     implementation(libs.datastore.preferences)
+
+    // WorkManager
+    implementation(libs.androidx.work.runtime.ktx)
+
+    // Firebase
+    implementation(libs.firebase.messaging)
 
     // Tink Encryption
     implementation(libs.tink.android)

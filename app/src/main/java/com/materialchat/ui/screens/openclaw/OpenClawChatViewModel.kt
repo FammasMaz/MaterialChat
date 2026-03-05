@@ -8,6 +8,7 @@ import com.materialchat.domain.model.openclaw.GatewayEvent
 import com.materialchat.domain.model.openclaw.OpenClawChatMessage
 import com.materialchat.domain.model.openclaw.OpenClawChatRole
 import com.materialchat.domain.usecase.openclaw.ConnectGatewayUseCase
+import com.materialchat.domain.usecase.openclaw.ManageOpenClawConfigUseCase
 import com.materialchat.domain.usecase.openclaw.ManageOpenClawSessionsUseCase
 import com.materialchat.domain.usecase.openclaw.OpenClawChatUseCase
 import com.materialchat.data.local.preferences.AppPreferences
@@ -35,6 +36,7 @@ class OpenClawChatViewModel @Inject constructor(
     private val openClawChatUseCase: OpenClawChatUseCase,
     private val manageOpenClawSessionsUseCase: ManageOpenClawSessionsUseCase,
     private val connectGatewayUseCase: ConnectGatewayUseCase,
+    private val manageOpenClawConfigUseCase: ManageOpenClawConfigUseCase,
     private val appPreferences: AppPreferences
 ) : ViewModel() {
 
@@ -54,12 +56,24 @@ class OpenClawChatViewModel @Inject constructor(
     /** Job for the streaming event collection. */
     private var streamJob: Job? = null
 
+    /** Current configured OpenClaw agent ID. */
+    private var currentAgentId: String = "main"
+
     init {
         initializeChat()
         observeConnectionState()
         observeChatEvents()
         observeAgentEvents()
         observeHapticsPreference()
+        observeConfig()
+    }
+
+    private fun observeConfig() {
+        viewModelScope.launch {
+            manageOpenClawConfigUseCase.observeConfig().collect { config ->
+                currentAgentId = config.agentId.ifBlank { "main" }
+            }
+        }
     }
 
     /**
@@ -86,7 +100,9 @@ class OpenClawChatViewModel @Inject constructor(
                     if (connectionState is GatewayConnectionState.Connected) {
                         try {
                             val sessions = manageOpenClawSessionsUseCase.listSessions()
-                            val latestSession = sessions.firstOrNull()
+                            val latestSession = sessions.firstOrNull { session ->
+                                session.agentId == currentAgentId
+                            }
                             if (latestSession != null) {
                                 sessionKey = latestSession.key
                                 messages = try {
@@ -288,7 +304,7 @@ class OpenClawChatViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 val runId = openClawChatUseCase.sendMessage(
-                    sessionKey = currentState.sessionKey,
+                    sessionKey = currentState.sessionKey ?: defaultSessionKeyForAgent(currentAgentId),
                     message = messageText
                 )
                 activeRunId = runId
@@ -438,5 +454,10 @@ class OpenClawChatViewModel @Inject constructor(
     override fun onCleared() {
         super.onCleared()
         streamJob?.cancel()
+    }
+
+    private fun defaultSessionKeyForAgent(agentId: String): String {
+        val resolvedAgentId = agentId.ifBlank { "main" }
+        return "agent:$resolvedAgentId:materialchat-main"
     }
 }

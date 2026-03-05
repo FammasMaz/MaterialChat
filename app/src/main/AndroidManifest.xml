@@ -10,6 +10,9 @@
     <!-- Haptic feedback for enhanced UX -->
     <uses-permission android:name="android.permission.VIBRATE" />
 
+    <!-- Runtime notification permission (Android 13+) -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
     <!-- Image attachment permissions -->
     <!-- For Android 13+ (API 33+): Read images from media store -->
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
@@ -87,6 +90,19 @@
             android:name=".assistant.service.MaterialChatVoiceInteractionSessionService"
             android:permission="android.permission.BIND_VOICE_INTERACTION"
             android:exported="false" />
+
+        <!-- Receiver for direct reply from OpenClaw notifications -->
+        <receiver
+            android:name=".notifications.OpenClawReplyReceiver"
+            android:exported="false" />
+
+        <service
+            android:name=".notifications.OpenClawFirebaseMessagingService"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.google.firebase.MESSAGING_EVENT" />
+            </intent-filter>
+        </service>
 
     </application>
 

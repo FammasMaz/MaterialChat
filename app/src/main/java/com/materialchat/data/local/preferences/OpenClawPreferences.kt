@@ -6,6 +6,7 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -27,6 +28,7 @@ class OpenClawPreferences(context: Context) {
     companion object {
         private val KEY_GATEWAY_URL = stringPreferencesKey("gateway_url")
         private val KEY_AGENT_ID = stringPreferencesKey("agent_id")
+        private val KEY_AGENT_HISTORY = stringSetPreferencesKey("agent_history")
         private val KEY_IS_ENABLED = booleanPreferencesKey("is_enabled")
         private val KEY_AUTO_CONNECT = booleanPreferencesKey("auto_connect")
         private val KEY_ALLOW_SELF_SIGNED = booleanPreferencesKey("allow_self_signed_certs")
@@ -52,9 +54,35 @@ class OpenClawPreferences(context: Context) {
         prefs[KEY_AGENT_ID] ?: DEFAULT_AGENT_ID
     }
 
+    val agentHistory: Flow<List<String>> = dataStore.data.map { prefs ->
+        val history = prefs[KEY_AGENT_HISTORY] ?: setOf(DEFAULT_AGENT_ID)
+        history
+            .map { it.trim() }
+            .filter { it.isNotBlank() }
+            .sorted()
+    }
+
     suspend fun setAgentId(agentId: String) {
+        val normalizedAgentId = agentId.ifBlank { DEFAULT_AGENT_ID }
         dataStore.edit { prefs ->
-            prefs[KEY_AGENT_ID] = agentId.ifBlank { DEFAULT_AGENT_ID }
+            prefs[KEY_AGENT_ID] = normalizedAgentId
+            val history = (prefs[KEY_AGENT_HISTORY] ?: emptySet()).toMutableSet()
+            history.add(normalizedAgentId)
+            prefs[KEY_AGENT_HISTORY] = history
+        }
+    }
+
+    suspend fun addAgentsToHistory(agentIds: List<String>) {
+        dataStore.edit { prefs ->
+            val merged = (prefs[KEY_AGENT_HISTORY] ?: emptySet()).toMutableSet()
+            agentIds
+                .map { it.trim() }
+                .filter { it.isNotBlank() }
+                .forEach { merged.add(it) }
+
+            if (merged.isNotEmpty()) {
+                prefs[KEY_AGENT_HISTORY] = merged
+            }
         }
     }
 
@@ -113,9 +141,13 @@ class OpenClawPreferences(context: Context) {
      * Updates multiple config values at once.
      */
     suspend fun updateConfig(config: com.materialchat.domain.model.openclaw.OpenClawConfig) {
+        val resolvedAgentId = config.agentId.ifBlank { DEFAULT_AGENT_ID }
         dataStore.edit { prefs ->
             prefs[KEY_GATEWAY_URL] = config.gatewayUrl.trimEnd('/')
-            prefs[KEY_AGENT_ID] = config.agentId.ifBlank { DEFAULT_AGENT_ID }
+            prefs[KEY_AGENT_ID] = resolvedAgentId
+            val history = (prefs[KEY_AGENT_HISTORY] ?: emptySet()).toMutableSet()
+            history.add(resolvedAgentId)
+            prefs[KEY_AGENT_HISTORY] = history
             prefs[KEY_IS_ENABLED] = config.isEnabled
             prefs[KEY_AUTO_CONNECT] = config.autoConnect
             prefs[KEY_ALLOW_SELF_SIGNED] = config.allowSelfSignedCerts

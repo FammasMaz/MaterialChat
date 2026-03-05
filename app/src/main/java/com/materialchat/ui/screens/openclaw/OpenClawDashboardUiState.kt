@@ -23,6 +23,7 @@ sealed interface OpenClawDashboardUiState {
      * @property channels List of connected channels
      * @property latencyMs Current latency in milliseconds (null if unavailable)
      * @property config Current OpenClaw configuration
+     * @property agentHistory Known agent IDs from previous sessions
      * @property showSetupSheet Whether to show the initial setup bottom sheet
      * @property isRefreshing Whether a status refresh is in progress
      */
@@ -32,6 +33,7 @@ sealed interface OpenClawDashboardUiState {
         val channels: List<OpenClawChannel> = emptyList(),
         val latencyMs: Long? = null,
         val config: OpenClawConfig = OpenClawConfig(),
+        val agentHistory: List<String> = emptyList(),
         val showSetupSheet: Boolean = false,
         val isRefreshing: Boolean = false
     ) : OpenClawDashboardUiState {
