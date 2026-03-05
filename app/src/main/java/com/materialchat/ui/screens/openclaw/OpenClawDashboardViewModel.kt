@@ -297,40 +297,9 @@ class OpenClawDashboardViewModel @Inject constructor(
 
                 if (token.isNotBlank() || manageOpenClawConfigUseCase.hasToken()) {
                     connectGatewayUseCase.connect()
-
-                    runCatching {
-                        manageOpenClawAgentsUseCase.ensureAgentExists(
-                            agentId = resolvedAgentId,
-                            workspaceDir = "~/.openclaw/workspace-$resolvedAgentId"
-                        )
-                    }.onSuccess { created ->
-                        if (created) {
-                            _events.emit(
-                                OpenClawDashboardEvent.ShowSnackbar(
-                                    "Created agent \"$resolvedAgentId\" on server"
-                                )
-                            )
-                        }
-                    }.onFailure {
-                        _events.emit(
-                            OpenClawDashboardEvent.ShowSnackbar(
-                                "Could not auto-create agent. Create it manually if needed."
-                            )
-                        )
-                    }
                 }
 
                 openClawNotificationScheduler.scheduleImmediate()
-
-                val pushEndpointAvailable = openClawPushSyncManager.checkServerPushEndpoint()
-                if (!pushEndpointAvailable) {
-                    _events.emit(
-                        OpenClawDashboardEvent.ShowSnackbar(
-                            "Push endpoint missing on server. Install MaterialChat push plugin."
-                        )
-                    )
-                }
-
                 openClawPushSyncManager.syncRegistration()
 
                 _uiState.update { state ->
