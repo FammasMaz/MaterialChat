@@ -261,10 +261,17 @@ fun MessageBubble(
                     modifier = Modifier
                         .widthIn(min = 40.dp, max = bubbleStyle.maxWidth)
                         .animateContentSize(
-                            animationSpec = spring(
-                                dampingRatio = Spring.DampingRatioLowBouncy,
-                                stiffness = Spring.StiffnessMediumLow
-                            )
+                            animationSpec = if (message.isStreaming) {
+                                spring(
+                                    dampingRatio = Spring.DampingRatioNoBouncy,
+                                    stiffness = 1400f
+                                )
+                            } else {
+                                spring(
+                                    dampingRatio = 0.6f,
+                                    stiffness = 380f
+                                )
+                            }
                         )
                         .then(
                             if (isUser && !isEditing && !message.isStreaming && message.content.isNotEmpty()) {

@@ -678,7 +678,7 @@ private fun ChatContent(
                         overflow.toFloat(),
                         animationSpec = spring(
                             dampingRatio = 1.0f,
-                            stiffness = Spring.StiffnessHigh
+                            stiffness = 1400f
                         )
                     )
                 }

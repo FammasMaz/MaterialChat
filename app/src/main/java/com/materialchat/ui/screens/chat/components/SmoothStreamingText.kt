@@ -58,6 +58,7 @@ fun SmoothStreamingText(
             markdown = rawText,
             textColor = textColor,
             style = style,
+            isStreaming = false,
             onOpenCanvas = onOpenCanvas,
             modifier = modifier
         )
@@ -113,6 +114,7 @@ fun SmoothStreamingText(
             markdown = displayedText,
             textColor = textColor,
             style = style,
+            isStreaming = true,
             onOpenCanvas = onOpenCanvas,
             modifier = modifier
         )
