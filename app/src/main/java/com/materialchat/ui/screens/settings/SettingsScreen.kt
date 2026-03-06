@@ -38,6 +38,7 @@ import androidx.compose.material.icons.outlined.LightMode
 import androidx.compose.material.icons.outlined.Mic
 import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.Psychology
+import androidx.compose.material.icons.outlined.Numbers
 import androidx.compose.material.icons.outlined.RecordVoiceOver
 import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.Notifications
@@ -269,6 +270,7 @@ fun SettingsScreen(
             onTitleGenerationModelChange = { viewModel.updateTitleGenerationModel(it) },
             onRememberLastModelChange = { viewModel.updateRememberLastModelEnabled(it) },
             onAlwaysShowThinkingChange = { viewModel.updateAlwaysShowThinking(it) },
+            onShowTokenCounterChange = { viewModel.updateShowTokenCounter(it) },
             onAutoCheckUpdatesChange = { viewModel.updateAutoCheckUpdates(it) },
             onCheckForUpdates = { viewModel.checkForUpdates() },
             onDownloadUpdate = { viewModel.downloadUpdate(it) },
@@ -336,6 +338,7 @@ private fun SettingsContent(
     onTitleGenerationModelChange: (String) -> Unit,
     onRememberLastModelChange: (Boolean) -> Unit,
     onAlwaysShowThinkingChange: (Boolean) -> Unit,
+    onShowTokenCounterChange: (Boolean) -> Unit,
     onAutoCheckUpdatesChange: (Boolean) -> Unit,
     onCheckForUpdates: () -> Unit,
     onDownloadUpdate: (AppUpdate) -> Unit,
@@ -385,6 +388,7 @@ private fun SettingsContent(
                     onTitleGenerationModelChange = onTitleGenerationModelChange,
                     onRememberLastModelChange = onRememberLastModelChange,
                     onAlwaysShowThinkingChange = onAlwaysShowThinkingChange,
+                    onShowTokenCounterChange = onShowTokenCounterChange,
                     onAutoCheckUpdatesChange = onAutoCheckUpdatesChange,
                     onCheckForUpdates = onCheckForUpdates,
                     onDownloadUpdate = onDownloadUpdate,
@@ -440,6 +444,7 @@ private fun SuccessContent(
     onTitleGenerationModelChange: (String) -> Unit,
     onRememberLastModelChange: (Boolean) -> Unit,
     onAlwaysShowThinkingChange: (Boolean) -> Unit,
+    onShowTokenCounterChange: (Boolean) -> Unit,
     onAutoCheckUpdatesChange: (Boolean) -> Unit,
     onCheckForUpdates: () -> Unit,
     onDownloadUpdate: (AppUpdate) -> Unit,
@@ -591,6 +596,13 @@ private fun SuccessContent(
             AlwaysShowThinkingToggle(
                 enabled = uiState.alwaysShowThinking,
                 onToggle = onAlwaysShowThinkingChange
+            )
+        }
+
+        item {
+            ShowTokenCounterToggle(
+                enabled = uiState.showTokenCounter,
+                onToggle = onShowTokenCounterChange
             )
         }
 
@@ -1206,6 +1218,58 @@ private fun AlwaysShowThinkingToggle(
                     )
                     Text(
                         text = "Show model reasoning content by default",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            ExpressiveSwitch(
+                checked = enabled,
+                onCheckedChange = onToggle
+            )
+        }
+    }
+}
+
+@Composable
+private fun ShowTokenCounterToggle(
+    enabled: Boolean,
+    onToggle: (Boolean) -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+        ),
+        shape = RoundedCornerShape(20.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.weight(1f)
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.Numbers,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(24.dp)
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                Column {
+                    Text(
+                        text = "Token Counter",
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = "Show word and estimated token count while typing",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

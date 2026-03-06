@@ -2,7 +2,9 @@ package com.materialchat.ui.screens.chat.components
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
@@ -11,6 +13,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -22,12 +25,14 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.automirrored.filled.Reply
 import androidx.compose.material.icons.automirrored.outlined.CallSplit
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.ContentCopy
@@ -52,8 +57,10 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -63,10 +70,13 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.style.TextAlign
@@ -83,6 +93,7 @@ import com.materialchat.ui.components.HapticPattern
 import com.materialchat.ui.components.rememberHapticFeedback
 import com.materialchat.ui.theme.CustomShapes
 import com.materialchat.ui.theme.MessageBubbleShapes
+import kotlinx.coroutines.launch
 
 /**
  * A chat message bubble component following Material 3 Expressive design.
@@ -128,6 +139,7 @@ fun MessageBubble(
     onSubmitEdit: (() -> Unit)? = null,
     onCancelEdit: (() -> Unit)? = null,
     onOpenCanvas: ((com.materialchat.domain.model.CanvasArtifact) -> Unit)? = null,
+    onQuoteMessage: (() -> Unit)? = null,
     hapticsEnabled: Boolean = true,
     modifier: Modifier = Modifier
 ) {
@@ -140,6 +152,18 @@ fun MessageBubble(
     var showUserContextMenu by remember { mutableStateOf(false) }
 
     val haptics = rememberHapticFeedback()
+    val density = LocalDensity.current
+    val coroutineScope = rememberCoroutineScope()
+
+    // Swipe-to-quote state (spring physics for gesture)
+    val swipeOffset = remember { Animatable(0f) }
+    val swipeThreshold = with(density) { 72.dp.toPx() }
+    val maxSwipe = with(density) { 96.dp.toPx() }
+    var hasTriggeredSwipeHaptic by remember { mutableStateOf(false) }
+    val swipeProgress = (swipeOffset.value / swipeThreshold).coerceIn(0f, 1f)
+
+    // Double-tap bookmark burst state
+    var bookmarkBurstTrigger by remember { mutableIntStateOf(0) }
 
     val bubbleStyle = getBubbleStyle(
         isUser = isUser,
@@ -159,8 +183,73 @@ fun MessageBubble(
         modifier = modifier.fillMaxWidth(),
         contentAlignment = alignment
     ) {
+        // Swipe-to-quote reply icon (appears behind the bubble during swipe)
+        if (onQuoteMessage != null && swipeOffset.value > 8f) {
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.Reply,
+                contentDescription = "Quote reply",
+                modifier = Modifier
+                    .align(if (isUser) Alignment.CenterEnd else Alignment.CenterStart)
+                    .padding(horizontal = 8.dp)
+                    .size(24.dp)
+                    .graphicsLayer {
+                        alpha = swipeProgress
+                        scaleX = 0.6f + (0.4f * swipeProgress)
+                        scaleY = 0.6f + (0.4f * swipeProgress)
+                    },
+                tint = MaterialTheme.colorScheme.primary.copy(alpha = swipeProgress)
+            )
+        }
+
         Column(
-            horizontalAlignment = if (isUser) Alignment.End else Alignment.Start
+            horizontalAlignment = if (isUser) Alignment.End else Alignment.Start,
+            modifier = Modifier
+                .graphicsLayer {
+                    translationX = if (isUser) -swipeOffset.value else swipeOffset.value
+                }
+                .then(
+                    if (onQuoteMessage != null) {
+                        Modifier.pointerInput(Unit) {
+                            detectHorizontalDragGestures(
+                                onDragEnd = {
+                                    if (swipeOffset.value >= swipeThreshold) {
+                                        onQuoteMessage()
+                                    }
+                                    hasTriggeredSwipeHaptic = false
+                                    coroutineScope.launch {
+                                        swipeOffset.animateTo(
+                                            0f,
+                                            animationSpec = spring(
+                                                dampingRatio = 0.6f,
+                                                stiffness = 500f
+                                            )
+                                        )
+                                    }
+                                },
+                                onDragCancel = {
+                                    hasTriggeredSwipeHaptic = false
+                                    coroutineScope.launch {
+                                        swipeOffset.animateTo(0f, spring(1.0f, 500f))
+                                    }
+                                },
+                                onHorizontalDrag = { _, dragAmount ->
+                                    val direction = if (isUser) -dragAmount else dragAmount
+                                    val newOffset = (swipeOffset.value + direction)
+                                        .coerceIn(0f, maxSwipe)
+                                    coroutineScope.launch { swipeOffset.snapTo(newOffset) }
+
+                                    // Haptic tick when crossing threshold
+                                    if (newOffset >= swipeThreshold && !hasTriggeredSwipeHaptic) {
+                                        hasTriggeredSwipeHaptic = true
+                                        haptics.perform(HapticPattern.SWIPE_THRESHOLD, hapticsEnabled)
+                                    } else if (newOffset < swipeThreshold) {
+                                        hasTriggeredSwipeHaptic = false
+                                    }
+                                }
+                            )
+                        }
+                    } else Modifier
+                )
         ) {
             Box {
                 Surface(
@@ -179,6 +268,15 @@ fun MessageBubble(
                                 Modifier.combinedClickable(
                                     onClick = {},
                                     onLongClick = { haptics.perform(HapticPattern.CLICK, hapticsEnabled); showUserContextMenu = true }
+                                )
+                            } else if (isAssistant && !message.isStreaming && message.content.isNotEmpty() && onBookmarkToggle != null) {
+                                // Double-tap to bookmark (hero moment)
+                                Modifier.combinedClickable(
+                                    onClick = {},
+                                    onDoubleClick = {
+                                        onBookmarkToggle()
+                                        bookmarkBurstTrigger++
+                                    }
                                 )
                             } else Modifier
                         )
@@ -262,6 +360,15 @@ fun MessageBubble(
                     }
 
                 }
+                }
+
+                // Double-tap bookmark burst animation overlay (hero moment)
+                if (isAssistant) {
+                    BookmarkBurstAnimation(
+                        trigger = bookmarkBurstTrigger,
+                        hapticsEnabled = hapticsEnabled,
+                        modifier = Modifier.align(Alignment.Center)
+                    )
                 }
 
                 // User message floating context menu (long-press)
@@ -409,7 +516,7 @@ fun MessageBubble(
  * Uses SmoothStreamingText for streaming assistant messages to normalize
  * patchy token delivery into fluid word-by-word reveal with per-word haptics.
  * Uses MarkdownText for completed assistant messages with full formatting.
- * Uses plain Text for user messages.
+ * Uses plain Text for user messages (with inline quote block rendering).
  */
 @Composable
 private fun MessageContent(
@@ -421,8 +528,6 @@ private fun MessageContent(
     hapticsEnabled: Boolean = true
 ) {
     val displayContent = content.ifEmpty { "" }
-    val justifiedStyle = MaterialTheme.typography.bodyLarge.copy(textAlign = TextAlign.Justify)
-
     // Use chat-specific font size from user preferences (CompositionLocal)
     val chatFontSizeScale = com.materialchat.ui.theme.LocalChatFontSizeScale.current
     val chatStyle = MaterialTheme.typography.bodyLarge.copy(
@@ -439,14 +544,71 @@ private fun MessageContent(
             hapticsEnabled = hapticsEnabled,
             onOpenCanvas = onOpenCanvas
         )
-    } else {
-        Text(
-            text = displayContent,
-            style = chatStyle,
-            color = textColor,
-            overflow = TextOverflow.Clip
-        )
+    } else if (displayContent.isNotEmpty()) {
+        // Parse and render quoted content visually for user messages
+        val (quotedLines, bodyLines) = parseQuotedContent(displayContent)
+
+        if (quotedLines.isNotEmpty()) {
+            // Render visual quote block with accent bar
+            Row(modifier = Modifier.padding(bottom = 8.dp)) {
+                Box(
+                    modifier = Modifier
+                        .width(3.dp)
+                        .height(with(LocalDensity.current) {
+                            // Approximate height based on line count
+                            ((quotedLines.size * 20) + 8).dp
+                        })
+                        .clip(RoundedCornerShape(999.dp))
+                        .background(textColor.copy(alpha = 0.4f))
+                )
+                Text(
+                    text = quotedLines.joinToString("\n"),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = textColor.copy(alpha = 0.65f),
+                    fontStyle = FontStyle.Italic,
+                    modifier = Modifier.padding(start = 8.dp)
+                )
+            }
+        }
+
+        if (bodyLines.isNotEmpty()) {
+            Text(
+                text = bodyLines,
+                style = chatStyle,
+                color = textColor,
+                overflow = TextOverflow.Clip
+            )
+        }
+
     }
+}
+
+/**
+ * Parses message content into quoted lines (prefixed with `> `) and body text.
+ * Returns a pair of (quoted lines without prefix, remaining body text).
+ */
+private fun parseQuotedContent(content: String): Pair<List<String>, String> {
+    val lines = content.lines()
+    val quotedLines = mutableListOf<String>()
+    var bodyStartIndex = 0
+
+    for ((index, line) in lines.withIndex()) {
+        if (line.startsWith("> ")) {
+            quotedLines.add(line.removePrefix("> "))
+            bodyStartIndex = index + 1
+        } else if (line.isEmpty() && quotedLines.isNotEmpty() && bodyStartIndex == index) {
+            // Skip the blank line between quote and body
+            bodyStartIndex = index + 1
+        } else {
+            break
+        }
+    }
+
+    val bodyText = if (bodyStartIndex < lines.size) {
+        lines.subList(bodyStartIndex, lines.size).joinToString("\n").trim()
+    } else ""
+
+    return quotedLines to bodyText
 }
 
 /**

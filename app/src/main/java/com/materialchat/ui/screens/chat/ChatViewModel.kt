@@ -94,6 +94,7 @@ class ChatViewModel @Inject constructor(
     private var currentReasoningEffort: ReasoningEffort = AppPreferences.DEFAULT_REASONING_EFFORT
     private var currentBeautifulModelNamesEnabled: Boolean = AppPreferences.DEFAULT_BEAUTIFUL_MODEL_NAMES
     private var currentAlwaysShowThinking: Boolean = false
+    private var currentShowTokenCounter: Boolean = false
     private var autoSendTriggered: Boolean = false
     private var siblingInfo: SiblingInfo? = null
     private var currentPersona: Persona? = null
@@ -107,6 +108,7 @@ class ChatViewModel @Inject constructor(
         loadReasoningEffort()
         loadBeautifulModelNamesPreference()
         loadAlwaysShowThinkingPreference()
+        loadShowTokenCounterPreference()
         loadSiblings()
         loadPersona()
         loadBookmarkStates()
@@ -250,7 +252,9 @@ class ChatViewModel @Inject constructor(
                             persona = currentPersona,
                             editingMessageId = (currentState as? ChatUiState.Success)?.editingMessageId,
                             editingText = (currentState as? ChatUiState.Success)?.editingText ?: "",
-                            hasBranches = hasBranches
+                            hasBranches = hasBranches,
+                            quotedMessage = (currentState as? ChatUiState.Success)?.quotedMessage,
+                            showTokenCounter = currentShowTokenCounter
                         )
 
                         // Only scroll to bottom when a NEW message is added, not during streaming updates
@@ -370,12 +374,51 @@ class ChatViewModel @Inject constructor(
     }
 
     /**
+     * Loads the show token counter preference and updates UI state when it changes.
+     */
+    private fun loadShowTokenCounterPreference() {
+        viewModelScope.launch {
+            appPreferences.showTokenCounter.collect { enabled ->
+                currentShowTokenCounter = enabled
+                val currentState = _uiState.value
+                if (currentState is ChatUiState.Success) {
+                    _uiState.value = currentState.copy(showTokenCounter = enabled)
+                }
+            }
+        }
+    }
+
+    /**
      * Updates the input text.
      */
     fun updateInputText(text: String) {
         val currentState = _uiState.value
         if (currentState is ChatUiState.Success) {
             _uiState.value = currentState.copy(inputText = text)
+        }
+    }
+
+    /**
+     * Quotes a message for reply — sets quoted message state and prefills input context.
+     * The quoted text is shown as a preview above the input and prepended on send.
+     */
+    fun quoteMessage(messageId: String) {
+        val currentState = _uiState.value
+        if (currentState is ChatUiState.Success) {
+            val message = currentState.messages.find { it.message.id == messageId }?.message
+            if (message != null && message.content.isNotEmpty()) {
+                _uiState.value = currentState.copy(quotedMessage = message)
+            }
+        }
+    }
+
+    /**
+     * Clears the currently quoted message.
+     */
+    fun clearQuote() {
+        val currentState = _uiState.value
+        if (currentState is ChatUiState.Success) {
+            _uiState.value = currentState.copy(quotedMessage = null)
         }
     }
 
@@ -472,19 +515,29 @@ class ChatViewModel @Inject constructor(
 
         val messageContent = currentState.inputText.trim()
         val attachments = currentState.pendingAttachments.toList()
+        val quotedMessage = currentState.quotedMessage
 
-        // Clear input and attachments immediately
+        // Prepend quoted text if present
+        val finalContent = if (quotedMessage != null) {
+            val quotedLines = quotedMessage.content.lines().joinToString("\n") { "> $it" }
+            "$quotedLines\n\n$messageContent"
+        } else {
+            messageContent
+        }
+
+        // Clear input, attachments, and quote immediately
         _uiState.value = currentState.copy(
             inputText = "",
             pendingAttachments = emptyList(),
-            streamingState = StreamingState.Starting
+            streamingState = StreamingState.Starting,
+            quotedMessage = null
         )
 
         streamingJob = viewModelScope.launch(ioDispatcher) {
             try {
                 sendMessageUseCase(
                     conversationId = activeConversationId.value,
-                    userContent = messageContent,
+                    userContent = finalContent,
                     attachments = attachments,
                     systemPrompt = currentSystemPrompt,
                     reasoningEffort = currentReasoningEffort

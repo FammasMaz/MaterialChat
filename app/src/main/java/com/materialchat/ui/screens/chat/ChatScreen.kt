@@ -86,6 +86,9 @@ import com.materialchat.ui.screens.chat.components.FusionProgressView
 import com.materialchat.ui.screens.chat.components.MessageBubble
 import com.materialchat.ui.screens.chat.components.MessageInput
 import com.materialchat.ui.screens.chat.components.RedoModelPickerSheet
+import com.materialchat.ui.screens.chat.components.DateSeparator
+import com.materialchat.ui.screens.chat.components.ScrollToBottomFab
+import com.materialchat.ui.screens.chat.components.shouldShowDateSeparator
 import com.materialchat.ui.screens.personas.components.ConversationStarterChips
 import com.materialchat.ui.theme.CustomShapes
 import kotlinx.coroutines.Dispatchers
@@ -384,7 +387,10 @@ fun ChatScreen(
                     onUpdateEditingText = { viewModel.updateEditingText(it) },
                     onSubmitEdit = { viewModel.submitEditedMessage() },
                     onCancelEdit = { viewModel.cancelEditing() },
-                    onOpenCanvas = onNavigateToCanvas
+                    onOpenCanvas = onNavigateToCanvas,
+                    onQuoteMessage = { messageId -> viewModel.quoteMessage(messageId) },
+                    onClearQuote = { viewModel.clearQuote() },
+                    quotedMessage = state.quotedMessage
                 )
 
                 // Export bottom sheet
@@ -529,10 +535,14 @@ private fun ChatContent(
     onUpdateEditingText: (String) -> Unit,
     onSubmitEdit: () -> Unit,
     onCancelEdit: () -> Unit,
-    onOpenCanvas: (com.materialchat.domain.model.CanvasArtifact) -> Unit = {}
+    onOpenCanvas: (com.materialchat.domain.model.CanvasArtifact) -> Unit = {},
+    onQuoteMessage: (String) -> Unit = {},
+    onClearQuote: () -> Unit = {},
+    quotedMessage: com.materialchat.domain.model.Message? = null
 ) {
     val haptics = rememberHapticFeedback()
     val density = LocalDensity.current
+    val coroutineScope = rememberCoroutineScope()
     val imeBottom = WindowInsets.ime.getBottom(density)
     val navBottom = WindowInsets.navigationBars.getBottom(density)
     val imePadding = with(density) { (imeBottom - navBottom).coerceAtLeast(0).toDp() }
@@ -655,12 +665,13 @@ private fun ChatContent(
         color = MaterialTheme.colorScheme.surfaceContainerLow
     ) {
         // Fix 3: Apply nestedScroll to detect upward scroll gestures immediately
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(bottom = imePadding)
-                .nestedScroll(autoScrollConnection)
-        ) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(bottom = imePadding)
+                    .nestedScroll(autoScrollConnection)
+            ) {
             // Message list with sibling slide animation
             MessageList(
                 messages = state.messages,
@@ -682,6 +693,7 @@ private fun ChatContent(
                 onSubmitEdit = onSubmitEdit,
                 onCancelEdit = onCancelEdit,
                 onOpenCanvas = onOpenCanvas,
+                onQuoteMessage = onQuoteMessage,
                 hapticsEnabled = state.hapticsEnabled,
                 modifier = Modifier
                     .weight(1f)
@@ -726,7 +738,29 @@ private fun ChatContent(
                 onFusionToggle = onFusionToggle,
                 hapticsEnabled = state.hapticsEnabled,
                 shouldAutoFocus = state.messages.isEmpty(),
+                quotedMessage = quotedMessage,
+                onClearQuote = onClearQuote,
+                showTokenCounter = state.showTokenCounter,
                 modifier = Modifier.onSizeChanged { inputHeightPx = it.height }
+            )
+        }
+
+            // M3 Expressive: Scroll-to-bottom FAB overlay
+            ScrollToBottomFab(
+                visible = !isAtBottom && state.messages.isNotEmpty(),
+                hasNewContent = !isAtBottom && state.isStreaming,
+                onClick = {
+                    coroutineScope.launch {
+                        autoScrollEnabled = true
+                        if (state.messages.isNotEmpty()) {
+                            listState.animateScrollToItem(state.messages.lastIndex)
+                        }
+                    }
+                },
+                hapticsEnabled = state.hapticsEnabled,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = with(density) { inputHeightPx.toDp() } + imePadding + 16.dp)
             )
         }
     }
@@ -756,6 +790,7 @@ private fun MessageList(
     onSubmitEdit: () -> Unit = {},
     onCancelEdit: () -> Unit = {},
     onOpenCanvas: (com.materialchat.domain.model.CanvasArtifact) -> Unit = {},
+    onQuoteMessage: (String) -> Unit = {},
     hapticsEnabled: Boolean = true,
     modifier: Modifier = Modifier
 ) {
@@ -773,12 +808,18 @@ private fun MessageList(
         itemsIndexed(
             items = messages,
             key = { _, item -> item.message.id }
-        ) { _, messageItem ->
+        ) { index, messageItem ->
             val topSpacing = when (messageItem.groupPosition) {
                 MessageGroupPosition.Middle,
                 MessageGroupPosition.Last -> 4.dp
                 MessageGroupPosition.First,
                 MessageGroupPosition.Single -> 10.dp
+            }
+
+            // Date separator: show when day changes between messages
+            val previousTimestamp = messages.getOrNull(index - 1)?.message?.createdAt
+            if (shouldShowDateSeparator(messageItem.message.createdAt, previousTimestamp)) {
+                DateSeparator(timestampMs = messageItem.message.createdAt)
             }
 
             MessageBubble(
@@ -833,6 +874,9 @@ private fun MessageList(
                 onSubmitEdit = onSubmitEdit,
                 onCancelEdit = onCancelEdit,
                 onOpenCanvas = onOpenCanvas,
+                onQuoteMessage = if (!messageItem.message.isStreaming && messageItem.message.content.isNotEmpty()) {
+                    { onQuoteMessage(messageItem.message.id) }
+                } else null,
                 hapticsEnabled = hapticsEnabled,
                 modifier = Modifier
                     .animateItem(

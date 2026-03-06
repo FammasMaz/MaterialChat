@@ -84,6 +84,8 @@ import androidx.compose.ui.window.PopupProperties
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.materialchat.domain.model.Attachment
+import com.materialchat.domain.model.Message
+import com.materialchat.domain.model.MessageRole
 import com.materialchat.domain.model.ReasoningEffort
 import com.materialchat.ui.components.HapticPattern
 import com.materialchat.ui.components.MorphingSendButton
@@ -140,7 +142,10 @@ fun MessageInput(
     onFusionToggle: () -> Unit = {},
     modifier: Modifier = Modifier,
     hapticsEnabled: Boolean = true,
-    shouldAutoFocus: Boolean = false
+    shouldAutoFocus: Boolean = false,
+    quotedMessage: Message? = null,
+    onClearQuote: () -> Unit = {},
+    showTokenCounter: Boolean = false
 ) {
     val haptics = rememberHapticFeedback()
     val textScrollState = rememberScrollState()
@@ -172,6 +177,19 @@ fun MessageInput(
             .navigationBarsPadding()
             .padding(horizontal = 8.dp, vertical = 8.dp)
     ) {
+        // Quote reply preview (shown when user swipes to quote a message)
+        QuoteReplyPreview(
+            quotedText = quotedMessage?.content?.take(200) ?: "",
+            quotedRole = when (quotedMessage?.role) {
+                MessageRole.USER -> "You"
+                MessageRole.ASSISTANT -> "Assistant"
+                else -> "System"
+            },
+            visible = quotedMessage != null,
+            onDismiss = onClearQuote,
+            hapticsEnabled = hapticsEnabled
+        )
+
         // Attachment preview row (shown when there are pending attachments)
         AnimatedVisibility(
             visible = pendingAttachments.isNotEmpty(),
@@ -348,6 +366,14 @@ fun MessageInput(
                 },
                 modifier = Modifier.size(48.dp),
                 reasoningEffort = reasoningEffort
+            )
+        }
+
+        // Live token counter (shown when enabled and there is input text)
+        if (showTokenCounter) {
+            TokenCounter(
+                text = inputText,
+                modifier = Modifier.fillMaxWidth()
             )
         }
     }

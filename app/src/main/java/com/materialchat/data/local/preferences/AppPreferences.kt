@@ -55,6 +55,7 @@ class AppPreferences(private val context: Context) {
         val ASSISTANT_TTS_ENABLED = booleanPreferencesKey("assistant_tts_enabled")
         val BEAUTIFUL_MODEL_NAMES = booleanPreferencesKey("beautiful_model_names")
         val ALWAYS_SHOW_THINKING = booleanPreferencesKey("always_show_thinking")
+        val SHOW_TOKEN_COUNTER = booleanPreferencesKey("show_token_counter")
         val OPENCLAW_FCM_LAST_TOKEN = stringPreferencesKey("openclaw_fcm_last_token")
         // Font settings
         val FONT_FAMILY = stringPreferencesKey("font_family")
@@ -466,6 +467,25 @@ class AppPreferences(private val context: Context) {
     suspend fun setFontSizeScale(scale: Float) {
         dataStore.edit { preferences ->
             preferences[Keys.FONT_SIZE_SCALE] = scale.toString()
+        }
+    }
+
+    // ========== Token Counter ==========
+
+    /**
+     * Get whether the token counter is shown in the message input as a Flow.
+     * When enabled, shows live word count and estimated token count while typing.
+     */
+    val showTokenCounter: Flow<Boolean> = dataStore.data.map { preferences ->
+        preferences[Keys.SHOW_TOKEN_COUNTER] ?: false
+    }
+
+    /**
+     * Set whether the token counter is shown in the message input.
+     */
+    suspend fun setShowTokenCounter(enabled: Boolean) {
+        dataStore.edit { preferences ->
+            preferences[Keys.SHOW_TOKEN_COUNTER] = enabled
         }
     }
 

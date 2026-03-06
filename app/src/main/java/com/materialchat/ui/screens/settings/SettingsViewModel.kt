@@ -75,9 +75,10 @@ class SettingsViewModel @Inject constructor(
                             combine(
                                 updateManager.updateState,
                                 appPreferences.rememberLastModel,
-                                appPreferences.assistantEnabled
-                            ) { updateState, rememberLastModel, assistantEnabled ->
-                                Triple(updateState, rememberLastModel, assistantEnabled)
+                                appPreferences.assistantEnabled,
+                                appPreferences.showTokenCounter
+                            ) { updateState, rememberLastModel, assistantEnabled, showTokenCounter ->
+                                AssistantCore(updateState, rememberLastModel, assistantEnabled, showTokenCounter)
                             },
                             appPreferences.assistantVoiceEnabled,
                             appPreferences.assistantTtsEnabled,
@@ -85,13 +86,14 @@ class SettingsViewModel @Inject constructor(
                             appPreferences.alwaysShowThinking
                         ) { assistantCore, assistantVoice, assistantTts, beautifulModelNames, alwaysShowThinking ->
                             AssistantSettings(
-                                updateState = assistantCore.first,
-                                rememberLastModel = assistantCore.second,
-                                assistantEnabled = assistantCore.third,
+                                updateState = assistantCore.updateState,
+                                rememberLastModel = assistantCore.rememberLastModel,
+                                assistantEnabled = assistantCore.assistantEnabled,
                                 assistantVoiceEnabled = assistantVoice,
                                 assistantTtsEnabled = assistantTts,
                                 beautifulModelNamesEnabled = beautifulModelNames,
-                                alwaysShowThinking = alwaysShowThinking
+                                alwaysShowThinking = alwaysShowThinking,
+                                showTokenCounter = assistantCore.showTokenCounter
                             )
                         }
                     ) { hapticsWithNotifications, aiTitles, titleModel, autoCheck, assistantSettings ->
@@ -122,6 +124,7 @@ class SettingsViewModel @Inject constructor(
                         assistantTtsEnabled = toggles.assistantSettings.assistantTtsEnabled,
                         beautifulModelNamesEnabled = toggles.assistantSettings.beautifulModelNamesEnabled,
                         alwaysShowThinking = toggles.assistantSettings.alwaysShowThinking,
+                        showTokenCounter = toggles.assistantSettings.showTokenCounter,
                         fontSizeScale = AppPreferences.DEFAULT_FONT_SIZE_SCALE_VALUE
                     )
                 },
@@ -165,6 +168,7 @@ class SettingsViewModel @Inject constructor(
                         beautifulModelNamesEnabled = data.beautifulModelNamesEnabled,
                         alwaysShowThinking = data.alwaysShowThinking,
                         fontSizeScale = data.fontSizeScale,
+                        showTokenCounter = data.showTokenCounter,
                         appVersion = updateManager.getCurrentVersion(),
                         autoCheckUpdates = data.autoCheckUpdates,
                         updateState = data.updateState,
@@ -683,6 +687,21 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Updates the show token counter setting.
+     */
+    fun updateShowTokenCounter(enabled: Boolean) {
+        viewModelScope.launch {
+            try {
+                appPreferences.setShowTokenCounter(enabled)
+            } catch (e: Exception) {
+                _events.emit(SettingsEvent.ShowSnackbar(
+                    message = "Failed to save token counter setting"
+                ))
+            }
+        }
+    }
+
     // ========== Assistant Settings ==========
 
     /**
@@ -857,7 +876,8 @@ class SettingsViewModel @Inject constructor(
         val assistantTtsEnabled: Boolean,
         val beautifulModelNamesEnabled: Boolean,
         val alwaysShowThinking: Boolean,
-        val fontSizeScale: Float
+        val fontSizeScale: Float,
+        val showTokenCounter: Boolean
     )
 
     /**
@@ -873,6 +893,16 @@ class SettingsViewModel @Inject constructor(
     )
 
     /**
+     * Internal data class for combining core assistant flows (avoids Triple).
+     */
+    private data class AssistantCore(
+        val updateState: com.materialchat.domain.model.UpdateState,
+        val rememberLastModel: Boolean,
+        val assistantEnabled: Boolean,
+        val showTokenCounter: Boolean
+    )
+
+    /**
      * Internal data class for assistant-related settings.
      */
     private data class AssistantSettings(
@@ -882,6 +912,7 @@ class SettingsViewModel @Inject constructor(
         val assistantVoiceEnabled: Boolean,
         val assistantTtsEnabled: Boolean,
         val beautifulModelNamesEnabled: Boolean,
-        val alwaysShowThinking: Boolean
+        val alwaysShowThinking: Boolean,
+        val showTokenCounter: Boolean
     )
 }

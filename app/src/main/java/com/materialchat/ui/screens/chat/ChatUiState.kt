@@ -71,7 +71,9 @@ sealed interface ChatUiState {
         val isFusionRunning: Boolean = false,
         val editingMessageId: String? = null,
         val editingText: String = "",
-        val hasBranches: Boolean = false
+        val hasBranches: Boolean = false,
+        val quotedMessage: Message? = null,
+        val showTokenCounter: Boolean = false
     ) : ChatUiState {
         /**
          * Whether a message is currently streaming.
