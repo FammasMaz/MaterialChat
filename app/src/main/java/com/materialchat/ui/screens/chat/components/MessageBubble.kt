@@ -1,7 +1,6 @@
 package com.materialchat.ui.screens.chat.components
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.animation.core.Spring
@@ -422,6 +421,7 @@ private fun MessageContent(
     hapticsEnabled: Boolean = true
 ) {
     val displayContent = content.ifEmpty { "" }
+    val justifiedStyle = MaterialTheme.typography.bodyLarge.copy(textAlign = TextAlign.Justify)
 
     // Use chat-specific font size from user preferences (CompositionLocal)
     val chatFontSizeScale = com.materialchat.ui.theme.LocalChatFontSizeScale.current
