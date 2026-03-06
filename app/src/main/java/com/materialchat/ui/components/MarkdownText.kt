@@ -486,14 +486,15 @@ private fun MathBlockView(
         AndroidView(
             factory = { context ->
                 createMathWebView(context) { view ->
+                    val heightBufferPx = (8 * context.resources.displayMetrics.density).toInt()
                     fun updateHeight() {
                         measureMathHeight(view) { measuredHeight ->
                             if (measuredHeight > 0) {
                                 hasMeasuredHeight = true
                                 webViewHeight = if (isStreaming) {
-                                    maxOf(measuredHeight, fallbackHeightPx)
+                                    maxOf(measuredHeight + heightBufferPx, fallbackHeightPx)
                                 } else {
-                                    maxOf(measuredHeight, settledMinHeightPx)
+                                    maxOf(measuredHeight + heightBufferPx, settledMinHeightPx)
                                 }
                             }
                         }
@@ -501,6 +502,7 @@ private fun MathBlockView(
                     updateHeight()
                     view.postDelayed({ updateHeight() }, 48)
                     view.postDelayed({ updateHeight() }, 160)
+                    view.postDelayed({ updateHeight() }, 350)
                 }
             },
             update = { webView ->
@@ -522,15 +524,15 @@ private fun estimateBlockMathFallbackHeightPx(
     isStreaming: Boolean
 ): Int {
     val baseHeight = when {
-        expression.contains("\\begin{align") || expression.contains("\\begin{gather") -> 60.dp
-        expression.contains("\\frac") || expression.contains("\\dfrac") -> 48.dp
-        expression.contains("\\sum") || expression.contains("\\int") || expression.contains("\\prod") -> 44.dp
-        expression.contains("\\sqrt") || expression.contains("\\binom") -> 40.dp
-        expression.contains('\n') -> 52.dp
-        else -> 32.dp
+        expression.contains("\\begin{align") || expression.contains("\\begin{gather") -> 76.dp
+        expression.contains("\\frac") || expression.contains("\\dfrac") -> 60.dp
+        expression.contains("\\sum") || expression.contains("\\int") || expression.contains("\\prod") -> 54.dp
+        expression.contains("\\sqrt") || expression.contains("\\binom") -> 48.dp
+        expression.contains('\n') -> 64.dp
+        else -> 40.dp
     }
 
-    val adjustedHeight = if (isStreaming) baseHeight + 8.dp else baseHeight
+    val adjustedHeight = if (isStreaming) baseHeight + 12.dp else baseHeight
 
     return with(density) { adjustedHeight.roundToPx() }
 }
@@ -540,11 +542,11 @@ private fun estimateBlockMathSettledMinHeightPx(
     density: androidx.compose.ui.unit.Density
 ): Int {
     val minHeight = when {
-        expression.contains("\\begin{align") || expression.contains("\\begin{gather") -> 44.dp
-        expression.contains("\\frac") || expression.contains("\\dfrac") -> 36.dp
-        expression.contains("\\sum") || expression.contains("\\int") || expression.contains("\\prod") -> 32.dp
-        expression.contains('\n') -> 40.dp
-        else -> 24.dp
+        expression.contains("\\begin{align") || expression.contains("\\begin{gather") -> 56.dp
+        expression.contains("\\frac") || expression.contains("\\dfrac") -> 46.dp
+        expression.contains("\\sum") || expression.contains("\\int") || expression.contains("\\prod") -> 40.dp
+        expression.contains('\n') -> 50.dp
+        else -> 32.dp
     }
 
     return with(density) { minHeight.roundToPx() }
@@ -769,7 +771,6 @@ private fun TableView(
 
     Box(
         modifier = Modifier
-            .fillMaxWidth()
             .padding(vertical = 8.dp)
             .clip(RoundedCornerShape(12.dp))
             .background(MaterialTheme.colorScheme.surfaceContainer)

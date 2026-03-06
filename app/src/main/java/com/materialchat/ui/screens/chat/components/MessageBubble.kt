@@ -14,7 +14,11 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.awaitHorizontalTouchSlopOrCancellation
+import androidx.compose.foundation.gestures.horizontalDrag
+import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -213,43 +217,54 @@ fun MessageBubble(
                 .then(
                     if (onQuoteMessage != null) {
                         Modifier.pointerInput(Unit) {
-                            detectHorizontalDragGestures(
-                                onDragEnd = {
-                                    if (swipeOffset.value >= swipeThreshold) {
-                                        onQuoteMessage()
-                                    }
-                                    hasTriggeredSwipeHaptic = false
-                                    coroutineScope.launch {
-                                        swipeOffset.animateTo(
-                                            0f,
-                                            animationSpec = spring(
-                                                dampingRatio = 0.6f,
-                                                stiffness = 500f
-                                            )
-                                        )
-                                    }
-                                },
-                                onDragCancel = {
-                                    hasTriggeredSwipeHaptic = false
-                                    coroutineScope.launch {
-                                        swipeOffset.animateTo(0f, spring(1.0f, 500f))
-                                    }
-                                },
-                                onHorizontalDrag = { _, dragAmount ->
-                                    val direction = if (isUser) -dragAmount else dragAmount
-                                    val newOffset = (swipeOffset.value + direction)
-                                        .coerceIn(0f, maxSwipe)
-                                    coroutineScope.launch { swipeOffset.snapTo(newOffset) }
-
-                                    // Haptic tick when crossing threshold
-                                    if (newOffset >= swipeThreshold && !hasTriggeredSwipeHaptic) {
-                                        hasTriggeredSwipeHaptic = true
-                                        haptics.perform(HapticPattern.SWIPE_THRESHOLD, hapticsEnabled)
-                                    } else if (newOffset < swipeThreshold) {
-                                        hasTriggeredSwipeHaptic = false
+                            awaitEachGesture {
+                                val down = awaitFirstDown(requireUnconsumed = false)
+                                var overSlop = 0f
+                                var gestureClaimed = false
+                                val drag = awaitHorizontalTouchSlopOrCancellation(down.id) { change, over ->
+                                    if (!change.isConsumed) {
+                                        change.consume()
+                                        overSlop = over
+                                        gestureClaimed = true
                                     }
                                 }
-                            )
+                                if (drag != null && gestureClaimed) {
+                                    val initDir = if (isUser) -overSlop else overSlop
+                                    coroutineScope.launch {
+                                        swipeOffset.snapTo(initDir.coerceIn(0f, maxSwipe))
+                                    }
+                                    val completed = horizontalDrag(drag.id) { change ->
+                                        if (!change.isConsumed) {
+                                            val dragAmount = change.positionChange().x
+                                            change.consume()
+                                            val direction = if (isUser) -dragAmount else dragAmount
+                                            val newOffset = (swipeOffset.value + direction)
+                                                .coerceIn(0f, maxSwipe)
+                                            coroutineScope.launch { swipeOffset.snapTo(newOffset) }
+
+                                            if (newOffset >= swipeThreshold && !hasTriggeredSwipeHaptic) {
+                                                hasTriggeredSwipeHaptic = true
+                                                haptics.perform(HapticPattern.SWIPE_THRESHOLD, hapticsEnabled)
+                                            } else if (newOffset < swipeThreshold) {
+                                                hasTriggeredSwipeHaptic = false
+                                            }
+                                        }
+                                    }
+                                    if (completed && swipeOffset.value >= swipeThreshold) {
+                                        onQuoteMessage()
+                                    }
+                                }
+                                hasTriggeredSwipeHaptic = false
+                                coroutineScope.launch {
+                                    swipeOffset.animateTo(
+                                        0f,
+                                        animationSpec = spring(
+                                            dampingRatio = 0.6f,
+                                            stiffness = 500f
+                                        )
+                                    )
+                                }
+                            }
                         }
                     } else Modifier
                 )
