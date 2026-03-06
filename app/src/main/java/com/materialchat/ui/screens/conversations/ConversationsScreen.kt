@@ -4,6 +4,7 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -11,6 +12,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -63,12 +65,19 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.text.font.FontStyle
@@ -94,6 +103,7 @@ import com.materialchat.ui.screens.search.components.SearchResultItem
 import com.materialchat.ui.theme.CustomShapes
 import com.materialchat.ui.theme.ExpressiveMotion
 import kotlin.math.roundToInt
+import kotlin.random.Random
 
 /**
  * Main conversations screen showing the list of all conversations.
@@ -261,7 +271,7 @@ private fun ConversationsTopBar(
     scrollBehavior: TopAppBarScrollBehavior,
     onSearchClick: () -> Unit = {}
 ) {
-    val expandedHeight = 100.dp
+    val expandedHeight = 152.dp
     val collapsedHeight = 72.dp
     val collapseFraction = scrollBehavior.state.collapsedFraction.coerceIn(0f, 1f)
     val barHeight = expandedHeight - (expandedHeight - collapsedHeight) * collapseFraction
@@ -299,6 +309,37 @@ private fun ConversationsTopBar(
         label = "suffixAlpha"
     )
 
+    // Per-session randomized illustration — different layout every time
+    val rng = remember { List(20) { Random.nextFloat() } }
+
+    // M3 Expressive staggered entrance: each element group animates in sequence
+    // Spatial springs (can bounce) for scale/position, with increasing bounciness
+    val curveProgress = remember { Animatable(0f) }
+    val bubbleProgress = remember { Animatable(0f) }
+    val dotProgress = remember { Animatable(0f) }
+    val sparkleProgress = remember { Animatable(0f) }
+    LaunchedEffect(Unit) {
+        launch {
+            curveProgress.animateTo(1f, spring(dampingRatio = 0.7f, stiffness = 80f))
+        }
+        launch {
+            delay(150)
+            bubbleProgress.animateTo(1f, spring(dampingRatio = 0.55f, stiffness = 100f))
+        }
+        launch {
+            delay(300)
+            dotProgress.animateTo(1f, spring(dampingRatio = 0.5f, stiffness = 140f))
+        }
+        launch {
+            delay(420)
+            sparkleProgress.animateTo(1f, spring(dampingRatio = 0.45f, stiffness = 160f))
+        }
+    }
+    // Decorative elements fade out early as bar collapses
+    val decorAlpha = (1f - collapseFraction * 2.5f).coerceIn(0f, 1f)
+    val primaryColor = MaterialTheme.colorScheme.primary
+    val tertiaryColor = MaterialTheme.colorScheme.tertiary
+
     val density = LocalDensity.current
     val haptics = rememberHapticFeedback()
     SideEffect {
@@ -319,6 +360,142 @@ private fun ConversationsTopBar(
                 .padding(horizontal = 16.dp)
         ) {
             val baseBottomPadding = 12.dp
+
+            // M3 Expressive decorative line illustration
+            // Randomized layout + staggered spring entrance animation
+            Canvas(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .graphicsLayer { alpha = decorAlpha }
+            ) {
+                val w = size.width
+                val h = size.height
+
+                // === Flowing curves — drift in from right, fade in ===
+                val cp = curveProgress.value
+                if (cp > 0.01f) {
+                    val drift = (1f - cp) * 40f.dp.toPx()
+
+                    val curve1 = Path().apply {
+                        moveTo(-drift, h * (0.12f + rng[0] * 0.15f) + drift * 0.3f)
+                        cubicTo(
+                            w * (0.18f + rng[1] * 0.10f), h * (rng[2] * 0.30f) + drift * 0.2f,
+                            w * (0.45f + rng[3] * 0.10f), h * (0.15f + rng[4] * 0.35f) + drift * 0.1f,
+                            w * (0.80f + rng[5] * 0.15f) + drift, h * (0.05f + rng[6] * 0.20f)
+                        )
+                    }
+                    drawPath(
+                        curve1,
+                        primaryColor.copy(alpha = 0.12f * cp),
+                        style = Stroke(1.8f.dp.toPx(), cap = StrokeCap.Round)
+                    )
+
+                    val curve2 = Path().apply {
+                        moveTo(w * (0.05f + rng[7] * 0.12f) - drift, h * (0.30f + rng[8] * 0.15f) + drift * 0.2f)
+                        cubicTo(
+                            w * (0.30f + rng[9] * 0.15f), h * (0.08f + rng[10] * 0.20f) + drift * 0.15f,
+                            w * (0.58f + rng[11] * 0.12f), h * (0.35f + rng[12] * 0.20f) + drift * 0.1f,
+                            w * 1.05f + drift, h * (0.15f + rng[13] * 0.15f)
+                        )
+                    }
+                    drawPath(
+                        curve2,
+                        tertiaryColor.copy(alpha = 0.09f * cp),
+                        style = Stroke(1.4f.dp.toPx(), cap = StrokeCap.Round)
+                    )
+
+                    val curve3 = Path().apply {
+                        moveTo(w * (0.20f + rng[14] * 0.12f) - drift * 0.5f, h * (0.05f + rng[15] * 0.12f) + drift * 0.4f)
+                        cubicTo(
+                            w * (0.42f + rng[16] * 0.10f), h * (0.20f + rng[17] * 0.20f) + drift * 0.2f,
+                            w * (0.68f + rng[18] * 0.10f), h * (rng[19] * 0.15f) + drift * 0.1f,
+                            w * 1.10f + drift * 0.5f, h * (0.22f + rng[0] * 0.15f)
+                        )
+                    }
+                    drawPath(
+                        curve3,
+                        primaryColor.copy(alpha = 0.06f * cp),
+                        style = Stroke(1f.dp.toPx(), cap = StrokeCap.Round)
+                    )
+                }
+
+                // === Chat bubble outlines — scale up from center with bounce ===
+                val bp = bubbleProgress.value
+                if (bp > 0.01f) {
+                    val b1cx = w * (0.58f + rng[1] * 0.15f)
+                    val b1cy = h * (0.10f + rng[2] * 0.10f)
+                    val b1w = w * (0.14f + rng[3] * 0.06f) * bp
+                    val b1h = h * (0.18f + rng[4] * 0.08f) * bp
+                    drawRoundRect(
+                        color = primaryColor.copy(alpha = 0.09f * bp),
+                        topLeft = Offset(b1cx - b1w / 2f, b1cy - b1h / 2f + (1f - bp) * 10f.dp.toPx()),
+                        size = Size(b1w, b1h),
+                        cornerRadius = CornerRadius(10f.dp.toPx() * bp),
+                        style = Stroke(1.3f.dp.toPx())
+                    )
+
+                    val b2cx = w * (0.74f + rng[5] * 0.14f)
+                    val b2cy = h * (0.26f + rng[6] * 0.10f)
+                    val b2w = w * (0.10f + rng[7] * 0.05f) * bp
+                    val b2h = h * (0.14f + rng[8] * 0.06f) * bp
+                    drawRoundRect(
+                        color = tertiaryColor.copy(alpha = 0.07f * bp),
+                        topLeft = Offset(b2cx - b2w / 2f, b2cy - b2h / 2f + (1f - bp) * 8f.dp.toPx()),
+                        size = Size(b2w, b2h),
+                        cornerRadius = CornerRadius(8f.dp.toPx() * bp),
+                        style = Stroke(1f.dp.toPx())
+                    )
+                }
+
+                // === Dots — pop in with bouncy radius scale ===
+                val dotProg = dotProgress.value
+                if (dotProg > 0.01f) {
+                    val dots = listOf(
+                        Triple(0.48f + rng[9] * 0.10f, 0.08f + rng[10] * 0.10f, 3f + rng[11] * 2f),
+                        Triple(0.68f + rng[12] * 0.10f, 0.38f + rng[13] * 0.10f, 3.5f + rng[14] * 2f),
+                        Triple(0.30f + rng[15] * 0.12f, 0.24f + rng[16] * 0.10f, 2f + rng[17] * 1.5f),
+                        Triple(0.84f + rng[18] * 0.08f, 0.10f + rng[19] * 0.08f, 2.5f + rng[0] * 1.5f),
+                        Triple(0.14f + rng[1] * 0.10f, 0.12f + rng[2] * 0.10f, 4f + rng[3] * 2f)
+                    )
+                    dots.forEachIndexed { i, (dx, dy, dr) ->
+                        val color = if (i % 2 == 0) primaryColor else tertiaryColor
+                        drawCircle(
+                            color = color.copy(alpha = (0.08f + rng[(i + 4) % 20] * 0.08f) * dotProg),
+                            radius = dr.dp.toPx() * dotProg,
+                            center = Offset(w * dx, h * dy + (1f - dotProg) * 12f.dp.toPx())
+                        )
+                    }
+                }
+
+                // === Sparkle crosses — arms grow outward with bounce ===
+                val sp = sparkleProgress.value
+                if (sp > 0.01f) {
+                    val sparkles = listOf(
+                        Triple(0.52f + rng[5] * 0.12f, 0.28f + rng[6] * 0.12f, 5f + rng[7] * 2f),
+                        Triple(0.80f + rng[8] * 0.10f, 0.06f + rng[9] * 0.08f, 3.5f + rng[10] * 2f)
+                    )
+                    sparkles.forEachIndexed { i, (sx, sy, sa) ->
+                        val color = if (i == 0) primaryColor else tertiaryColor
+                        val cx = w * sx
+                        val cy = h * sy
+                        val arm = sa.dp.toPx() * sp
+                        drawLine(
+                            color.copy(alpha = 0.13f * sp),
+                            start = Offset(cx - arm, cy),
+                            end = Offset(cx + arm, cy),
+                            strokeWidth = 1f.dp.toPx(),
+                            cap = StrokeCap.Round
+                        )
+                        drawLine(
+                            color.copy(alpha = 0.13f * sp),
+                            start = Offset(cx, cy - arm),
+                            end = Offset(cx, cy + arm),
+                            strokeWidth = 1f.dp.toPx(),
+                            cap = StrokeCap.Round
+                        )
+                    }
+                }
+            }
 
             // Title row - aligned to bottom left with fixed padding
             Row(
