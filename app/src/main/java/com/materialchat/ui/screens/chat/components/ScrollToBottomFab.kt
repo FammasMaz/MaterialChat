@@ -97,16 +97,8 @@ fun ScrollToBottomFab(
                 onClick()
             },
             shape = RoundedCornerShape(999.dp),
-            color = if (hasNewContent) {
-                MaterialTheme.colorScheme.primaryContainer
-            } else {
-                MaterialTheme.colorScheme.surfaceContainerHigh
-            },
-            contentColor = if (hasNewContent) {
-                MaterialTheme.colorScheme.onPrimaryContainer
-            } else {
-                MaterialTheme.colorScheme.onSurfaceVariant
-            },
+            color = MaterialTheme.colorScheme.primaryContainer,
+            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
             tonalElevation = 2.dp
         ) {
             Row(

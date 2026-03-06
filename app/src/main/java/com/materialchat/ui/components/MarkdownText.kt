@@ -579,6 +579,12 @@ private fun createMathWebView(
         setBackgroundColor(android.graphics.Color.TRANSPARENT)
         isVerticalScrollBarEnabled = false
         isHorizontalScrollBarEnabled = false
+        // Pass all touches through — math views are display-only.
+        // Prevents WebView from stealing swipe-to-quote gestures.
+        @Suppress("ClickableViewAccessibility")
+        setOnTouchListener { _, _ -> false }
+        isFocusable = false
+        isFocusableInTouchMode = false
     }
 }
 
@@ -1191,7 +1197,7 @@ private fun AnnotatedString.Builder.parseInlineFormatting(
     inlineMath: MutableList<InlineMathContent>
 ) {
     var currentIndex = 0
-    var inlineMathIndex = inlineMath.size
+    var inlineMathCounter = inlineMath.size
 
     // Combined pattern for all inline elements
     // Order matters: ** before *, __ before _, math before other $
@@ -1265,19 +1271,39 @@ private fun AnnotatedString.Builder.parseInlineFormatting(
             // Inline math \(...\) - group 8
             match.groupValues.getOrNull(8)?.isNotEmpty() == true -> {
                 val content = match.groupValues[8]
-                val id = "inline-math-$inlineMathIndex"
-                inlineMathIndex++
-                inlineMath.add(InlineMathContent(id = id, expression = content))
-                appendInlineContent(id, fullMatch)
+                if (needsKatexRendering(content)) {
+                    val id = "inline-math-${inlineMathCounter++}"
+                    inlineMath.add(InlineMathContent(id = id, expression = content))
+                    appendInlineContent(id, fullMatch)
+                } else {
+                    withStyle(SpanStyle(
+                        fontFamily = FontFamily.Monospace,
+                        fontStyle = FontStyle.Italic,
+                        background = Color(0xFF7C4DFF).copy(alpha = 0.10f),
+                        color = baseColor
+                    )) {
+                        append(renderInlineMathText(content))
+                    }
+                }
             }
             // Inline math $...$ - group 9
             match.groupValues.getOrNull(9)?.isNotEmpty() == true -> {
                 val content = match.groupValues[9]
                 if (looksLikeInlineMath(content)) {
-                    val id = "inline-math-$inlineMathIndex"
-                    inlineMathIndex++
-                    inlineMath.add(InlineMathContent(id = id, expression = content))
-                    appendInlineContent(id, fullMatch)
+                    if (needsKatexRendering(content)) {
+                        val id = "inline-math-${inlineMathCounter++}"
+                        inlineMath.add(InlineMathContent(id = id, expression = content))
+                        appendInlineContent(id, fullMatch)
+                    } else {
+                        withStyle(SpanStyle(
+                            fontFamily = FontFamily.Monospace,
+                            fontStyle = FontStyle.Italic,
+                            background = Color(0xFF7C4DFF).copy(alpha = 0.10f),
+                            color = baseColor
+                        )) {
+                            append(renderInlineMathText(content))
+                        }
+                    }
                 } else {
                     // Not math, render as literal $content$
                     withStyle(SpanStyle(color = baseColor)) {
@@ -1311,6 +1337,116 @@ private fun looksLikeInlineMath(content: String): Boolean {
 
     return trimmed.any { it.isLetter() } ||
         trimmed.any { it in "\\^_{}=+-*/<>[]()" }
+}
+
+/**
+ * Detect expressions that require 2D layout — these need KaTeX WebView.
+ * Simple expressions (Greek letters, superscripts, basic operators) can
+ * render as Unicode text for dramatically better performance.
+ */
+private fun needsKatexRendering(expression: String): Boolean {
+    val complex = listOf(
+        "\\frac", "\\dfrac", "\\tfrac", "\\cfrac",     // fractions
+        "\\sqrt",                                        // square roots
+        "\\binom", "\\choose",                           // binomials
+        "\\begin{", "\\end{",                            // environments (matrix, cases, etc.)
+        "\\matrix", "\\pmatrix", "\\bmatrix", "\\vmatrix",
+        "\\overline", "\\underline",                     // over/under decorations
+        "\\overbrace", "\\underbrace",
+        "\\overset", "\\underset", "\\stackrel",         // stacked elements
+        "\\hat{", "\\vec{", "\\bar{", "\\dot{",         // accents over expressions
+        "\\ddot{", "\\tilde{", "\\widehat{", "\\widetilde{",
+        "\\left", "\\right",                             // delimiters that scale
+        "\\substack",                                    // stacked subscripts
+        "\\xleftarrow", "\\xrightarrow",                 // extensible arrows
+        "\\cancelto", "\\cancel", "\\bcancel",           // cancel marks
+        "\\boxed",                                       // boxed expressions
+    )
+    return complex.any { expression.contains(it) }
+}
+
+/**
+ * Render inline math expression as readable text using Unicode substitutions.
+ * Avoids WebView overhead for simple inline expressions.
+ */
+private fun renderInlineMathText(expression: String): String {
+    var result = expression.trim()
+
+    // Strip LaTeX command wrappers
+    result = result
+        .replace("\\mathbb{", "").replace("\\mathcal{", "")
+        .replace("\\mathrm{", "").replace("\\mathbf{", "")
+        .replace("\\text{", "").replace("\\textrm{", "")
+        .replace("\\operatorname{", "")
+
+    // Common LaTeX symbols
+    result = result
+        .replace("\\alpha", "\u03B1").replace("\\beta", "\u03B2").replace("\\gamma", "\u03B3")
+        .replace("\\delta", "\u03B4").replace("\\epsilon", "\u03B5").replace("\\zeta", "\u03B6")
+        .replace("\\eta", "\u03B7").replace("\\theta", "\u03B8").replace("\\iota", "\u03B9")
+        .replace("\\kappa", "\u03BA").replace("\\lambda", "\u03BB").replace("\\mu", "\u03BC")
+        .replace("\\nu", "\u03BD").replace("\\xi", "\u03BE").replace("\\pi", "\u03C0")
+        .replace("\\rho", "\u03C1").replace("\\sigma", "\u03C3").replace("\\tau", "\u03C4")
+        .replace("\\upsilon", "\u03C5").replace("\\phi", "\u03C6").replace("\\chi", "\u03C7")
+        .replace("\\psi", "\u03C8").replace("\\omega", "\u03C9")
+        .replace("\\Gamma", "\u0393").replace("\\Delta", "\u0394").replace("\\Theta", "\u0398")
+        .replace("\\Lambda", "\u039B").replace("\\Pi", "\u03A0").replace("\\Sigma", "\u03A3")
+        .replace("\\Phi", "\u03A6").replace("\\Psi", "\u03A8").replace("\\Omega", "\u03A9")
+
+    // Operators and relations
+    result = result
+        .replace("\\times", "\u00D7").replace("\\cdot", "\u00B7").replace("\\div", "\u00F7")
+        .replace("\\pm", "\u00B1").replace("\\mp", "\u2213")
+        .replace("\\leq", "\u2264").replace("\\geq", "\u2265").replace("\\neq", "\u2260")
+        .replace("\\le", "\u2264").replace("\\ge", "\u2265").replace("\\ne", "\u2260")
+        .replace("\\approx", "\u2248").replace("\\equiv", "\u2261").replace("\\sim", "\u223C")
+        .replace("\\propto", "\u221D")
+        .replace("\\in", "\u2208").replace("\\notin", "\u2209")
+        .replace("\\subset", "\u2282").replace("\\supset", "\u2283")
+        .replace("\\subseteq", "\u2286").replace("\\supseteq", "\u2287")
+        .replace("\\cup", "\u222A").replace("\\cap", "\u2229")
+        .replace("\\forall", "\u2200").replace("\\exists", "\u2203")
+        .replace("\\infty", "\u221E").replace("\\nabla", "\u2207").replace("\\partial", "\u2202")
+        .replace("\\to", "\u2192").replace("\\rightarrow", "\u2192").replace("\\leftarrow", "\u2190")
+        .replace("\\Rightarrow", "\u21D2").replace("\\Leftarrow", "\u21D0")
+        .replace("\\iff", "\u21D4").replace("\\Leftrightarrow", "\u21D4")
+        .replace("\\sqrt", "\u221A").replace("\\sum", "\u2211").replace("\\prod", "\u220F")
+        .replace("\\int", "\u222B")
+        .replace("\\ldots", "\u2026").replace("\\cdots", "\u22EF").replace("\\dots", "\u2026")
+        .replace("\\langle", "\u27E8").replace("\\rangle", "\u27E9")
+
+    // Superscripts and subscripts
+    val superscriptMap = mapOf(
+        '0' to '\u2070', '1' to '\u00B9', '2' to '\u00B2', '3' to '\u00B3',
+        '4' to '\u2074', '5' to '\u2075', '6' to '\u2076', '7' to '\u2077',
+        '8' to '\u2078', '9' to '\u2079', '+' to '\u207A', '-' to '\u207B',
+        'n' to '\u207F', 'i' to '\u2071'
+    )
+    val subscriptMap = mapOf(
+        '0' to '\u2080', '1' to '\u2081', '2' to '\u2082', '3' to '\u2083',
+        '4' to '\u2084', '5' to '\u2085', '6' to '\u2086', '7' to '\u2087',
+        '8' to '\u2088', '9' to '\u2089', '+' to '\u208A', '-' to '\u208B'
+    )
+
+    // Handle ^{...} and ^x
+    result = Regex("""\^(?:\{([^}]*)\}|([\w]))""").replace(result) { m ->
+        val content = m.groupValues[1].ifEmpty { m.groupValues[2] }
+        content.map { superscriptMap[it] ?: it }.joinToString("")
+    }
+
+    // Handle _{...} and _x
+    result = Regex("""_(?:\{([^}]*)\}|([\w]))""").replace(result) { m ->
+        val content = m.groupValues[1].ifEmpty { m.groupValues[2] }
+        content.map { subscriptMap[it] ?: it }.joinToString("")
+    }
+
+    // Clean up remaining braces and backslashes from unhandled commands
+    result = Regex("""\\[a-zA-Z]+""").replace(result) { m ->
+        m.value.removePrefix("\\")
+    }
+    result = result.replace("{", "").replace("}", "")
+
+    return result
 }
 
 /**

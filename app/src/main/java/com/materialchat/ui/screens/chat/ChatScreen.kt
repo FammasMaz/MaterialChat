@@ -623,6 +623,16 @@ private fun ChatContent(
     // Fix 2: Track streaming state to scroll when it ends (to reveal action buttons)
     val isLastMessageStreaming = lastMessage?.isStreaming ?: false
 
+    // Auto-scroll when keyboard (IME) opens so bottom content stays visible
+    LaunchedEffect(Unit) {
+        snapshotFlow { imeBottom }
+            .collect { ime ->
+                if (ime > 0 && isAtBottom && state.messages.isNotEmpty()) {
+                    listState.scrollToItem(state.messages.lastIndex)
+                }
+            }
+    }
+
     // Continuous layout-driven auto-scroll during streaming.
     // Eliminates the frame-delay jitter by reacting to layout changes directly
     // rather than waiting for content hash changes in a LaunchedEffect.
