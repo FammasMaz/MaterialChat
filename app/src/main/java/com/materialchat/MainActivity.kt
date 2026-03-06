@@ -65,6 +65,7 @@ import com.materialchat.ui.navigation.Screen
 import com.materialchat.ui.navigation.TopLevelTab
 import com.materialchat.ui.screens.personas.components.PersonaPickerSheet
 import com.materialchat.ui.theme.MaterialChatTheme
+import com.materialchat.ui.theme.LocalChatFontSizeScale
 import com.materialchat.ui.theme.isDynamicColorSupported
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
@@ -125,17 +126,25 @@ class MainActivity : ComponentActivity() {
             val dynamicColorEnabled by appPreferences.dynamicColorEnabled.collectAsState(
                 initial = isDynamicColorSupported()
             )
+            val chatFontSizeScale by appPreferences.fontSizeScale.collectAsState(
+                initial = AppPreferences.DEFAULT_FONT_SIZE_SCALE_VALUE
+            )
 
             MaterialChatTheme(
                 themeMode = themeMode,
                 dynamicColor = dynamicColorEnabled && isDynamicColorSupported()
             ) {
-                // Only show the app after initialization is complete
-                if (initComplete) {
-                    MaterialChatApp(
-                        updateManager = updateManager,
-                        initialConversationId = pendingConversationId
-                    )
+                // Provide chat-specific font size via CompositionLocal
+                CompositionLocalProvider(
+                    LocalChatFontSizeScale provides chatFontSizeScale
+                ) {
+                    // Only show the app after initialization is complete
+                    if (initComplete) {
+                        MaterialChatApp(
+                            updateManager = updateManager,
+                            initialConversationId = pendingConversationId
+                        )
+                    }
                 }
             }
         }

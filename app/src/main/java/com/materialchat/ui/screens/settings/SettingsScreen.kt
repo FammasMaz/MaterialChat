@@ -32,6 +32,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.DarkMode
+import androidx.compose.material.icons.outlined.FormatSize
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.LightMode
 import androidx.compose.material.icons.outlined.Mic
@@ -55,6 +56,9 @@ import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
+import androidx.compose.material3.Snackbar
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LargeTopAppBar
@@ -62,7 +66,6 @@ import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import com.materialchat.ui.components.ExpressiveButton
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Snackbar
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -244,6 +247,7 @@ fun SettingsScreen(
             onThemeModeChange = { viewModel.updateThemeMode(it) },
             onDynamicColorChange = { viewModel.updateDynamicColorEnabled(it) },
             onHapticsChange = { viewModel.updateHapticsEnabled(it) },
+            onFontSizeScaleChange = { viewModel.updateFontSizeScale(it) },
             onNotificationsChange = { enabled ->
                 if (enabled && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                     val hasPermission = ContextCompat.checkSelfPermission(
@@ -325,6 +329,7 @@ private fun SettingsContent(
     onThemeModeChange: (AppPreferences.ThemeMode) -> Unit,
     onDynamicColorChange: (Boolean) -> Unit,
     onHapticsChange: (Boolean) -> Unit,
+    onFontSizeScaleChange: (Float) -> Unit,
     onNotificationsChange: (Boolean) -> Unit,
     onBeautifulModelNamesChange: (Boolean) -> Unit,
     onAiGeneratedTitlesChange: (Boolean) -> Unit,
@@ -373,6 +378,7 @@ private fun SettingsContent(
                     onThemeModeChange = onThemeModeChange,
                     onDynamicColorChange = onDynamicColorChange,
                     onHapticsChange = onHapticsChange,
+                    onFontSizeScaleChange = onFontSizeScaleChange,
                     onNotificationsChange = onNotificationsChange,
                     onBeautifulModelNamesChange = onBeautifulModelNamesChange,
                     onAiGeneratedTitlesChange = onAiGeneratedTitlesChange,
@@ -427,6 +433,7 @@ private fun SuccessContent(
     onThemeModeChange: (AppPreferences.ThemeMode) -> Unit,
     onDynamicColorChange: (Boolean) -> Unit,
     onHapticsChange: (Boolean) -> Unit,
+    onFontSizeScaleChange: (Float) -> Unit,
     onNotificationsChange: (Boolean) -> Unit,
     onBeautifulModelNamesChange: (Boolean) -> Unit,
     onAiGeneratedTitlesChange: (Boolean) -> Unit,
@@ -512,6 +519,14 @@ private fun SuccessContent(
                     onToggle = onDynamicColorChange
                 )
             }
+        }
+
+        // Font Size Selector
+        item {
+            FontSizeSelector(
+                selectedScale = uiState.fontSizeScale,
+                onScaleSelected = onFontSizeScaleChange
+            )
         }
 
         // Haptics Toggle
@@ -771,6 +786,119 @@ private fun DynamicColorToggle(
             ExpressiveSwitch(
                 checked = enabled,
                 onCheckedChange = onToggle
+            )
+        }
+    }
+}
+
+@Composable
+private fun FontSizeSelector(
+    selectedScale: Float,
+    onScaleSelected: (Float) -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+        ),
+        shape = RoundedCornerShape(20.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.FormatSize,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(24.dp)
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                Column {
+                    Text(
+                        text = "Chat Font Size",
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = "Adjust text size in chat bubbles",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Size labels above the slider
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = "A",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    text = "A",
+                    style = MaterialTheme.typography.titleLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            // M3 Slider with discrete steps at the preset sizes
+            Slider(
+                value = selectedScale,
+                onValueChange = { onScaleSelected(it) },
+                valueRange = 0.85f..1.4f,
+                steps = 10,
+                modifier = Modifier.fillMaxWidth(),
+                colors = SliderDefaults.colors(
+                    thumbColor = MaterialTheme.colorScheme.primary,
+                    activeTrackColor = MaterialTheme.colorScheme.primary,
+                    inactiveTrackColor = MaterialTheme.colorScheme.surfaceContainerHighest
+                )
+            )
+
+            // Step labels below the slider
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = "Small",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    text = "Default",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = if (selectedScale in 0.97f..1.03f) MaterialTheme.colorScheme.primary
+                            else MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontWeight = if (selectedScale in 0.97f..1.03f) androidx.compose.ui.text.font.FontWeight.Bold else androidx.compose.ui.text.font.FontWeight.Normal
+                )
+                Text(
+                    text = "Large",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            // Preview text
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = "The quick brown fox jumps over the lazy dog.",
+                style = MaterialTheme.typography.bodyLarge.copy(
+                    fontSize = MaterialTheme.typography.bodyLarge.fontSize * selectedScale,
+                    lineHeight = MaterialTheme.typography.bodyLarge.lineHeight * selectedScale
+                ),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 4.dp, vertical = 4.dp)
             )
         }
     }

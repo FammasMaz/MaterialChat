@@ -51,6 +51,8 @@ sealed interface SettingsUiState {
         val appVersion: String = "",
         val autoCheckUpdates: Boolean = true,
         val updateState: UpdateState = UpdateState.Idle,
+        // Font settings
+        val fontSizeScale: Float = AppPreferences.DEFAULT_FONT_SIZE_SCALE_VALUE,
         // Assistant settings
         val assistantEnabled: Boolean = true,
         val assistantVoiceEnabled: Boolean = true,

@@ -56,6 +56,9 @@ class AppPreferences(private val context: Context) {
         val BEAUTIFUL_MODEL_NAMES = booleanPreferencesKey("beautiful_model_names")
         val ALWAYS_SHOW_THINKING = booleanPreferencesKey("always_show_thinking")
         val OPENCLAW_FCM_LAST_TOKEN = stringPreferencesKey("openclaw_fcm_last_token")
+        // Font settings
+        val FONT_FAMILY = stringPreferencesKey("font_family")
+        val FONT_SIZE_SCALE = stringPreferencesKey("font_size_scale")
     }
 
     /**
@@ -80,6 +83,9 @@ class AppPreferences(private val context: Context) {
         val DEFAULT_REASONING_EFFORT = ReasoningEffort.HIGH
         const val DEFAULT_REMEMBER_LAST_MODEL = true
         const val DEFAULT_BEAUTIFUL_MODEL_NAMES = true
+        const val DEFAULT_FONT_FAMILY = "Roboto Flex"
+        const val DEFAULT_FONT_SIZE_SCALE = "Default"
+        const val DEFAULT_FONT_SIZE_SCALE_VALUE = 1.0f
     }
 
     // ========== System Prompt ==========
@@ -426,6 +432,40 @@ class AppPreferences(private val context: Context) {
     suspend fun setAlwaysShowThinking(enabled: Boolean) {
         dataStore.edit { preferences ->
             preferences[Keys.ALWAYS_SHOW_THINKING] = enabled
+        }
+    }
+
+    // ========== Font Settings ==========
+
+    /**
+     * Get the selected font family name as a Flow.
+     */
+    val fontFamily: Flow<String> = dataStore.data.map { preferences ->
+        preferences[Keys.FONT_FAMILY] ?: DEFAULT_FONT_FAMILY
+    }
+
+    /**
+     * Set the font family name.
+     */
+    suspend fun setFontFamily(fontFamily: String) {
+        dataStore.edit { preferences ->
+            preferences[Keys.FONT_FAMILY] = fontFamily
+        }
+    }
+
+    /**
+     * Get the font size scale as a Flow (continuous value, 0.85 to 1.4).
+     */
+    val fontSizeScale: Flow<Float> = dataStore.data.map { preferences ->
+        preferences[Keys.FONT_SIZE_SCALE]?.toFloatOrNull() ?: DEFAULT_FONT_SIZE_SCALE_VALUE
+    }
+
+    /**
+     * Set the font size scale (continuous value).
+     */
+    suspend fun setFontSizeScale(scale: Float) {
+        dataStore.edit { preferences ->
+            preferences[Keys.FONT_SIZE_SCALE] = scale.toString()
         }
     }
 

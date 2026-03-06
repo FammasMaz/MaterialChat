@@ -1,6 +1,7 @@
 package com.materialchat.ui.screens.chat.components
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.animation.core.Spring
@@ -168,6 +169,12 @@ fun MessageBubble(
                     color = bubbleStyle.backgroundColor,
                     modifier = Modifier
                         .widthIn(min = 40.dp, max = bubbleStyle.maxWidth)
+                        .animateContentSize(
+                            animationSpec = spring(
+                                dampingRatio = Spring.DampingRatioLowBouncy,
+                                stiffness = Spring.StiffnessMediumLow
+                            )
+                        )
                         .then(
                             if (isUser && !isEditing && !message.isStreaming && message.content.isNotEmpty()) {
                                 Modifier.combinedClickable(
@@ -178,10 +185,11 @@ fun MessageBubble(
                         )
                 ) {
                 Column(
-                    modifier = Modifier.padding(
-                        horizontal = 14.dp,
-                        vertical = 10.dp
-                    )
+                    modifier = Modifier
+                        .padding(
+                            horizontal = 14.dp,
+                            vertical = 10.dp
+                        )
                 ) {
                     // Thinking content (collapsible for assistant messages)
                     if (isAssistant && !message.thinkingContent.isNullOrEmpty()) {
@@ -414,21 +422,27 @@ private fun MessageContent(
     hapticsEnabled: Boolean = true
 ) {
     val displayContent = content.ifEmpty { "" }
-    val justifiedStyle = MaterialTheme.typography.bodyLarge.copy(textAlign = TextAlign.Justify)
+
+    // Use chat-specific font size from user preferences (CompositionLocal)
+    val chatFontSizeScale = com.materialchat.ui.theme.LocalChatFontSizeScale.current
+    val chatStyle = MaterialTheme.typography.bodyLarge.copy(
+        fontSize = MaterialTheme.typography.bodyLarge.fontSize * chatFontSizeScale,
+        lineHeight = MaterialTheme.typography.bodyLarge.lineHeight * chatFontSizeScale
+    )
 
     if (isAssistant && displayContent.isNotEmpty()) {
         SmoothStreamingText(
             rawText = displayContent,
             isStreaming = isStreaming,
             textColor = textColor,
-            style = justifiedStyle,
+            style = chatStyle,
             hapticsEnabled = hapticsEnabled,
             onOpenCanvas = onOpenCanvas
         )
     } else {
         Text(
             text = displayContent,
-            style = justifiedStyle,
+            style = chatStyle,
             color = textColor,
             overflow = TextOverflow.Clip
         )
@@ -458,6 +472,7 @@ private fun getBubbleStyle(
 ): BubbleStyle {
     val configuration = LocalConfiguration.current
     val maxBubbleWidth = (configuration.screenWidthDp * 0.82f).dp
+    val maxAssistantWidth = configuration.screenWidthDp.dp
     val maxSystemWidth = (configuration.screenWidthDp * 0.7f).dp
     val surfaceBase = MaterialTheme.colorScheme.surfaceContainer
     val userBubble = lerp(surfaceBase, MaterialTheme.colorScheme.primaryContainer, 0.75f)
@@ -485,7 +500,7 @@ private fun getBubbleStyle(
             },
             backgroundColor = if (isErrored) lerp(assistantBubble, MaterialTheme.colorScheme.errorContainer, 0.3f) else assistantBubble,
             textColor = MaterialTheme.colorScheme.onSurface,
-            maxWidth = maxBubbleWidth
+            maxWidth = maxAssistantWidth
         )
         else -> BubbleStyle(
             shape = MessageBubbleShapes.SystemBubble,
@@ -793,6 +808,8 @@ private fun EditingContent(
         focusRequester.requestFocus()
     }
 
+    val chatFontSizeScale = com.materialchat.ui.theme.LocalChatFontSizeScale.current
+
     Column {
         BasicTextField(
             value = editingText,
@@ -801,7 +818,9 @@ private fun EditingContent(
                 .fillMaxWidth()
                 .focusRequester(focusRequester),
             textStyle = MaterialTheme.typography.bodyLarge.copy(
-                color = MaterialTheme.colorScheme.onPrimaryContainer
+                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                fontSize = MaterialTheme.typography.bodyLarge.fontSize * chatFontSizeScale,
+                lineHeight = MaterialTheme.typography.bodyLarge.lineHeight * chatFontSizeScale
             ),
             decorationBox = { innerTextField ->
                 Box(modifier = Modifier.padding(vertical = 4.dp)) {

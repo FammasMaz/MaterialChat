@@ -56,72 +56,78 @@ class SettingsViewModel @Inject constructor(
     private fun observeSettings() {
         viewModelScope.launch {
             combine(
-                manageProvidersUseCase.observeProviders(),
-                appPreferences.systemPrompt,
-                appPreferences.themeMode,
-                appPreferences.dynamicColorEnabled,
                 combine(
-                    combine(
-                        appPreferences.hapticsEnabled,
-                        appPreferences.notificationsEnabled
-                    ) { haptics, notifications ->
-                        haptics to notifications
-                    },
-                    appPreferences.aiGeneratedTitlesEnabled,
-                    appPreferences.titleGenerationModel,
-                    appPreferences.autoCheckUpdates,
+                    manageProvidersUseCase.observeProviders(),
+                    appPreferences.systemPrompt,
+                    appPreferences.themeMode,
+                    appPreferences.dynamicColorEnabled,
                     combine(
                         combine(
-                            updateManager.updateState,
-                            appPreferences.rememberLastModel,
-                            appPreferences.assistantEnabled
-                        ) { updateState, rememberLastModel, assistantEnabled ->
-                            Triple(updateState, rememberLastModel, assistantEnabled)
+                            appPreferences.hapticsEnabled,
+                            appPreferences.notificationsEnabled
+                        ) { haptics, notifications ->
+                            haptics to notifications
                         },
-                        appPreferences.assistantVoiceEnabled,
-                        appPreferences.assistantTtsEnabled,
-                        appPreferences.beautifulModelNamesEnabled,
-                        appPreferences.alwaysShowThinking
-                    ) { assistantCore, assistantVoice, assistantTts, beautifulModelNames, alwaysShowThinking ->
-                        AssistantSettings(
-                            updateState = assistantCore.first,
-                            rememberLastModel = assistantCore.second,
-                            assistantEnabled = assistantCore.third,
-                            assistantVoiceEnabled = assistantVoice,
-                            assistantTtsEnabled = assistantTts,
-                            beautifulModelNamesEnabled = beautifulModelNames,
-                            alwaysShowThinking = alwaysShowThinking
+                        appPreferences.aiGeneratedTitlesEnabled,
+                        appPreferences.titleGenerationModel,
+                        appPreferences.autoCheckUpdates,
+                        combine(
+                            combine(
+                                updateManager.updateState,
+                                appPreferences.rememberLastModel,
+                                appPreferences.assistantEnabled
+                            ) { updateState, rememberLastModel, assistantEnabled ->
+                                Triple(updateState, rememberLastModel, assistantEnabled)
+                            },
+                            appPreferences.assistantVoiceEnabled,
+                            appPreferences.assistantTtsEnabled,
+                            appPreferences.beautifulModelNamesEnabled,
+                            appPreferences.alwaysShowThinking
+                        ) { assistantCore, assistantVoice, assistantTts, beautifulModelNames, alwaysShowThinking ->
+                            AssistantSettings(
+                                updateState = assistantCore.first,
+                                rememberLastModel = assistantCore.second,
+                                assistantEnabled = assistantCore.third,
+                                assistantVoiceEnabled = assistantVoice,
+                                assistantTtsEnabled = assistantTts,
+                                beautifulModelNamesEnabled = beautifulModelNames,
+                                alwaysShowThinking = alwaysShowThinking
+                            )
+                        }
+                    ) { hapticsWithNotifications, aiTitles, titleModel, autoCheck, assistantSettings ->
+                        SettingsToggles(
+                            haptics = hapticsWithNotifications.first,
+                            notifications = hapticsWithNotifications.second,
+                            aiTitles = aiTitles,
+                            titleModel = titleModel,
+                            autoCheck = autoCheck,
+                            assistantSettings = assistantSettings
                         )
                     }
-                ) { hapticsWithNotifications, aiTitles, titleModel, autoCheck, assistantSettings ->
-                    SettingsToggles(
-                        haptics = hapticsWithNotifications.first,
-                        notifications = hapticsWithNotifications.second,
-                        aiTitles = aiTitles,
-                        titleModel = titleModel,
-                        autoCheck = autoCheck,
-                        assistantSettings = assistantSettings
+                ) { providers, systemPrompt, themeMode, dynamicColorEnabled, toggles ->
+                    SettingsData(
+                        providers = providers,
+                        systemPrompt = systemPrompt,
+                        themeMode = themeMode,
+                        dynamicColorEnabled = dynamicColorEnabled,
+                        hapticsEnabled = toggles.haptics,
+                        notificationsEnabled = toggles.notifications,
+                        aiGeneratedTitlesEnabled = toggles.aiTitles,
+                        titleGenerationModel = toggles.titleModel,
+                        autoCheckUpdates = toggles.autoCheck,
+                        updateState = toggles.assistantSettings.updateState,
+                        rememberLastModel = toggles.assistantSettings.rememberLastModel,
+                        assistantEnabled = toggles.assistantSettings.assistantEnabled,
+                        assistantVoiceEnabled = toggles.assistantSettings.assistantVoiceEnabled,
+                        assistantTtsEnabled = toggles.assistantSettings.assistantTtsEnabled,
+                        beautifulModelNamesEnabled = toggles.assistantSettings.beautifulModelNamesEnabled,
+                        alwaysShowThinking = toggles.assistantSettings.alwaysShowThinking,
+                        fontSizeScale = AppPreferences.DEFAULT_FONT_SIZE_SCALE_VALUE
                     )
-                }
-            ) { providers, systemPrompt, themeMode, dynamicColorEnabled, toggles ->
-                SettingsData(
-                    providers = providers,
-                    systemPrompt = systemPrompt,
-                    themeMode = themeMode,
-                    dynamicColorEnabled = dynamicColorEnabled,
-                    hapticsEnabled = toggles.haptics,
-                    notificationsEnabled = toggles.notifications,
-                    aiGeneratedTitlesEnabled = toggles.aiTitles,
-                    titleGenerationModel = toggles.titleModel,
-                    autoCheckUpdates = toggles.autoCheck,
-                    updateState = toggles.assistantSettings.updateState,
-                    rememberLastModel = toggles.assistantSettings.rememberLastModel,
-                    assistantEnabled = toggles.assistantSettings.assistantEnabled,
-                    assistantVoiceEnabled = toggles.assistantSettings.assistantVoiceEnabled,
-                    assistantTtsEnabled = toggles.assistantSettings.assistantTtsEnabled,
-                    beautifulModelNamesEnabled = toggles.assistantSettings.beautifulModelNamesEnabled,
-                    alwaysShowThinking = toggles.assistantSettings.alwaysShowThinking
-                )
+                },
+                appPreferences.fontSizeScale
+            ) { data, fontSizeScale ->
+                data.copy(fontSizeScale = fontSizeScale)
             }
                 .catch { e ->
                     _uiState.value = SettingsUiState.Error(
@@ -158,6 +164,7 @@ class SettingsViewModel @Inject constructor(
                         assistantTtsEnabled = data.assistantTtsEnabled,
                         beautifulModelNamesEnabled = data.beautifulModelNamesEnabled,
                         alwaysShowThinking = data.alwaysShowThinking,
+                        fontSizeScale = data.fontSizeScale,
                         appVersion = updateManager.getCurrentVersion(),
                         autoCheckUpdates = data.autoCheckUpdates,
                         updateState = data.updateState,
@@ -723,6 +730,23 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
+    // ========== Font Settings ==========
+
+    /**
+     * Updates the font size scale.
+     */
+    fun updateFontSizeScale(scale: Float) {
+        viewModelScope.launch {
+            try {
+                appPreferences.setFontSizeScale(scale)
+            } catch (e: Exception) {
+                _events.emit(SettingsEvent.ShowSnackbar(
+                    message = "Failed to save font size setting"
+                ))
+            }
+        }
+    }
+
     // ========== App Updates ==========
 
     /**
@@ -832,7 +856,8 @@ class SettingsViewModel @Inject constructor(
         val assistantVoiceEnabled: Boolean,
         val assistantTtsEnabled: Boolean,
         val beautifulModelNamesEnabled: Boolean,
-        val alwaysShowThinking: Boolean
+        val alwaysShowThinking: Boolean,
+        val fontSizeScale: Float
     )
 
     /**
