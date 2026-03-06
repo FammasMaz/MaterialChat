@@ -556,8 +556,8 @@ private fun ChatContent(
         }
     }
 
-    // Fix 1: Visual buffer during streaming (8dp)
-    val scrollBufferPx = with(density) { 8.dp.toPx() }
+    // Fix 1: Visual buffer during streaming (20dp to prevent bottom cutoff)
+    val scrollBufferPx = with(density) { 20.dp.toPx() }
     // Fix 2: Larger buffer for action buttons when streaming ends (~56dp)
     val actionButtonHeightPx = with(density) { 56.dp.toPx() }
 

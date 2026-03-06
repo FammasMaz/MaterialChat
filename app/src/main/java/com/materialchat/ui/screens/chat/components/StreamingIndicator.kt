@@ -14,9 +14,13 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -24,6 +28,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
@@ -407,6 +414,65 @@ fun M3TripleShapeIndicator(
                     }
                 }
             }
+        }
+    }
+}
+
+/**
+ * M3 Expressive shimmer skeleton lines — text placeholder loading indicator.
+ *
+ * Shows pill-shaped bars of decreasing width with a gradient shimmer sweep,
+ * suggesting text content is about to appear. Uses M3 color tokens and
+ * pill shapes for Expressive compatibility.
+ *
+ * @param color Base color (typically bubble text color)
+ * @param lines Number of skeleton lines to show (3 for initial, 1 below content)
+ */
+@Composable
+fun ShimmerSkeletonLines(
+    color: Color,
+    lines: Int = 3,
+    modifier: Modifier = Modifier
+) {
+    val infiniteTransition = rememberInfiniteTransition(label = "shimmer")
+    val shimmerProgress by infiniteTransition.animateFloat(
+        initialValue = -1f,
+        targetValue = 2f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 1400, easing = EaseInOutCubic),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "shimmerProgress"
+    )
+
+    val barColor = color.copy(alpha = 0.12f)
+    val highlightColor = color.copy(alpha = 0.35f)
+
+    // Decreasing widths to mimic natural text lines
+    val lineWidths = when (lines) {
+        1 -> listOf(0.55f)
+        2 -> listOf(1f, 0.6f)
+        else -> listOf(1f, 0.75f, 0.45f)
+    }
+
+    Column(
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        lineWidths.forEach { widthFraction ->
+            val shimmerBrush = Brush.linearGradient(
+                colors = listOf(barColor, highlightColor, barColor),
+                start = Offset(shimmerProgress * 800f, 0f),
+                end = Offset((shimmerProgress + 0.6f) * 800f, 0f)
+            )
+
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(widthFraction)
+                    .height(14.dp)
+                    .clip(RoundedCornerShape(50))
+                    .background(shimmerBrush)
+            )
         }
     }
 }

@@ -1,7 +1,6 @@
 package com.materialchat.ui.screens.chat.components
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.animation.core.Spring
@@ -40,6 +39,8 @@ import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.ErrorOutline
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.LoadingIndicator
 import com.materialchat.ui.components.ExpressiveButton
 import com.materialchat.ui.components.ExpressiveButtonStyle
 import androidx.compose.material3.Icon
@@ -68,6 +69,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
@@ -104,7 +106,7 @@ import com.materialchat.ui.theme.MessageBubbleShapes
  * @param onNavigateNext Optional callback to navigate to next sibling
  * @param modifier Modifier for the bubble container
  */
-@OptIn(ExperimentalFoundationApi::class)
+@OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun MessageBubble(
     messageItem: MessageUiItem,
@@ -166,13 +168,6 @@ fun MessageBubble(
                     color = bubbleStyle.backgroundColor,
                     modifier = Modifier
                         .widthIn(min = 40.dp, max = bubbleStyle.maxWidth)
-                        .animateContentSize(
-                            // M3 Expressive: spring.default.spatial for content size transitions
-                            animationSpec = spring(
-                                dampingRatio = 0.7f,   // Expressive spatial: slight overshoot
-                                stiffness = 500f       // Default speed for partial-screen elements
-                            )
-                        )
                         .then(
                             if (isUser && !isEditing && !message.isStreaming && message.content.isNotEmpty()) {
                                 Modifier.combinedClickable(
@@ -224,6 +219,21 @@ fun MessageBubble(
                         )
                     } else if (isAssistant && !message.isStreaming && message.content.isEmpty() && messageItem.isErrored) {
                         ErrorStateContent()
+                    } else if (message.isStreaming && message.content.isEmpty() && message.thinkingContent.isNullOrEmpty()) {
+                        // Initial streaming — compact M3 loading indicators
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            repeat(3) {
+                                LoadingIndicator(
+                                    modifier = Modifier.size(16.dp),
+                                    color = bubbleStyle.textColor.copy(alpha = 0.6f)
+                                )
+                            }
+                        }
+                    } else if (message.isStreaming && message.content.isEmpty()) {
+                        // Thinking active, no main content yet — ThinkingSection handles indicator
                     } else {
                         MessageContent(
                             content = message.content,
@@ -233,16 +243,15 @@ fun MessageBubble(
                             onOpenCanvas = onOpenCanvas,
                             hapticsEnabled = hapticsEnabled
                         )
-                    }
 
-                    // Streaming indicator
-                    if (message.isStreaming) {
-                        Spacer(modifier = Modifier.height(4.dp))
-                        TypingIndicator(
-                            dotSize = 7.dp,
-                            dotSpacing = 4.dp,
-                            color = bubbleStyle.textColor.copy(alpha = 0.6f)
-                        )
+                        // Streaming indicator below content
+                        if (message.isStreaming) {
+                            Spacer(modifier = Modifier.height(4.dp))
+                            ShimmerSkeletonLines(
+                                color = bubbleStyle.textColor,
+                                lines = 1
+                            )
+                        }
                     }
 
                 }
@@ -405,20 +414,21 @@ private fun MessageContent(
     hapticsEnabled: Boolean = true
 ) {
     val displayContent = content.ifEmpty { "" }
+    val justifiedStyle = MaterialTheme.typography.bodyLarge.copy(textAlign = TextAlign.Justify)
 
     if (isAssistant && displayContent.isNotEmpty()) {
         SmoothStreamingText(
             rawText = displayContent,
             isStreaming = isStreaming,
             textColor = textColor,
-            style = MaterialTheme.typography.bodyLarge,
+            style = justifiedStyle,
             hapticsEnabled = hapticsEnabled,
             onOpenCanvas = onOpenCanvas
         )
     } else {
         Text(
             text = displayContent,
-            style = MaterialTheme.typography.bodyLarge,
+            style = justifiedStyle,
             color = textColor,
             overflow = TextOverflow.Clip
         )
@@ -602,14 +612,25 @@ private fun ThinkingSection(
                 )
             )
         ) {
-            SmoothStreamingThinkingText(
-                rawText = thinkingContent,
-                isStreaming = isStreaming,
-                textColor = textColor.copy(alpha = 0.7f),
-                style = MaterialTheme.typography.bodyMedium,
-                hapticsEnabled = hapticsEnabled,
-                modifier = Modifier.padding(start = 20.dp, top = 4.dp)
-            )
+            Column {
+                SmoothStreamingThinkingText(
+                    rawText = thinkingContent,
+                    isStreaming = isStreaming,
+                    textColor = textColor.copy(alpha = 0.7f),
+                    style = MaterialTheme.typography.bodyMedium,
+                    hapticsEnabled = hapticsEnabled,
+                    modifier = Modifier.padding(start = 20.dp, top = 4.dp)
+                )
+
+                if (isStreaming) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    ShimmerSkeletonLines(
+                        color = textColor,
+                        lines = 1,
+                        modifier = Modifier.padding(start = 20.dp)
+                    )
+                }
+            }
         }
     }
 }

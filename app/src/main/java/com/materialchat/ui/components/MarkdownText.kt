@@ -38,6 +38,7 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
@@ -128,9 +129,19 @@ private fun MarkdownContent(
             when (element) {
                 is MarkdownElement.TextBlock -> {
                     if (element.text.isNotEmpty()) {
+                        // Don't justify list items — preserve bullet/number indentation
+                        val hasListItems = element.text.text.lines().any { line ->
+                            val t = line.trimStart()
+                            t.startsWith("• ") || t.matches(Regex("\\d+\\.\\s.*"))
+                        }
+                        val effectiveStyle = if (hasListItems && style.textAlign == TextAlign.Justify) {
+                            style.copy(textAlign = TextAlign.Start)
+                        } else {
+                            style
+                        }
                         Text(
                             text = element.text,
-                            style = style,
+                            style = effectiveStyle,
                             modifier = Modifier.fillMaxWidth()
                         )
                     }
@@ -467,7 +478,13 @@ private fun parseTextWithTables(
 
             elements.add(MarkdownElement.Table(headers, rows, alignments))
         } else {
-            textBuffer.add(lines[i])
+            // Split merged numbered list items (e.g., "1. a,2. b" → separate lines)
+            if (lines[i].trimStart().matches(Regex("\\d+\\.\\s+.*"))) {
+                lines[i].replace(Regex(",\\s*(?=\\*{0,2}\\d+\\.\\s)"), ",\n")
+                    .lines().forEach { textBuffer.add(it) }
+            } else {
+                textBuffer.add(lines[i])
+            }
             i++
         }
     }
