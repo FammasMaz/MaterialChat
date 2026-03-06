@@ -411,7 +411,19 @@ private fun parseMarkdown(
     if (lastIndex < markdown.length) {
         val remainingText = markdown.substring(lastIndex)
         if (remainingText.isNotBlank()) {
-            elements.addAll(parseTextWithTables(remainingText, baseColor, codeColor, linkColor))
+            // Check for unclosed code block (streaming — opening ``` without closing)
+            val unclosedMatch = Regex("(^|\\n)```(\\w*)?\\n?").find(remainingText)
+            if (unclosedMatch != null) {
+                val textBefore = remainingText.substring(0, unclosedMatch.range.first)
+                if (textBefore.isNotBlank()) {
+                    elements.addAll(parseTextWithTables(textBefore, baseColor, codeColor, linkColor))
+                }
+                val afterFence = remainingText.substring(unclosedMatch.range.last + 1)
+                val language = unclosedMatch.groupValues[2].ifEmpty { null }
+                elements.add(MarkdownElement.CodeBlock(afterFence.trimEnd(), language))
+            } else {
+                elements.addAll(parseTextWithTables(remainingText, baseColor, codeColor, linkColor))
+            }
         }
     }
 
@@ -478,10 +490,16 @@ private fun parseTextWithTables(
 
             elements.add(MarkdownElement.Table(headers, rows, alignments))
         } else {
+            val currentTrimmed = lines[i].trimStart()
             // Split merged numbered list items (e.g., "1. a,2. b" → separate lines)
-            if (lines[i].trimStart().matches(Regex("\\d+\\.\\s+.*"))) {
+            if (currentTrimmed.matches(Regex("\\d+\\.\\s+.*"))) {
                 lines[i].replace(Regex(",\\s*(?=\\*{0,2}\\d+\\.\\s)"), ",\n")
                     .lines().forEach { textBuffer.add(it) }
+            } else if (textBuffer.isNotEmpty() && currentTrimmed.isNotEmpty()
+                && isListContinuation(currentTrimmed, textBuffer.last())) {
+                // Join continuation line with the preceding list item
+                val prev = textBuffer.removeAt(textBuffer.lastIndex)
+                textBuffer.add("$prev $currentTrimmed")
             } else {
                 textBuffer.add(lines[i])
             }
@@ -519,6 +537,20 @@ private fun parseTableAlignments(line: String): List<TableAlignment> {
             else -> TableAlignment.LEFT
         }
     }
+}
+
+/**
+ * Checks whether a non-list, non-header line should be joined to a preceding list item
+ * as a continuation (e.g., a long list item that wraps across source lines).
+ */
+private fun isListContinuation(currentTrimmed: String, previousLine: String): Boolean {
+    val prevTrimmed = previousLine.trimStart()
+    val prevIsList = prevTrimmed.startsWith("- ") || prevTrimmed.startsWith("* ")
+        || prevTrimmed.matches(Regex("\\d+\\.\\s+.*"))
+    val currentIsList = currentTrimmed.startsWith("- ") || currentTrimmed.startsWith("* ")
+        || currentTrimmed.matches(Regex("\\d+\\.\\s+.*"))
+    val currentIsSpecial = currentTrimmed.startsWith("#") || currentTrimmed.matches(Regex("[-*_]{3,}"))
+    return prevIsList && !currentIsList && !currentIsSpecial
 }
 
 /**

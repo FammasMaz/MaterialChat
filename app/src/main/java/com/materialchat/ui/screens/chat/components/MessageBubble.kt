@@ -22,6 +22,8 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -551,14 +553,11 @@ private fun MessageContent(
 
         if (quotedLines.isNotEmpty()) {
             // Render visual quote block with accent bar
-            Row(modifier = Modifier.padding(bottom = 8.dp)) {
+            Row(modifier = Modifier.padding(bottom = 8.dp).height(IntrinsicSize.Min)) {
                 Box(
                     modifier = Modifier
                         .width(3.dp)
-                        .height(with(LocalDensity.current) {
-                            // Approximate height based on line count
-                            ((quotedLines.size * 20) + 8).dp
-                        })
+                        .fillMaxHeight()
                         .clip(RoundedCornerShape(999.dp))
                         .background(textColor.copy(alpha = 0.4f))
                 )
@@ -567,6 +566,8 @@ private fun MessageContent(
                     style = MaterialTheme.typography.bodyMedium,
                     color = textColor.copy(alpha = 0.65f),
                     fontStyle = FontStyle.Italic,
+                    maxLines = 3,
+                    overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.padding(start = 8.dp)
                 )
             }
