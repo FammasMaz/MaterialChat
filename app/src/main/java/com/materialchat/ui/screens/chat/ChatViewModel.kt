@@ -728,7 +728,19 @@ class ChatViewModel @Inject constructor(
         if (currentState !is ChatUiState.Success) return
         if (currentState.isStreaming) return
 
-        _uiState.value = currentState.copy(streamingState = StreamingState.Starting)
+        // Immediately remove the last assistant message from the UI to prevent
+        // ghosting while the database deletion propagates via Flow.
+        // Without this, the old reply stays visible for a few frames alongside
+        // the streaming indicator, creating a "previous reply in background" artifact.
+        val filteredMessages = currentState.messages.toMutableList().also { list ->
+            val lastAssistantIdx = list.indexOfLast { it.message.role == MessageRole.ASSISTANT }
+            if (lastAssistantIdx >= 0) list.removeAt(lastAssistantIdx)
+        }
+
+        _uiState.value = currentState.copy(
+            streamingState = StreamingState.Starting,
+            messages = filteredMessages
+        )
 
         streamingJob = viewModelScope.launch(ioDispatcher) {
             try {

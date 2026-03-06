@@ -4,6 +4,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.outlined.Code
 import androidx.compose.material.icons.outlined.ContentCopy
+import androidx.compose.material.icons.outlined.Save
 import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -50,6 +51,7 @@ fun CanvasTopBar(
     onToggleViewMode: () -> Unit,
     onShare: () -> Unit,
     onCopy: () -> Unit,
+    onSave: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val haptics = rememberHapticFeedback()
@@ -96,6 +98,12 @@ fun CanvasTopBar(
                 Icon(
                     imageVector = Icons.Outlined.ContentCopy,
                     contentDescription = "Copy code"
+                )
+            }
+            IconButton(onClick = { haptics.perform(HapticPattern.CLICK); onSave() }) {
+                Icon(
+                    imageVector = Icons.Outlined.Save,
+                    contentDescription = "Save as mini-app"
                 )
             }
             IconButton(onClick = { haptics.perform(HapticPattern.CLICK); onShare() }) {

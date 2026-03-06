@@ -2,6 +2,9 @@ package com.materialchat.ui.screens.canvas.components
 
 import android.annotation.SuppressLint
 import android.graphics.Color
+import android.view.MotionEvent
+import android.webkit.WebChromeClient
+import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.compose.material3.MaterialTheme
@@ -23,7 +26,7 @@ import androidx.compose.ui.viewinterop.AndroidView
  * @param html The full HTML document string to render
  * @param modifier Modifier for the WebView container
  */
-@SuppressLint("SetJavaScriptEnabled")
+@SuppressLint("SetJavaScriptEnabled", "ClickableViewAccessibility")
 @Composable
 fun CanvasWebView(
     html: String,
@@ -35,6 +38,7 @@ fun CanvasWebView(
         factory = { context ->
             WebView(context).apply {
                 webViewClient = WebViewClient()
+                webChromeClient = WebChromeClient()
 
                 settings.apply {
                     javaScriptEnabled = true
@@ -46,18 +50,33 @@ fun CanvasWebView(
                     displayZoomControls = false
                     loadWithOverviewMode = true
                     useWideViewPort = true
+                    @Suppress("DEPRECATION")
+                    mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
                 }
 
                 setBackgroundColor(backgroundColor)
                 isVerticalScrollBarEnabled = true
                 isHorizontalScrollBarEnabled = true
 
-                loadDataWithBaseURL(null, html, "text/html", "UTF-8", null)
+                // Allow WebView to handle its own scrolling within Compose
+                setOnTouchListener { v, event ->
+                    when (event.action) {
+                        MotionEvent.ACTION_DOWN -> {
+                            v.parent?.requestDisallowInterceptTouchEvent(true)
+                        }
+                        MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                            v.parent?.requestDisallowInterceptTouchEvent(false)
+                        }
+                    }
+                    false
+                }
+
+                loadDataWithBaseURL("https://cdn.jsdelivr.net", html, "text/html", "UTF-8", null)
             }
         },
         update = { webView ->
             webView.setBackgroundColor(backgroundColor)
-            webView.loadDataWithBaseURL(null, html, "text/html", "UTF-8", null)
+            webView.loadDataWithBaseURL("https://cdn.jsdelivr.net", html, "text/html", "UTF-8", null)
         },
         modifier = modifier
     )

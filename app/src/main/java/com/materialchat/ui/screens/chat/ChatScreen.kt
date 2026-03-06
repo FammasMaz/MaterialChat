@@ -26,6 +26,7 @@ import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -622,6 +623,33 @@ private fun ChatContent(
     // Fix 2: Track streaming state to scroll when it ends (to reveal action buttons)
     val isLastMessageStreaming = lastMessage?.isStreaming ?: false
 
+    // Continuous layout-driven auto-scroll during streaming.
+    // Eliminates the frame-delay jitter by reacting to layout changes directly
+    // rather than waiting for content hash changes in a LaunchedEffect.
+    // snapshotFlow fires immediately after layout measurement, so scroll
+    // happens in the same frame as content growth — no "cut off then fix" flicker.
+    LaunchedEffect(autoScrollEnabled, isLastMessageStreaming) {
+        if (!autoScrollEnabled || !isLastMessageStreaming) return@LaunchedEffect
+        snapshotFlow { listState.layoutInfo }
+            .collect { layoutInfo ->
+                if (!autoScrollEnabled) return@collect
+                val totalItems = layoutInfo.totalItemsCount
+                if (totalItems == 0) return@collect
+                val lastVisible = layoutInfo.visibleItemsInfo.lastOrNull() ?: return@collect
+                val lastIndex = totalItems - 1
+                if (lastVisible.index < lastIndex) {
+                    listState.scrollToItem(lastIndex)
+                } else {
+                    val overflow = (lastVisible.offset + lastVisible.size) -
+                        layoutInfo.viewportEndOffset + scrollBufferPx
+                    if (overflow > 2) {
+                        listState.scrollBy(overflow.toFloat())
+                    }
+                }
+            }
+    }
+
+    // Discrete auto-scroll for non-streaming events (new message, streaming end, etc.)
     LaunchedEffect(
         lastContentHash,
         lastThinkingHash,
@@ -630,8 +658,11 @@ private fun ChatContent(
         inputHeightPx,
         isAtBottom,
         autoScrollEnabled,
-        isLastMessageStreaming  // NEW KEY: triggers scroll when streaming ends
+        isLastMessageStreaming  // triggers scroll when streaming ends to reveal action buttons
     ) {
+        // During streaming, the snapshotFlow above handles scrolling — skip here
+        if (isLastMessageStreaming) return@LaunchedEffect
+
         if (autoScrollEnabled && state.messages.isNotEmpty()) {
             val lastIndex = state.messages.lastIndex
             val layoutInfo = listState.layoutInfo
@@ -639,13 +670,17 @@ private fun ChatContent(
             if (lastVisible == null || lastVisible.index < lastIndex) {
                 listState.scrollToItem(lastIndex)
             } else {
-                // Fix 1 & 2: Use appropriate buffer based on streaming state
-                // - During streaming: small buffer (8dp) to prevent bottom cutoff
-                // - After streaming ends: larger buffer (~56dp) to reveal action buttons
-                val buffer = if (isLastMessageStreaming) scrollBufferPx else actionButtonHeightPx
-                val overflow = (lastVisible.offset + lastVisible.size) - layoutInfo.viewportEndOffset + buffer
+                // After streaming ends: larger buffer (~56dp) to reveal action buttons
+                val overflow = (lastVisible.offset + lastVisible.size) -
+                    layoutInfo.viewportEndOffset + actionButtonHeightPx
                 if (overflow > 0) {
-                    listState.scrollBy(overflow.toFloat())
+                    listState.animateScrollBy(
+                        overflow.toFloat(),
+                        animationSpec = spring(
+                            dampingRatio = 1.0f,
+                            stiffness = Spring.StiffnessHigh
+                        )
+                    )
                 }
             }
         }
@@ -747,7 +782,8 @@ private fun ChatContent(
 
             // M3 Expressive: Scroll-to-bottom FAB overlay
             ScrollToBottomFab(
-                visible = !isAtBottom && state.messages.isNotEmpty(),
+                visible = !isAtBottom && state.messages.isNotEmpty()
+                    && !(state.isStreaming && autoScrollEnabled),
                 hasNewContent = !isAtBottom && state.isStreaming,
                 onClick = {
                     coroutineScope.launch {

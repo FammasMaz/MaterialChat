@@ -43,6 +43,12 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import android.annotation.SuppressLint
+import android.webkit.WebView
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.viewinterop.AndroidView
 import com.materialchat.ui.theme.CodeBlockBackgroundDark
 import com.materialchat.ui.theme.CodeBlockBackgroundLight
 
@@ -109,6 +115,7 @@ private sealed class MarkdownElement {
         val alignments: List<TableAlignment>
     ) : MarkdownElement()
     data object HorizontalRule : MarkdownElement()
+    data class MathBlock(val expression: String, val isDisplay: Boolean) : MarkdownElement()
 }
 
 private enum class TableAlignment { LEFT, CENTER, RIGHT }
@@ -170,6 +177,12 @@ private fun MarkdownContent(
                         modifier = Modifier.padding(vertical = 12.dp),
                         thickness = 1.dp,
                         color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                    )
+                }
+                is MarkdownElement.MathBlock -> {
+                    MathBlockView(
+                        expression = element.expression,
+                        backgroundColor = codeBlockBackground
                     )
                 }
             }
@@ -255,6 +268,108 @@ private fun CodeBlockView(
             }
         }
     }
+}
+
+/**
+ * Renders a display math expression using a compact KaTeX WebView.
+ */
+@SuppressLint("SetJavaScriptEnabled")
+@Composable
+private fun MathBlockView(
+    expression: String,
+    backgroundColor: Color
+) {
+    val isDarkTheme = isSystemInDarkTheme()
+    val bgHex = if (isDarkTheme) "#1C1B1F" else "#FFFBFE"
+    val fgHex = if (isDarkTheme) "#E6E1E5" else "#1C1B1F"
+
+    val html = remember(expression, isDarkTheme) {
+        buildMathHtml(expression, bgHex, fgHex, isDisplay = true)
+    }
+
+    var webViewHeight by remember { mutableIntStateOf(80) }
+    val density = LocalDensity.current
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp)
+            .clip(RoundedCornerShape(8.dp))
+            .background(backgroundColor.copy(alpha = 0.5f))
+    ) {
+        AndroidView(
+            factory = { context ->
+                WebView(context).apply {
+                    webViewClient = object : android.webkit.WebViewClient() {
+                        override fun onPageFinished(view: WebView?, url: String?) {
+                            // Get content height after rendering
+                            view?.evaluateJavascript(
+                                "(function() { return document.body.scrollHeight; })()"
+                            ) { heightStr ->
+                                val h = heightStr?.toFloatOrNull()
+                                if (h != null && h > 0) {
+                                    webViewHeight = (h * context.resources.displayMetrics.density).toInt()
+                                }
+                            }
+                        }
+                    }
+                    settings.apply {
+                        javaScriptEnabled = true
+                        domStorageEnabled = true
+                        loadWithOverviewMode = true
+                        useWideViewPort = true
+                    }
+                    setBackgroundColor(android.graphics.Color.TRANSPARENT)
+                    isVerticalScrollBarEnabled = false
+                    isHorizontalScrollBarEnabled = false
+                    loadDataWithBaseURL(
+                        "https://cdn.jsdelivr.net",
+                        html, "text/html", "UTF-8", null
+                    )
+                }
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(with(density) { webViewHeight.toDp() })
+        )
+    }
+}
+
+private fun buildMathHtml(expression: String, bgColor: String, fgColor: String, isDisplay: Boolean): String {
+    val escaped = expression
+        .replace("\\", "\\\\")
+        .replace("\"", "\\\"")
+        .replace("\n", "\\n")
+        .replace("\r", "")
+
+    return """
+        <!DOCTYPE html>
+        <html><head>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+        <style>
+            * { margin: 0; padding: 0; box-sizing: border-box; }
+            body { background: transparent; color: $fgColor; padding: 8px 12px; overflow: hidden; }
+            .katex { color: $fgColor; font-size: 1.2em; }
+            .katex-display { margin: 0; overflow-x: auto; overflow-y: hidden; }
+        </style>
+        </head><body>
+        <div id="math"></div>
+        <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+        <script>
+            try {
+                katex.render("$escaped", document.getElementById('math'), {
+                    displayMode: $isDisplay,
+                    throwOnError: false,
+                    trust: true,
+                    strict: false
+                });
+            } catch(e) {
+                document.getElementById('math').textContent = e.message;
+            }
+        </script>
+        </body></html>
+    """.trimIndent()
 }
 
 /**
@@ -386,12 +501,18 @@ private fun parseMarkdown(
 ): List<MarkdownElement> {
     val elements = mutableListOf<MarkdownElement>()
 
-    // Split by code blocks first
-    val codeBlockPattern = Regex("```(\\w*)?\\n?([\\s\\S]*?)```", RegexOption.MULTILINE)
+    // Combined pattern for code blocks AND display math blocks
+    val blockPattern = Regex(
+        """```(\w*)?\n?([\s\S]*?)```""" +                                                          // Code blocks (groups 1, 2)
+        "|\\\$\\\$\\n?([\\s\\S]*?)\\\$\\\$" +                                                      // Display math $$...$$ (group 3)
+        """|\\\[\n?([\s\S]*?)\\\]""" +                                                              // Display math \[...\] (group 4)
+        """|\\begin\{(equation|align|gather|aligned|gathered)\}\n?([\s\S]*?)\\end\{\5\}""",         // LaTeX environments (groups 5, 6)
+        RegexOption.MULTILINE
+    )
     var lastIndex = 0
 
-    codeBlockPattern.findAll(markdown).forEach { match ->
-        // Add text before code block (with table detection)
+    blockPattern.findAll(markdown).forEach { match ->
+        // Add text before this block (with table detection)
         if (match.range.first > lastIndex) {
             val textBefore = markdown.substring(lastIndex, match.range.first)
             if (textBefore.isNotBlank()) {
@@ -399,35 +520,70 @@ private fun parseMarkdown(
             }
         }
 
-        // Add code block
-        val language = match.groupValues[1].ifEmpty { null }
-        val code = match.groupValues[2].trimEnd()
-        elements.add(MarkdownElement.CodeBlock(code, language))
+        when {
+            // Code block
+            match.value.startsWith("```") -> {
+                val language = match.groupValues[1].ifEmpty { null }
+                val code = match.groupValues[2].trimEnd()
+                elements.add(MarkdownElement.CodeBlock(code, language))
+            }
+            // Display math $$...$$
+            match.value.startsWith("\$\$") -> {
+                elements.add(MarkdownElement.MathBlock(match.groupValues[3].trim(), isDisplay = true))
+            }
+            // Display math \[...\]
+            match.value.startsWith("\\[") -> {
+                elements.add(MarkdownElement.MathBlock(match.groupValues[4].trim(), isDisplay = true))
+            }
+            // LaTeX environment \begin{...}...\end{...}
+            match.value.startsWith("\\begin") -> {
+                val env = match.groupValues[5]
+                val content = match.groupValues[6].trim()
+                elements.add(MarkdownElement.MathBlock(
+                    "\\begin{$env}\n$content\n\\end{$env}",
+                    isDisplay = true
+                ))
+            }
+        }
 
         lastIndex = match.range.last + 1
     }
 
-    // Add remaining text after last code block (with table detection)
+    // Add remaining text after last block (with table detection)
     if (lastIndex < markdown.length) {
         val remainingText = markdown.substring(lastIndex)
         if (remainingText.isNotBlank()) {
             // Check for unclosed code block (streaming — opening ``` without closing)
-            val unclosedMatch = Regex("(^|\\n)```(\\w*)?\\n?").find(remainingText)
-            if (unclosedMatch != null) {
-                val textBefore = remainingText.substring(0, unclosedMatch.range.first)
-                if (textBefore.isNotBlank()) {
-                    elements.addAll(parseTextWithTables(textBefore, baseColor, codeColor, linkColor))
+            val unclosedCodeMatch = Regex("(^|\\n)```(\\w*)?\\n?").find(remainingText)
+            // Check for unclosed display math (streaming — opening $$ without closing)
+            val unclosedMathMatch = Regex("(^|\\n)\\\$\\\$\\n?").find(remainingText)
+
+            when {
+                unclosedCodeMatch != null -> {
+                    val textBefore = remainingText.substring(0, unclosedCodeMatch.range.first)
+                    if (textBefore.isNotBlank()) {
+                        elements.addAll(parseTextWithTables(textBefore, baseColor, codeColor, linkColor))
+                    }
+                    val afterFence = remainingText.substring(unclosedCodeMatch.range.last + 1)
+                    val language = unclosedCodeMatch.groupValues[2].ifEmpty { null }
+                    elements.add(MarkdownElement.CodeBlock(afterFence.trimEnd(), language))
                 }
-                val afterFence = remainingText.substring(unclosedMatch.range.last + 1)
-                val language = unclosedMatch.groupValues[2].ifEmpty { null }
-                elements.add(MarkdownElement.CodeBlock(afterFence.trimEnd(), language))
-            } else {
-                elements.addAll(parseTextWithTables(remainingText, baseColor, codeColor, linkColor))
+                unclosedMathMatch != null -> {
+                    val textBefore = remainingText.substring(0, unclosedMathMatch.range.first)
+                    if (textBefore.isNotBlank()) {
+                        elements.addAll(parseTextWithTables(textBefore, baseColor, codeColor, linkColor))
+                    }
+                    val afterDelimiter = remainingText.substring(unclosedMathMatch.range.last + 1)
+                    elements.add(MarkdownElement.MathBlock(afterDelimiter.trimEnd(), isDisplay = true))
+                }
+                else -> {
+                    elements.addAll(parseTextWithTables(remainingText, baseColor, codeColor, linkColor))
+                }
             }
         }
     }
 
-    // If no code blocks found, parse entire text (with table detection)
+    // If no blocks found, parse entire text (with table detection)
     if (elements.isEmpty() && markdown.isNotBlank()) {
         elements.addAll(parseTextWithTables(markdown, baseColor, codeColor, linkColor))
     }
@@ -645,12 +801,14 @@ private fun AnnotatedString.Builder.parseInlineFormatting(
     var currentIndex = 0
 
     // Combined pattern for all inline elements
-    // Order matters: ** before *, __ before _
+    // Order matters: ** before *, __ before _, math before other $
     val pattern = Regex(
-        """(\*\*|__)(.*?)\1""" + // Bold
-        """|(\*|_)(?!\s)(.*?)(?!\s)\3""" + // Italic (non-greedy, no leading/trailing space)
-        """|`([^`]+)`""" + // Inline code
-        """|\[([^\]]+)\]\(([^)]+)\)""" // Links
+        """(\*\*|__)(.*?)\1""" + // Bold (groups 1, 2)
+        """|(\*|_)(?!\s)(.*?)(?!\s)\3""" + // Italic (groups 3, 4)
+        """|`([^`]+)`""" + // Inline code (group 5)
+        """|\[([^\]]+)\]\(([^)]+)\)""" + // Links (groups 6, 7)
+        """|\\\((.+?)\\\)""" + // Inline math \(...\) (group 8)
+        "|(?<!\\\$)\\\$(?!\\\$|\\s)([^\\\$\\n]+?)(?<!\\s)\\\$(?!\\\$|\\d)" // Inline math $...$ (group 9)
     )
 
     val matches = pattern.findAll(text).toList()
@@ -710,6 +868,38 @@ private fun AnnotatedString.Builder.parseInlineFormatting(
                     append(linkText)
                 }
                 pop()
+            }
+            // Inline math \(...\) - group 8
+            match.groupValues.getOrNull(8)?.isNotEmpty() == true -> {
+                val content = match.groupValues[8]
+                withStyle(SpanStyle(
+                    fontFamily = FontFamily.Monospace,
+                    fontStyle = FontStyle.Italic,
+                    background = Color(0xFF7C4DFF).copy(alpha = 0.10f),
+                    color = baseColor
+                )) {
+                    append(content)
+                }
+            }
+            // Inline math $...$ - group 9
+            match.groupValues.getOrNull(9)?.isNotEmpty() == true -> {
+                val content = match.groupValues[9]
+                // Only render as math if content contains math-like characters
+                if (content.any { it in "\\^_{}" }) {
+                    withStyle(SpanStyle(
+                        fontFamily = FontFamily.Monospace,
+                        fontStyle = FontStyle.Italic,
+                        background = Color(0xFF7C4DFF).copy(alpha = 0.10f),
+                        color = baseColor
+                    )) {
+                        append(content)
+                    }
+                } else {
+                    // Not math, render as literal $content$
+                    withStyle(SpanStyle(color = baseColor)) {
+                        append("\$${content}\$")
+                    }
+                }
             }
             else -> {
                 // Fallback - just add the text

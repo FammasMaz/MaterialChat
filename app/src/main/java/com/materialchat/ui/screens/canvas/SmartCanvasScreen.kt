@@ -1,5 +1,10 @@
 package com.materialchat.ui.screens.canvas
 
+import android.content.ContentValues
+import android.os.Build
+import android.os.Environment
+import android.provider.MediaStore
+import android.widget.Toast
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.fadeIn
@@ -11,6 +16,7 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -28,7 +34,6 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.materialchat.ui.screens.canvas.components.CanvasRefinementInput
 import com.materialchat.ui.screens.canvas.components.CanvasTopBar
 import com.materialchat.ui.screens.canvas.components.CanvasWebView
 import com.materialchat.ui.theme.ExpressiveMotion
@@ -55,6 +60,35 @@ fun SmartCanvasScreen(
     val clipboardManager = LocalClipboardManager.current
     val context = LocalContext.current
 
+    val onSave = {
+        try {
+            val fileName = "MaterialChat_${uiState.artifact.type.name.lowercase()}_${System.currentTimeMillis()}.html"
+            val htmlContent = uiState.renderedHtml
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                val contentValues = ContentValues().apply {
+                    put(MediaStore.Downloads.DISPLAY_NAME, fileName)
+                    put(MediaStore.Downloads.MIME_TYPE, "text/html")
+                    put(MediaStore.Downloads.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS + "/MaterialChat")
+                }
+                val uri = context.contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, contentValues)
+                uri?.let {
+                    context.contentResolver.openOutputStream(it)?.use { os ->
+                        os.write(htmlContent.toByteArray())
+                    }
+                }
+            } else {
+                @Suppress("DEPRECATION")
+                val dir = java.io.File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "MaterialChat")
+                dir.mkdirs()
+                java.io.File(dir, fileName).writeText(htmlContent)
+            }
+            Toast.makeText(context, "Saved to Downloads/MaterialChat/$fileName", Toast.LENGTH_SHORT).show()
+        } catch (e: Exception) {
+            Toast.makeText(context, "Save failed: ${e.message}", Toast.LENGTH_SHORT).show()
+        }
+    }
+
     Scaffold(
         topBar = {
             CanvasTopBar(
@@ -73,7 +107,8 @@ fun SmartCanvasScreen(
                 },
                 onCopy = {
                     clipboardManager.setText(AnnotatedString(uiState.artifact.code))
-                }
+                },
+                onSave = onSave
             )
         },
         containerColor = MaterialTheme.colorScheme.surfaceContainer
@@ -82,6 +117,7 @@ fun SmartCanvasScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
+                .imePadding()
         ) {
             // Main content area with animated transitions between preview and code
             AnimatedContent(
@@ -133,15 +169,6 @@ fun SmartCanvasScreen(
                 }
             }
 
-            // Refinement input at the bottom
-            CanvasRefinementInput(
-                value = uiState.refinementInput,
-                onValueChange = viewModel::updateRefinementInput,
-                onSend = {
-                    // Refinement sending will be connected to the chat system in a future iteration
-                },
-                modifier = Modifier.fillMaxWidth()
-            )
         }
     }
 }
