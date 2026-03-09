@@ -30,7 +30,9 @@ import com.materialchat.ui.navigation.Screen
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import com.materialchat.di.ApplicationScope
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -72,7 +74,8 @@ class ChatViewModel @Inject constructor(
     private val manageProvidersUseCase: ManageProvidersUseCase,
     private val managePersonasUseCase: ManagePersonasUseCase,
     private val appPreferences: AppPreferences,
-    @IoDispatcher private val ioDispatcher: CoroutineDispatcher
+    @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
+    @ApplicationScope private val applicationScope: CoroutineScope
 ) : ViewModel() {
 
     private val conversationId: String = checkNotNull(
@@ -100,6 +103,8 @@ class ChatViewModel @Inject constructor(
     private var currentPersona: Persona? = null
     private val activeConversationId = MutableStateFlow(conversationId)
     private val overrideModel: String? = savedStateHandle[Screen.Chat.ARG_OVERRIDE_MODEL]
+    // Tracks the message ID being regenerated to prevent overlap artifacts
+    private var regeneratingMessageId: String? = null
 
     init {
         loadConversation()
@@ -194,12 +199,30 @@ class ChatViewModel @Inject constructor(
                             currentReasoningEffort
                         }
 
+                        // Filter out the message being regenerated to prevent overlap artifacts.
+                        // The DB may still contain the old message for a few frames after deleteMessage()
+                        // is called in RegenerateResponseUseCase.
+                        val filteredMessages = if (regeneratingMessageId != null) {
+                            messages.filter { it.id != regeneratingMessageId }.also { filtered ->
+                                // Clear the flag once the message is actually gone from DB
+                                if (filtered.size == messages.size) {
+                                    // Message was already deleted from DB, clear flag
+                                } else if (streamingState !is StreamingState.Idle) {
+                                    // Keep filtering while streaming
+                                } else {
+                                    regeneratingMessageId = null
+                                }
+                            }
+                        } else {
+                            messages
+                        }
+
                         // Find the last assistant message index
-                        val lastAssistantIndex = messages.indexOfLast {
+                        val lastAssistantIndex = filteredMessages.indexOfLast {
                             it.role == MessageRole.ASSISTANT
                         }
 
-                        val messageItems = messages.mapIndexed { index, message ->
+                        val messageItems = filteredMessages.mapIndexed { index, message ->
                             val isSiblingTarget = index == lastAssistantIndex &&
                                     message.role == MessageRole.ASSISTANT
                             MessageUiItem(
@@ -208,7 +231,7 @@ class ChatViewModel @Inject constructor(
                                         message.role == MessageRole.ASSISTANT,
                                 showActions = message.role == MessageRole.ASSISTANT ||
                                         message.role == MessageRole.USER,
-                                groupPosition = resolveGroupPosition(messages, index),
+                                groupPosition = resolveGroupPosition(filteredMessages, index),
                                 siblingInfo = if (isSiblingTarget) siblingInfo else null,
                                 showModelLabel = message.modelName != null &&
                                         message.modelName != conversation.modelName,
@@ -565,6 +588,11 @@ class ChatViewModel @Inject constructor(
      * Updates the streaming state in the UI.
      */
     private fun updateStreamingState(state: StreamingState) {
+        // Clear regenerating ID when streaming completes or errors
+        if (state is StreamingState.Completed || state is StreamingState.Error || state is StreamingState.Cancelled) {
+            regeneratingMessageId = null
+        }
+
         _uiState.update { currentState ->
             if (currentState is ChatUiState.Success) {
                 currentState.copy(streamingState = state)
@@ -734,7 +762,10 @@ class ChatViewModel @Inject constructor(
         // the streaming indicator, creating a "previous reply in background" artifact.
         val filteredMessages = currentState.messages.toMutableList().also { list ->
             val lastAssistantIdx = list.indexOfLast { it.message.role == MessageRole.ASSISTANT }
-            if (lastAssistantIdx >= 0) list.removeAt(lastAssistantIdx)
+            if (lastAssistantIdx >= 0) {
+                regeneratingMessageId = list[lastAssistantIdx].message.id
+                list.removeAt(lastAssistantIdx)
+            }
         }
 
         _uiState.value = currentState.copy(
@@ -1342,8 +1373,28 @@ class ChatViewModel @Inject constructor(
 
     override fun onCleared() {
         super.onCleared()
-        streamingJob?.cancel()
-        fusionJob?.cancel()
+        // If streaming is active, clean up the DB to prevent stuck shimmer indicators
+        val currentState = _uiState.value
+        if (currentState is ChatUiState.Success && currentState.isStreaming) {
+            val streamingMsgId = when (val s = currentState.streamingState) {
+                is StreamingState.Streaming -> s.messageId
+                else -> null
+            }
+            streamingJob?.cancel()
+            fusionJob?.cancel()
+            sendMessageUseCase.cancel()
+            // Clean up DB outside viewModelScope (which is already being cancelled)
+            if (streamingMsgId != null) {
+                applicationScope.launch {
+                    try {
+                        conversationRepository.setMessageStreaming(streamingMsgId, false)
+                    } catch (_: Exception) {}
+                }
+            }
+        } else {
+            streamingJob?.cancel()
+            fusionJob?.cancel()
+        }
     }
 
     // ========== Fusion Methods ==========

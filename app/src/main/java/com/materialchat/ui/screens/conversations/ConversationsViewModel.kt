@@ -7,7 +7,9 @@ import com.materialchat.data.local.preferences.AppPreferences
 import com.materialchat.domain.model.Conversation
 import com.materialchat.domain.model.Provider
 import com.materialchat.domain.repository.ConversationRepository
+import com.materialchat.domain.model.MessageRole
 import com.materialchat.domain.usecase.CreateConversationUseCase
+import com.materialchat.domain.usecase.GenerateConversationTitleUseCase
 import com.materialchat.domain.usecase.GetConversationsUseCase
 import com.materialchat.domain.usecase.ManageProvidersUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -36,7 +38,8 @@ class ConversationsViewModel @Inject constructor(
     private val createConversationUseCase: CreateConversationUseCase,
     private val manageProvidersUseCase: ManageProvidersUseCase,
     private val conversationRepository: ConversationRepository,
-    private val appPreferences: AppPreferences
+    private val appPreferences: AppPreferences,
+    private val generateConversationTitleUseCase: GenerateConversationTitleUseCase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<ConversationsUiState>(ConversationsUiState.Loading)
@@ -344,6 +347,58 @@ class ConversationsViewModel @Inject constructor(
             DateUtils.MINUTE_IN_MILLIS,
             DateUtils.FORMAT_ABBREV_RELATIVE
         ).toString()
+    }
+
+    /**
+     * Renames a conversation with a new title.
+     */
+    fun renameConversation(conversationId: String, newTitle: String) {
+        viewModelScope.launch {
+            try {
+                conversationRepository.updateConversationTitle(conversationId, newTitle)
+                _events.emit(ConversationsEvent.ShowSnackbar(message = "Title updated"))
+            } catch (e: Exception) {
+                _events.emit(
+                    ConversationsEvent.ShowSnackbar(
+                        message = "Failed to update title: ${e.message}"
+                    )
+                )
+            }
+        }
+    }
+
+    /**
+     * Retries AI-powered title generation for a conversation.
+     */
+    fun retryTitleGeneration(conversation: Conversation) {
+        viewModelScope.launch {
+            try {
+                val messages = conversationRepository.getMessages(conversation.id)
+                val firstUserMsg = messages.firstOrNull { it.role == MessageRole.USER }
+                val firstAssistantMsg = messages.firstOrNull { it.role == MessageRole.ASSISTANT }
+
+                if (firstUserMsg == null || firstAssistantMsg == null) {
+                    _events.emit(ConversationsEvent.ShowSnackbar(message = "Not enough messages to generate title"))
+                    return@launch
+                }
+
+                _events.emit(ConversationsEvent.ShowSnackbar(message = "Generating title..."))
+
+                generateConversationTitleUseCase(
+                    conversationId = conversation.id,
+                    userMessage = firstUserMsg.content,
+                    assistantResponse = firstAssistantMsg.content
+                )
+
+                _events.emit(ConversationsEvent.ShowSnackbar(message = "Title updated"))
+            } catch (e: Exception) {
+                _events.emit(
+                    ConversationsEvent.ShowSnackbar(
+                        message = "Failed to generate title: ${e.message}"
+                    )
+                )
+            }
+        }
     }
 
     companion object {

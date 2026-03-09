@@ -38,12 +38,14 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.outlined.ChatBubbleOutline
 import androidx.compose.material.icons.outlined.SearchOff
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Snackbar
 import androidx.compose.material3.SnackbarDuration
@@ -52,6 +54,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import com.materialchat.ui.components.ExpressiveButton
 import com.materialchat.ui.components.ExpressiveButtonStyle
 import androidx.compose.material3.TopAppBarDefaults
@@ -140,6 +143,11 @@ fun ConversationsScreen(
     var isSearchActive by remember { mutableStateOf(false) }
     val searchQuery by searchViewModel.searchQuery.collectAsStateWithLifecycle()
     val searchUiState by searchViewModel.uiState.collectAsStateWithLifecycle()
+
+    // Rename dialog state
+    var showRenameDialog by remember { mutableStateOf(false) }
+    var renameConversation by remember { mutableStateOf<com.materialchat.domain.model.Conversation?>(null) }
+    var renameText by remember { mutableStateOf("") }
 
     // Handle back gesture when search is active
     BackHandler(enabled = isSearchActive) {
@@ -257,11 +265,75 @@ fun ConversationsScreen(
                 listState = conversationListState,
                 onConversationClick = { viewModel.openConversation(it) },
                 onConversationDelete = { viewModel.deleteConversation(it) },
+                onConversationSwipeRight = { conversation ->
+                    renameConversation = conversation
+                    renameText = conversation.title
+                    showRenameDialog = true
+                },
                 onRetry = { viewModel.retry() },
                 onNavigateToSettings = { viewModel.navigateToSettings() },
                 onToggleGroupExpanded = { viewModel.toggleGroupExpanded(it) }
             )
         }
+    }
+
+    // Rename dialog
+    if (showRenameDialog && renameConversation != null) {
+        AlertDialog(
+            onDismissRequest = {
+                showRenameDialog = false
+                renameConversation = null
+            },
+            title = { Text("Edit Title") },
+            text = {
+                Column {
+                    OutlinedTextField(
+                        value = renameText,
+                        onValueChange = { renameText = it },
+                        label = { Text("Title") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    TextButton(
+                        onClick = {
+                            renameConversation?.let { conv ->
+                                viewModel.retryTitleGeneration(conv)
+                            }
+                            showRenameDialog = false
+                            renameConversation = null
+                        }
+                    ) {
+                        Text("Retry with AI")
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        renameConversation?.let { conv ->
+                            if (renameText.isNotBlank()) {
+                                viewModel.renameConversation(conv.id, renameText.trim())
+                            }
+                        }
+                        showRenameDialog = false
+                        renameConversation = null
+                    }
+                ) {
+                    Text("Save")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        showRenameDialog = false
+                        renameConversation = null
+                    }
+                ) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 }
 
@@ -598,6 +670,7 @@ private fun ConversationsContent(
     listState: androidx.compose.foundation.lazy.LazyListState,
     onConversationClick: (String) -> Unit,
     onConversationDelete: (com.materialchat.domain.model.Conversation) -> Unit,
+    onConversationSwipeRight: (com.materialchat.domain.model.Conversation) -> Unit = {},
     onRetry: () -> Unit,
     onNavigateToSettings: () -> Unit,
     onToggleGroupExpanded: (String) -> Unit = {}
@@ -636,6 +709,7 @@ private fun ConversationsContent(
                             listState = listState,
                             onConversationClick = onConversationClick,
                             onConversationDelete = onConversationDelete,
+                            onConversationSwipeRight = onConversationSwipeRight,
                             onToggleGroupExpanded = onToggleGroupExpanded,
                             hapticsEnabled = uiState.hapticsEnabled
                         )
@@ -645,6 +719,7 @@ private fun ConversationsContent(
                             listState = listState,
                             onConversationClick = onConversationClick,
                             onConversationDelete = onConversationDelete,
+                            onConversationSwipeRight = onConversationSwipeRight,
                             hapticsEnabled = uiState.hapticsEnabled
                         )
                     }
@@ -733,6 +808,7 @@ private fun ConversationList(
     listState: androidx.compose.foundation.lazy.LazyListState,
     onConversationClick: (String) -> Unit,
     onConversationDelete: (com.materialchat.domain.model.Conversation) -> Unit,
+    onConversationSwipeRight: (com.materialchat.domain.model.Conversation) -> Unit = {},
     hapticsEnabled: Boolean = true
 ) {
     val haptics = rememberHapticFeedback()
@@ -771,6 +847,7 @@ private fun ConversationList(
             SwipeToDeleteBox(
                 onDelete = { onConversationDelete(conversationItem.conversation) },
                 hapticsEnabled = hapticsEnabled,
+                onSwipeRight = { onConversationSwipeRight(conversationItem.conversation) },
                 baseCorners = baseCorners,
                 activeCorners = SwipeCornerSpec(cornerRadius, cornerRadius, cornerRadius, cornerRadius),
                 modifier = Modifier
@@ -808,6 +885,7 @@ private fun GroupedConversationList(
     listState: androidx.compose.foundation.lazy.LazyListState,
     onConversationClick: (String) -> Unit,
     onConversationDelete: (com.materialchat.domain.model.Conversation) -> Unit,
+    onConversationSwipeRight: (com.materialchat.domain.model.Conversation) -> Unit = {},
     onToggleGroupExpanded: (String) -> Unit,
     hapticsEnabled: Boolean = true
 ) {
@@ -837,6 +915,7 @@ private fun GroupedConversationList(
                 onBranchClick = onConversationClick,
                 onExpandToggle = onToggleGroupExpanded,
                 onDelete = onConversationDelete,
+                onSwipeRight = onConversationSwipeRight,
                 cornerRadius = cornerRadius,
                 isFirst = isFirst,
                 isLast = isLast,

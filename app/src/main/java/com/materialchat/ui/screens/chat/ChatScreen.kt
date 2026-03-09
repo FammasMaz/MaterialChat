@@ -799,7 +799,17 @@ private fun ChatContent(
                     coroutineScope.launch {
                         autoScrollEnabled = true
                         if (state.messages.isNotEmpty()) {
-                            listState.animateScrollToItem(state.messages.lastIndex)
+                            val lastIdx = state.messages.lastIndex
+                            listState.animateScrollToItem(lastIdx)
+                            // Scroll extra to ensure the bottom of the last item is visible
+                            val li = listState.layoutInfo
+                            val last = li.visibleItemsInfo.lastOrNull()
+                            if (last != null && last.index == lastIdx) {
+                                val overflow = (last.offset + last.size) - li.viewportEndOffset
+                                if (overflow > 0) {
+                                    listState.animateScrollBy(overflow.toFloat())
+                                }
+                            }
                         }
                     }
                 },

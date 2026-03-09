@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
@@ -64,6 +65,7 @@ fun SwipeToDeleteBox(
     hapticsEnabled: Boolean = true,
     baseCorners: SwipeCornerSpec = SwipeCornerSpec(20.dp, 20.dp, 20.dp, 20.dp),
     activeCorners: SwipeCornerSpec = SwipeCornerSpec(20.dp, 20.dp, 20.dp, 20.dp),
+    onSwipeRight: (() -> Unit)? = null,
     content: @Composable () -> Unit
 ) {
     val density = LocalDensity.current
@@ -73,6 +75,7 @@ fun SwipeToDeleteBox(
     var offsetX by remember { mutableFloatStateOf(0f) }
     var isDragging by remember { mutableStateOf(false) }
     var shouldDelete by remember { mutableStateOf(false) }
+    var shouldTriggerRightAction by remember { mutableStateOf(false) }
     var hasTriggeredThresholdHaptic by remember { mutableStateOf(false) }
 
     // Threshold for triggering delete (in dp)
@@ -148,6 +151,15 @@ fun SwipeToDeleteBox(
         }
     }
 
+    // Trigger right-swipe actions
+    LaunchedEffect(shouldTriggerRightAction) {
+        if (shouldTriggerRightAction) {
+            onSwipeRight?.invoke()
+            shouldTriggerRightAction = false
+            offsetX = 0f
+        }
+    }
+
     val swipeActive = animatedOffsetX.absoluteValue > 1f || isDragging
     val shapeProgressRaw by animateFloatAsState(
         targetValue = if (swipeActive) 1f else 0f,
@@ -163,8 +175,8 @@ fun SwipeToDeleteBox(
     )
 
     Box(modifier = modifier) {
-        // Background with delete icon - only show when swiping
-        if (animatedOffsetX.absoluteValue > 1f) {
+        // Background with delete icon - only show when swiping left
+        if (animatedOffsetX < -1f) {
             Box(
                 modifier = Modifier
                     .matchParentSize()
@@ -179,6 +191,32 @@ fun SwipeToDeleteBox(
                         tint = iconColor,
                         modifier = Modifier
                             .padding(end = iconPadding.dp)
+                            .scale(iconScale)
+                    )
+                }
+            }
+        }
+
+        // Right-swipe background with edit icon
+        if (animatedOffsetX > 1f && onSwipeRight != null) {
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .clip(currentShape)
+                    .background(
+                        if (deleteProgress > 0.9f) MaterialTheme.colorScheme.primaryContainer
+                        else MaterialTheme.colorScheme.secondaryContainer
+                    ),
+                contentAlignment = Alignment.CenterStart
+            ) {
+                if (deleteProgress > 0.1f) {
+                    Icon(
+                        imageVector = Icons.Outlined.Edit,
+                        contentDescription = "Edit title",
+                        tint = if (deleteProgress > 0.9f) MaterialTheme.colorScheme.onPrimaryContainer
+                               else MaterialTheme.colorScheme.onSecondaryContainer,
+                        modifier = Modifier
+                            .padding(start = iconPadding.dp)
                             .scale(iconScale)
                     )
                 }
@@ -202,8 +240,10 @@ fun SwipeToDeleteBox(
                         onDragEnd = {
                             isDragging = false
                             haptics.perform(HapticPattern.GESTURE_END, hapticsEnabled)
-                            if (offsetX.absoluteValue > deleteThresholdPx) {
+                            if (offsetX < 0 && offsetX.absoluteValue > deleteThresholdPx) {
                                 shouldDelete = true
+                            } else if (offsetX > 0 && offsetX > deleteThresholdPx) {
+                                shouldTriggerRightAction = true
                             } else {
                                 offsetX = 0f
                             }
@@ -214,10 +254,13 @@ fun SwipeToDeleteBox(
                         },
                         onHorizontalDrag = { change, dragAmount ->
                             change.consume()
-                            // Only allow left swipe (negative offset)
                             val newOffset = offsetX + dragAmount
                             if (newOffset <= 0) {
+                                // Left swipe (delete)
                                 offsetX = newOffset.coerceIn(-maxSwipePx, 0f)
+                            } else if (onSwipeRight != null) {
+                                // Right swipe (edit/retry) - only if actions are provided
+                                offsetX = newOffset.coerceIn(0f, maxSwipePx)
                             }
                         }
                     )
