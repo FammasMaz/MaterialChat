@@ -39,6 +39,11 @@ class AppNotificationManager @Inject constructor(
         private const val OPENCLAW_CHANNEL_DESCRIPTION = "Agent responses and background updates"
         private const val OPENCLAW_NOTIFICATION_BASE_ID = 7_000
         private const val OPENCLAW_REPLY_STATUS_ID = 8_000
+
+        private const val CHAT_CHANNEL_ID = "chat_responses"
+        private const val CHAT_CHANNEL_NAME = "Chat Responses"
+        private const val CHAT_CHANNEL_DESCRIPTION = "Notifications when AI responses complete in the background"
+        private const val CHAT_NOTIFICATION_BASE_ID = 9_000
     }
 
     private val notificationManagerCompat by lazy { NotificationManagerCompat.from(context) }
@@ -161,19 +166,75 @@ class AppNotificationManager @Inject constructor(
         notificationManagerCompat.notify(stableId, notification)
     }
 
+    /**
+     * Shows a notification when a regular chat AI response completes in the background.
+     * Only shows when the app is not in the foreground.
+     */
+    fun notifyChatResponseComplete(conversationId: String, preview: String) {
+        if (!canPostNotifications()) return
+        if (isAppInForeground()) return
+
+        ensureChannels()
+
+        val contentPreview = preview
+            .replace(Regex("\\s+"), " ")
+            .trim()
+            .take(220)
+            .ifBlank { "Your AI response is ready." }
+
+        val fingerprint = "chat|$conversationId|$contentPreview"
+        if (isDuplicateNotification(fingerprint)) return
+
+        val openIntent = Intent(context, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        }
+
+        val requestCode = conversationId.hashCode()
+        val pendingIntent = PendingIntent.getActivity(
+            context,
+            requestCode,
+            openIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val notification = NotificationCompat.Builder(context, CHAT_CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_launcher_monochrome)
+            .setContentTitle("Response ready")
+            .setContentText(contentPreview)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(contentPreview))
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .setCategory(NotificationCompat.CATEGORY_MESSAGE)
+            .setContentIntent(pendingIntent)
+            .setAutoCancel(true)
+            .setOnlyAlertOnce(true)
+            .build()
+
+        val stableId = CHAT_NOTIFICATION_BASE_ID + abs(requestCode % 10_000)
+        notificationManagerCompat.notify(stableId, notification)
+    }
+
     private fun ensureChannels() {
         if (channelsCreated) return
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-            val channel = NotificationChannel(
+            val openClawChannel = NotificationChannel(
                 OPENCLAW_CHANNEL_ID,
                 OPENCLAW_CHANNEL_NAME,
                 NotificationManager.IMPORTANCE_DEFAULT
             ).apply {
                 description = OPENCLAW_CHANNEL_DESCRIPTION
             }
-            manager.createNotificationChannel(channel)
+            manager.createNotificationChannel(openClawChannel)
+
+            val chatChannel = NotificationChannel(
+                CHAT_CHANNEL_ID,
+                CHAT_CHANNEL_NAME,
+                NotificationManager.IMPORTANCE_DEFAULT
+            ).apply {
+                description = CHAT_CHANNEL_DESCRIPTION
+            }
+            manager.createNotificationChannel(chatChannel)
         }
 
         channelsCreated = true

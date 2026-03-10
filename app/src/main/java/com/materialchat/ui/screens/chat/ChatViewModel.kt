@@ -26,6 +26,7 @@ import com.materialchat.domain.usecase.RedoWithModelUseCase
 import com.materialchat.domain.usecase.RegenerateResponseUseCase
 import com.materialchat.domain.usecase.RunFusionUseCase
 import com.materialchat.domain.usecase.SendMessageUseCase
+import com.materialchat.notifications.AppNotificationManager
 import com.materialchat.ui.navigation.Screen
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CoroutineDispatcher
@@ -74,6 +75,7 @@ class ChatViewModel @Inject constructor(
     private val manageProvidersUseCase: ManageProvidersUseCase,
     private val managePersonasUseCase: ManagePersonasUseCase,
     private val appPreferences: AppPreferences,
+    private val appNotificationManager: AppNotificationManager,
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
     @ApplicationScope private val applicationScope: CoroutineScope
 ) : ViewModel() {
@@ -107,6 +109,7 @@ class ChatViewModel @Inject constructor(
     private var regeneratingMessageId: String? = null
 
     init {
+        cleanUpStuckStreamingMessages()
         loadConversation()
         loadSystemPrompt()
         loadHapticsPreference()
@@ -117,6 +120,28 @@ class ChatViewModel @Inject constructor(
         loadSiblings()
         loadPersona()
         loadBookmarkStates()
+    }
+
+    /**
+     * Cleans up messages stuck with isStreaming=true from a previous session.
+     * This happens when the app was killed mid-stream or after a crash.
+     * Only cleans messages older than 5 minutes to avoid interfering with
+     * active background streaming (which runs on applicationScope).
+     */
+    private fun cleanUpStuckStreamingMessages() {
+        viewModelScope.launch(ioDispatcher) {
+            try {
+                val messages = conversationRepository.getMessages(conversationId)
+                val staleThreshold = System.currentTimeMillis() - 5 * 60 * 1000L
+                for (message in messages) {
+                    if (message.isStreaming && message.createdAt < staleThreshold) {
+                        conversationRepository.setMessageStreaming(message.id, false)
+                    }
+                }
+            } catch (_: Exception) {
+                // Best-effort cleanup
+            }
+        }
     }
 
     /**
@@ -556,7 +581,9 @@ class ChatViewModel @Inject constructor(
             quotedMessage = null
         )
 
-        streamingJob = viewModelScope.launch(ioDispatcher) {
+        // Use applicationScope so streaming survives navigation away / ViewModel destruction.
+        // The DB is updated by the use case; we only update UI state here.
+        streamingJob = applicationScope.launch(ioDispatcher) {
             try {
                 sendMessageUseCase(
                     conversationId = activeConversationId.value,
@@ -566,6 +593,13 @@ class ChatViewModel @Inject constructor(
                     reasoningEffort = currentReasoningEffort
                 ).collect { state ->
                     updateStreamingState(state)
+                    // Notify when completed and app is in background
+                    if (state is StreamingState.Completed) {
+                        appNotificationManager.notifyChatResponseComplete(
+                            conversationId = activeConversationId.value,
+                            preview = state.finalContent
+                        )
+                    }
                 }
             } catch (e: Exception) {
                 updateStreamingState(
@@ -773,7 +807,8 @@ class ChatViewModel @Inject constructor(
             messages = filteredMessages
         )
 
-        streamingJob = viewModelScope.launch(ioDispatcher) {
+        // Use applicationScope so streaming survives navigation away / ViewModel destruction.
+        streamingJob = applicationScope.launch(ioDispatcher) {
             try {
                 regenerateResponseUseCase(
                     conversationId = activeConversationId.value,
@@ -782,6 +817,13 @@ class ChatViewModel @Inject constructor(
                     overrideModelName = overrideModelName
                 ).collect { state ->
                     updateStreamingState(state)
+                    // Notify when completed and app is in background
+                    if (state is StreamingState.Completed) {
+                        appNotificationManager.notifyChatResponseComplete(
+                            conversationId = activeConversationId.value,
+                            preview = state.finalContent
+                        )
+                    }
                 }
             } catch (e: Exception) {
                 updateStreamingState(
@@ -1373,28 +1415,13 @@ class ChatViewModel @Inject constructor(
 
     override fun onCleared() {
         super.onCleared()
-        // If streaming is active, clean up the DB to prevent stuck shimmer indicators
-        val currentState = _uiState.value
-        if (currentState is ChatUiState.Success && currentState.isStreaming) {
-            val streamingMsgId = when (val s = currentState.streamingState) {
-                is StreamingState.Streaming -> s.messageId
-                else -> null
-            }
-            streamingJob?.cancel()
-            fusionJob?.cancel()
-            sendMessageUseCase.cancel()
-            // Clean up DB outside viewModelScope (which is already being cancelled)
-            if (streamingMsgId != null) {
-                applicationScope.launch {
-                    try {
-                        conversationRepository.setMessageStreaming(streamingMsgId, false)
-                    } catch (_: Exception) {}
-                }
-            }
-        } else {
-            streamingJob?.cancel()
-            fusionJob?.cancel()
-        }
+        // Streaming now runs on applicationScope and will complete in the background.
+        // We only cancel fusion jobs (which are less critical) and UI cleanup.
+        fusionJob?.cancel()
+        // NOTE: We intentionally do NOT cancel streamingJob here — it runs on
+        // applicationScope so it can complete even after the user navigates away.
+        // The use case handles DB cleanup (setMessageStreaming(false)) on completion,
+        // error, or cancellation within its own flow.
     }
 
     // ========== Fusion Methods ==========

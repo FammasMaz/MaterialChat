@@ -940,10 +940,7 @@ private fun MessageList(
                             dampingRatio = Spring.DampingRatioNoBouncy,
                             stiffness = Spring.StiffnessMediumLow
                         ),
-                        fadeOutSpec = spring(
-                            dampingRatio = Spring.DampingRatioNoBouncy,
-                            stiffness = Spring.StiffnessMediumLow
-                        )
+                        fadeOutSpec = null // Instant removal to prevent ghost overlap during regeneration
                     )
                     .padding(top = topSpacing)
             )

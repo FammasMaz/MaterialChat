@@ -157,10 +157,12 @@ class RegenerateResponseUseCase @Inject constructor(
                 else -> { /* Ignore other states */ }
             }
         }.onCompletion { cause ->
-            if (cause == null && !hasError) {
-                // Mark streaming as complete
+            // Always mark streaming as complete, regardless of success, error, or cancellation.
+            // This prevents messages from getting stuck with isStreaming=true forever
+            // (e.g. when the coroutine is cancelled by navigation or user action).
+            try {
                 conversationRepository.setMessageStreaming(assistantMessageId, false)
-            }
+            } catch (_: Exception) { }
         }.collect { state ->
             // Re-emit with the correct message ID for the UI
             val mappedState = when (state) {
