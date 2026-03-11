@@ -651,20 +651,67 @@ class ChatViewModel @Inject constructor(
      * Cancels the current streaming request.
      */
     fun cancelStreaming() {
+        val currentState = _uiState.value as? ChatUiState.Success
         streamingJob?.cancel()
         streamingJob = null
         fusionJob?.cancel()
         fusionJob = null
         sendMessageUseCase.cancel()
+        regenerateResponseUseCase.cancel()
+        regeneratingMessageId = null
 
-        val currentState = _uiState.value
-        if (currentState is ChatUiState.Success) {
+        if (currentState != null) {
+            val streamingMessages = currentState.messages
+                .map { it.message }
+                .filter { it.isStreaming }
+
+            val updatedMessages = currentState.messages.mapNotNull { item ->
+                val message = item.message
+                when {
+                    !message.isStreaming -> item
+                    shouldRemoveCancelledPlaceholder(message) -> null
+                    else -> item.copy(message = message.copy(isStreaming = false))
+                }
+            }
+
             _uiState.value = currentState.copy(
+                messages = updatedMessages,
+                streamingState = StreamingState.Idle,
+                isFusionRunning = false,
+                fusionResult = null
+            )
+
+            if (streamingMessages.isNotEmpty()) {
+                viewModelScope.launch(ioDispatcher) {
+                    streamingMessages.forEach { message ->
+                        runCatching {
+                            if (shouldRemoveCancelledPlaceholder(message)) {
+                                conversationRepository.deleteMessage(message.id)
+                            } else {
+                                conversationRepository.setMessageStreaming(message.id, false)
+                            }
+                        }
+                    }
+                }
+            }
+            return
+        }
+
+        val currentStateFallback = _uiState.value
+        if (currentStateFallback is ChatUiState.Success) {
+            _uiState.value = currentStateFallback.copy(
                 streamingState = StreamingState.Idle,
                 isFusionRunning = false,
                 fusionResult = null
             )
         }
+    }
+
+    private fun shouldRemoveCancelledPlaceholder(message: Message): Boolean {
+        return message.role == MessageRole.ASSISTANT &&
+            message.content.isBlank() &&
+            message.thinkingContent.isNullOrBlank() &&
+            !message.hasAttachments
     }
 
     /**

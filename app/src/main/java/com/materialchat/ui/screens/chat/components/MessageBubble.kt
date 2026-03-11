@@ -82,6 +82,7 @@ import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontStyle
@@ -166,7 +167,9 @@ fun MessageBubble(
     val swipeOffset = remember { Animatable(0f) }
     val swipeThreshold = with(density) { 72.dp.toPx() }
     val maxSwipe = with(density) { 96.dp.toPx() }
+    val swipeActivationEdge = with(density) { 28.dp.toPx() }
     var hasTriggeredSwipeHaptic by remember { mutableStateOf(false) }
+    var swipeGestureWidthPx by remember { mutableIntStateOf(0) }
     val swipeProgress = (swipeOffset.value / swipeThreshold).coerceIn(0f, 1f)
 
     // Double-tap bookmark burst state
@@ -211,18 +214,29 @@ fun MessageBubble(
         Column(
             horizontalAlignment = if (isUser) Alignment.End else Alignment.Start,
             modifier = Modifier
+                .onSizeChanged { swipeGestureWidthPx = it.width }
                 .graphicsLayer {
                     translationX = if (isUser) -swipeOffset.value else swipeOffset.value
                 }
                 .then(
                     if (onQuoteMessage != null) {
-                        Modifier.pointerInput(Unit) {
+                        Modifier.pointerInput(isUser, swipeGestureWidthPx) {
                             awaitEachGesture {
                                 val down = awaitFirstDown(requireUnconsumed = false)
+                                val startedNearQuoteEdge = if (isUser) {
+                                    swipeGestureWidthPx > 0 &&
+                                        down.position.x >= swipeGestureWidthPx - swipeActivationEdge
+                                } else {
+                                    down.position.x <= swipeActivationEdge
+                                }
+                                if (!startedNearQuoteEdge) {
+                                    return@awaitEachGesture
+                                }
                                 var overSlop = 0f
                                 var gestureClaimed = false
                                 val drag = awaitHorizontalTouchSlopOrCancellation(down.id) { change, over ->
-                                    if (!change.isConsumed) {
+                                    val movingTowardQuote = if (isUser) over < 0f else over > 0f
+                                    if (movingTowardQuote && !change.isConsumed) {
                                         change.consume()
                                         overSlop = over
                                         gestureClaimed = true
