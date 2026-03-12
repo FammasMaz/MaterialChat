@@ -1,7 +1,6 @@
 package com.materialchat.ui.components
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.text.InlineTextContent
@@ -124,7 +123,6 @@ fun MarkdownText(
 private sealed class MarkdownElement {
     data class TextBlock(val content: ParsedInlineContent) : MarkdownElement()
     data class CodeBlock(val code: String, val language: String?) : MarkdownElement()
-    data class DiagramBlock(val content: String) : MarkdownElement()
     data class Table(
         val headers: List<String>,
         val rows: List<List<String>>,
@@ -187,12 +185,6 @@ private fun MarkdownContent(
                         language = element.language,
                         backgroundColor = codeBlockBackground,
                         onOpenCanvas = onOpenCanvas
-                    )
-                }
-                is MarkdownElement.DiagramBlock -> {
-                    DiagramBlockView(
-                        content = element.content,
-                        backgroundColor = codeBlockBackground
                     )
                 }
                 is MarkdownElement.Table -> {
@@ -425,98 +417,6 @@ private fun CodeBlockView(
                 )
             }
         }
-    }
-}
-
-/**
- * Renders an ASCII art diagram block with monospace font and beautiful styling.
- * Box-drawing characters align correctly thanks to monospace rendering.
- */
-@Composable
-private fun DiagramBlockView(
-    content: String,
-    backgroundColor: Color
-) {
-    val isDarkTheme = isSystemInDarkTheme()
-    val diagramTextColor = if (isDarkTheme) Color(0xFFB8CFE5) else Color(0xFF1B3A5C)
-    val arrowColor = if (isDarkTheme) Color(0xFF7EC8E3) else Color(0xFF0077B6)
-    val borderColor = if (isDarkTheme) Color(0xFF2A4A6B).copy(alpha = 0.6f) else Color(0xFFB0D4F1).copy(alpha = 0.7f)
-    val labelBackground = if (isDarkTheme) Color(0xFF1A3352) else Color(0xFFD6ECFF)
-    val labelTextColor = if (isDarkTheme) Color(0xFF7EC8E3) else Color(0xFF0077B6)
-
-    // Build annotated string with per-character coloring for arrows/boxes vs text
-    val annotated = remember(content, diagramTextColor, arrowColor) {
-        buildAnnotatedString {
-            content.forEach { ch ->
-                when (ch) {
-                    '│', '┃', '║',
-                    '─', '━', '═',
-                    '┌', '┐', '└', '┘',
-                    '├', '┤', '┬', '┴', '┼',
-                    '╔', '╗', '╚', '╝',
-                    '╠', '╣', '╦', '╩', '╬',
-                    '┏', '┓', '┗', '┛',
-                    '▲', '▼', '◄', '►', '△', '▽',
-                    '→', '←', '↑', '↓', '↔', '↕',
-                    '⟶', '⟵', '⟷',
-                    '╭', '╮', '╰', '╯' -> {
-                        withStyle(SpanStyle(color = arrowColor)) {
-                            append(ch)
-                        }
-                    }
-                    else -> {
-                        withStyle(SpanStyle(color = diagramTextColor)) {
-                            append(ch)
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 8.dp)
-            .clip(RoundedCornerShape(12.dp))
-            .border(
-                width = 1.dp,
-                color = borderColor,
-                shape = RoundedCornerShape(12.dp)
-            )
-            .background(backgroundColor.copy(alpha = 0.7f))
-    ) {
-        // "Diagram" label chip
-        Box(
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .padding(8.dp)
-                .clip(RoundedCornerShape(6.dp))
-                .background(labelBackground.copy(alpha = 0.8f))
-                .padding(horizontal = 8.dp, vertical = 3.dp)
-        ) {
-            Text(
-                text = "Diagram",
-                style = MaterialTheme.typography.labelSmall.copy(
-                    color = labelTextColor,
-                    fontWeight = FontWeight.Medium,
-                    fontSize = 10.sp,
-                    letterSpacing = 0.5.sp
-                )
-            )
-        }
-
-        Text(
-            text = annotated,
-            style = MaterialTheme.typography.bodyMedium.copy(
-                fontFamily = FontFamily.Monospace,
-                fontSize = 12.sp,
-                lineHeight = 16.sp
-            ),
-            modifier = Modifier
-                .horizontalScroll(rememberScrollState())
-                .padding(top = 12.dp, bottom = 14.dp, start = 14.dp, end = 14.dp)
-        )
     }
 }
 
@@ -1095,24 +995,6 @@ private fun parseTextWithTables(
             continue
         }
 
-        // Detect ASCII art diagram blocks (box-drawing characters)
-        if (isAsciiDiagramLine(lines[i])) {
-            flushTextBuffer()
-            val diagramLines = mutableListOf<String>()
-            while (i < lines.size && (isAsciiDiagramLine(lines[i]) || isDiagramContextLine(lines[i], i, lines))) {
-                diagramLines.add(lines[i])
-                i++
-            }
-            // Trim leading/trailing blank lines from the diagram
-            val trimmedDiagram = diagramLines
-                .dropWhile { it.isBlank() }
-                .dropLastWhile { it.isBlank() }
-            if (trimmedDiagram.isNotEmpty()) {
-                elements.add(MarkdownElement.DiagramBlock(trimmedDiagram.joinToString("\n")))
-            }
-            continue
-        }
-
         // Detect blockquote (lines starting with >)
         if (trimmedLine.startsWith(">")) {
             flushTextBuffer()
@@ -1214,60 +1096,6 @@ private fun isListContinuation(currentTrimmed: String, previousLine: String): Bo
         || currentTrimmed.matches(Regex("\\d+\\.\\s+.*"))
     val currentIsSpecial = currentTrimmed.startsWith("#") || currentTrimmed.matches(Regex("[-*_]{3,}"))
     return prevIsList && !currentIsList && !currentIsSpecial
-}
-
-/**
- * Box-drawing and arrow characters used in ASCII art diagrams.
- */
-private val DIAGRAM_CHARS = setOf(
-    '│', '┃', '║',
-    '─', '━', '═',
-    '┌', '┐', '└', '┘',
-    '├', '┤', '┬', '┴', '┼',
-    '╔', '╗', '╚', '╝',
-    '╠', '╣', '╦', '╩', '╬',
-    '┏', '┓', '┗', '┛',
-    '╭', '╮', '╰', '╯',
-    '▲', '▼', '◄', '►', '△', '▽',
-    '→', '←', '↑', '↓', '↔', '↕',
-    '⟶', '⟵', '⟷'
-)
-
-/**
- * Returns true if a line contains enough box-drawing / arrow characters
- * to be considered part of an ASCII art diagram.
- */
-private fun isAsciiDiagramLine(line: String): Boolean {
-    if (line.isBlank()) return false
-    val diagramCharCount = line.count { it in DIAGRAM_CHARS }
-    // At least 1 diagram character is required
-    return diagramCharCount >= 1
-}
-
-/**
- * Returns true if a non-diagram line is contextually part of a surrounding diagram
- * (e.g. a label line like "Binary Voxel Grid (x)" sandwiched between diagram lines,
- * or a blank line between two diagram lines).
- */
-private fun isDiagramContextLine(line: String, index: Int, allLines: List<String>): Boolean {
-    // Blank lines between diagram lines are part of the diagram
-    if (line.isBlank()) {
-        // Look ahead to see if more diagram lines follow
-        for (j in (index + 1) until allLines.size) {
-            if (allLines[j].isBlank()) continue
-            return isAsciiDiagramLine(allLines[j])
-        }
-        return false
-    }
-    // A non-diagram text line that is preceded AND followed by diagram lines
-    // is likely a label within the diagram
-    val prevHasDiagram = (index > 0) && isAsciiDiagramLine(allLines[index - 1])
-    if (!prevHasDiagram) return false
-    for (j in (index + 1) until allLines.size) {
-        if (allLines[j].isBlank()) continue
-        return isAsciiDiagramLine(allLines[j])
-    }
-    return false
 }
 
 /**
