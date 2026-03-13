@@ -56,6 +56,7 @@ TOOLING RULES:
 - The user is using MaterialChat's on-device web search for this turn
 - Treat the MATERIALCHAT_WEB_SEARCH block as the browsing source of truth for this request
 - Do NOT call or rely on provider-hosted, server-side, or external browsing/search tools when answering from these results
+- Do NOT emit browsing, search, or tool-call requests for this turn
 - If the provided search results are insufficient, say what is missing instead of claiming you browsed elsewhere
 
 CITATION RULES:

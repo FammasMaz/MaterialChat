@@ -12,6 +12,7 @@ import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonDecoder
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonEncoder
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonPrimitive
 
@@ -37,7 +38,10 @@ data class OpenAiChatRequest(
     // Reasoning effort parameter for providers that support extended thinking
     // Values: "none", "low", "medium", "high", "xhigh" - used by compatible APIs
     @SerialName("reasoning_effort")
-    val reasoningEffort: String? = null
+    val reasoningEffort: String? = null,
+    val tools: List<JsonObject>? = null,
+    @SerialName("tool_choice")
+    val toolChoice: String? = null
 )
 
 /**

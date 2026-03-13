@@ -131,7 +131,9 @@ class ChatApiClient(
             model = model,
             messages = openAiMessages,
             stream = true,
-            reasoningEffort = reasoningEffort.apiValue
+            reasoningEffort = reasoningEffort.apiValue,
+            tools = emptyList(),
+            toolChoice = "none"
         )
 
         val requestBody = json.encodeToString(request)
@@ -369,7 +371,9 @@ class ChatApiClient(
         val request = OpenAiChatRequest(
             model = model,
             messages = messages,
-            stream = false
+            stream = false,
+            tools = emptyList(),
+            toolChoice = "none"
         )
 
         val requestBody = json.encodeToString(request)

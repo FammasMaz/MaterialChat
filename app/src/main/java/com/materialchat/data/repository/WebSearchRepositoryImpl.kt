@@ -15,20 +15,29 @@ class WebSearchRepositoryImpl @Inject constructor(
 
     override suspend fun search(query: String, config: WebSearchConfig): Result<WebSearchMetadata> {
         val startTime = System.currentTimeMillis()
+        val resolvedConfig = if (
+            config.provider == WebSearchProvider.EXA &&
+            config.apiKey.isBlank() &&
+            config.searxngBaseUrl.isNotBlank()
+        ) {
+            config.copy(provider = WebSearchProvider.SEARXNG)
+        } else {
+            config
+        }
 
-        val resultsResult = when (config.provider) {
+        val resultsResult = when (resolvedConfig.provider) {
             WebSearchProvider.EXA -> {
                 webSearchApiClient.searchExa(
                     query = query,
-                    apiKey = config.apiKey,
-                    maxResults = config.maxResults
+                    apiKey = resolvedConfig.apiKey,
+                    maxResults = resolvedConfig.maxResults
                 )
             }
             WebSearchProvider.SEARXNG -> {
                 webSearchApiClient.searchSearxng(
                     query = query,
-                    baseUrl = config.searxngBaseUrl,
-                    maxResults = config.maxResults
+                    baseUrl = resolvedConfig.searxngBaseUrl,
+                    maxResults = resolvedConfig.maxResults
                 )
             }
         }
@@ -38,7 +47,7 @@ class WebSearchRepositoryImpl @Inject constructor(
         return resultsResult.map { results ->
             WebSearchMetadata(
                 query = query,
-                provider = config.provider,
+                provider = resolvedConfig.provider,
                 results = results,
                 searchDurationMs = durationMs
             )
