@@ -4,6 +4,7 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.materialchat.data.local.preferences.AppPreferences
+import com.materialchat.data.local.preferences.EncryptedPreferences
 import com.materialchat.di.IoDispatcher
 import com.materialchat.domain.model.AiModel
 import com.materialchat.domain.model.Attachment
@@ -15,6 +16,8 @@ import com.materialchat.domain.model.StreamingState
 import com.materialchat.domain.model.BookmarkCategory
 import com.materialchat.domain.model.FusionConfig
 import com.materialchat.domain.model.FusionModelSelection
+import com.materialchat.domain.model.WebSearchConfig
+import com.materialchat.domain.model.WebSearchProvider
 import com.materialchat.domain.usecase.ExportConversationUseCase
 import com.materialchat.domain.repository.ConversationRepository
 import com.materialchat.domain.usecase.BranchConversationUseCase
@@ -75,6 +78,7 @@ class ChatViewModel @Inject constructor(
     private val manageProvidersUseCase: ManageProvidersUseCase,
     private val managePersonasUseCase: ManagePersonasUseCase,
     private val appPreferences: AppPreferences,
+    private val encryptedPreferences: EncryptedPreferences,
     private val appNotificationManager: AppNotificationManager,
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
     @ApplicationScope private val applicationScope: CoroutineScope
@@ -100,6 +104,10 @@ class ChatViewModel @Inject constructor(
     private var currentBeautifulModelNamesEnabled: Boolean = AppPreferences.DEFAULT_BEAUTIFUL_MODEL_NAMES
     private var currentAlwaysShowThinking: Boolean = false
     private var currentShowTokenCounter: Boolean = false
+    private var currentWebSearchEnabled: Boolean = false
+    private var currentWebSearchProvider: WebSearchProvider = WebSearchProvider.EXA
+    private var currentSearxngBaseUrl: String = AppPreferences.DEFAULT_SEARXNG_BASE_URL
+    private var currentWebSearchMaxResults: Int = AppPreferences.DEFAULT_WEB_SEARCH_MAX_RESULTS
     private var autoSendTriggered: Boolean = false
     private var siblingInfo: SiblingInfo? = null
     private var currentPersona: Persona? = null
@@ -117,6 +125,7 @@ class ChatViewModel @Inject constructor(
         loadBeautifulModelNamesPreference()
         loadAlwaysShowThinkingPreference()
         loadShowTokenCounterPreference()
+        loadWebSearchPreferences()
         loadSiblings()
         loadPersona()
         loadBookmarkStates()
@@ -437,6 +446,36 @@ class ChatViewModel @Inject constructor(
     }
 
     /**
+     * Loads web search preferences.
+     */
+    private fun loadWebSearchPreferences() {
+        viewModelScope.launch {
+            appPreferences.webSearchEnabled.collect { enabled ->
+                currentWebSearchEnabled = enabled
+            }
+        }
+        viewModelScope.launch {
+            appPreferences.webSearchProvider.collect { provider ->
+                currentWebSearchProvider = try {
+                    WebSearchProvider.valueOf(provider)
+                } catch (_: Exception) {
+                    WebSearchProvider.EXA
+                }
+            }
+        }
+        viewModelScope.launch {
+            appPreferences.searxngBaseUrl.collect { url ->
+                currentSearxngBaseUrl = url
+            }
+        }
+        viewModelScope.launch {
+            appPreferences.webSearchMaxResults.collect { maxResults ->
+                currentWebSearchMaxResults = maxResults
+            }
+        }
+    }
+
+    /**
      * Updates the input text.
      */
     fun updateInputText(text: String) {
@@ -585,12 +624,29 @@ class ChatViewModel @Inject constructor(
         // The DB is updated by the use case; we only update UI state here.
         streamingJob = applicationScope.launch(ioDispatcher) {
             try {
+                // Build web search config from current preferences
+                val webSearchConfig = if (currentWebSearchEnabled) {
+                    val apiKey = if (currentWebSearchProvider == WebSearchProvider.EXA) {
+                        encryptedPreferences.getApiKey("web_search_exa") ?: ""
+                    } else ""
+                    WebSearchConfig(
+                        isEnabled = true,
+                        provider = currentWebSearchProvider,
+                        apiKey = apiKey,
+                        maxResults = currentWebSearchMaxResults,
+                        searxngBaseUrl = currentSearxngBaseUrl
+                    )
+                } else {
+                    WebSearchConfig()
+                }
+
                 sendMessageUseCase(
                     conversationId = activeConversationId.value,
                     userContent = finalContent,
                     attachments = attachments,
                     systemPrompt = currentSystemPrompt,
-                    reasoningEffort = currentReasoningEffort
+                    reasoningEffort = currentReasoningEffort,
+                    webSearchConfig = webSearchConfig
                 ).collect { state ->
                     updateStreamingState(state)
                     // Notify when completed and app is in background

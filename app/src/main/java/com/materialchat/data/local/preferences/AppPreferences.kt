@@ -60,6 +60,11 @@ class AppPreferences(private val context: Context) {
         // Font settings
         val FONT_FAMILY = stringPreferencesKey("font_family")
         val FONT_SIZE_SCALE = stringPreferencesKey("font_size_scale")
+        // Web search settings
+        val WEB_SEARCH_ENABLED = booleanPreferencesKey("web_search_enabled")
+        val WEB_SEARCH_PROVIDER = stringPreferencesKey("web_search_provider")
+        val SEARXNG_BASE_URL = stringPreferencesKey("searxng_base_url")
+        val WEB_SEARCH_MAX_RESULTS = stringPreferencesKey("web_search_max_results")
     }
 
     /**
@@ -87,6 +92,8 @@ class AppPreferences(private val context: Context) {
         const val DEFAULT_FONT_FAMILY = "Roboto Flex"
         const val DEFAULT_FONT_SIZE_SCALE = "Default"
         const val DEFAULT_FONT_SIZE_SCALE_VALUE = 1.0f
+        const val DEFAULT_SEARXNG_BASE_URL = "https://searx.be"
+        const val DEFAULT_WEB_SEARCH_MAX_RESULTS = 5
     }
 
     // ========== System Prompt ==========
@@ -513,6 +520,72 @@ class AppPreferences(private val context: Context) {
     suspend fun clearAll() {
         dataStore.edit { preferences ->
             preferences.clear()
+        }
+    }
+
+    // ========== Web Search Settings ==========
+
+    /**
+     * Get whether web search is enabled as a Flow.
+     */
+    val webSearchEnabled: Flow<Boolean> = dataStore.data.map { preferences ->
+        preferences[Keys.WEB_SEARCH_ENABLED] ?: false
+    }
+
+    /**
+     * Set whether web search is enabled.
+     */
+    suspend fun setWebSearchEnabled(enabled: Boolean) {
+        dataStore.edit { preferences ->
+            preferences[Keys.WEB_SEARCH_ENABLED] = enabled
+        }
+    }
+
+    /**
+     * Get the web search provider as a Flow.
+     */
+    val webSearchProvider: Flow<String> = dataStore.data.map { preferences ->
+        preferences[Keys.WEB_SEARCH_PROVIDER] ?: "EXA"
+    }
+
+    /**
+     * Set the web search provider.
+     */
+    suspend fun setWebSearchProvider(provider: String) {
+        dataStore.edit { preferences ->
+            preferences[Keys.WEB_SEARCH_PROVIDER] = provider
+        }
+    }
+
+    /**
+     * Get the SearXNG base URL as a Flow.
+     */
+    val searxngBaseUrl: Flow<String> = dataStore.data.map { preferences ->
+        preferences[Keys.SEARXNG_BASE_URL] ?: DEFAULT_SEARXNG_BASE_URL
+    }
+
+    /**
+     * Set the SearXNG base URL.
+     */
+    suspend fun setSearxngBaseUrl(url: String) {
+        dataStore.edit { preferences ->
+            preferences[Keys.SEARXNG_BASE_URL] = url
+        }
+    }
+
+    /**
+     * Get the web search max results as a Flow.
+     */
+    val webSearchMaxResults: Flow<Int> = dataStore.data.map { preferences ->
+        preferences[Keys.WEB_SEARCH_MAX_RESULTS]?.toIntOrNull() ?: DEFAULT_WEB_SEARCH_MAX_RESULTS
+    }
+
+    /**
+     * Set the web search max results.
+     */
+    suspend fun setWebSearchMaxResults(maxResults: Int) {
+        dataStore.edit { preferences ->
+            preferences[Keys.WEB_SEARCH_MAX_RESULTS] = maxResults.toString()
         }
     }
 }

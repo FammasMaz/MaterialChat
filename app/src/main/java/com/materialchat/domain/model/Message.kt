@@ -26,6 +26,7 @@ data class Message(
     val totalDurationMs: Long? = null,
     val modelName: String? = null,
     val fusionMetadata: String? = null,
+    val webSearchMetadata: String? = null,
     val createdAt: Long = System.currentTimeMillis()
 ) {
     /**

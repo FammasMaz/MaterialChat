@@ -9,10 +9,13 @@ import com.materialchat.domain.model.MessageRole
 import com.materialchat.domain.model.ReasoningEffort
 import com.materialchat.domain.model.Provider
 import com.materialchat.domain.model.StreamingState
+import com.materialchat.domain.model.WebSearchConfig
+import com.materialchat.domain.model.WebSearchMetadata
 import com.materialchat.domain.repository.ChatRepository
 import com.materialchat.domain.repository.ConversationRepository
 import com.materialchat.domain.repository.PersonaRepository
 import com.materialchat.domain.repository.ProviderRepository
+import com.materialchat.domain.repository.WebSearchRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
@@ -20,6 +23,8 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.onCompletion
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import javax.inject.Inject
 
 /**
@@ -38,6 +43,7 @@ class SendMessageUseCase @Inject constructor(
     private val conversationRepository: ConversationRepository,
     private val providerRepository: ProviderRepository,
     private val personaRepository: PersonaRepository,
+    private val webSearchRepository: WebSearchRepository,
     private val appPreferences: AppPreferences,
     private val generateConversationTitleUseCase: GenerateConversationTitleUseCase,
     @ApplicationScope private val applicationScope: CoroutineScope
@@ -57,7 +63,8 @@ class SendMessageUseCase @Inject constructor(
         userContent: String,
         attachments: List<Attachment> = emptyList(),
         systemPrompt: String,
-        reasoningEffort: ReasoningEffort
+        reasoningEffort: ReasoningEffort,
+        webSearchConfig: WebSearchConfig = WebSearchConfig()
     ): Flow<StreamingState> = flow {
         // Get the conversation and provider
         val conversation = conversationRepository.getConversation(conversationId)
@@ -72,6 +79,18 @@ class SendMessageUseCase @Inject constructor(
             persona?.systemPrompt ?: systemPrompt
         } else {
             systemPrompt
+        }
+
+        // Web search: if enabled, search and augment system prompt
+        var webSearchMetadata: WebSearchMetadata? = null
+        val augmentedSystemPrompt = if (webSearchConfig.isEnabled) {
+            val searchResult = webSearchRepository.search(userContent, webSearchConfig)
+            searchResult.getOrNull()?.let { meta ->
+                webSearchMetadata = meta
+                buildWebSearchAugmentedPrompt(effectiveSystemPrompt, meta)
+            } ?: effectiveSystemPrompt // Graceful: proceed without search on failure
+        } else {
+            effectiveSystemPrompt
         }
 
         // Create and save the user message (with attachments if any)
@@ -112,7 +131,7 @@ class SendMessageUseCase @Inject constructor(
             messages = messages,
             model = conversation.modelName,
             reasoningEffort = reasoningEffort,
-            systemPrompt = effectiveSystemPrompt
+            systemPrompt = augmentedSystemPrompt
         ).onEach { state ->
             when (state) {
                 is StreamingState.Streaming -> {
@@ -171,6 +190,14 @@ class SendMessageUseCase @Inject constructor(
                         (thinkingEndTime ?: System.currentTimeMillis()) - streamStartTime
                     } else null
                     conversationRepository.updateMessageDurations(assistantMessageId, thinkingDurationMs, totalDurationMs)
+
+                    // Save web search metadata on the assistant message
+                    webSearchMetadata?.let { meta ->
+                        conversationRepository.updateMessageWebSearchMetadata(
+                            assistantMessageId,
+                            Json.encodeToString(meta)
+                        )
+                    }
                 }
                 else -> { /* Ignore other states */ }
             }
@@ -395,5 +422,31 @@ class SendMessageUseCase @Inject constructor(
      */
     fun cancel() {
         chatRepository.cancelStreaming()
+    }
+
+    /**
+     * Builds an augmented system prompt with web search results and citation instructions.
+     */
+    private fun buildWebSearchAugmentedPrompt(
+        basePrompt: String,
+        metadata: WebSearchMetadata
+    ): String {
+        val resultsBlock = metadata.results.joinToString("\n\n") { result ->
+            "[${result.index}] Title: ${result.title}\n    URL: ${result.url}\n    ${result.snippet}"
+        }
+
+        return """$basePrompt
+
+[MATERIALCHAT_WEB_SEARCH]
+Web search results are provided below for your reference. Use them to give accurate, current answers.
+CITATION RULES:
+- Cite sources inline as [1], [2], etc. at the end of the sentence using that information
+- Multiple sources for one claim: [1][3]
+- You MUST cite at least one source for any factual claim from the search results
+- Do NOT add a references/sources list at the end
+
+SEARCH RESULTS:
+$resultsBlock
+[/MATERIALCHAT_WEB_SEARCH]"""
     }
 }

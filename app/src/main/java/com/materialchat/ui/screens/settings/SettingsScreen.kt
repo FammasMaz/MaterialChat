@@ -48,12 +48,14 @@ import androidx.compose.material.icons.outlined.SmartToy
 import androidx.compose.material.icons.outlined.SystemUpdate
 import androidx.compose.material.icons.outlined.Title
 import androidx.compose.material.icons.outlined.Vibration
+import androidx.compose.material.icons.outlined.Language
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.HorizontalDivider
@@ -280,7 +282,12 @@ fun SettingsScreen(
             onRetry = { viewModel.retry() },
             onAssistantEnabledChange = { viewModel.updateAssistantEnabled(it) },
             onAssistantVoiceChange = { viewModel.updateAssistantVoiceEnabled(it) },
-            onAssistantTtsChange = { viewModel.updateAssistantTtsEnabled(it) }
+            onAssistantTtsChange = { viewModel.updateAssistantTtsEnabled(it) },
+            onWebSearchEnabledChange = { viewModel.updateWebSearchEnabled(it) },
+            onWebSearchProviderChange = { viewModel.updateWebSearchProvider(it) },
+            onExaApiKeyChange = { viewModel.updateExaApiKey(it) },
+            onSearxngBaseUrlChange = { viewModel.updateSearxngBaseUrl(it) },
+            onWebSearchMaxResultsChange = { viewModel.updateWebSearchMaxResults(it) }
         )
     }
 
@@ -348,7 +355,12 @@ private fun SettingsContent(
     onRetry: () -> Unit,
     onAssistantEnabledChange: (Boolean) -> Unit,
     onAssistantVoiceChange: (Boolean) -> Unit,
-    onAssistantTtsChange: (Boolean) -> Unit
+    onAssistantTtsChange: (Boolean) -> Unit,
+    onWebSearchEnabledChange: (Boolean) -> Unit,
+    onWebSearchProviderChange: (String) -> Unit,
+    onExaApiKeyChange: (String) -> Unit,
+    onSearxngBaseUrlChange: (String) -> Unit,
+    onWebSearchMaxResultsChange: (Int) -> Unit
 ) {
     Box(
         modifier = Modifier
@@ -397,7 +409,12 @@ private fun SettingsContent(
                     onSkipVersion = onSkipVersion,
                     onAssistantEnabledChange = onAssistantEnabledChange,
                     onAssistantVoiceChange = onAssistantVoiceChange,
-                    onAssistantTtsChange = onAssistantTtsChange
+                    onAssistantTtsChange = onAssistantTtsChange,
+                    onWebSearchEnabledChange = onWebSearchEnabledChange,
+                    onWebSearchProviderChange = onWebSearchProviderChange,
+                    onExaApiKeyChange = onExaApiKeyChange,
+                    onSearxngBaseUrlChange = onSearxngBaseUrlChange,
+                    onWebSearchMaxResultsChange = onWebSearchMaxResultsChange
                 )
             }
             is SettingsUiState.Error -> {
@@ -453,7 +470,12 @@ private fun SuccessContent(
     onSkipVersion: () -> Unit,
     onAssistantEnabledChange: (Boolean) -> Unit,
     onAssistantVoiceChange: (Boolean) -> Unit,
-    onAssistantTtsChange: (Boolean) -> Unit
+    onAssistantTtsChange: (Boolean) -> Unit,
+    onWebSearchEnabledChange: (Boolean) -> Unit,
+    onWebSearchProviderChange: (String) -> Unit,
+    onExaApiKeyChange: (String) -> Unit,
+    onSearxngBaseUrlChange: (String) -> Unit,
+    onWebSearchMaxResultsChange: (Int) -> Unit
 ) {
     LazyColumn(
         modifier = Modifier
@@ -603,6 +625,30 @@ private fun SuccessContent(
             ShowTokenCounterToggle(
                 enabled = uiState.showTokenCounter,
                 onToggle = onShowTokenCounterChange
+            )
+        }
+
+        item {
+            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+        }
+
+        // Web Search Section
+        item {
+            SectionHeader(title = "Web Search")
+        }
+
+        item {
+            WebSearchSection(
+                webSearchEnabled = uiState.webSearchEnabled,
+                webSearchProvider = uiState.webSearchProvider,
+                exaApiKeyConfigured = uiState.exaApiKeyConfigured,
+                searxngBaseUrl = uiState.searxngBaseUrl,
+                webSearchMaxResults = uiState.webSearchMaxResults,
+                onWebSearchEnabledChange = onWebSearchEnabledChange,
+                onWebSearchProviderChange = onWebSearchProviderChange,
+                onExaApiKeyChange = onExaApiKeyChange,
+                onSearxngBaseUrlChange = onSearxngBaseUrlChange,
+                onWebSearchMaxResultsChange = onWebSearchMaxResultsChange
             )
         }
 
@@ -1886,6 +1932,182 @@ private fun AssistantSection(
                         onCheckedChange = onTtsEnabledChange
                     )
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun WebSearchSection(
+    webSearchEnabled: Boolean,
+    webSearchProvider: String,
+    exaApiKeyConfigured: Boolean,
+    searxngBaseUrl: String,
+    webSearchMaxResults: Int,
+    onWebSearchEnabledChange: (Boolean) -> Unit,
+    onWebSearchProviderChange: (String) -> Unit,
+    onExaApiKeyChange: (String) -> Unit,
+    onSearxngBaseUrlChange: (String) -> Unit,
+    onWebSearchMaxResultsChange: (Int) -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+        ),
+        shape = RoundedCornerShape(20.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+                .animateContentSize(
+                    animationSpec = spring(
+                        dampingRatio = Spring.DampingRatioMediumBouncy,
+                        stiffness = Spring.StiffnessMediumLow
+                    )
+                )
+        ) {
+            // Enable toggle
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.Language,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column {
+                        Text(
+                            text = "Web Search",
+                            style = MaterialTheme.typography.titleSmall,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            text = "Search the web before each message",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+
+                ExpressiveSwitch(
+                    checked = webSearchEnabled,
+                    onCheckedChange = onWebSearchEnabledChange
+                )
+            }
+
+            // Expanded settings when enabled
+            if (webSearchEnabled) {
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Provider selection
+                Text(
+                    text = "Search Provider",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    FilterChip(
+                        selected = webSearchProvider == "EXA",
+                        onClick = { onWebSearchProviderChange("EXA") },
+                        label = { Text("Exa") },
+                        modifier = Modifier.weight(1f),
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                            selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                    )
+                    FilterChip(
+                        selected = webSearchProvider == "SEARXNG",
+                        onClick = { onWebSearchProviderChange("SEARXNG") },
+                        label = { Text("SearXNG") },
+                        modifier = Modifier.weight(1f),
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                            selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // Provider-specific fields
+                if (webSearchProvider == "EXA") {
+                    var apiKeyText by remember { mutableStateOf("") }
+                    OutlinedTextField(
+                        value = apiKeyText,
+                        onValueChange = { apiKeyText = it },
+                        label = {
+                            Text(
+                                if (exaApiKeyConfigured) "Exa API Key (configured)"
+                                else "Exa API Key"
+                            )
+                        },
+                        placeholder = { Text("Enter your Exa API key") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        shape = RoundedCornerShape(12.dp)
+                    )
+                    if (apiKeyText.isNotBlank()) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        ExpressiveButton(
+                            onClick = {
+                                onExaApiKeyChange(apiKeyText)
+                                apiKeyText = ""
+                            },
+                            text = "Save API Key",
+                            style = ExpressiveButtonStyle.FilledTonal
+                        )
+                    }
+                } else {
+                    var urlText by remember(searxngBaseUrl) { mutableStateOf(searxngBaseUrl) }
+                    OutlinedTextField(
+                        value = urlText,
+                        onValueChange = {
+                            urlText = it
+                            onSearxngBaseUrlChange(it)
+                        },
+                        label = { Text("SearXNG Base URL") },
+                        placeholder = { Text("https://searx.be") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        shape = RoundedCornerShape(12.dp)
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Max results slider
+                Text(
+                    text = "Max Results: $webSearchMaxResults",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Slider(
+                    value = webSearchMaxResults.toFloat(),
+                    onValueChange = { onWebSearchMaxResultsChange(it.toInt()) },
+                    valueRange = 3f..10f,
+                    steps = 6,
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = SliderDefaults.colors(
+                        thumbColor = MaterialTheme.colorScheme.primary,
+                        activeTrackColor = MaterialTheme.colorScheme.primary,
+                        inactiveTrackColor = MaterialTheme.colorScheme.surfaceContainerHighest
+                    )
+                )
             }
         }
     }

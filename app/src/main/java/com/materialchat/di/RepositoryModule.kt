@@ -15,7 +15,10 @@ import com.materialchat.domain.repository.ConversationRepository
 import com.materialchat.domain.repository.OpenClawRepository
 import com.materialchat.domain.repository.PersonaRepository
 import com.materialchat.domain.repository.ProviderRepository
+import com.materialchat.data.repository.WebSearchRepositoryImpl
+import com.materialchat.domain.repository.WebSearchRepository
 import com.materialchat.domain.repository.WorkflowRepository
+
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
@@ -76,4 +79,10 @@ abstract class RepositoryModule {
     abstract fun bindOpenClawRepository(
         impl: OpenClawRepositoryImpl
     ): OpenClawRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindWebSearchRepository(
+        impl: WebSearchRepositoryImpl
+    ): WebSearchRepository
 }

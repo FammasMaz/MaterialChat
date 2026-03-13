@@ -1207,7 +1207,8 @@ private fun AnnotatedString.Builder.parseInlineFormatting(
         """|`([^`]+)`""" + // Inline code (group 5)
         """|\[([^\]]+)\]\(([^)]+)\)""" + // Links (groups 6, 7)
         """|\\\((.+?)\\\)""" + // Inline math \(...\) (group 8)
-        "|(?<!\\\$)\\\$(?!\\\$|\\s)([^\\\$\\n]+?)(?<!\\s)\\\$(?!\\\$|\\d)" // Inline math $...$ (group 9)
+        "|(?<!\\\$)\\\$(?!\\\$|\\s)([^\\\$\\n]+?)(?<!\\s)\\\$(?!\\\$|\\d)" + // Inline math $...$ (group 9)
+        """|(?<!\[)\[(\d{1,2})\](?!\()""" // Citation [N] not part of link (group 10)
     )
 
     val matches = pattern.findAll(text).toList()
@@ -1309,6 +1310,18 @@ private fun AnnotatedString.Builder.parseInlineFormatting(
                     withStyle(SpanStyle(color = baseColor)) {
                         append("\$${content}\$")
                     }
+                }
+            }
+            // Citation pill [N] - group 10
+            match.groupValues.getOrNull(10)?.isNotEmpty() == true -> {
+                val citationNum = match.groupValues[10]
+                withStyle(SpanStyle(
+                    background = linkColor.copy(alpha = 0.15f),
+                    color = linkColor,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 11.sp
+                )) {
+                    append(" $citationNum ")
                 }
             }
             else -> {

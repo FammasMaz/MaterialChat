@@ -388,6 +388,24 @@ fun MessageBubble(
                             hapticsEnabled = hapticsEnabled
                         )
 
+                        // Web search sources carousel (for messages with search metadata)
+                        if (isAssistant && !message.isStreaming) {
+                            val webSearchMeta = remember(message.webSearchMetadata) {
+                                message.webSearchMetadata?.let { json ->
+                                    try {
+                                        kotlinx.serialization.json.Json {
+                                            ignoreUnknownKeys = true
+                                        }.decodeFromString<com.materialchat.domain.model.WebSearchMetadata>(json)
+                                    } catch (_: Exception) {
+                                        null
+                                    }
+                                }
+                            }
+                            if (webSearchMeta != null && webSearchMeta.results.isNotEmpty()) {
+                                WebSearchSourcesCarousel(metadata = webSearchMeta)
+                            }
+                        }
+
                         // Streaming indicator below content
                         if (message.isStreaming) {
                             Spacer(modifier = Modifier.height(4.dp))

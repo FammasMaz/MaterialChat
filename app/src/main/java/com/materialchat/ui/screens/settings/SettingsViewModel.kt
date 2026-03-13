@@ -4,6 +4,7 @@ import android.os.Build
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.materialchat.data.local.preferences.AppPreferences
+import com.materialchat.data.local.preferences.EncryptedPreferences
 import com.materialchat.data.repository.UpdateManager
 import com.materialchat.notifications.OpenClawNotificationScheduler
 import com.materialchat.notifications.OpenClawPushSyncManager
@@ -32,6 +33,7 @@ import javax.inject.Inject
 class SettingsViewModel @Inject constructor(
     private val manageProvidersUseCase: ManageProvidersUseCase,
     private val appPreferences: AppPreferences,
+    private val encryptedPreferences: EncryptedPreferences,
     private val updateManager: UpdateManager,
     private val openClawNotificationScheduler: OpenClawNotificationScheduler,
     private val openClawPushSyncManager: OpenClawPushSyncManager
@@ -55,6 +57,7 @@ class SettingsViewModel @Inject constructor(
      */
     private fun observeSettings() {
         viewModelScope.launch {
+            combine(
             combine(
                 combine(
                     manageProvidersUseCase.observeProviders(),
@@ -131,6 +134,22 @@ class SettingsViewModel @Inject constructor(
                 appPreferences.fontSizeScale
             ) { data, fontSizeScale ->
                 data.copy(fontSizeScale = fontSizeScale)
+            },
+                combine(
+                    appPreferences.webSearchEnabled,
+                    appPreferences.webSearchProvider,
+                    appPreferences.searxngBaseUrl,
+                    appPreferences.webSearchMaxResults
+                ) { enabled, provider, url, maxResults ->
+                    WebSearchPrefs(enabled, provider, url, maxResults)
+                }
+            ) { data, webSearch ->
+                data.copy(
+                    webSearchEnabled = webSearch.enabled,
+                    webSearchProvider = webSearch.provider,
+                    searxngBaseUrl = webSearch.url,
+                    webSearchMaxResults = webSearch.maxResults
+                )
             }
                 .catch { e ->
                     _uiState.value = SettingsUiState.Error(
@@ -172,6 +191,11 @@ class SettingsViewModel @Inject constructor(
                         appVersion = updateManager.getCurrentVersion(),
                         autoCheckUpdates = data.autoCheckUpdates,
                         updateState = data.updateState,
+                        webSearchEnabled = data.webSearchEnabled,
+                        webSearchProvider = data.webSearchProvider,
+                        exaApiKeyConfigured = encryptedPreferences.getApiKey("web_search_exa") != null,
+                        searxngBaseUrl = data.searxngBaseUrl,
+                        webSearchMaxResults = data.webSearchMaxResults,
                         showAddProviderSheet = if (currentState is SettingsUiState.Success) {
                             currentState.showAddProviderSheet
                         } else false,
@@ -766,6 +790,84 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
+    // ========== Web Search Settings ==========
+
+    /**
+     * Updates the web search enabled setting.
+     */
+    fun updateWebSearchEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            try {
+                appPreferences.setWebSearchEnabled(enabled)
+            } catch (e: Exception) {
+                _events.emit(SettingsEvent.ShowSnackbar(
+                    message = "Failed to save web search setting"
+                ))
+            }
+        }
+    }
+
+    /**
+     * Updates the web search provider (EXA or SEARXNG).
+     */
+    fun updateWebSearchProvider(provider: String) {
+        viewModelScope.launch {
+            try {
+                appPreferences.setWebSearchProvider(provider)
+            } catch (e: Exception) {
+                _events.emit(SettingsEvent.ShowSnackbar(
+                    message = "Failed to save search provider setting"
+                ))
+            }
+        }
+    }
+
+    /**
+     * Saves the Exa API key to encrypted storage.
+     */
+    fun updateExaApiKey(key: String) {
+        viewModelScope.launch {
+            try {
+                encryptedPreferences.setApiKey("web_search_exa", key)
+                _events.emit(SettingsEvent.ShowSnackbar(message = "Exa API key saved"))
+            } catch (e: Exception) {
+                _events.emit(SettingsEvent.ShowSnackbar(
+                    message = "Failed to save Exa API key"
+                ))
+            }
+        }
+    }
+
+    /**
+     * Updates the SearXNG base URL.
+     */
+    fun updateSearxngBaseUrl(url: String) {
+        viewModelScope.launch {
+            try {
+                appPreferences.setSearxngBaseUrl(url)
+            } catch (e: Exception) {
+                _events.emit(SettingsEvent.ShowSnackbar(
+                    message = "Failed to save SearXNG URL"
+                ))
+            }
+        }
+    }
+
+    /**
+     * Updates the web search max results.
+     */
+    fun updateWebSearchMaxResults(maxResults: Int) {
+        viewModelScope.launch {
+            try {
+                appPreferences.setWebSearchMaxResults(maxResults)
+            } catch (e: Exception) {
+                _events.emit(SettingsEvent.ShowSnackbar(
+                    message = "Failed to save max results setting"
+                ))
+            }
+        }
+    }
+
     // ========== App Updates ==========
 
     /**
@@ -877,7 +979,11 @@ class SettingsViewModel @Inject constructor(
         val beautifulModelNamesEnabled: Boolean,
         val alwaysShowThinking: Boolean,
         val fontSizeScale: Float,
-        val showTokenCounter: Boolean
+        val showTokenCounter: Boolean,
+        val webSearchEnabled: Boolean = false,
+        val webSearchProvider: String = "EXA",
+        val searxngBaseUrl: String = "",
+        val webSearchMaxResults: Int = 5
     )
 
     /**
@@ -914,5 +1020,15 @@ class SettingsViewModel @Inject constructor(
         val beautifulModelNamesEnabled: Boolean,
         val alwaysShowThinking: Boolean,
         val showTokenCounter: Boolean
+    )
+
+    /**
+     * Internal data class for combining web search preference flows.
+     */
+    private data class WebSearchPrefs(
+        val enabled: Boolean,
+        val provider: String,
+        val url: String,
+        val maxResults: Int
     )
 }

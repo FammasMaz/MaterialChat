@@ -5,6 +5,7 @@ import com.materialchat.data.local.preferences.AppPreferences
 import com.materialchat.data.remote.api.ChatApiClient
 import com.materialchat.data.remote.api.GitHubReleaseApiClient
 import com.materialchat.data.remote.api.ModelListApiClient
+import com.materialchat.data.remote.api.WebSearchApiClient
 import com.materialchat.data.remote.sse.SseEventParser
 import com.materialchat.data.repository.UpdateManager
 import dagger.Module
@@ -114,6 +115,23 @@ object NetworkModule {
         json: Json
     ): ModelListApiClient {
         return ModelListApiClient(
+            okHttpClient = okHttpClient,
+            json = json
+        )
+    }
+
+    /**
+     * Provides the WebSearchApiClient for web search operations.
+     *
+     * Uses the standard OkHttpClient as search doesn't require streaming.
+     */
+    @Provides
+    @Singleton
+    fun provideWebSearchApiClient(
+        @StandardClient okHttpClient: OkHttpClient,
+        json: Json
+    ): WebSearchApiClient {
+        return WebSearchApiClient(
             okHttpClient = okHttpClient,
             json = json
         )

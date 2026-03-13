@@ -168,6 +168,12 @@ interface MessageDao {
     suspend fun updateFusionMetadata(messageId: String, fusionMetadata: String?)
 
     /**
+     * Update the web search metadata for a message.
+     */
+    @Query("UPDATE messages SET web_search_metadata = :metadata WHERE id = :messageId")
+    suspend fun updateWebSearchMetadata(messageId: String, metadata: String?)
+
+    /**
      * Search messages by content, excluding system messages.
      * Returns messages grouped by conversation.
      *

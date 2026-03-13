@@ -132,6 +132,7 @@ fun Message.toEntity(): MessageEntity = MessageEntity(
     totalDurationMs = totalDurationMs,
     modelName = modelName,
     fusionMetadata = fusionMetadata,
+    webSearchMetadata = webSearchMetadata,
     createdAt = createdAt
 )
 
@@ -150,6 +151,7 @@ fun MessageEntity.toDomain(): Message = Message(
     totalDurationMs = totalDurationMs,
     modelName = modelName,
     fusionMetadata = fusionMetadata,
+    webSearchMetadata = webSearchMetadata,
     createdAt = createdAt
 )
 

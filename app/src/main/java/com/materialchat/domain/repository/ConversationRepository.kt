@@ -266,4 +266,12 @@ interface ConversationRepository {
      * @param fusionMetadata The serialized fusion metadata JSON string
      */
     suspend fun updateMessageFusionMetadata(messageId: String, fusionMetadata: String?)
+
+    /**
+     * Updates the web search metadata for a specific message.
+     *
+     * @param messageId The ID of the message
+     * @param metadata The serialized web search metadata JSON string
+     */
+    suspend fun updateMessageWebSearchMetadata(messageId: String, metadata: String?)
 }

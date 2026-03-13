@@ -60,6 +60,12 @@ sealed interface SettingsUiState {
         val beautifulModelNamesEnabled: Boolean = true,
         val alwaysShowThinking: Boolean = false,
         val showTokenCounter: Boolean = false,
+        // Web search settings
+        val webSearchEnabled: Boolean = false,
+        val webSearchProvider: String = "EXA",
+        val exaApiKeyConfigured: Boolean = false,
+        val searxngBaseUrl: String = "",
+        val webSearchMaxResults: Int = 5,
         val showAddProviderSheet: Boolean = false,
         val editingProvider: Provider? = null,
         val showDeleteConfirmation: Provider? = null,
