@@ -4,14 +4,18 @@ import com.materialchat.domain.model.Message
 import com.materialchat.domain.model.MessageRole
 import com.materialchat.domain.model.ReasoningEffort
 import com.materialchat.domain.model.StreamingState
+import com.materialchat.domain.model.WebSearchConfig
 import com.materialchat.domain.repository.ChatRepository
 import com.materialchat.domain.repository.ConversationRepository
 import com.materialchat.domain.repository.PersonaRepository
 import com.materialchat.domain.repository.ProviderRepository
+import com.materialchat.domain.repository.WebSearchRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.onCompletion
 import kotlinx.coroutines.flow.onEach
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import javax.inject.Inject
 
 /**
@@ -27,7 +31,8 @@ class RegenerateResponseUseCase @Inject constructor(
     private val chatRepository: ChatRepository,
     private val conversationRepository: ConversationRepository,
     private val providerRepository: ProviderRepository,
-    private val personaRepository: PersonaRepository
+    private val personaRepository: PersonaRepository,
+    private val webSearchRepository: WebSearchRepository
 ) {
     /**
      * Regenerates the last response in a conversation.
@@ -41,7 +46,8 @@ class RegenerateResponseUseCase @Inject constructor(
         conversationId: String,
         systemPrompt: String,
         reasoningEffort: ReasoningEffort,
-        overrideModelName: String? = null
+        overrideModelName: String? = null,
+        webSearchConfig: WebSearchConfig = WebSearchConfig()
     ): Flow<StreamingState> = flow {
         // Get the conversation and provider
         val conversation = conversationRepository.getConversation(conversationId)
@@ -74,6 +80,13 @@ class RegenerateResponseUseCase @Inject constructor(
         // Get updated messages without the last assistant message
         val updatedMessages = conversationRepository.getMessages(conversationId)
 
+        val webSearchContext = resolveWebSearchPromptContext(
+            basePrompt = effectiveSystemPrompt,
+            messages = updatedMessages,
+            webSearchConfig = webSearchConfig,
+            webSearchRepository = webSearchRepository
+        )
+
         // Determine model to use (override for redo-with-model, otherwise conversation default)
         val modelToUse = overrideModelName ?: conversation.modelName
 
@@ -101,7 +114,7 @@ class RegenerateResponseUseCase @Inject constructor(
             messages = updatedMessages,
             model = modelToUse,
             reasoningEffort = reasoningEffort,
-            systemPrompt = effectiveSystemPrompt
+            systemPrompt = webSearchContext.systemPrompt
         ).onEach { state ->
             when (state) {
                 is StreamingState.Streaming -> {
@@ -153,6 +166,13 @@ class RegenerateResponseUseCase @Inject constructor(
                         (thinkingEndTime ?: System.currentTimeMillis()) - streamStartTime
                     } else null
                     conversationRepository.updateMessageDurations(assistantMessageId, thinkingDurationMs, totalDurationMs)
+
+                    webSearchContext.metadata?.let { meta ->
+                        conversationRepository.updateMessageWebSearchMetadata(
+                            assistantMessageId,
+                            Json.encodeToString(meta)
+                        )
+                    }
                 }
                 else -> { /* Ignore other states */ }
             }

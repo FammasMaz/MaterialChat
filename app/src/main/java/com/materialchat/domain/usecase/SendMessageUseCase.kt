@@ -10,7 +10,6 @@ import com.materialchat.domain.model.ReasoningEffort
 import com.materialchat.domain.model.Provider
 import com.materialchat.domain.model.StreamingState
 import com.materialchat.domain.model.WebSearchConfig
-import com.materialchat.domain.model.WebSearchMetadata
 import com.materialchat.domain.repository.ChatRepository
 import com.materialchat.domain.repository.ConversationRepository
 import com.materialchat.domain.repository.PersonaRepository
@@ -81,18 +80,6 @@ class SendMessageUseCase @Inject constructor(
             systemPrompt
         }
 
-        // Web search: if enabled, search and augment system prompt
-        var webSearchMetadata: WebSearchMetadata? = null
-        val augmentedSystemPrompt = if (webSearchConfig.isEnabled) {
-            val searchResult = webSearchRepository.search(userContent, webSearchConfig)
-            searchResult.getOrNull()?.let { meta ->
-                webSearchMetadata = meta
-                buildWebSearchAugmentedPrompt(effectiveSystemPrompt, meta)
-            } ?: effectiveSystemPrompt // Graceful: proceed without search on failure
-        } else {
-            effectiveSystemPrompt
-        }
-
         // Create and save the user message (with attachments if any)
         val userMessage = Message(
             conversationId = conversationId,
@@ -105,6 +92,13 @@ class SendMessageUseCase @Inject constructor(
         // Get all messages for the conversation to send to the AI
         // IMPORTANT: Get messages BEFORE adding the placeholder to avoid sending empty assistant message
         val messages = conversationRepository.getMessages(conversationId)
+
+        val webSearchContext = resolveWebSearchPromptContext(
+            basePrompt = effectiveSystemPrompt,
+            messages = messages,
+            webSearchConfig = webSearchConfig,
+            webSearchRepository = webSearchRepository
+        )
 
         // Create a placeholder assistant message for streaming (after getting messages for API)
         val assistantMessage = Message(
@@ -131,7 +125,7 @@ class SendMessageUseCase @Inject constructor(
             messages = messages,
             model = conversation.modelName,
             reasoningEffort = reasoningEffort,
-            systemPrompt = augmentedSystemPrompt
+            systemPrompt = webSearchContext.systemPrompt
         ).onEach { state ->
             when (state) {
                 is StreamingState.Streaming -> {
@@ -192,7 +186,7 @@ class SendMessageUseCase @Inject constructor(
                     conversationRepository.updateMessageDurations(assistantMessageId, thinkingDurationMs, totalDurationMs)
 
                     // Save web search metadata on the assistant message
-                    webSearchMetadata?.let { meta ->
+                    webSearchContext.metadata?.let { meta ->
                         conversationRepository.updateMessageWebSearchMetadata(
                             assistantMessageId,
                             Json.encodeToString(meta)
@@ -422,31 +416,5 @@ class SendMessageUseCase @Inject constructor(
      */
     fun cancel() {
         chatRepository.cancelStreaming()
-    }
-
-    /**
-     * Builds an augmented system prompt with web search results and citation instructions.
-     */
-    private fun buildWebSearchAugmentedPrompt(
-        basePrompt: String,
-        metadata: WebSearchMetadata
-    ): String {
-        val resultsBlock = metadata.results.joinToString("\n\n") { result ->
-            "[${result.index}] Title: ${result.title}\n    URL: ${result.url}\n    ${result.snippet}"
-        }
-
-        return """$basePrompt
-
-[MATERIALCHAT_WEB_SEARCH]
-Web search results are provided below for your reference. Use them to give accurate, current answers.
-CITATION RULES:
-- Cite sources inline as [1], [2], etc. at the end of the sentence using that information
-- Multiple sources for one claim: [1][3]
-- You MUST cite at least one source for any factual claim from the search results
-- Do NOT add a references/sources list at the end
-
-SEARCH RESULTS:
-$resultsBlock
-[/MATERIALCHAT_WEB_SEARCH]"""
     }
 }
