@@ -28,7 +28,8 @@ interface ChatRepository {
         messages: List<Message>,
         model: String,
         reasoningEffort: ReasoningEffort,
-        systemPrompt: String? = null
+        systemPrompt: String? = null,
+        disableTools: Boolean = false
     ): Flow<StreamingState>
 
     /**

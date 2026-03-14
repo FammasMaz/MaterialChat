@@ -125,7 +125,8 @@ class SendMessageUseCase @Inject constructor(
             messages = messages,
             model = conversation.modelName,
             reasoningEffort = reasoningEffort,
-            systemPrompt = webSearchContext.systemPrompt
+            systemPrompt = webSearchContext.systemPrompt,
+            disableTools = webSearchContext.metadata != null
         ).onEach { state ->
             when (state) {
                 is StreamingState.Streaming -> {

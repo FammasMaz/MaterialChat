@@ -35,7 +35,8 @@ class ChatRepositoryImpl @Inject constructor(
         messages: List<Message>,
         model: String,
         reasoningEffort: ReasoningEffort,
-        systemPrompt: String?
+        systemPrompt: String?,
+        disableTools: Boolean
     ): Flow<StreamingState> = flow {
         // Use local state so parallel calls (e.g. arena) don't interfere
         val accumulatedContent = StringBuilder()
@@ -61,7 +62,8 @@ class ChatRepositoryImpl @Inject constructor(
             model = model,
             apiKey = apiKey,
             systemPrompt = systemPrompt,
-            reasoningEffort = reasoningEffort
+            reasoningEffort = reasoningEffort,
+            disableTools = disableTools
         ).collect { event ->
             android.util.Log.d("ChatRepository", "Received event: $event")
             when (event) {

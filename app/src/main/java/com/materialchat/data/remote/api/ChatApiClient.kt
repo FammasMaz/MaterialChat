@@ -75,7 +75,8 @@ class ChatApiClient(
         apiKey: String?,
         systemPrompt: String? = null,
         temperature: Double = 0.7,
-        reasoningEffort: ReasoningEffort = ReasoningEffort.HIGH
+        reasoningEffort: ReasoningEffort = ReasoningEffort.HIGH,
+        disableTools: Boolean = false
     ): Flow<StreamingEvent> {
         return when (provider.type) {
             ProviderType.OPENAI_COMPATIBLE -> streamOpenAiChat(
@@ -85,7 +86,8 @@ class ChatApiClient(
                 apiKey = apiKey ?: "",
                 systemPrompt = systemPrompt,
                 temperature = temperature,
-                reasoningEffort = reasoningEffort
+                reasoningEffort = reasoningEffort,
+                disableTools = disableTools
             )
             ProviderType.OLLAMA_NATIVE -> streamOllamaChat(
                 baseUrl = provider.baseUrl,
@@ -118,7 +120,8 @@ class ChatApiClient(
         apiKey: String,
         systemPrompt: String? = null,
         temperature: Double = 0.7,
-        reasoningEffort: ReasoningEffort = ReasoningEffort.HIGH
+        reasoningEffort: ReasoningEffort = ReasoningEffort.HIGH,
+        disableTools: Boolean = false
     ): Flow<StreamingEvent> = callbackFlow {
         // Per-flow cancel flag so parallel streams don't interfere
         val cancelled = AtomicBoolean(false)
@@ -132,8 +135,8 @@ class ChatApiClient(
             messages = openAiMessages,
             stream = true,
             reasoningEffort = reasoningEffort.apiValue,
-            tools = emptyList(),
-            toolChoice = "none"
+            tools = if (disableTools) emptyList() else null,
+            toolChoice = if (disableTools) "none" else null
         )
 
         val requestBody = json.encodeToString(request)
@@ -371,9 +374,7 @@ class ChatApiClient(
         val request = OpenAiChatRequest(
             model = model,
             messages = messages,
-            stream = false,
-            tools = emptyList(),
-            toolChoice = "none"
+            stream = false
         )
 
         val requestBody = json.encodeToString(request)

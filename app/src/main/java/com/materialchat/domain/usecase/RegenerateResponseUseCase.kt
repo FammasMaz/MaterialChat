@@ -114,7 +114,8 @@ class RegenerateResponseUseCase @Inject constructor(
             messages = updatedMessages,
             model = modelToUse,
             reasoningEffort = reasoningEffort,
-            systemPrompt = webSearchContext.systemPrompt
+            systemPrompt = webSearchContext.systemPrompt,
+            disableTools = webSearchContext.metadata != null
         ).onEach { state ->
             when (state) {
                 is StreamingState.Streaming -> {

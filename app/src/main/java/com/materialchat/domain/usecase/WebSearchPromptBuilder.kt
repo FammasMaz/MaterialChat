@@ -53,10 +53,10 @@ internal fun buildWebSearchAugmentedPrompt(
 [MATERIALCHAT_WEB_SEARCH]
 Web search results are provided below for your reference. Use them to give accurate, current answers.
 TOOLING RULES:
-- The user is using MaterialChat's on-device web search for this turn
+- MaterialChat already performed the web search for this turn
 - Treat the MATERIALCHAT_WEB_SEARCH block as the browsing source of truth for this request
-- Do NOT call or rely on provider-hosted, server-side, or external browsing/search tools when answering from these results
-- Do NOT emit browsing, search, or tool-call requests for this turn
+- Answer directly from the supplied results instead of asking to browse or search again
+- Do not mention tool availability or browsing limitations in the answer
 - If the provided search results are insufficient, say what is missing instead of claiming you browsed elsewhere
 
 CITATION RULES:
