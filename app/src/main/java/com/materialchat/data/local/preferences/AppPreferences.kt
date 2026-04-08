@@ -56,7 +56,6 @@ class AppPreferences(private val context: Context) {
         val BEAUTIFUL_MODEL_NAMES = booleanPreferencesKey("beautiful_model_names")
         val ALWAYS_SHOW_THINKING = booleanPreferencesKey("always_show_thinking")
         val SHOW_TOKEN_COUNTER = booleanPreferencesKey("show_token_counter")
-        val OPENCLAW_FCM_LAST_TOKEN = stringPreferencesKey("openclaw_fcm_last_token")
         // Font settings
         val FONT_FAMILY = stringPreferencesKey("font_family")
         val FONT_SIZE_SCALE = stringPreferencesKey("font_size_scale")
@@ -493,24 +492,6 @@ class AppPreferences(private val context: Context) {
     suspend fun setShowTokenCounter(enabled: Boolean) {
         dataStore.edit { preferences ->
             preferences[Keys.SHOW_TOKEN_COUNTER] = enabled
-        }
-    }
-
-    // ========== Utility Methods ==========
-
-    /**
-     * Last FCM token registered with the OpenClaw push relay.
-     */
-    val openClawFcmLastToken: Flow<String> = dataStore.data.map { preferences ->
-        preferences[Keys.OPENCLAW_FCM_LAST_TOKEN] ?: ""
-    }
-
-    /**
-     * Persists the last FCM token registered with the OpenClaw push relay.
-     */
-    suspend fun setOpenClawFcmLastToken(token: String) {
-        dataStore.edit { preferences ->
-            preferences[Keys.OPENCLAW_FCM_LAST_TOKEN] = token
         }
     }
 

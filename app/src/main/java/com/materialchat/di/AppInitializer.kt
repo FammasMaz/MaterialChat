@@ -1,10 +1,6 @@
 package com.materialchat.di
 
-import android.util.Log
 import com.materialchat.data.local.preferences.AppPreferences
-import com.materialchat.notifications.OpenClawNotificationScheduler
-import com.materialchat.notifications.OpenClawPushSyncManager
-import com.materialchat.domain.repository.OpenClawRepository
 import com.materialchat.domain.repository.PersonaRepository
 import com.materialchat.domain.repository.ProviderRepository
 import com.materialchat.domain.usecase.GetBuiltinPersonasUseCase
@@ -19,17 +15,13 @@ import javax.inject.Singleton
  * - Seeding default providers (OpenAI and Ollama templates)
  * - Setting up initial preferences
  * - Marking first launch as complete
- * - Auto-connecting to OpenClaw Gateway if configured
  */
 @Singleton
 class AppInitializer @Inject constructor(
     private val providerRepository: ProviderRepository,
     private val personaRepository: PersonaRepository,
-    private val openClawRepository: OpenClawRepository,
     private val getBuiltinPersonasUseCase: GetBuiltinPersonasUseCase,
-    private val appPreferences: AppPreferences,
-    private val openClawNotificationScheduler: OpenClawNotificationScheduler,
-    private val openClawPushSyncManager: OpenClawPushSyncManager
+    private val appPreferences: AppPreferences
 ) {
     /**
      * Initializes the app on first launch.
@@ -46,12 +38,6 @@ class AppInitializer @Inject constructor(
 
         // Seed built-in personas if missing (covers fresh installs AND upgrades)
         seedBuiltinPersonasIfNeeded()
-
-        // Auto-connect to OpenClaw Gateway if configured
-        autoConnectOpenClawIfNeeded()
-
-        // Keep push + polling notification delivery in sync
-        syncNotificationDeliveryStrategy()
     }
 
     /**
@@ -79,32 +65,6 @@ class AppInitializer @Inject constructor(
             val builtins = getBuiltinPersonasUseCase()
             personaRepository.seedBuiltinPersonas(builtins)
         }
-    }
-
-    /**
-     * Auto-connects to the OpenClaw Gateway if enabled, configured, and has a token.
-     */
-    private suspend fun autoConnectOpenClawIfNeeded() {
-        try {
-            val config = openClawRepository.observeConfig().first()
-            if (config.isEnabled && config.autoConnect && config.isConfigured &&
-                openClawRepository.hasToken()
-            ) {
-                Log.d("AppInitializer", "Auto-connecting to OpenClaw Gateway: ${config.gatewayUrl}")
-                openClawRepository.connect()
-            }
-        } catch (e: Exception) {
-            Log.w("AppInitializer", "Failed to auto-connect to OpenClaw: ${e.message}")
-        }
-    }
-
-    private suspend fun syncNotificationDeliveryStrategy() {
-        val notificationsEnabled = appPreferences.notificationsEnabled.first()
-        val pushHealthy = runCatching {
-            openClawPushSyncManager.syncRegistration()
-        }.getOrDefault(false)
-
-        openClawNotificationScheduler.setEnabled(notificationsEnabled && !pushHealthy)
     }
 
     /**

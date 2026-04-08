@@ -13,7 +13,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Explore
-import androidx.compose.material.icons.filled.Hub
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FloatingToolbarDefaults
@@ -46,7 +45,6 @@ import kotlinx.coroutines.withTimeoutOrNull
  * @param onTabSelected Callback when a tab is selected
  * @param onNewChat Callback to create a new conversation
  * @param onNewChatLongPress Callback when the New Chat FAB is long-pressed (e.g. show persona picker)
- * @param isOpenClawConnected Whether the OpenClaw Gateway is currently connected
  * @param expanded Whether the toolbar is expanded (showing icons) or collapsed (FAB only)
  * @param modifier Optional modifier
  */
@@ -57,7 +55,6 @@ fun MaterialChatNavBar(
     onTabSelected: (TopLevelTab) -> Unit,
     onNewChat: () -> Unit,
     onNewChatLongPress: () -> Unit = {},
-    isOpenClawConnected: Boolean,
     expanded: Boolean = true,
     modifier: Modifier = Modifier
 ) {
@@ -214,7 +211,6 @@ fun MaterialChatNavBar(
  */
 private fun tabIcon(tab: TopLevelTab): ImageVector = when (tab) {
     TopLevelTab.CHAT -> Icons.AutoMirrored.Filled.Chat
-    TopLevelTab.OPENCLAW -> Icons.Filled.Hub
     TopLevelTab.EXPLORE -> Icons.Filled.Explore
     TopLevelTab.SETTINGS -> Icons.Filled.Settings
 }

@@ -12,7 +12,6 @@ import android.os.Build
 import android.os.Process
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
-import androidx.core.app.RemoteInput
 import androidx.core.content.ContextCompat
 import com.materialchat.MainActivity
 import com.materialchat.R
@@ -30,15 +29,8 @@ class AppNotificationManager @Inject constructor(
 ) {
 
     companion object {
-        const val ACTION_OPENCLAW_REPLY: String = "com.materialchat.action.OPENCLAW_REPLY"
         const val EXTRA_SESSION_KEY: String = "extra_session_key"
         const val REPLY_REMOTE_INPUT_KEY: String = "reply_remote_input_key"
-
-        private const val OPENCLAW_CHANNEL_ID = "openclaw_updates"
-        private const val OPENCLAW_CHANNEL_NAME = "OpenClaw Updates"
-        private const val OPENCLAW_CHANNEL_DESCRIPTION = "Agent responses and background updates"
-        private const val OPENCLAW_NOTIFICATION_BASE_ID = 7_000
-        private const val OPENCLAW_REPLY_STATUS_ID = 8_000
 
         private const val CHAT_CHANNEL_ID = "chat_responses"
         private const val CHAT_CHANNEL_NAME = "Chat Responses"
@@ -51,120 +43,6 @@ class AppNotificationManager @Inject constructor(
 
     @Volatile
     private var channelsCreated: Boolean = false
-
-    /**
-     * Shows a notification for a completed OpenClaw assistant response.
-     */
-    fun notifyOpenClawResponse(sessionKey: String?, agentId: String, content: String) {
-        if (!canPostNotifications()) return
-        if (isAppInForeground()) return
-
-        ensureChannels()
-
-        val preview = content
-            .replace(Regex("\\s+"), " ")
-            .trim()
-            .take(220)
-            .ifBlank { "Your agent sent a new response." }
-
-        val fingerprint = "${sessionKey.orEmpty()}|$agentId|$preview"
-        if (isDuplicateNotification(fingerprint)) return
-
-        val openIntent = Intent(context, MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-        }
-
-        val requestCode = (sessionKey ?: "openclaw").hashCode()
-        val pendingIntent = PendingIntent.getActivity(
-            context,
-            requestCode,
-            openIntent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-
-        val titleAgent = agentId.ifBlank { "main" }
-        val notificationBuilder = NotificationCompat.Builder(context, OPENCLAW_CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_launcher_monochrome)
-            .setContentTitle("OpenClaw - $titleAgent")
-            .setContentText(preview)
-            .setStyle(NotificationCompat.BigTextStyle().bigText(preview))
-            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
-            .setCategory(NotificationCompat.CATEGORY_MESSAGE)
-            .setContentIntent(pendingIntent)
-            .setAutoCancel(true)
-            .setOnlyAlertOnce(true)
-
-        if (!sessionKey.isNullOrBlank()) {
-            val remoteInput = RemoteInput.Builder(REPLY_REMOTE_INPUT_KEY)
-                .setLabel("Reply to agent")
-                .build()
-
-            val replyIntent = Intent(context, OpenClawReplyReceiver::class.java).apply {
-                action = ACTION_OPENCLAW_REPLY
-                putExtra(EXTRA_SESSION_KEY, sessionKey)
-            }
-
-            val replyPendingIntent = PendingIntent.getBroadcast(
-                context,
-                requestCode,
-                replyIntent,
-                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-            )
-
-            val replyAction = NotificationCompat.Action.Builder(
-                R.drawable.ic_launcher_monochrome,
-                "Reply",
-                replyPendingIntent
-            )
-                .addRemoteInput(remoteInput)
-                .setAllowGeneratedReplies(true)
-                .setSemanticAction(NotificationCompat.Action.SEMANTIC_ACTION_REPLY)
-                .build()
-
-            notificationBuilder.addAction(replyAction)
-        }
-
-        val notification = notificationBuilder.build()
-
-        val stableId = OPENCLAW_NOTIFICATION_BASE_ID + abs(requestCode % 10_000)
-        notificationManagerCompat.notify(stableId, notification)
-    }
-
-    fun notifyReplySent(sessionKey: String?) {
-        if (!canPostNotifications()) return
-        ensureChannels()
-
-        val notification = NotificationCompat.Builder(context, OPENCLAW_CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_launcher_monochrome)
-            .setContentTitle("Reply sent")
-            .setContentText("Your message was sent to the agent.")
-            .setPriority(NotificationCompat.PRIORITY_LOW)
-            .setAutoCancel(true)
-            .setOnlyAlertOnce(true)
-            .build()
-
-        val requestCode = (sessionKey ?: "reply").hashCode()
-        val stableId = OPENCLAW_REPLY_STATUS_ID + abs(requestCode % 10_000)
-        notificationManagerCompat.notify(stableId, notification)
-    }
-
-    fun notifyReplyFailed(sessionKey: String?, error: String?) {
-        if (!canPostNotifications()) return
-        ensureChannels()
-
-        val notification = NotificationCompat.Builder(context, OPENCLAW_CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_launcher_monochrome)
-            .setContentTitle("Reply failed")
-            .setContentText(error?.takeIf { it.isNotBlank() } ?: "Unable to send your reply.")
-            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
-            .setAutoCancel(true)
-            .setOnlyAlertOnce(true)
-            .build()
-
-        val requestCode = (sessionKey ?: "reply").hashCode()
-        val stableId = OPENCLAW_REPLY_STATUS_ID + abs(requestCode % 10_000)
-        notificationManagerCompat.notify(stableId, notification)
-    }
 
     /**
      * Shows a notification when a regular chat AI response completes in the background.
@@ -218,14 +96,6 @@ class AppNotificationManager @Inject constructor(
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-            val openClawChannel = NotificationChannel(
-                OPENCLAW_CHANNEL_ID,
-                OPENCLAW_CHANNEL_NAME,
-                NotificationManager.IMPORTANCE_DEFAULT
-            ).apply {
-                description = OPENCLAW_CHANNEL_DESCRIPTION
-            }
-            manager.createNotificationChannel(openClawChannel)
 
             val chatChannel = NotificationChannel(
                 CHAT_CHANNEL_ID,

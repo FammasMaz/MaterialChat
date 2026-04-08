@@ -9,24 +9,12 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.animation.core.spring
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Chat
-import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.Icon
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -176,7 +164,6 @@ class MainActivity : ComponentActivity() {
  */
 private val topLevelRoutes = setOf(
     "conversations",
-    "openclaw",
     "explore",
     "settings"
 )
@@ -191,7 +178,7 @@ private val topLevelRoutes = setOf(
  * @param updateManager Manager for app updates
  * @param initialConversationId Optional conversation ID to navigate to on launch (from assistant)
  */
-@OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalSharedTransitionApi::class)
+@OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 fun MaterialChatApp(
     updateManager: UpdateManager? = null,
@@ -246,9 +233,6 @@ fun MaterialChatApp(
     val showBottomBar by remember {
         derivedStateOf { currentRoute in topLevelRoutes }
     }
-
-    // OpenClaw connection status from gateway
-    val isOpenClawConnected by mainViewModel.isOpenClawConnected.collectAsStateWithLifecycle()
 
     // Persona picker state
     val showPersonaPicker by mainViewModel.showPersonaPicker.collectAsStateWithLifecycle()
@@ -319,47 +303,8 @@ fun MaterialChatApp(
                     },
                     onNewChat = { mainViewModel.createNewConversation() },
                     onNewChatLongPress = { mainViewModel.showPersonaPicker() },
-                    isOpenClawConnected = isOpenClawConnected,
                     expanded = isToolbarExpanded
                 )
-
-                // "Chat with Agent" button — scales in alongside toolbar on OpenClaw dashboard
-                AnimatedVisibility(
-                    visible = currentRoute == "openclaw" && isOpenClawConnected && isToolbarExpanded,
-                    enter = fadeIn(
-                        animationSpec = spring(dampingRatio = 1.0f, stiffness = 500f)
-                    ) + scaleIn(
-                        initialScale = 0.8f,
-                        animationSpec = spring(dampingRatio = 0.7f, stiffness = 500f)
-                    ),
-                    exit = fadeOut(
-                        animationSpec = spring(dampingRatio = 1.0f, stiffness = 500f)
-                    ) + scaleOut(
-                        targetScale = 0.8f,
-                        animationSpec = spring(dampingRatio = 1.0f, stiffness = 500f)
-                    )
-                ) {
-                    FloatingActionButton(
-                        onClick = {
-                            try {
-                                if (currentRoute != Screen.OpenClawChat.route) {
-                                    navController.navigate(Screen.OpenClawChat.createRoute(null)) {
-                                        launchSingleTop = true
-                                    }
-                                }
-                            } catch (_: Exception) {
-                                // Guard against navigation race conditions
-                            }
-                        },
-                        containerColor = MaterialTheme.colorScheme.tertiary,
-                        contentColor = MaterialTheme.colorScheme.onTertiary
-                    ) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.Chat,
-                            contentDescription = "Chat with Agent"
-                        )
-                    }
-                }
             }
             }
         }

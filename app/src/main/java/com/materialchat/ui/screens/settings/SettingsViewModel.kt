@@ -6,8 +6,6 @@ import androidx.lifecycle.viewModelScope
 import com.materialchat.data.local.preferences.AppPreferences
 import com.materialchat.data.local.preferences.EncryptedPreferences
 import com.materialchat.data.repository.UpdateManager
-import com.materialchat.notifications.OpenClawNotificationScheduler
-import com.materialchat.notifications.OpenClawPushSyncManager
 import com.materialchat.domain.model.AppUpdate
 import com.materialchat.domain.model.Provider
 import com.materialchat.domain.model.ProviderType
@@ -34,9 +32,7 @@ class SettingsViewModel @Inject constructor(
     private val manageProvidersUseCase: ManageProvidersUseCase,
     private val appPreferences: AppPreferences,
     private val encryptedPreferences: EncryptedPreferences,
-    private val updateManager: UpdateManager,
-    private val openClawNotificationScheduler: OpenClawNotificationScheduler,
-    private val openClawPushSyncManager: OpenClawPushSyncManager
+    private val updateManager: UpdateManager
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<SettingsUiState>(SettingsUiState.Loading)
@@ -626,8 +622,6 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 appPreferences.setNotificationsEnabled(enabled)
-                val pushHealthy = openClawPushSyncManager.syncRegistration()
-                openClawNotificationScheduler.setEnabled(enabled && !pushHealthy)
             } catch (e: Exception) {
                 _events.emit(SettingsEvent.ShowSnackbar(
                     message = "Failed to save notifications setting"

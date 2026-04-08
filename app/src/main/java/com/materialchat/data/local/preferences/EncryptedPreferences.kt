@@ -139,52 +139,5 @@ class EncryptedPreferences(context: Context) {
         private const val KEYSET_NAME = "materialchat_keyset"
         private const val MASTER_KEY_URI = "android-keystore://materialchat_master_key"
         private const val API_KEY_PREFIX = "api_key_"
-        private const val OPENCLAW_TOKEN_KEY = "openclaw_gateway_token"
-    }
-
-    // ========== OpenClaw Token ==========
-
-    /**
-     * Store an encrypted OpenClaw Gateway token.
-     *
-     * @param token The gateway token to encrypt and store
-     */
-    suspend fun setOpenClawToken(token: String) = withContext(Dispatchers.IO) {
-        val associatedData = OPENCLAW_TOKEN_KEY.toByteArray(StandardCharsets.UTF_8)
-        val plaintext = token.toByteArray(StandardCharsets.UTF_8)
-        val ciphertext = aead.encrypt(plaintext, associatedData)
-        val encoded = Base64.encodeToString(ciphertext, Base64.NO_WRAP)
-        prefs.edit().putString(OPENCLAW_TOKEN_KEY, encoded).apply()
-    }
-
-    /**
-     * Retrieve and decrypt the OpenClaw Gateway token.
-     *
-     * @return The decrypted token, or null if not found or decryption fails
-     */
-    suspend fun getOpenClawToken(): String? = withContext(Dispatchers.IO) {
-        val encoded = prefs.getString(OPENCLAW_TOKEN_KEY, null) ?: return@withContext null
-        try {
-            val ciphertext = Base64.decode(encoded, Base64.NO_WRAP)
-            val associatedData = OPENCLAW_TOKEN_KEY.toByteArray(StandardCharsets.UTF_8)
-            val plaintext = aead.decrypt(ciphertext, associatedData)
-            String(plaintext, StandardCharsets.UTF_8)
-        } catch (e: Exception) {
-            null
-        }
-    }
-
-    /**
-     * Delete the OpenClaw Gateway token.
-     */
-    suspend fun deleteOpenClawToken() = withContext(Dispatchers.IO) {
-        prefs.edit().remove(OPENCLAW_TOKEN_KEY).apply()
-    }
-
-    /**
-     * Check if an OpenClaw Gateway token exists.
-     */
-    suspend fun hasOpenClawToken(): Boolean = withContext(Dispatchers.IO) {
-        prefs.contains(OPENCLAW_TOKEN_KEY)
     }
 }

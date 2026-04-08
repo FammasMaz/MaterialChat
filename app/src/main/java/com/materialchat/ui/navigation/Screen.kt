@@ -102,28 +102,6 @@ sealed class Screen(val route: String) {
     }
 
     /**
-     * OpenClaw Gateway dashboard screen - shows connection status and quick actions.
-     */
-    data object OpenClawDashboard : Screen("openclaw")
-
-    /**
-     * OpenClaw chat screen for a gateway session.
-     * @property sessionKey Optional session key; null starts a new session.
-     */
-    data object OpenClawChat : Screen("openclaw/chat/{sessionKey}") {
-        fun createRoute(sessionKey: String? = null): String {
-            val key = sessionKey ?: "new"
-            return "openclaw/chat/${java.net.URLEncoder.encode(key, "UTF-8")}"
-        }
-        const val ARG_SESSION_KEY = "sessionKey"
-    }
-
-    /**
-     * OpenClaw sessions list screen showing all gateway chat sessions.
-     */
-    data object OpenClawSessions : Screen("openclaw/sessions")
-
-    /**
      * Explore hub screen - central navigation for Arena, Insights, Bookmarks, Workflows, Personas.
      */
     data object Explore : Screen("explore")
@@ -135,7 +113,7 @@ sealed class Screen(val route: String) {
                 Conversations, Chat, Settings,
                 Arena, ArenaLeaderboard, Insights, PersonaStudio, Bookmarks,
                 Canvas, MindMap, Workflows, WorkflowBuilder, WorkflowExecution,
-                OpenClawDashboard, OpenClawChat, OpenClawSessions, Explore
+                Explore
             )
     }
 }
@@ -149,7 +127,6 @@ sealed class Screen(val route: String) {
  */
 enum class TopLevelTab(val route: String, val label: String) {
     CHAT("conversations", "Chat"),
-    OPENCLAW("openclaw", "OpenClaw"),
     EXPLORE("explore", "Explore"),
     SETTINGS("settings", "Settings")
 }

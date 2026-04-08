@@ -4,7 +4,6 @@ import com.materialchat.data.repository.ArenaRepositoryImpl
 import com.materialchat.data.repository.BookmarkRepositoryImpl
 import com.materialchat.data.repository.ChatRepositoryImpl
 import com.materialchat.data.repository.ConversationRepositoryImpl
-import com.materialchat.data.repository.OpenClawRepositoryImpl
 import com.materialchat.data.repository.PersonaRepositoryImpl
 import com.materialchat.data.repository.ProviderRepositoryImpl
 import com.materialchat.data.repository.WorkflowRepositoryImpl
@@ -12,7 +11,6 @@ import com.materialchat.domain.repository.ArenaRepository
 import com.materialchat.domain.repository.BookmarkRepository
 import com.materialchat.domain.repository.ChatRepository
 import com.materialchat.domain.repository.ConversationRepository
-import com.materialchat.domain.repository.OpenClawRepository
 import com.materialchat.domain.repository.PersonaRepository
 import com.materialchat.domain.repository.ProviderRepository
 import com.materialchat.data.repository.WebSearchRepositoryImpl
@@ -73,12 +71,6 @@ abstract class RepositoryModule {
     abstract fun bindWorkflowRepository(
         impl: WorkflowRepositoryImpl
     ): WorkflowRepository
-
-    @Binds
-    @Singleton
-    abstract fun bindOpenClawRepository(
-        impl: OpenClawRepositoryImpl
-    ): OpenClawRepository
 
     @Binds
     @Singleton
