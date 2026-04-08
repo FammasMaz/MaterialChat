@@ -39,8 +39,6 @@ class MainViewModel @Inject constructor(
     val personas: Flow<List<Persona>> = managePersonasUseCase.observeAllPersonas()
 
     init {
-
-    init {
     }
 
     fun showPersonaPicker() { _showPersonaPicker.value = true }
