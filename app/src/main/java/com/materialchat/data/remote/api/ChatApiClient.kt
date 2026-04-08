@@ -340,7 +340,8 @@ class ChatApiClient(
         provider: Provider,
         prompt: String,
         model: String,
-        apiKey: String?
+        apiKey: String?,
+        systemPrompt: String? = null
     ): Result<String> = withContext(Dispatchers.IO) {
         try {
             when (provider.type) {
@@ -348,12 +349,14 @@ class ChatApiClient(
                     baseUrl = provider.baseUrl,
                     model = model,
                     prompt = prompt,
-                    apiKey = apiKey ?: ""
+                    apiKey = apiKey ?: "",
+                    systemPrompt = systemPrompt
                 )
                 ProviderType.OLLAMA_NATIVE -> generateOllamaCompletion(
                     baseUrl = provider.baseUrl,
                     model = model,
-                    prompt = prompt
+                    prompt = prompt,
+                    systemPrompt = systemPrompt
                 )
             }
         } catch (e: Exception) {
@@ -368,9 +371,15 @@ class ChatApiClient(
         baseUrl: String,
         model: String,
         prompt: String,
-        apiKey: String
+        apiKey: String,
+        systemPrompt: String? = null
     ): Result<String> {
-        val messages = listOf(OpenAiMessage(role = "user", content = OpenAiContent.Text(prompt)))
+        val messages = buildList {
+            if (!systemPrompt.isNullOrBlank()) {
+                add(OpenAiMessage(role = "system", content = OpenAiContent.Text(systemPrompt)))
+            }
+            add(OpenAiMessage(role = "user", content = OpenAiContent.Text(prompt)))
+        }
         val request = OpenAiChatRequest(
             model = model,
             messages = messages,
@@ -414,9 +423,15 @@ class ChatApiClient(
     private fun generateOllamaCompletion(
         baseUrl: String,
         model: String,
-        prompt: String
+        prompt: String,
+        systemPrompt: String? = null
     ): Result<String> {
-        val messages = listOf(OllamaMessage(role = "user", content = prompt))
+        val messages = buildList {
+            if (!systemPrompt.isNullOrBlank()) {
+                add(OllamaMessage(role = "system", content = systemPrompt))
+            }
+            add(OllamaMessage(role = "user", content = prompt))
+        }
         // Use streaming mode like the regular chat - some APIs don't support stream=false
         val request = OllamaChatRequest(
             model = model,

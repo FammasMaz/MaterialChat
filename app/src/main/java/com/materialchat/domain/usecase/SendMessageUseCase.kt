@@ -302,16 +302,22 @@ class SendMessageUseCase @Inject constructor(
             val result = chatRepository.generateSimpleCompletion(
                 provider = provider,
                 prompt = prompt,
-                model = modelToUse
+                model = modelToUse,
+                systemPrompt = BRANCH_TITLE_SYSTEM_PROMPT
             )
 
             result.onSuccess { generatedResponse ->
-                val parsed = parseBranchTitleResponse(generatedResponse)
-                conversationRepository.updateConversationTitleAndIcon(
-                    conversationId,
-                    parsed.title,
-                    parsed.icon
-                )
+                if (isGarbageTitleResponse(generatedResponse)) {
+                    val fallbackTitle = generateTitleFromMessage(userMessage)
+                    conversationRepository.updateConversationTitle(conversationId, fallbackTitle)
+                } else {
+                    val parsed = parseBranchTitleResponse(generatedResponse)
+                    conversationRepository.updateConversationTitleAndIcon(
+                        conversationId,
+                        parsed.title,
+                        parsed.icon
+                    )
+                }
             }.onFailure {
                 // Fall back to simple truncation
                 val fallbackTitle = generateTitleFromMessage(userMessage)
@@ -329,17 +335,12 @@ class SendMessageUseCase @Inject constructor(
      * Builds the prompt for generating a branch title.
      */
     private fun buildBranchTitlePrompt(userMessage: String, assistantResponse: String): String {
-        val truncatedUser = userMessage.take(500)
-        val truncatedAssistant = assistantResponse.take(500)
+        val truncatedUser = sanitizeForTitlePrompt(userMessage.take(500))
+        val truncatedAssistant = sanitizeForTitlePrompt(assistantResponse.take(500))
 
-        return "Generate a single emoji and a concise title (maximum 6 words) for this conversation branch. " +
-            "The title should capture what makes this branch different - the new direction or topic explored. " +
-            "Focus on the NEW content, not the original conversation. " +
-            "Format: [emoji] [title] - for example: 🔀 Alternative API approach\n" +
-            "Only respond with the emoji and title, no quotes, no explanation, no punctuation at the end.\n\n" +
-            "New user message: $truncatedUser\n\n" +
-            "Assistant response: $truncatedAssistant\n\n" +
-            "Response:"
+        return "Generate a single emoji and a concise title (max 6 words) for this conversation branch.\n\n" +
+            "NEW USER MESSAGE: $truncatedUser\n\n" +
+            "ASSISTANT REPLY: $truncatedAssistant"
     }
 
     /**
@@ -393,6 +394,47 @@ class SendMessageUseCase @Inject constructor(
     }
 
     private data class BranchTitleResult(val title: String, val icon: String?)
+
+    /** System instruction for branch title generation. */
+    private companion object {
+        const val BRANCH_TITLE_SYSTEM_PROMPT =
+            "You are a title generator. You ONLY output a single emoji followed by a short title (max 6 words). " +
+            "Never explain, never apologize, never refuse. No quotes, no punctuation at the end. " +
+            "Focus on what makes this branch different. Example: \uD83D\uDD00 Alternative API approach"
+
+        val GARBAGE_PATTERNS = listOf(
+            "i don't", "i can't", "i notice", "i apologize", "i'm sorry",
+            "i am not", "i cannot", "as an ai", "i'm unable",
+            "tool result", "tool call", "function call",
+            "previous user", "no previous", "don't have",
+            "let me", "sure,", "here is", "here's",
+            "based on", "the conversation"
+        )
+    }
+
+    /** Detects conversational / garbage responses that aren't real titles. */
+    private fun isGarbageTitleResponse(response: String): Boolean {
+        val lower = response.lowercase().trim()
+        if (lower.length > 120) return true
+        return GARBAGE_PATTERNS.any { lower.contains(it) }
+    }
+
+    /** Strips markdown artifacts, tool references, and noise from text for the title prompt. */
+    private fun sanitizeForTitlePrompt(text: String): String {
+        return text
+            .replace(Regex("```[\\s\\S]*?```"), "[code]")
+            .replace(Regex("\\[tool_result[\\s\\S]*?]"), "")
+            .replace(Regex("\\[tool_call[\\s\\S]*?]"), "")
+            .replace(Regex("<tool_result>[\\s\\S]*?</tool_result>"), "")
+            .replace(Regex("<tool_call>[\\s\\S]*?</tool_call>"), "")
+            .replace(Regex("!\\[.*?]\\(.*?\\)"), "")
+            .replace(Regex("\\[.*?]\\(.*?\\)"), "")
+            .replace(Regex("#{1,6}\\s+"), "")
+            .replace(Regex("\\*{1,3}(.*?)\\*{1,3}"), "$1")
+            .replace(Regex("\\s+"), " ")
+            .trim()
+            .ifBlank { "(empty)" }
+    }
 
     /**
      * Generates a title from the user's first message.

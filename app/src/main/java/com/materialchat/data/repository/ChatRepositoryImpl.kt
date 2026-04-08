@@ -150,7 +150,8 @@ class ChatRepositoryImpl @Inject constructor(
     override suspend fun generateSimpleCompletion(
         provider: Provider,
         prompt: String,
-        model: String
+        model: String,
+        systemPrompt: String?
     ): Result<String> {
         // Get API key if required
         val apiKey = if (provider.requiresApiKey) {
@@ -159,6 +160,6 @@ class ChatRepositoryImpl @Inject constructor(
             null
         }
 
-        return chatApiClient.generateSimpleCompletion(provider, prompt, model, apiKey)
+        return chatApiClient.generateSimpleCompletion(provider, prompt, model, apiKey, systemPrompt)
     }
 }

@@ -37,6 +37,22 @@ class GenerateConversationTitleUseCase @Inject constructor(
         private const val MAX_TITLE_LENGTH = 60
         private const val FALLBACK_MAX_LENGTH = 40
 
+        /** System instruction for the title generation model. */
+        private const val TITLE_SYSTEM_PROMPT =
+            "You are a title generator. You ONLY output a single emoji followed by a short title. " +
+            "Never explain, never apologize, never refuse. No quotes, no punctuation at the end. " +
+            "Example output: 💻 Python Code Review"
+
+        /** Phrases that indicate the model responded conversationally instead of generating a title. */
+        private val GARBAGE_PATTERNS = listOf(
+            "i don't", "i can't", "i notice", "i apologize", "i'm sorry",
+            "i am not", "i cannot", "as an ai", "i'm unable",
+            "tool result", "tool call", "function call",
+            "previous user", "no previous", "don't have",
+            "let me", "sure,", "here is", "here's",
+            "based on", "the conversation"
+        )
+
         // Regex to match emoji at the start of a string
         private val EMOJI_PATTERN = Regex(
             "^[\\p{So}\\p{Cs}\\u200D\\uFE0F\\u2600-\\u26FF\\u2700-\\u27BF" +
@@ -87,20 +103,28 @@ class GenerateConversationTitleUseCase @Inject constructor(
             val result = chatRepository.generateSimpleCompletion(
                 provider = provider,
                 prompt = prompt,
-                model = modelToUse
+                model = modelToUse,
+                systemPrompt = TITLE_SYSTEM_PROMPT
             )
 
             result.fold(
                 onSuccess = { generatedResponse ->
                     Log.d(TAG, "AI generated response: $generatedResponse")
-                    val parsed = parseEmojiAndTitle(generatedResponse)
-                    Log.d(TAG, "Parsed - icon: ${parsed.icon}, title: ${parsed.title}")
-                    conversationRepository.updateConversationTitleAndIcon(
-                        conversationId,
-                        parsed.title,
-                        parsed.icon
-                    )
-                    Result.success(parsed.title)
+                    if (isGarbageTitle(generatedResponse)) {
+                        Log.w(TAG, "Garbage title detected, using fallback")
+                        val fallbackTitle = generateFallbackTitle(userMessage)
+                        conversationRepository.updateConversationTitle(conversationId, fallbackTitle)
+                        Result.success(fallbackTitle)
+                    } else {
+                        val parsed = parseEmojiAndTitle(generatedResponse)
+                        Log.d(TAG, "Parsed - icon: ${parsed.icon}, title: ${parsed.title}")
+                        conversationRepository.updateConversationTitleAndIcon(
+                            conversationId,
+                            parsed.title,
+                            parsed.icon
+                        )
+                        Result.success(parsed.title)
+                    }
                 },
                 onFailure = { error ->
                     Log.e(TAG, "Title generation failed: ${error.message}", error)
@@ -121,16 +145,43 @@ class GenerateConversationTitleUseCase @Inject constructor(
     }
 
     private fun buildTitlePrompt(userMessage: String, assistantResponse: String): String {
-        val truncatedUser = userMessage.take(500)
-        val truncatedAssistant = assistantResponse.take(500)
+        val truncatedUser = sanitizeForTitlePrompt(userMessage.take(500))
+        val truncatedAssistant = sanitizeForTitlePrompt(assistantResponse.take(500))
 
-        return "Generate a single emoji and a concise title (maximum $MAX_TITLE_WORDS words) for this conversation. " +
-            "The emoji should represent the main topic. The title should capture the purpose. " +
-            "Format: [emoji] [title] - for example: 💻 Python Code Review\n" +
-            "Only respond with the emoji and title, no quotes, no explanation, no punctuation at the end.\n\n" +
-            "User: $truncatedUser\n\n" +
-            "Assistant: $truncatedAssistant\n\n" +
-            "Response:"
+        return "Generate a single emoji and a concise title (max $MAX_TITLE_WORDS words) for this conversation.\n\n" +
+            "USER MESSAGE: $truncatedUser\n\n" +
+            "ASSISTANT REPLY: $truncatedAssistant"
+    }
+
+    /**
+     * Strips markdown artifacts, tool references, and other noise from text
+     * before including it in the title generation prompt.
+     */
+    private fun sanitizeForTitlePrompt(text: String): String {
+        return text
+            .replace(Regex("```[\\s\\S]*?```"), "[code]") // collapse code blocks
+            .replace(Regex("\\[tool_result[\\s\\S]*?]"), "")  // strip tool markers
+            .replace(Regex("\\[tool_call[\\s\\S]*?]"), "")
+            .replace(Regex("<tool_result>[\\s\\S]*?</tool_result>"), "")
+            .replace(Regex("<tool_call>[\\s\\S]*?</tool_call>"), "")
+            .replace(Regex("!\\[.*?]\\(.*?\\)"), "")  // strip images
+            .replace(Regex("\\[.*?]\\(.*?\\)"), "")   // strip links (keep text would be better but simpler to remove)
+            .replace(Regex("#{1,6}\\s+"), "")          // strip heading markers
+            .replace(Regex("\\*{1,3}(.*?)\\*{1,3}"), "$1") // strip bold/italic
+            .replace(Regex("\\s+"), " ")
+            .trim()
+            .ifBlank { "(empty)" }
+    }
+
+    /**
+     * Detects if the model responded conversationally instead of generating a title.
+     */
+    private fun isGarbageTitle(response: String): Boolean {
+        val lower = response.lowercase().trim()
+        // Too long to be a title (real titles are short)
+        if (lower.length > 120) return true
+        // Contains conversational / refusal phrases
+        return GARBAGE_PATTERNS.any { lower.contains(it) }
     }
 
     /**

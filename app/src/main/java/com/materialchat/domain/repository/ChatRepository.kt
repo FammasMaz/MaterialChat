@@ -61,7 +61,8 @@ interface ChatRepository {
     suspend fun generateSimpleCompletion(
         provider: Provider,
         prompt: String,
-        model: String
+        model: String,
+        systemPrompt: String? = null
     ): Result<String>
 
     /**
