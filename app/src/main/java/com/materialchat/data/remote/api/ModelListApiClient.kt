@@ -68,9 +68,35 @@ class ModelListApiClient(
         providerId: String,
         apiKey: String
     ): Result<List<AiModel>> = withContext(Dispatchers.IO) {
-        try {
-            val url = ChatApiClient.buildModelsUrl(baseUrl)
+        val urls = ChatApiClient.buildModelsUrlsWithFallback(baseUrl)
+        var lastFailure: Result<List<AiModel>>? = null
 
+        for (url in urls) {
+            val result = tryFetchOpenAiModels(url, providerId, apiKey)
+            if (result.isSuccess) return@withContext result
+
+            // If it's a 404, try the next fallback URL
+            val error = result.exceptionOrNull()
+            if (error is ApiException && error.isNotFound) {
+                lastFailure = result
+                continue
+            }
+            // For non-404 errors, fail immediately
+            return@withContext result
+        }
+
+        lastFailure ?: Result.failure(ApiException(code = -1, message = "No URLs to try"))
+    }
+
+    /**
+     * Attempts to fetch models from a single URL.
+     */
+    private suspend fun tryFetchOpenAiModels(
+        url: String,
+        providerId: String,
+        apiKey: String
+    ): Result<List<AiModel>> = withContext(Dispatchers.IO) {
+        try {
             val request = Request.Builder()
                 .url(url)
                 .addHeader("Authorization", "Bearer $apiKey")
@@ -100,7 +126,7 @@ class ModelListApiClient(
                     return@withContext Result.failure(
                         ApiException(
                             code = resp.code,
-                            message = "Provider returned HTML instead of JSON. Check if the base URL is correct and the /v1/models endpoint is supported."
+                            message = "Provider returned HTML instead of JSON. Check if the base URL is correct and the models endpoint is supported."
                         )
                     )
                 }

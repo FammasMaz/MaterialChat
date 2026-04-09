@@ -503,27 +503,34 @@ class ChatApiClient(
         apiKey: String?
     ): Result<Boolean> = withContext(Dispatchers.IO) {
         try {
-            val url = when (provider.type) {
-                ProviderType.OPENAI_COMPATIBLE -> buildModelsUrl(provider.baseUrl)
-                ProviderType.OLLAMA_NATIVE -> "${provider.baseUrl.trimEnd('/')}/api/tags"
+            val urls = when (provider.type) {
+                ProviderType.OPENAI_COMPATIBLE -> buildModelsUrlsWithFallback(provider.baseUrl)
+                ProviderType.OLLAMA_NATIVE -> listOf("${provider.baseUrl.trimEnd('/')}/api/tags")
             }
 
-            val requestBuilder = Request.Builder()
-                .url(url)
-                .get()
+            var lastError: Exception? = null
+            for (url in urls) {
+                val requestBuilder = Request.Builder()
+                    .url(url)
+                    .get()
 
-            if (provider.type == ProviderType.OPENAI_COMPATIBLE && !apiKey.isNullOrBlank()) {
-                requestBuilder.addHeader("Authorization", "Bearer $apiKey")
-            }
+                if (provider.type == ProviderType.OPENAI_COMPATIBLE && !apiKey.isNullOrBlank()) {
+                    requestBuilder.addHeader("Authorization", "Bearer $apiKey")
+                }
 
-            val response = okHttpClient.newCall(requestBuilder.build()).execute()
-            response.use { resp ->
-                if (resp.isSuccessful) {
-                    Result.success(true)
-                } else {
-                    Result.failure(IOException("Connection test failed: ${resp.code}"))
+                val response = okHttpClient.newCall(requestBuilder.build()).execute()
+                response.use { resp ->
+                    if (resp.isSuccessful) {
+                        return@withContext Result.success(true)
+                    }
+                    lastError = IOException("Connection test failed: ${resp.code}")
+                    // If 404, try the next fallback URL
+                    if (resp.code != 404) {
+                        return@withContext Result.failure(lastError!!)
+                    }
                 }
             }
+            Result.failure(lastError ?: IOException("Connection test failed"))
         } catch (e: Exception) {
             Result.failure(e)
         }
@@ -769,6 +776,24 @@ class ChatApiClient(
                 "$trimmed/models"
             } else {
                 "$trimmed/v1/models"
+            }
+        }
+
+        /**
+         * Returns a list of models endpoint URLs to try, with fallbacks.
+         * If the base URL has a non-v1 version (e.g. /v2), the primary URL
+         * uses that version and /v1/models is added as a fallback, since many
+         * servers only serve the models list on /v1.
+         */
+        fun buildModelsUrlsWithFallback(baseUrl: String): List<String> {
+            val trimmed = baseUrl.trimEnd('/')
+            val match = VERSION_SUFFIX_REGEX.find(trimmed)
+            val primary = buildModelsUrl(trimmed)
+            return if (match != null && match.value != "/v1") {
+                val fallback = "${normalizeBaseUrl(trimmed)}/v1/models"
+                listOf(primary, fallback)
+            } else {
+                listOf(primary)
             }
         }
 
