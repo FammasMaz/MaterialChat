@@ -143,7 +143,7 @@ class ChatApiClient(
             .toRequestBody(JSON_MEDIA_TYPE)
 
         // Build HTTP request
-        val url = "${normalizeBaseUrl(baseUrl)}/v1/chat/completions"
+        val url = buildChatCompletionsUrl(baseUrl)
         android.util.Log.d("ChatApiClient", "OpenAI streaming URL: $url")
         android.util.Log.d("ChatApiClient", "OpenAI request body: ${json.encodeToString(request)}")
         val httpRequest = Request.Builder()
@@ -389,7 +389,7 @@ class ChatApiClient(
         val requestBody = json.encodeToString(request)
             .toRequestBody(JSON_MEDIA_TYPE)
 
-        val url = "${normalizeBaseUrl(baseUrl)}/v1/chat/completions"
+        val url = buildChatCompletionsUrl(baseUrl)
         val httpRequest = Request.Builder()
             .url(url)
             .addHeader("Authorization", "Bearer $apiKey")
@@ -749,16 +749,23 @@ class ChatApiClient(
         private const val STREAMING_TIMEOUT_SECONDS = 120L
 
         /**
+         * Regex matching a version path segment like /v1, /v2, /v3, etc.
+         */
+        private val VERSION_SUFFIX_REGEX = Regex("/v\\d+$")
+
+        /**
          * Builds the models endpoint URL, handling various base URL formats.
+         * Respects existing version prefixes (v1, v2, …) instead of forcing /v1.
          *
          * Examples:
          * - "https://api.openai.com" -> "https://api.openai.com/v1/models"
          * - "https://api.openai.com/v1" -> "https://api.openai.com/v1/models"
          * - "https://openrouter.ai/api/v1" -> "https://openrouter.ai/api/v1/models"
+         * - "https://api.example.com/v2" -> "https://api.example.com/v2/models"
          */
         fun buildModelsUrl(baseUrl: String): String {
             val trimmed = baseUrl.trimEnd('/')
-            return if (trimmed.endsWith("/v1")) {
+            return if (VERSION_SUFFIX_REGEX.containsMatchIn(trimmed)) {
                 "$trimmed/models"
             } else {
                 "$trimmed/v1/models"
@@ -767,17 +774,35 @@ class ChatApiClient(
 
         /**
          * Normalizes a base URL for chat completions endpoint.
-         * Only removes /v1 suffix to prevent duplication when appending /v1/chat/completions.
+         * Removes any version suffix (/v1, /v2, …) so the caller can append
+         * the correct versioned path via [buildChatCompletionsUrl].
          *
          * Examples:
          * - "https://api.openai.com/v1" -> "https://api.openai.com"
          * - "https://openrouter.ai/api/v1" -> "https://openrouter.ai/api"
+         * - "https://api.example.com/v2" -> "https://api.example.com"
          * - "https://api.example.com" -> "https://api.example.com"
          */
         fun normalizeBaseUrl(url: String): String {
             return url.trimEnd('/')
-                .removeSuffix("/v1")
+                .replace(VERSION_SUFFIX_REGEX, "")
                 .trimEnd('/')
+        }
+
+        /**
+         * Builds the full chat/completions URL, respecting the version in the
+         * original base URL. Falls back to /v1 when no version is present.
+         *
+         * Examples:
+         * - "https://api.openai.com"        -> "https://api.openai.com/v1/chat/completions"
+         * - "https://api.openai.com/v1"     -> "https://api.openai.com/v1/chat/completions"
+         * - "https://api.example.com/v2"    -> "https://api.example.com/v2/chat/completions"
+         */
+        fun buildChatCompletionsUrl(baseUrl: String): String {
+            val trimmed = baseUrl.trimEnd('/')
+            val match = VERSION_SUFFIX_REGEX.find(trimmed)
+            val version = match?.value?.removePrefix("/") ?: "v1"
+            return "${normalizeBaseUrl(trimmed)}/$version/chat/completions"
         }
 
         /**
