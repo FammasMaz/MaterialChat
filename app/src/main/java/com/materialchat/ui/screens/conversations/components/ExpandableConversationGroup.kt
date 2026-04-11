@@ -217,7 +217,7 @@ fun ExpandableConversationGroup(
                                         color = MaterialTheme.colorScheme.onSecondaryContainer,
                                         modifier = Modifier
                                             .clip(RoundedCornerShape(50))
-                                            .background(MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.7f))
+                                            .background(MaterialTheme.colorScheme.secondaryContainer)
                                             .padding(horizontal = 6.dp, vertical = 2.dp)
                                     )
                                 }

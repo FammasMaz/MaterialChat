@@ -5,6 +5,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -23,6 +24,7 @@ import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -165,7 +167,10 @@ fun SwipeToDeleteBox(
                 modifier = Modifier
                     .fillMaxSize()
                     .clip(currentShape)
-                    .background(MaterialTheme.colorScheme.surfaceContainerHighest),
+                    .background(
+                        trailingAction?.containerColor
+                            ?: MaterialTheme.colorScheme.errorContainer
+                    ),
                 horizontalArrangement = Arrangement.End,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -294,25 +299,29 @@ private fun SwipeBackgroundAction(
             .fillMaxHeight()
             .width(width)
             .background(containerColor)
-            .clickable(onClick = onClick)
-            .padding(horizontal = 10.dp),
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = ripple(color = contentColor)
+            ) { onClick() }
+            .padding(horizontal = 8.dp),
         contentAlignment = Alignment.Center
     ) {
         Column(
-            horizontalAlignment = Alignment.CenterHorizontally
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             Icon(
                 imageVector = icon,
                 contentDescription = contentDescription,
                 tint = contentColor,
                 modifier = Modifier
-                    .size(20.dp)
+                    .size(24.dp)
                     .scale(scale)
             )
             Text(
                 text = label,
                 style = MaterialTheme.typography.labelSmall,
-                color = contentColor.copy(alpha = progress.coerceIn(0.6f, 1f))
+                color = contentColor
             )
         }
     }
