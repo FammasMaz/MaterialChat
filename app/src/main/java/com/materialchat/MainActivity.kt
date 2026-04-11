@@ -305,6 +305,7 @@ fun MaterialChatApp(
                         }
                     },
                     onNewChat = { mainViewModel.createNewConversation() },
+                    onNewTemporaryChat = { mainViewModel.createTemporaryConversation() },
                     onNewChatLongPress = { mainViewModel.showPersonaPicker() },
                     expanded = isToolbarExpanded
                 )

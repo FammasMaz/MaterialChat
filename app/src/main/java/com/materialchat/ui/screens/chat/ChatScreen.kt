@@ -270,12 +270,15 @@ fun ChatScreen(
         }
     }
 
+    val isEphemeral = (uiState as? ChatUiState.Success)?.isEphemeral == true
+
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
 
     Scaffold(
         modifier = Modifier
             .nestedScroll(scrollBehavior.nestedScrollConnection),
-        containerColor = MaterialTheme.colorScheme.surfaceContainer,
+        containerColor = if (isEphemeral) MaterialTheme.colorScheme.tertiaryContainer
+                         else MaterialTheme.colorScheme.surfaceContainer,
         contentWindowInsets = WindowInsets(0, 0, 0, 0), // Draw edge-to-edge
         topBar = {
             when (val state = uiState) {

@@ -57,6 +57,19 @@ class MainViewModel @Inject constructor(
         }
     }
 
+    fun createTemporaryConversation() {
+        viewModelScope.launch {
+            try {
+                val conversationId = createConversationUseCase.temporary()
+                _navigateToChat.emit(conversationId)
+            } catch (e: IllegalStateException) {
+                _showError.emit("No provider configured")
+            } catch (e: Exception) {
+                _showError.emit(e.message ?: "Failed to create temporary conversation")
+            }
+        }
+    }
+
     fun createNewConversationWithPersona(personaId: String) {
         viewModelScope.launch {
             try {

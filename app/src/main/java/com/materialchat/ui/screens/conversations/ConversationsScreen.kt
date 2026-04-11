@@ -37,7 +37,6 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.outlined.Archive
-import androidx.compose.material.icons.outlined.AutoDelete
 import androidx.compose.material.icons.outlined.ChatBubbleOutline
 import androidx.compose.material.icons.outlined.SearchOff
 import androidx.compose.material.icons.outlined.Unarchive
@@ -274,7 +273,7 @@ fun ConversationsScreen(
                 onArchiveConversation = { viewModel.archiveConversation(it) },
                 onUnarchiveConversation = { viewModel.unarchiveConversation(it) },
                 onSelectFilter = { viewModel.selectFilter(it) },
-                onCreateTemporaryConversation = { viewModel.createTemporaryConversation() },
+
                 onConversationSwipeRight = { conversation ->
                     renameConversation = conversation
                     renameText = conversation.title
@@ -315,6 +314,17 @@ fun ConversationsScreen(
                         }
                     ) {
                         Text("Retry with AI")
+                    }
+                    TextButton(
+                        onClick = {
+                            renameConversation?.let { conv ->
+                                viewModel.deleteConversation(conv)
+                            }
+                            showRenameDialog = false
+                            renameConversation = null
+                        }
+                    ) {
+                        Text("Delete", color = MaterialTheme.colorScheme.error)
                     }
                 }
             },
@@ -683,7 +693,6 @@ private fun ConversationsContent(
     onArchiveConversation: (com.materialchat.domain.model.Conversation) -> Unit,
     onUnarchiveConversation: (com.materialchat.domain.model.Conversation) -> Unit,
     onSelectFilter: (ConversationListFilter) -> Unit,
-    onCreateTemporaryConversation: () -> Unit,
     onConversationSwipeRight: (com.materialchat.domain.model.Conversation) -> Unit = {},
     onRetry: () -> Unit,
     onNavigateToSettings: () -> Unit,
@@ -711,19 +720,11 @@ private fun ConversationsContent(
                     LoadingContent(modifier = Modifier.weight(1f))
                 }
                 is ConversationsUiState.Empty -> {
-                    Column(modifier = Modifier.fillMaxSize()) {
-                        TemporaryChatCallout(
-                            onClick = onCreateTemporaryConversation,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 12.dp)
-                        )
-                        EmptyContent(
-                            hasActiveProvider = uiState.hasActiveProvider,
-                            onNavigateToSettings = onNavigateToSettings,
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
+                    EmptyContent(
+                        hasActiveProvider = uiState.hasActiveProvider,
+                        onNavigateToSettings = onNavigateToSettings,
+                        modifier = Modifier.weight(1f)
+                    )
                 }
                 is ConversationsUiState.Success -> {
                     val showingArchived = uiState.selectedFilter == ConversationListFilter.ARCHIVED
@@ -747,13 +748,6 @@ private fun ConversationsContent(
                                 .fillMaxWidth()
                                 .padding(horizontal = 16.dp, vertical = 12.dp)
                         )
-                        TemporaryChatCallout(
-                            onClick = onCreateTemporaryConversation,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp)
-                        )
-
                         if (displayedGroups.isNotEmpty()) {
                             GroupedConversationList(
                                 groups = displayedGroups,
@@ -854,48 +848,6 @@ private fun ConversationFilterBar(
     }
 }
 
-@Composable
-private fun TemporaryChatCallout(
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Surface(
-        onClick = onClick,
-        modifier = modifier,
-        shape = RoundedCornerShape(20.dp), // M3: largeIncreased
-        color = MaterialTheme.colorScheme.tertiaryContainer
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 14.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            Icon(
-                imageVector = Icons.Outlined.AutoDelete,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onTertiaryContainer,
-                modifier = Modifier.size(24.dp)
-            )
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(2.dp)
-            ) {
-                Text(
-                    text = "Temporary chat",
-                    style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.onTertiaryContainer
-                )
-                Text(
-                    text = "Won't be saved to your history",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onTertiaryContainer
-                )
-            }
-        }
-    }
-}
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable

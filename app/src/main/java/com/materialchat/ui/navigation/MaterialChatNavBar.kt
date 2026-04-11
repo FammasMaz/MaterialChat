@@ -14,6 +14,7 @@ import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Explore
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.outlined.AutoDelete
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FloatingToolbarDefaults
 import androidx.compose.material3.HorizontalFloatingToolbar
@@ -54,6 +55,7 @@ fun MaterialChatNavBar(
     currentRoute: String?,
     onTabSelected: (TopLevelTab) -> Unit,
     onNewChat: () -> Unit,
+    onNewTemporaryChat: () -> Unit = {},
     onNewChatLongPress: () -> Unit = {},
     expanded: Boolean = true,
     modifier: Modifier = Modifier
@@ -162,6 +164,7 @@ fun MaterialChatNavBar(
                 val isSelected = currentRoute == tab.route
                 val icon = tabIcon(tab)
 
+
                 val interactionSource = remember { MutableInteractionSource() }
                 val isPressed by interactionSource.collectIsPressedAsState()
 
@@ -201,6 +204,17 @@ fun MaterialChatNavBar(
                         tint = tint
                     )
                 }
+            }
+
+            // Temporary chat button — positioned just left of the FAB
+            IconButton(
+                onClick = { haptics.perform(HapticPattern.CLICK); onNewTemporaryChat() }
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.AutoDelete,
+                    contentDescription = "Temporary Chat",
+                    tint = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                )
             }
         }
     )

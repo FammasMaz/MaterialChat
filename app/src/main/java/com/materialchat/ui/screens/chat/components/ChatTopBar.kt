@@ -22,7 +22,6 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.outlined.Archive
 import androidx.compose.material.icons.outlined.AccountTree
-import androidx.compose.material.icons.outlined.AutoDelete
 import androidx.compose.material.icons.outlined.CloudDownload
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -206,41 +205,25 @@ fun ChatTopBar(
                     // Streaming indicator removed - now shown in the morphing send button
                 }
 
-                if (isEphemeral || isArchived) {
+                if (isArchived) {
                     Spacer(modifier = Modifier.height(6.dp))
                     Surface(
                         shape = RoundedCornerShape(999.dp),
-                        color = if (isEphemeral) {
-                            MaterialTheme.colorScheme.tertiaryContainer
-                        } else {
-                            MaterialTheme.colorScheme.secondaryContainer
-                        },
-                        contentColor = if (isEphemeral) {
-                            MaterialTheme.colorScheme.onTertiaryContainer
-                        } else {
-                            MaterialTheme.colorScheme.onSecondaryContainer
-                        }
+                        color = MaterialTheme.colorScheme.secondaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer
                     ) {
                         Row(
                             modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Icon(
-                                imageVector = if (isEphemeral) {
-                                    Icons.Outlined.AutoDelete
-                                } else {
-                                    Icons.Outlined.Archive
-                                },
+                                imageVector = Icons.Outlined.Archive,
                                 contentDescription = null,
                                 modifier = Modifier.size(16.dp)
                             )
                             Spacer(modifier = Modifier.width(6.dp))
                             Text(
-                                text = if (isEphemeral) {
-                                    "Temporary · Deletes on close"
-                                } else {
-                                    "Archived"
-                                },
+                                text = "Archived",
                                 style = MaterialTheme.typography.labelMedium
                             )
                         }
@@ -301,11 +284,16 @@ fun ChatTopBar(
             }
         },
         colors = TopAppBarDefaults.topAppBarColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainer,
-            scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainer,
-            titleContentColor = MaterialTheme.colorScheme.onSurface,
-            navigationIconContentColor = MaterialTheme.colorScheme.onSurface,
-            actionIconContentColor = MaterialTheme.colorScheme.onSurfaceVariant
+            containerColor = if (isEphemeral) MaterialTheme.colorScheme.tertiaryContainer
+                             else MaterialTheme.colorScheme.surfaceContainer,
+            scrolledContainerColor = if (isEphemeral) MaterialTheme.colorScheme.tertiaryContainer
+                                     else MaterialTheme.colorScheme.surfaceContainer,
+            titleContentColor = if (isEphemeral) MaterialTheme.colorScheme.onTertiaryContainer
+                                else MaterialTheme.colorScheme.onSurface,
+            navigationIconContentColor = if (isEphemeral) MaterialTheme.colorScheme.onTertiaryContainer
+                                         else MaterialTheme.colorScheme.onSurface,
+            actionIconContentColor = if (isEphemeral) MaterialTheme.colorScheme.onTertiaryContainer
+                                     else MaterialTheme.colorScheme.onSurfaceVariant
         ),
         scrollBehavior = scrollBehavior
     )
