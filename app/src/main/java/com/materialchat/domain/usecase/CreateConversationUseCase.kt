@@ -71,11 +71,25 @@ class CreateConversationUseCase @Inject constructor(
     }
 
     /**
+     * Creates a new temporary conversation using the active provider.
+     */
+    suspend fun temporary(): String {
+        val activeProvider = providerRepository.getActiveProvider()
+            ?: throw IllegalStateException("No active provider configured. Please add a provider in settings.")
+
+        return createWithProvider(activeProvider, isEphemeral = true)
+    }
+
+    /**
      * Creates a conversation with the given provider.
      * Uses the last used model if the setting is enabled and a model was previously used,
      * otherwise falls back to the provider's default model.
      */
-    private suspend fun createWithProvider(provider: Provider, personaId: String? = null): String {
+    private suspend fun createWithProvider(
+        provider: Provider,
+        personaId: String? = null,
+        isEphemeral: Boolean = false
+    ): String {
         // Determine which model to use
         val modelToUse = if (appPreferences.rememberLastModel.first()) {
             val lastModel = appPreferences.lastUsedModel.first()
@@ -88,6 +102,7 @@ class CreateConversationUseCase @Inject constructor(
             title = Conversation.generateDefaultTitle(),
             providerId = provider.id,
             modelName = modelToUse,
+            isEphemeral = isEphemeral,
             personaId = personaId
         )
 

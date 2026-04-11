@@ -283,6 +283,7 @@ fun ChatScreen(
                     ChatTopBar(
                         title = state.conversationTitle,
                         icon = state.conversationIcon,
+                        isEphemeral = state.isEphemeral,
                         modelName = state.modelName,
                         providerName = state.providerName,
                         isStreaming = state.isStreaming,
@@ -301,6 +302,7 @@ fun ChatScreen(
                 else -> {
                     ChatTopBar(
                         title = "Chat",
+                        isEphemeral = false,
                         modelName = "",
                         providerName = "",
                         isStreaming = false,

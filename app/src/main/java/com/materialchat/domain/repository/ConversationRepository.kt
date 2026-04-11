@@ -60,6 +60,11 @@ interface ConversationRepository {
     suspend fun deleteConversation(conversationId: String)
 
     /**
+     * Deletes all ephemeral conversations.
+     */
+    suspend fun deleteEphemeralConversations()
+
+    /**
      * Updates the title of a conversation.
      *
      * @param conversationId The ID of the conversation

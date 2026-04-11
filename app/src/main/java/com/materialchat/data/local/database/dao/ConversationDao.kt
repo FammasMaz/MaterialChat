@@ -43,12 +43,19 @@ interface ConversationDao {
     suspend fun deleteById(conversationId: String)
 
     /**
+     * Delete all ephemeral conversations.
+     */
+    @Query("DELETE FROM conversations WHERE is_ephemeral = 1")
+    suspend fun deleteEphemeralConversations()
+
+    /**
      * Get all conversations as a Flow, ordered by updated_at (newest first).
      * Only includes conversations that have at least one message.
      */
     @Query("""
         SELECT c.* FROM conversations c
-        WHERE EXISTS (SELECT 1 FROM messages m WHERE m.conversation_id = c.id)
+        WHERE c.is_ephemeral = 0
+        AND EXISTS (SELECT 1 FROM messages m WHERE m.conversation_id = c.id)
         ORDER BY c.updated_at DESC
     """)
     fun getAllConversations(): Flow<List<ConversationEntity>>
@@ -59,7 +66,8 @@ interface ConversationDao {
      */
     @Query("""
         SELECT c.* FROM conversations c
-        WHERE EXISTS (SELECT 1 FROM messages m WHERE m.conversation_id = c.id)
+        WHERE c.is_ephemeral = 0
+        AND EXISTS (SELECT 1 FROM messages m WHERE m.conversation_id = c.id)
         ORDER BY c.updated_at DESC
     """)
     suspend fun getAllConversationsOnce(): List<ConversationEntity>
@@ -79,7 +87,7 @@ interface ConversationDao {
     /**
      * Get all conversations for a specific provider.
      */
-    @Query("SELECT * FROM conversations WHERE provider_id = :providerId ORDER BY updated_at DESC")
+    @Query("SELECT * FROM conversations WHERE provider_id = :providerId AND is_ephemeral = 0 ORDER BY updated_at DESC")
     fun getConversationsByProvider(providerId: String): Flow<List<ConversationEntity>>
 
     /**
@@ -121,7 +129,7 @@ interface ConversationDao {
     /**
      * Search conversations by title.
      */
-    @Query("SELECT * FROM conversations WHERE title LIKE '%' || :query || '%' ORDER BY updated_at DESC")
+    @Query("SELECT * FROM conversations WHERE is_ephemeral = 0 AND title LIKE '%' || :query || '%' ORDER BY updated_at DESC")
     fun searchConversations(query: String): Flow<List<ConversationEntity>>
 
     /**
@@ -131,7 +139,7 @@ interface ConversationDao {
      * @param query The search query string
      * @param limit Maximum number of results to return
      */
-    @Query("SELECT * FROM conversations WHERE title LIKE '%' || :query || '%' COLLATE NOCASE ORDER BY updated_at DESC LIMIT :limit")
+    @Query("SELECT * FROM conversations WHERE is_ephemeral = 0 AND title LIKE '%' || :query || '%' COLLATE NOCASE ORDER BY updated_at DESC LIMIT :limit")
     suspend fun searchConversationsByTitle(query: String, limit: Int): List<ConversationEntity>
 
     // ========== Branch Operations ==========
@@ -143,6 +151,7 @@ interface ConversationDao {
     @Query("""
         SELECT c.* FROM conversations c
         WHERE c.parent_id IS NULL
+        AND c.is_ephemeral = 0
         AND EXISTS (SELECT 1 FROM messages m WHERE m.conversation_id = c.id)
         ORDER BY c.updated_at DESC
     """)
@@ -182,6 +191,7 @@ interface ConversationDao {
     @Query("""
         SELECT c.* FROM conversations c
         WHERE c.parent_id IS NULL
+        AND c.is_ephemeral = 0
         AND EXISTS (SELECT 1 FROM messages m WHERE m.conversation_id = c.id)
         ORDER BY c.updated_at DESC
     """)
@@ -221,6 +231,7 @@ interface ConversationDao {
     @Query("""
         SELECT COUNT(*) FROM conversations c
         WHERE c.parent_id IS NULL
+        AND c.is_ephemeral = 0
         AND EXISTS (SELECT 1 FROM messages m WHERE m.conversation_id = c.id)
     """)
     suspend fun getRootConversationCount(): Int
@@ -233,6 +244,7 @@ interface ConversationDao {
         SELECT COUNT(*) FROM conversations c
         WHERE c.parent_id IS NULL
         AND c.created_at >= :timestamp
+        AND c.is_ephemeral = 0
         AND EXISTS (SELECT 1 FROM messages m WHERE m.conversation_id = c.id)
     """)
     suspend fun getConversationCountSince(timestamp: Long): Int

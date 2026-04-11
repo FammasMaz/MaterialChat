@@ -68,6 +68,10 @@ class ConversationRepositoryImpl @Inject constructor(
         conversationDao.deleteById(conversationId)
     }
 
+    override suspend fun deleteEphemeralConversations() {
+        conversationDao.deleteEphemeralConversations()
+    }
+
     override suspend fun updateConversationTitle(conversationId: String, title: String) {
         conversationDao.updateTitle(
             conversationId = conversationId,
@@ -282,6 +286,7 @@ class ConversationRepositoryImpl @Inject constructor(
 
                 val conversationEntity = conversationDao.getConversationById(conversationId) ?: continue
                 val conversation = conversationEntity.toDomain()
+                if (conversation.isEphemeral) continue
 
                 val matchingMessages = messages.take(3).map { message ->
                     MessageMatch(

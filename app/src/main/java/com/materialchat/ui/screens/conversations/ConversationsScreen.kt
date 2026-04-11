@@ -36,8 +36,11 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.outlined.AutoDelete
 import androidx.compose.material.icons.outlined.ChatBubbleOutline
 import androidx.compose.material.icons.outlined.SearchOff
+import androidx.compose.material3.AssistChip
+import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -265,6 +268,7 @@ fun ConversationsScreen(
                 listState = conversationListState,
                 onConversationClick = { viewModel.openConversation(it) },
                 onConversationDelete = { viewModel.deleteConversation(it) },
+                onCreateTemporaryConversation = { viewModel.createTemporaryConversation() },
                 onConversationSwipeRight = { conversation ->
                     renameConversation = conversation
                     renameText = conversation.title
@@ -670,6 +674,7 @@ private fun ConversationsContent(
     listState: androidx.compose.foundation.lazy.LazyListState,
     onConversationClick: (String) -> Unit,
     onConversationDelete: (com.materialchat.domain.model.Conversation) -> Unit,
+    onCreateTemporaryConversation: () -> Unit,
     onConversationSwipeRight: (com.materialchat.domain.model.Conversation) -> Unit = {},
     onRetry: () -> Unit,
     onNavigateToSettings: () -> Unit,
@@ -689,9 +694,16 @@ private fun ConversationsContent(
         ),
         color = MaterialTheme.colorScheme.surfaceContainerLow
     ) {
-        Box(
+        Column(
             modifier = Modifier.fillMaxSize()
         ) {
+            TemporaryChatCallout(
+                onClick = onCreateTemporaryConversation,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 12.dp)
+            )
+
             when (uiState) {
                 is ConversationsUiState.Loading -> {
                     LoadingContent()
@@ -731,6 +743,59 @@ private fun ConversationsContent(
                     )
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun TemporaryChatCallout(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(24.dp),
+        color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.7f)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 14.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Text(
+                    text = "Temporary chat",
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.onTertiaryContainer
+                )
+                Text(
+                    text = "Starts a private chat that deletes itself when you close it.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.8f)
+                )
+            }
+
+            AssistChip(
+                onClick = onClick,
+                label = { Text("Start") },
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Outlined.AutoDelete,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                },
+                colors = AssistChipDefaults.assistChipColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceBright,
+                    labelColor = MaterialTheme.colorScheme.onSurface,
+                    leadingIconContentColor = MaterialTheme.colorScheme.primary
+                )
+            )
         }
     }
 }

@@ -175,6 +175,26 @@ class ConversationsViewModel @Inject constructor(
     }
 
     /**
+     * Creates a new temporary conversation and navigates to it.
+     */
+    fun createTemporaryConversation() {
+        viewModelScope.launch {
+            try {
+                val conversationId = createConversationUseCase.temporary()
+                _events.emit(ConversationsEvent.NavigateToChat(conversationId))
+            } catch (e: IllegalStateException) {
+                _events.emit(ConversationsEvent.ShowNoProviderError)
+            } catch (e: Exception) {
+                _events.emit(
+                    ConversationsEvent.ShowSnackbar(
+                        message = e.message ?: "Failed to create temporary conversation"
+                    )
+                )
+            }
+        }
+    }
+
+    /**
      * Opens an existing conversation.
      */
     fun openConversation(conversationId: String) {

@@ -32,7 +32,8 @@ import androidx.room.PrimaryKey
     indices = [
         Index(value = ["provider_id"]),
         Index(value = ["updated_at"]),
-        Index(value = ["parent_id"])
+        Index(value = ["parent_id"]),
+        Index(value = ["is_ephemeral"])
     ]
 )
 data class ConversationEntity(
@@ -51,6 +52,9 @@ data class ConversationEntity(
 
     @ColumnInfo(name = "model_name")
     val modelName: String,
+
+    @ColumnInfo(name = "is_ephemeral", defaultValue = "0")
+    val isEphemeral: Boolean = false,
 
     @ColumnInfo(name = "parent_id", defaultValue = "NULL")
     val parentId: String? = null,

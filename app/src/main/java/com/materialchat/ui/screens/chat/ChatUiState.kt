@@ -44,6 +44,7 @@ sealed interface ChatUiState {
         val conversationId: String,
         val conversationTitle: String,
         val conversationIcon: String? = null,
+        val isEphemeral: Boolean = false,
         val providerName: String,
         val modelName: String,
         val messages: List<MessageUiItem>,

@@ -20,6 +20,7 @@ data class Conversation(
     val icon: String? = null,
     val providerId: String,
     val modelName: String,
+    val isEphemeral: Boolean = false,
     val parentId: String? = null,
     val branchSourceMessageId: String? = null,
     val personaId: String? = null,

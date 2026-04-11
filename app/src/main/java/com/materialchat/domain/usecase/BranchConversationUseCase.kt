@@ -62,6 +62,7 @@ class BranchConversationUseCase @Inject constructor(
             icon = null, // AI will generate new icon based on branch content
             providerId = sourceConversation.providerId,
             modelName = sourceConversation.modelName,
+            isEphemeral = sourceConversation.isEphemeral,
             parentId = parentId,
             branchSourceMessageId = branchSourceMessageId ?: sourceConversation.branchSourceMessageId
         )

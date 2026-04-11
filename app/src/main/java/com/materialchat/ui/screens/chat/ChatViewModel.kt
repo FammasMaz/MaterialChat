@@ -293,6 +293,7 @@ class ChatViewModel @Inject constructor(
                             conversationId = activeConversationId.value,
                             conversationTitle = conversation.title,
                             conversationIcon = conversation.icon,
+                            isEphemeral = conversation.isEphemeral,
                             providerName = providerName,
                             modelName = currentModelName,
                             messages = messageItems,
@@ -785,6 +786,13 @@ class ChatViewModel @Inject constructor(
      */
     fun navigateBack() {
         viewModelScope.launch {
+            val conversation = getConversationsUseCase.getConversation(activeConversationId.value)
+            if (conversation?.isEphemeral == true) {
+                cancelStreaming()
+                runCatching {
+                    conversationRepository.deleteConversation(conversation.parentId ?: conversation.id)
+                }
+            }
             _events.emit(ChatEvent.NavigateBack)
         }
     }

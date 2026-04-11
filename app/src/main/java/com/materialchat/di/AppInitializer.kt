@@ -1,6 +1,7 @@
 package com.materialchat.di
 
 import com.materialchat.data.local.preferences.AppPreferences
+import com.materialchat.domain.repository.ConversationRepository
 import com.materialchat.domain.repository.PersonaRepository
 import com.materialchat.domain.repository.ProviderRepository
 import com.materialchat.domain.usecase.GetBuiltinPersonasUseCase
@@ -19,6 +20,7 @@ import javax.inject.Singleton
 @Singleton
 class AppInitializer @Inject constructor(
     private val providerRepository: ProviderRepository,
+    private val conversationRepository: ConversationRepository,
     private val personaRepository: PersonaRepository,
     private val getBuiltinPersonasUseCase: GetBuiltinPersonasUseCase,
     private val appPreferences: AppPreferences
@@ -35,6 +37,8 @@ class AppInitializer @Inject constructor(
         if (!isFirstLaunchComplete) {
             performFirstLaunchSetup()
         }
+
+        conversationRepository.deleteEphemeralConversations()
 
         // Seed built-in personas if missing (covers fresh installs AND upgrades)
         seedBuiltinPersonasIfNeeded()
