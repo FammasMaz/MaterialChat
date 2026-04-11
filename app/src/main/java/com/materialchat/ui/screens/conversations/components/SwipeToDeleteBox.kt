@@ -3,17 +3,27 @@ package com.materialchat.ui.screens.conversations.components
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -39,10 +49,7 @@ import kotlin.math.absoluteValue
 import kotlin.math.roundToInt
 
 /**
- * Visual configuration for the primary left-swipe action.
- *
- * When provided, the left swipe will trigger this action instead of delete.
- * The full-width color wash and icon will use these values.
+ * Visual configuration for the secondary left-swipe action (e.g. Archive/Restore).
  */
 data class SwipeActionSpec(
     val label: String,
@@ -66,14 +73,12 @@ data class SwipeCornerSpec(
 /**
  * M3 Expressive swipe-to-action container for conversation rows.
  *
- * Restores the original M3 design: full-width color wash background with a single
- * animated icon. Swiping past the threshold triggers the action and springs back.
- *
- * - Left swipe: executes [trailingAction] if provided, otherwise [onDelete]
- * - Right swipe: executes [onSwipeRight] (e.g. rename)
+ * Left swipe reveals two action buttons (Delete + optional trailing action like Archive).
+ * Content snaps open past threshold, each button is tappable with M3 ripple.
+ * Right swipe triggers [onSwipeRight] with the original spring-back gesture.
  *
  * Animation system:
- * - SPATIAL springs (can bounce): position, scale, icon padding
+ * - SPATIAL springs (can bounce): position, scale, shape morph
  * - EFFECTS springs (no bounce): color, opacity
  */
 @Composable
@@ -91,121 +96,40 @@ fun SwipeToDeleteBox(
     val density = LocalDensity.current
     val haptics = rememberHapticFeedback()
 
-    // Track the horizontal offset of the content
     var offsetX by remember { mutableFloatStateOf(0f) }
     var isDragging by remember { mutableStateOf(false) }
-    var shouldTriggerLeftAction by remember { mutableStateOf(false) }
-    var shouldTriggerRightAction by remember { mutableStateOf(false) }
     var hasTriggeredThresholdHaptic by remember { mutableStateOf(false) }
 
-    // Threshold for triggering action (in dp)
-    val thresholdDp = 100.dp
-    val thresholdPx = with(density) { thresholdDp.toPx() }
+    // Left swipe: snap-open reveal for action buttons
+    val actionWidth = 80.dp
+    val actionWidthPx = with(density) { actionWidth.toPx() }
+    val actionCount = if (trailingAction != null) 2 else 1
+    val totalActionsWidthPx = actionWidthPx * actionCount
+    val snapThresholdPx = totalActionsWidthPx * 0.4f
 
-    // Maximum swipe distance
-    val maxSwipeDp = 150.dp
-    val maxSwipePx = with(density) { maxSwipeDp.toPx() }
+    // Right swipe: spring-back gesture (edit/rename)
+    val rightThresholdPx = with(density) { 100.dp.toPx() }
+    val rightMaxPx = with(density) { 150.dp.toPx() }
 
-    // M3 Expressive: SPATIAL spring for position (can bounce)
-    // Springs back to 0 when not dragging — triggers action then resets
     val animatedOffsetX by animateFloatAsState(
-        targetValue = if (isDragging) offsetX else 0f,
+        targetValue = offsetX,
         animationSpec = ExpressiveMotion.Spatial.default(),
         label = "offsetX"
     )
 
-    // Calculate swipe progress (0 to 1)
-    val swipeProgress = (animatedOffsetX.absoluteValue / thresholdPx).coerceIn(0f, 1f)
+    // Threshold feedback
+    val thresholdReached = when {
+        animatedOffsetX < 0f -> animatedOffsetX.absoluteValue >= snapThresholdPx
+        animatedOffsetX > 0f -> animatedOffsetX >= rightThresholdPx
+        else -> false
+    }
 
-    // Trigger haptic feedback when crossing the threshold
-    LaunchedEffect(swipeProgress > 0.9f) {
-        if (swipeProgress > 0.9f && !hasTriggeredThresholdHaptic) {
+    LaunchedEffect(thresholdReached) {
+        if (thresholdReached && !hasTriggeredThresholdHaptic) {
             haptics.perform(HapticPattern.SWIPE_THRESHOLD, hapticsEnabled)
             hasTriggeredThresholdHaptic = true
-        } else if (swipeProgress <= 0.9f) {
+        } else if (!thresholdReached) {
             hasTriggeredThresholdHaptic = false
-        }
-    }
-
-    // === LEFT SWIPE — trailingAction (archive/restore) or delete ===
-
-    // M3 Expressive: EFFECTS spring for color (no bounce!)
-    val leftBackgroundColor by animateColorAsState(
-        targetValue = if (trailingAction != null) {
-            // Archive/Restore: consistent container color
-            trailingAction.containerColor
-        } else {
-            // Delete: errorContainer → error at threshold
-            if (swipeProgress > 0.9f) MaterialTheme.colorScheme.error
-            else MaterialTheme.colorScheme.errorContainer
-        },
-        animationSpec = ExpressiveMotion.Effects.color(),
-        label = "leftBgColor"
-    )
-
-    val leftIconColor by animateColorAsState(
-        targetValue = if (trailingAction != null) {
-            trailingAction.contentColor
-        } else {
-            if (swipeProgress > 0.9f) MaterialTheme.colorScheme.onError
-            else MaterialTheme.colorScheme.onErrorContainer
-        },
-        animationSpec = ExpressiveMotion.Effects.color(),
-        label = "leftIconColor"
-    )
-
-    val leftIcon = trailingAction?.icon ?: Icons.Outlined.Delete
-    val leftContentDescription = trailingAction?.contentDescription ?: "Delete"
-
-    // === RIGHT SWIPE — edit ===
-
-    val rightBackgroundColor by animateColorAsState(
-        targetValue = if (swipeProgress > 0.9f) MaterialTheme.colorScheme.primaryContainer
-        else MaterialTheme.colorScheme.secondaryContainer,
-        animationSpec = ExpressiveMotion.Effects.color(),
-        label = "rightBgColor"
-    )
-
-    val rightIconColor by animateColorAsState(
-        targetValue = if (swipeProgress > 0.9f) MaterialTheme.colorScheme.onPrimaryContainer
-        else MaterialTheme.colorScheme.onSecondaryContainer,
-        animationSpec = ExpressiveMotion.Effects.color(),
-        label = "rightIconColor"
-    )
-
-    // M3 Expressive: SPATIAL spring for scale (bouncy feedback)
-    val iconScale by animateFloatAsState(
-        targetValue = if (swipeProgress > 0.5f) 1.2f else 0.8f + (swipeProgress * 0.4f),
-        animationSpec = ExpressiveMotion.Spatial.playful(),
-        label = "iconScale"
-    )
-
-    // M3 Expressive: EFFECTS spring for padding (smooth)
-    val iconPadding by animateFloatAsState(
-        targetValue = if (swipeProgress > 0.5f) 24f else 16f,
-        animationSpec = ExpressiveMotion.Effects.elevation(),
-        label = "iconPadding"
-    )
-
-    // Trigger left action when swipe is complete
-    LaunchedEffect(shouldTriggerLeftAction) {
-        if (shouldTriggerLeftAction) {
-            if (trailingAction != null) {
-                trailingAction.onClick()
-            } else {
-                onDelete()
-            }
-            shouldTriggerLeftAction = false
-            offsetX = 0f
-        }
-    }
-
-    // Trigger right-swipe action
-    LaunchedEffect(shouldTriggerRightAction) {
-        if (shouldTriggerRightAction) {
-            onSwipeRight?.invoke()
-            shouldTriggerRightAction = false
-            offsetX = 0f
         }
     }
 
@@ -216,7 +140,7 @@ fun SwipeToDeleteBox(
         animationSpec = ExpressiveMotion.Spatial.shapeMorph(),
         label = "shapeProgress"
     )
-    val shapeProgress = shapeProgressRaw.coerceIn(0f, 1f) // Avoid negative corner sizes on overshoot.
+    val shapeProgress = shapeProgressRaw.coerceIn(0f, 1f)
     val currentShape = RoundedCornerShape(
         topStart = lerpDp(baseCorners.topStart, activeCorners.topStart, shapeProgress),
         topEnd = lerpDp(baseCorners.topEnd, activeCorners.topEnd, shapeProgress),
@@ -224,46 +148,109 @@ fun SwipeToDeleteBox(
         bottomEnd = lerpDp(baseCorners.bottomEnd, activeCorners.bottomEnd, shapeProgress)
     )
 
+    // Right swipe progress for icon animation
+    val rightProgress = if (animatedOffsetX > 0f) {
+        (animatedOffsetX / rightThresholdPx).coerceIn(0f, 1f)
+    } else 0f
+
+    val rightIconScale by animateFloatAsState(
+        targetValue = if (rightProgress > 0.5f) 1.2f else 0.8f + (rightProgress * 0.4f),
+        animationSpec = ExpressiveMotion.Spatial.playful(),
+        label = "rightIconScale"
+    )
+
+    val rightBgColor by animateColorAsState(
+        targetValue = if (rightProgress > 0.9f) MaterialTheme.colorScheme.primaryContainer
+        else MaterialTheme.colorScheme.secondaryContainer,
+        animationSpec = ExpressiveMotion.Effects.color(),
+        label = "rightBg"
+    )
+
+    val rightIconColor by animateColorAsState(
+        targetValue = if (rightProgress > 0.9f) MaterialTheme.colorScheme.onPrimaryContainer
+        else MaterialTheme.colorScheme.onSecondaryContainer,
+        animationSpec = ExpressiveMotion.Effects.color(),
+        label = "rightIcon"
+    )
+
+    val rightIconPadding by animateFloatAsState(
+        targetValue = if (rightProgress > 0.5f) 24f else 16f,
+        animationSpec = ExpressiveMotion.Effects.elevation(),
+        label = "rightIconPad"
+    )
+
+    // Reveal progress for left swipe action icons
+    val revealProgress = if (animatedOffsetX < 0f) {
+        (animatedOffsetX.absoluteValue / totalActionsWidthPx).coerceIn(0f, 1f)
+    } else 0f
+
+    val actionScale by animateFloatAsState(
+        targetValue = 0.8f + (revealProgress * 0.2f),
+        animationSpec = ExpressiveMotion.Spatial.playful(),
+        label = "actionScale"
+    )
+
     Box(modifier = modifier) {
-        // Background with icon — only show when swiping left
+        // Left swipe: reveal action buttons (Delete + Archive)
         if (animatedOffsetX < -1f) {
-            Box(
+            Row(
                 modifier = Modifier
-                    .matchParentSize()
+                    .fillMaxSize()
                     .clip(currentShape)
-                    .background(leftBackgroundColor),
-                contentAlignment = Alignment.CenterEnd
+                    .background(MaterialTheme.colorScheme.errorContainer),
+                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                if (swipeProgress > 0.1f) {
-                    Icon(
-                        imageVector = leftIcon,
-                        contentDescription = leftContentDescription,
-                        tint = leftIconColor,
-                        modifier = Modifier
-                            .padding(end = iconPadding.dp)
-                            .scale(iconScale)
+                // Delete button (closer to content, primary action)
+                SwipeRevealAction(
+                    icon = Icons.Outlined.Delete,
+                    label = "Delete",
+                    contentDescription = "Delete",
+                    containerColor = MaterialTheme.colorScheme.errorContainer,
+                    contentColor = MaterialTheme.colorScheme.onErrorContainer,
+                    scale = actionScale,
+                    width = actionWidth,
+                    onClick = {
+                        offsetX = 0f
+                        onDelete()
+                    }
+                )
+                // Archive/Restore button (trailing edge)
+                trailingAction?.let { action ->
+                    SwipeRevealAction(
+                        icon = action.icon,
+                        label = action.label,
+                        contentDescription = action.contentDescription,
+                        containerColor = action.containerColor,
+                        contentColor = action.contentColor,
+                        scale = actionScale,
+                        width = actionWidth,
+                        onClick = {
+                            offsetX = 0f
+                            action.onClick()
+                        }
                     )
                 }
             }
         }
 
-        // Right-swipe background with edit icon
+        // Right swipe: edit icon (original M3 color wash design)
         if (animatedOffsetX > 1f && onSwipeRight != null) {
             Box(
                 modifier = Modifier
                     .matchParentSize()
                     .clip(currentShape)
-                    .background(rightBackgroundColor),
+                    .background(rightBgColor),
                 contentAlignment = Alignment.CenterStart
             ) {
-                if (swipeProgress > 0.1f) {
+                if (rightProgress > 0.1f) {
                     Icon(
                         imageVector = Icons.Outlined.Edit,
                         contentDescription = "Edit title",
                         tint = rightIconColor,
                         modifier = Modifier
-                            .padding(start = iconPadding.dp)
-                            .scale(iconScale)
+                            .padding(start = rightIconPadding.dp)
+                            .scale(rightIconScale)
                     )
                 }
             }
@@ -286,12 +273,21 @@ fun SwipeToDeleteBox(
                         onDragEnd = {
                             isDragging = false
                             haptics.perform(HapticPattern.GESTURE_END, hapticsEnabled)
-                            if (offsetX < 0 && offsetX.absoluteValue > thresholdPx) {
-                                shouldTriggerLeftAction = true
-                            } else if (offsetX > 0 && offsetX > thresholdPx) {
-                                shouldTriggerRightAction = true
-                            } else {
-                                offsetX = 0f
+                            offsetX = when {
+                                // Left swipe: snap open if past threshold, else close
+                                offsetX < 0f -> {
+                                    if (offsetX.absoluteValue > snapThresholdPx) {
+                                        -totalActionsWidthPx
+                                    } else {
+                                        0f
+                                    }
+                                }
+                                // Right swipe: trigger action + spring back
+                                offsetX > 0f && onSwipeRight != null && offsetX > rightThresholdPx -> {
+                                    onSwipeRight()
+                                    0f
+                                }
+                                else -> 0f
                             }
                         },
                         onDragCancel = {
@@ -301,18 +297,65 @@ fun SwipeToDeleteBox(
                         onHorizontalDrag = { change, dragAmount ->
                             change.consume()
                             val newOffset = offsetX + dragAmount
-                            if (newOffset <= 0) {
-                                // Left swipe (archive/delete)
-                                offsetX = newOffset.coerceIn(-maxSwipePx, 0f)
-                            } else if (onSwipeRight != null) {
-                                // Right swipe (edit) - only if actions are provided
-                                offsetX = newOffset.coerceIn(0f, maxSwipePx)
+                            offsetX = when {
+                                newOffset < 0f -> newOffset.coerceIn(-totalActionsWidthPx * 1.1f, 0f)
+                                onSwipeRight != null -> newOffset.coerceIn(0f, rightMaxPx)
+                                else -> newOffset.coerceIn(-totalActionsWidthPx * 1.1f, 0f)
                             }
                         }
                     )
                 }
         ) {
             content()
+        }
+    }
+}
+
+/**
+ * Single action button revealed behind a swiped conversation row.
+ *
+ * M3 Expressive styling: 24dp icon, labelSmall text, M3 ripple indication,
+ * 4dp vertical spacing between icon and label.
+ */
+@Composable
+private fun SwipeRevealAction(
+    icon: ImageVector,
+    label: String,
+    contentDescription: String,
+    containerColor: Color,
+    contentColor: Color,
+    scale: Float,
+    width: Dp,
+    onClick: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxHeight()
+            .width(width)
+            .background(containerColor)
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = ripple(color = contentColor)
+            ) { onClick() },
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = contentDescription,
+                tint = contentColor,
+                modifier = Modifier
+                    .size(24.dp)
+                    .scale(scale)
+            )
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelSmall,
+                color = contentColor
+            )
         }
     }
 }

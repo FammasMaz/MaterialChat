@@ -18,7 +18,13 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.AutoDelete
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -286,6 +292,23 @@ fun MaterialChatApp(
                 horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally),
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                // Temporary chat button — separate, left of toolbar
+                Surface(
+                    onClick = { mainViewModel.createTemporaryConversation() },
+                    shape = RoundedCornerShape(16.dp),
+                    color = MaterialTheme.colorScheme.tertiaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
+                    shadowElevation = 3.dp,
+                    modifier = Modifier.size(48.dp)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = Icons.Outlined.AutoDelete,
+                            contentDescription = "Temporary Chat"
+                        )
+                    }
+                }
+
                 MaterialChatNavBar(
                     currentRoute = currentRoute,
                     onTabSelected = { tab ->
@@ -305,7 +328,6 @@ fun MaterialChatApp(
                         }
                     },
                     onNewChat = { mainViewModel.createNewConversation() },
-                    onNewTemporaryChat = { mainViewModel.createTemporaryConversation() },
                     onNewChatLongPress = { mainViewModel.showPersonaPicker() },
                     expanded = isToolbarExpanded
                 )
