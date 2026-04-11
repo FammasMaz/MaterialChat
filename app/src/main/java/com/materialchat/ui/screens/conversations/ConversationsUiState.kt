@@ -38,6 +38,9 @@ sealed interface ConversationsUiState {
     data class Success(
         val conversations: List<ConversationUiItem>,
         val conversationGroups: List<ConversationGroupUiItem> = emptyList(),
+        val archivedConversations: List<ConversationUiItem> = emptyList(),
+        val archivedConversationGroups: List<ConversationGroupUiItem> = emptyList(),
+        val selectedFilter: ConversationListFilter = ConversationListFilter.ACTIVE,
         val activeProvider: Provider? = null,
         val deletedConversation: Conversation? = null,
         val hapticsEnabled: Boolean = true
@@ -51,6 +54,11 @@ sealed interface ConversationsUiState {
     data class Error(
         val message: String
     ) : ConversationsUiState
+}
+
+enum class ConversationListFilter {
+    ACTIVE,
+    ARCHIVED
 }
 
 /**

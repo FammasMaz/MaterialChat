@@ -72,6 +72,33 @@ class ConversationRepositoryImpl @Inject constructor(
         conversationDao.deleteEphemeralConversations()
     }
 
+    override fun observeArchivedConversations(): Flow<List<Conversation>> {
+        return conversationDao.getArchivedConversations().map { entities ->
+            entities.toConversationDomainList()
+        }
+    }
+
+    override suspend fun archiveConversation(conversationId: String) {
+        val rootConversationId = resolveThreadRootId(conversationId) ?: return
+        val now = System.currentTimeMillis()
+        conversationDao.updateArchivedStateForTree(
+            rootConversationId = rootConversationId,
+            archived = true,
+            archiveTime = now,
+            updatedAt = now
+        )
+    }
+
+    override suspend fun unarchiveConversation(conversationId: String) {
+        val rootConversationId = resolveThreadRootId(conversationId) ?: return
+        conversationDao.updateArchivedStateForTree(
+            rootConversationId = rootConversationId,
+            archived = false,
+            archiveTime = null,
+            updatedAt = System.currentTimeMillis()
+        )
+    }
+
     override suspend fun updateConversationTitle(conversationId: String, title: String) {
         conversationDao.updateTitle(
             conversationId = conversationId,
@@ -389,6 +416,11 @@ class ConversationRepositoryImpl @Inject constructor(
 
     override suspend fun updateMessageWebSearchMetadata(messageId: String, metadata: String?) {
         messageDao.updateWebSearchMetadata(messageId, metadata)
+    }
+
+    private suspend fun resolveThreadRootId(conversationId: String): String? {
+        val conversation = conversationDao.getConversationById(conversationId) ?: return null
+        return conversation.parentId ?: conversation.id
     }
 }
 

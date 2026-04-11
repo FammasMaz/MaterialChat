@@ -294,6 +294,7 @@ class ChatViewModel @Inject constructor(
                             conversationTitle = conversation.title,
                             conversationIcon = conversation.icon,
                             isEphemeral = conversation.isEphemeral,
+                            isArchived = conversation.isArchived,
                             providerName = providerName,
                             modelName = currentModelName,
                             messages = messageItems,

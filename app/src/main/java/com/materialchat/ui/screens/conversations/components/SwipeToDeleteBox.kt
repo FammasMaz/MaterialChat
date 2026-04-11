@@ -2,19 +2,27 @@ package com.materialchat.ui.screens.conversations.components
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -27,10 +35,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.materialchat.ui.components.HapticPattern
 import com.materialchat.ui.components.rememberHapticFeedback
@@ -39,16 +48,19 @@ import kotlin.math.absoluteValue
 import kotlin.math.roundToInt
 
 /**
- * A swipe-to-delete container that wraps content and handles swipe gestures.
- *
- * When the user swipes left beyond the threshold, the onDelete callback is triggered.
- * The background reveals a delete icon as the content is swiped.
- *
- * @param onDelete Callback when the item should be deleted
- * @param modifier Modifier for the container
- * @param enabled Whether swipe-to-delete is enabled
- * @param hapticsEnabled Whether haptic feedback is enabled
- * @param content The content to display
+ * Visual configuration for the auxiliary swipe action shown next to delete.
+ */
+data class SwipeActionSpec(
+    val label: String,
+    val contentDescription: String,
+    val icon: ImageVector,
+    val containerColor: Color,
+    val contentColor: Color,
+    val onClick: () -> Unit
+)
+
+/**
+ * Corner specification used to morph row corners during swipe.
  */
 data class SwipeCornerSpec(
     val topStart: Dp,
@@ -57,6 +69,11 @@ data class SwipeCornerSpec(
     val bottomEnd: Dp
 )
 
+/**
+ * Swipe container for conversation rows.
+ *
+ * Left swipe reveals trailing actions. Right swipe keeps the existing quick rename gesture.
+ */
 @Composable
 fun SwipeToDeleteBox(
     onDelete: () -> Unit,
@@ -65,98 +82,44 @@ fun SwipeToDeleteBox(
     hapticsEnabled: Boolean = true,
     baseCorners: SwipeCornerSpec = SwipeCornerSpec(20.dp, 20.dp, 20.dp, 20.dp),
     activeCorners: SwipeCornerSpec = SwipeCornerSpec(20.dp, 20.dp, 20.dp, 20.dp),
+    trailingAction: SwipeActionSpec? = null,
     onSwipeRight: (() -> Unit)? = null,
     content: @Composable () -> Unit
 ) {
     val density = LocalDensity.current
     val haptics = rememberHapticFeedback()
 
-    // Track the horizontal offset of the content
     var offsetX by remember { mutableFloatStateOf(0f) }
     var isDragging by remember { mutableStateOf(false) }
-    var shouldDelete by remember { mutableStateOf(false) }
-    var shouldTriggerRightAction by remember { mutableStateOf(false) }
     var hasTriggeredThresholdHaptic by remember { mutableStateOf(false) }
 
-    // Threshold for triggering delete (in dp)
-    val deleteThresholdDp = 100.dp
-    val deleteThresholdPx = with(density) { deleteThresholdDp.toPx() }
+    val actionWidth = 88.dp
+    val actionWidthPx = with(density) { actionWidth.toPx() }
+    val trailingActionCount = if (trailingAction != null) 2 else 1
+    val trailingActionsWidthPx = actionWidthPx * trailingActionCount
+    val leftRevealThresholdPx = trailingActionsWidthPx * 0.45f
 
-    // Maximum swipe distance
-    val maxSwipeDp = 150.dp
-    val maxSwipePx = with(density) { maxSwipeDp.toPx() }
+    val rightActionThresholdPx = with(density) { 100.dp.toPx() }
+    val rightMaxSwipePx = with(density) { 150.dp.toPx() }
 
-    // M3 Expressive: SPATIAL spring for position (can bounce)
     val animatedOffsetX by animateFloatAsState(
-        targetValue = if (isDragging) offsetX else 0f,
+        targetValue = offsetX,
         animationSpec = ExpressiveMotion.Spatial.default(),
         label = "offsetX"
     )
 
-    // Calculate delete progress (0 to 1)
-    val deleteProgress = (animatedOffsetX.absoluteValue / deleteThresholdPx).coerceIn(0f, 1f)
+    val thresholdReached = when {
+        animatedOffsetX < 0f -> animatedOffsetX.absoluteValue >= leftRevealThresholdPx
+        animatedOffsetX > 0f -> animatedOffsetX >= rightActionThresholdPx
+        else -> false
+    }
 
-    // Trigger haptic feedback when crossing the threshold
-    LaunchedEffect(deleteProgress > 0.9f) {
-        if (deleteProgress > 0.9f && !hasTriggeredThresholdHaptic) {
+    LaunchedEffect(thresholdReached) {
+        if (thresholdReached && !hasTriggeredThresholdHaptic) {
             haptics.perform(HapticPattern.SWIPE_THRESHOLD, hapticsEnabled)
             hasTriggeredThresholdHaptic = true
-        } else if (deleteProgress <= 0.9f) {
+        } else if (!thresholdReached) {
             hasTriggeredThresholdHaptic = false
-        }
-    }
-
-    // M3 Expressive: EFFECTS spring for color (no bounce!)
-    val backgroundColor by animateColorAsState(
-        targetValue = if (deleteProgress > 0.9f) {
-            MaterialTheme.colorScheme.error
-        } else {
-            MaterialTheme.colorScheme.errorContainer
-        },
-        animationSpec = ExpressiveMotion.Effects.color(),
-        label = "backgroundColor"
-    )
-
-    // M3 Expressive: SPATIAL spring for scale (bouncy feedback)
-    val iconScale by animateFloatAsState(
-        targetValue = if (deleteProgress > 0.5f) 1.2f else 0.8f + (deleteProgress * 0.4f),
-        animationSpec = ExpressiveMotion.Spatial.playful(),
-        label = "iconScale"
-    )
-
-    // M3 Expressive: EFFECTS spring for icon color (no bounce)
-    val iconColor by animateColorAsState(
-        targetValue = if (deleteProgress > 0.9f) {
-            MaterialTheme.colorScheme.onError
-        } else {
-            MaterialTheme.colorScheme.onErrorContainer
-        },
-        animationSpec = ExpressiveMotion.Effects.color(),
-        label = "iconColor"
-    )
-
-    // M3 Expressive: EFFECTS spring for padding (smooth)
-    val iconPadding by animateFloatAsState(
-        targetValue = if (deleteProgress > 0.5f) 24f else 16f,
-        animationSpec = ExpressiveMotion.Effects.elevation(),
-        label = "iconPadding"
-    )
-
-    // Trigger delete when swipe is complete
-    LaunchedEffect(shouldDelete) {
-        if (shouldDelete) {
-            onDelete()
-            shouldDelete = false
-            offsetX = 0f
-        }
-    }
-
-    // Trigger right-swipe actions
-    LaunchedEffect(shouldTriggerRightAction) {
-        if (shouldTriggerRightAction) {
-            onSwipeRight?.invoke()
-            shouldTriggerRightAction = false
-            offsetX = 0f
         }
     }
 
@@ -166,7 +129,7 @@ fun SwipeToDeleteBox(
         animationSpec = ExpressiveMotion.Spatial.shapeMorph(),
         label = "shapeProgress"
     )
-    val shapeProgress = shapeProgressRaw.coerceIn(0f, 1f) // Avoid negative corner sizes on overshoot.
+    val shapeProgress = shapeProgressRaw.coerceIn(0f, 1f)
     val currentShape = RoundedCornerShape(
         topStart = lerpDp(baseCorners.topStart, activeCorners.topStart, shapeProgress),
         topEnd = lerpDp(baseCorners.topEnd, activeCorners.topEnd, shapeProgress),
@@ -174,62 +137,100 @@ fun SwipeToDeleteBox(
         bottomEnd = lerpDp(baseCorners.bottomEnd, activeCorners.bottomEnd, shapeProgress)
     )
 
+    val actionProgress = when {
+        animatedOffsetX < 0f -> (animatedOffsetX.absoluteValue / trailingActionsWidthPx).coerceIn(0f, 1f)
+        animatedOffsetX > 0f -> (animatedOffsetX / rightActionThresholdPx).coerceIn(0f, 1f)
+        else -> 0f
+    }
+
+    val actionScale by animateFloatAsState(
+        targetValue = 0.85f + (actionProgress * 0.15f),
+        animationSpec = ExpressiveMotion.Spatial.playful(),
+        label = "actionScale"
+    )
+
+    val rightSwipeBackgroundColor by animateColorAsState(
+        targetValue = if (actionProgress > 0.9f) {
+            MaterialTheme.colorScheme.primaryContainer
+        } else {
+            MaterialTheme.colorScheme.secondaryContainer
+        },
+        animationSpec = ExpressiveMotion.Effects.color(),
+        label = "rightSwipeBackground"
+    )
+
     Box(modifier = modifier) {
-        // Background with delete icon - only show when swiping left
         if (animatedOffsetX < -1f) {
-            Box(
+            Row(
                 modifier = Modifier
-                    .matchParentSize()
+                    .fillMaxSize()
                     .clip(currentShape)
-                    .background(backgroundColor),
-                contentAlignment = Alignment.CenterEnd
+                    .background(MaterialTheme.colorScheme.surfaceContainerHighest),
+                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                if (deleteProgress > 0.1f) {
-                    Icon(
-                        imageVector = Icons.Outlined.Delete,
-                        contentDescription = "Delete",
-                        tint = iconColor,
-                        modifier = Modifier
-                            .padding(end = iconPadding.dp)
-                            .scale(iconScale)
+                trailingAction?.let { action ->
+                    SwipeBackgroundAction(
+                        label = action.label,
+                        contentDescription = action.contentDescription,
+                        icon = action.icon,
+                        containerColor = action.containerColor,
+                        contentColor = action.contentColor,
+                        progress = actionProgress,
+                        scale = actionScale,
+                        width = actionWidth,
+                        onClick = {
+                            offsetX = 0f
+                            action.onClick()
+                        }
                     )
                 }
+                SwipeBackgroundAction(
+                    label = "Delete",
+                    contentDescription = "Delete",
+                    icon = Icons.Outlined.Delete,
+                    containerColor = MaterialTheme.colorScheme.errorContainer,
+                    contentColor = MaterialTheme.colorScheme.onErrorContainer,
+                    progress = actionProgress,
+                    scale = actionScale,
+                    width = actionWidth,
+                    onClick = {
+                        offsetX = 0f
+                        onDelete()
+                    }
+                )
             }
         }
 
-        // Right-swipe background with edit icon
         if (animatedOffsetX > 1f && onSwipeRight != null) {
             Box(
                 modifier = Modifier
-                    .matchParentSize()
+                    .fillMaxSize()
                     .clip(currentShape)
-                    .background(
-                        if (deleteProgress > 0.9f) MaterialTheme.colorScheme.primaryContainer
-                        else MaterialTheme.colorScheme.secondaryContainer
-                    ),
+                    .background(rightSwipeBackgroundColor),
                 contentAlignment = Alignment.CenterStart
             ) {
-                if (deleteProgress > 0.1f) {
-                    Icon(
-                        imageVector = Icons.Outlined.Edit,
-                        contentDescription = "Edit title",
-                        tint = if (deleteProgress > 0.9f) MaterialTheme.colorScheme.onPrimaryContainer
-                               else MaterialTheme.colorScheme.onSecondaryContainer,
-                        modifier = Modifier
-                            .padding(start = iconPadding.dp)
-                            .scale(iconScale)
-                    )
-                }
+                Icon(
+                    imageVector = Icons.Outlined.Edit,
+                    contentDescription = "Edit title",
+                    tint = if (actionProgress > 0.9f) {
+                        MaterialTheme.colorScheme.onPrimaryContainer
+                    } else {
+                        MaterialTheme.colorScheme.onSecondaryContainer
+                    },
+                    modifier = Modifier
+                        .padding(start = 20.dp)
+                        .scale(actionScale)
+                )
             }
         }
 
-        // Foreground content
         Box(
             modifier = Modifier
                 .offset { IntOffset(animatedOffsetX.roundToInt(), 0) }
                 .fillMaxSize()
                 .clip(currentShape)
-                .pointerInput(enabled) {
+                .pointerInput(enabled, trailingAction, onSwipeRight) {
                     if (!enabled) return@pointerInput
 
                     detectHorizontalDragGestures(
@@ -240,12 +241,19 @@ fun SwipeToDeleteBox(
                         onDragEnd = {
                             isDragging = false
                             haptics.perform(HapticPattern.GESTURE_END, hapticsEnabled)
-                            if (offsetX < 0 && offsetX.absoluteValue > deleteThresholdPx) {
-                                shouldDelete = true
-                            } else if (offsetX > 0 && offsetX > deleteThresholdPx) {
-                                shouldTriggerRightAction = true
-                            } else {
-                                offsetX = 0f
+                            offsetX = when {
+                                offsetX < 0f -> {
+                                    if (offsetX.absoluteValue > leftRevealThresholdPx) {
+                                        -trailingActionsWidthPx
+                                    } else {
+                                        0f
+                                    }
+                                }
+                                offsetX > 0f && onSwipeRight != null && offsetX > rightActionThresholdPx -> {
+                                    onSwipeRight()
+                                    0f
+                                }
+                                else -> 0f
                             }
                         },
                         onDragCancel = {
@@ -255,18 +263,57 @@ fun SwipeToDeleteBox(
                         onHorizontalDrag = { change, dragAmount ->
                             change.consume()
                             val newOffset = offsetX + dragAmount
-                            if (newOffset <= 0) {
-                                // Left swipe (delete)
-                                offsetX = newOffset.coerceIn(-maxSwipePx, 0f)
-                            } else if (onSwipeRight != null) {
-                                // Right swipe (edit/retry) - only if actions are provided
-                                offsetX = newOffset.coerceIn(0f, maxSwipePx)
+                            offsetX = when {
+                                newOffset < 0f -> newOffset.coerceIn(-trailingActionsWidthPx, 0f)
+                                onSwipeRight != null -> newOffset.coerceIn(0f, rightMaxSwipePx)
+                                else -> newOffset.coerceIn(-trailingActionsWidthPx, 0f)
                             }
                         }
                     )
                 }
         ) {
             content()
+        }
+    }
+}
+
+@Composable
+private fun SwipeBackgroundAction(
+    label: String,
+    contentDescription: String,
+    icon: ImageVector,
+    containerColor: Color,
+    contentColor: Color,
+    progress: Float,
+    scale: Float,
+    width: Dp,
+    onClick: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxHeight()
+            .width(width)
+            .background(containerColor)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 10.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = contentDescription,
+                tint = contentColor,
+                modifier = Modifier
+                    .size(20.dp)
+                    .scale(scale)
+            )
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelSmall,
+                color = contentColor.copy(alpha = progress.coerceIn(0.6f, 1f))
+            )
         }
     }
 }

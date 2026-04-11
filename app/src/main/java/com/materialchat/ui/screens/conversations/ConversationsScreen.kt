@@ -36,9 +36,11 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.outlined.Archive
 import androidx.compose.material.icons.outlined.AutoDelete
 import androidx.compose.material.icons.outlined.ChatBubbleOutline
 import androidx.compose.material.icons.outlined.SearchOff
+import androidx.compose.material.icons.outlined.Unarchive
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.AlertDialog
@@ -46,6 +48,8 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -100,6 +104,7 @@ import com.materialchat.ui.components.HapticPattern
 import com.materialchat.ui.components.rememberHapticFeedback
 import com.materialchat.ui.screens.conversations.components.ConversationItem
 import com.materialchat.ui.screens.conversations.components.ExpandableConversationGroup
+import com.materialchat.ui.screens.conversations.components.SwipeActionSpec
 import com.materialchat.ui.screens.conversations.components.SwipeToDeleteBox
 import com.materialchat.ui.screens.conversations.components.SwipeCornerSpec
 import com.materialchat.ui.screens.search.SearchUiState
@@ -268,6 +273,9 @@ fun ConversationsScreen(
                 listState = conversationListState,
                 onConversationClick = { viewModel.openConversation(it) },
                 onConversationDelete = { viewModel.deleteConversation(it) },
+                onArchiveConversation = { viewModel.archiveConversation(it) },
+                onUnarchiveConversation = { viewModel.unarchiveConversation(it) },
+                onSelectFilter = { viewModel.selectFilter(it) },
                 onCreateTemporaryConversation = { viewModel.createTemporaryConversation() },
                 onConversationSwipeRight = { conversation ->
                     renameConversation = conversation
@@ -674,6 +682,9 @@ private fun ConversationsContent(
     listState: androidx.compose.foundation.lazy.LazyListState,
     onConversationClick: (String) -> Unit,
     onConversationDelete: (com.materialchat.domain.model.Conversation) -> Unit,
+    onArchiveConversation: (com.materialchat.domain.model.Conversation) -> Unit,
+    onUnarchiveConversation: (com.materialchat.domain.model.Conversation) -> Unit,
+    onSelectFilter: (ConversationListFilter) -> Unit,
     onCreateTemporaryConversation: () -> Unit,
     onConversationSwipeRight: (com.materialchat.domain.model.Conversation) -> Unit = {},
     onRetry: () -> Unit,
@@ -697,53 +708,151 @@ private fun ConversationsContent(
         Column(
             modifier = Modifier.fillMaxSize()
         ) {
-            TemporaryChatCallout(
-                onClick = onCreateTemporaryConversation,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 12.dp)
-            )
-
             when (uiState) {
                 is ConversationsUiState.Loading -> {
-                    LoadingContent()
+                    LoadingContent(modifier = Modifier.weight(1f))
                 }
                 is ConversationsUiState.Empty -> {
-                    EmptyContent(
-                        hasActiveProvider = uiState.hasActiveProvider,
-                        onNavigateToSettings = onNavigateToSettings
-                    )
+                    Column(modifier = Modifier.fillMaxSize()) {
+                        TemporaryChatCallout(
+                            onClick = onCreateTemporaryConversation,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 12.dp)
+                        )
+                        EmptyContent(
+                            hasActiveProvider = uiState.hasActiveProvider,
+                            onNavigateToSettings = onNavigateToSettings,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
                 }
                 is ConversationsUiState.Success -> {
-                    if (uiState.conversationGroups.isNotEmpty()) {
-                        GroupedConversationList(
-                            groups = uiState.conversationGroups,
-                            listState = listState,
-                            onConversationClick = onConversationClick,
-                            onConversationDelete = onConversationDelete,
-                            onConversationSwipeRight = onConversationSwipeRight,
-                            onToggleGroupExpanded = onToggleGroupExpanded,
-                            hapticsEnabled = uiState.hapticsEnabled
-                        )
+                    val showingArchived = uiState.selectedFilter == ConversationListFilter.ARCHIVED
+                    val displayedGroups = if (showingArchived) {
+                        uiState.archivedConversationGroups
                     } else {
-                        ConversationList(
-                            conversations = uiState.conversations,
-                            listState = listState,
-                            onConversationClick = onConversationClick,
-                            onConversationDelete = onConversationDelete,
-                            onConversationSwipeRight = onConversationSwipeRight,
-                            hapticsEnabled = uiState.hapticsEnabled
+                        uiState.conversationGroups
+                    }
+                    val displayedConversations = if (showingArchived) {
+                        uiState.archivedConversations
+                    } else {
+                        uiState.conversations
+                    }
+
+                    Column(modifier = Modifier.fillMaxSize()) {
+                        ConversationFilterBar(
+                            selectedFilter = uiState.selectedFilter,
+                            archivedCount = uiState.archivedConversationGroups.size,
+                            onSelectFilter = onSelectFilter,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 12.dp)
                         )
+                        TemporaryChatCallout(
+                            onClick = onCreateTemporaryConversation,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp)
+                        )
+
+                        if (displayedGroups.isNotEmpty()) {
+                            GroupedConversationList(
+                                groups = displayedGroups,
+                                listState = listState,
+                                onConversationClick = onConversationClick,
+                                onConversationDelete = onConversationDelete,
+                                onArchiveConversation = onArchiveConversation,
+                                onUnarchiveConversation = onUnarchiveConversation,
+                                isArchivedList = showingArchived,
+                                onConversationSwipeRight = onConversationSwipeRight,
+                                onToggleGroupExpanded = onToggleGroupExpanded,
+                                hapticsEnabled = uiState.hapticsEnabled,
+                                modifier = Modifier.weight(1f)
+                            )
+                        } else if (displayedConversations.isNotEmpty()) {
+                            ConversationList(
+                                conversations = displayedConversations,
+                                listState = listState,
+                                onConversationClick = onConversationClick,
+                                onConversationDelete = onConversationDelete,
+                                onArchiveConversation = onArchiveConversation,
+                                onUnarchiveConversation = onUnarchiveConversation,
+                                isArchivedList = showingArchived,
+                                onConversationSwipeRight = onConversationSwipeRight,
+                                hapticsEnabled = uiState.hapticsEnabled,
+                                modifier = Modifier.weight(1f)
+                            )
+                        } else {
+                            FilteredEmptyContent(
+                                filter = uiState.selectedFilter,
+                                hasActiveProvider = uiState.activeProvider != null,
+                                hasArchivedChats = uiState.archivedConversationGroups.isNotEmpty(),
+                                onNavigateToSettings = onNavigateToSettings,
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
                     }
                 }
                 is ConversationsUiState.Error -> {
                     ErrorContent(
                         message = uiState.message,
-                        onRetry = onRetry
+                        onRetry = onRetry,
+                        modifier = Modifier.weight(1f)
                     )
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun ConversationFilterBar(
+    selectedFilter: ConversationListFilter,
+    archivedCount: Int,
+    onSelectFilter: (ConversationListFilter) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        FilterChip(
+            selected = selectedFilter == ConversationListFilter.ACTIVE,
+            onClick = { onSelectFilter(ConversationListFilter.ACTIVE) },
+            label = { Text("Chats") },
+            colors = FilterChipDefaults.filterChipColors(
+                selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
+            )
+        )
+
+        FilterChip(
+            selected = selectedFilter == ConversationListFilter.ARCHIVED,
+            onClick = { onSelectFilter(ConversationListFilter.ARCHIVED) },
+            label = {
+                Text(
+                    if (archivedCount > 0) "Archive ($archivedCount)" else "Archive"
+                )
+            },
+            leadingIcon = {
+                Icon(
+                    imageVector = if (selectedFilter == ConversationListFilter.ARCHIVED) {
+                        Icons.Outlined.Unarchive
+                    } else {
+                        Icons.Outlined.Archive
+                    },
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp)
+                )
+            },
+            colors = FilterChipDefaults.filterChipColors(
+                selectedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
+                selectedLabelColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                selectedLeadingIconColor = MaterialTheme.colorScheme.onSecondaryContainer
+            )
+        )
     }
 }
 
@@ -802,9 +911,9 @@ private fun TemporaryChatCallout(
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun LoadingContent() {
+private fun LoadingContent(modifier: Modifier = Modifier) {
     Box(
-        modifier = Modifier.fillMaxSize(),
+        modifier = modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
     ) {
         LoadingIndicator(
@@ -817,11 +926,12 @@ private fun LoadingContent() {
 @Composable
 private fun EmptyContent(
     hasActiveProvider: Boolean,
-    onNavigateToSettings: () -> Unit
+    onNavigateToSettings: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     val haptics = rememberHapticFeedback()
     Column(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxSize()
             .padding(32.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -868,20 +978,95 @@ private fun EmptyContent(
 }
 
 @Composable
+private fun FilteredEmptyContent(
+    filter: ConversationListFilter,
+    hasActiveProvider: Boolean,
+    hasArchivedChats: Boolean,
+    onNavigateToSettings: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val icon = if (filter == ConversationListFilter.ARCHIVED) {
+        Icons.Outlined.Archive
+    } else {
+        Icons.Outlined.ChatBubbleOutline
+    }
+    val title = if (filter == ConversationListFilter.ARCHIVED) {
+        "No archived chats"
+    } else {
+        "No active chats"
+    }
+    val body = if (filter == ConversationListFilter.ARCHIVED) {
+        "Swipe any chat and tap Archive to keep it out of your main list."
+    } else if (hasArchivedChats) {
+        "Your archived chats are tucked away. Start a new chat or switch to Archive."
+    } else if (hasActiveProvider) {
+        "Tap the button below to start a new chat"
+    } else {
+        "Add an AI provider in settings to get started"
+    }
+
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(32.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            modifier = Modifier.size(96.dp),
+            tint = MaterialTheme.colorScheme.primaryContainer
+        )
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleLarge,
+            color = MaterialTheme.colorScheme.onSurface,
+            textAlign = TextAlign.Center
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Text(
+            text = body,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center
+        )
+
+        if (!hasActiveProvider && filter == ConversationListFilter.ACTIVE) {
+            Spacer(modifier = Modifier.height(16.dp))
+            ExpressiveButton(
+                onClick = onNavigateToSettings,
+                text = "Go to Settings",
+                style = ExpressiveButtonStyle.FilledTonal
+            )
+        }
+    }
+}
+
+@Composable
 private fun ConversationList(
     conversations: List<ConversationUiItem>,
     listState: androidx.compose.foundation.lazy.LazyListState,
     onConversationClick: (String) -> Unit,
     onConversationDelete: (com.materialchat.domain.model.Conversation) -> Unit,
+    onArchiveConversation: (com.materialchat.domain.model.Conversation) -> Unit,
+    onUnarchiveConversation: (com.materialchat.domain.model.Conversation) -> Unit,
+    isArchivedList: Boolean = false,
     onConversationSwipeRight: (com.materialchat.domain.model.Conversation) -> Unit = {},
-    hapticsEnabled: Boolean = true
+    hapticsEnabled: Boolean = true,
+    modifier: Modifier = Modifier
 ) {
     val haptics = rememberHapticFeedback()
     val cornerRadius = 20.dp
 
     LazyColumn(
         state = listState,
-        modifier = Modifier.fillMaxSize(),
+        modifier = modifier.fillMaxSize(),
         contentPadding = PaddingValues(
             start = 16.dp,
             end = 16.dp,
@@ -908,10 +1093,30 @@ private fun ConversationList(
                 bottomStart = baseCorners.bottomStart,
                 bottomEnd = baseCorners.bottomEnd
             )
+            val trailingAction = if (isArchivedList) {
+                SwipeActionSpec(
+                    label = "Restore",
+                    contentDescription = "Restore chat",
+                    icon = Icons.Outlined.Unarchive,
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                    onClick = { onUnarchiveConversation(conversationItem.conversation) }
+                )
+            } else {
+                SwipeActionSpec(
+                    label = "Archive",
+                    contentDescription = "Archive chat",
+                    icon = Icons.Outlined.Archive,
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                    onClick = { onArchiveConversation(conversationItem.conversation) }
+                )
+            }
 
             SwipeToDeleteBox(
                 onDelete = { onConversationDelete(conversationItem.conversation) },
                 hapticsEnabled = hapticsEnabled,
+                trailingAction = trailingAction,
                 onSwipeRight = { onConversationSwipeRight(conversationItem.conversation) },
                 baseCorners = baseCorners,
                 activeCorners = SwipeCornerSpec(cornerRadius, cornerRadius, cornerRadius, cornerRadius),
@@ -950,15 +1155,21 @@ private fun GroupedConversationList(
     listState: androidx.compose.foundation.lazy.LazyListState,
     onConversationClick: (String) -> Unit,
     onConversationDelete: (com.materialchat.domain.model.Conversation) -> Unit,
+    onArchiveConversation: (com.materialchat.domain.model.Conversation) -> Unit,
+    onUnarchiveConversation: (com.materialchat.domain.model.Conversation) -> Unit,
+    isArchivedList: Boolean = false,
     onConversationSwipeRight: (com.materialchat.domain.model.Conversation) -> Unit = {},
     onToggleGroupExpanded: (String) -> Unit,
-    hapticsEnabled: Boolean = true
+    hapticsEnabled: Boolean = true,
+    modifier: Modifier = Modifier
 ) {
     val cornerRadius = 20.dp
+    val actionContainerColor = MaterialTheme.colorScheme.secondaryContainer
+    val actionContentColor = MaterialTheme.colorScheme.onSecondaryContainer
 
     LazyColumn(
         state = listState,
-        modifier = Modifier.fillMaxSize(),
+        modifier = modifier.fillMaxSize(),
         contentPadding = PaddingValues(
             start = 16.dp,
             end = 16.dp,
@@ -980,6 +1191,27 @@ private fun GroupedConversationList(
                 onBranchClick = onConversationClick,
                 onExpandToggle = onToggleGroupExpanded,
                 onDelete = onConversationDelete,
+                trailingActionProvider = { conversation ->
+                    if (isArchivedList) {
+                        SwipeActionSpec(
+                            label = "Restore",
+                            contentDescription = "Restore chat",
+                            icon = Icons.Outlined.Unarchive,
+                            containerColor = actionContainerColor,
+                            contentColor = actionContentColor,
+                            onClick = { onUnarchiveConversation(conversation) }
+                        )
+                    } else {
+                        SwipeActionSpec(
+                            label = "Archive",
+                            contentDescription = "Archive chat",
+                            icon = Icons.Outlined.Archive,
+                            containerColor = actionContainerColor,
+                            contentColor = actionContentColor,
+                            onClick = { onArchiveConversation(conversation) }
+                        )
+                    }
+                },
                 onSwipeRight = onConversationSwipeRight,
                 cornerRadius = cornerRadius,
                 isFirst = isFirst,
@@ -1003,11 +1235,12 @@ private fun GroupedConversationList(
 @Composable
 private fun ErrorContent(
     message: String,
-    onRetry: () -> Unit
+    onRetry: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     val haptics = rememberHapticFeedback()
     Column(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxSize()
             .padding(32.dp),
         horizontalAlignment = Alignment.CenterHorizontally,

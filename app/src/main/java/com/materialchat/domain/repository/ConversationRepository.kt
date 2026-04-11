@@ -65,6 +65,21 @@ interface ConversationRepository {
     suspend fun deleteEphemeralConversations()
 
     /**
+     * Observes archived conversations sorted by archive time.
+     */
+    fun observeArchivedConversations(): Flow<List<Conversation>>
+
+    /**
+     * Archives the conversation thread containing [conversationId].
+     */
+    suspend fun archiveConversation(conversationId: String)
+
+    /**
+     * Restores an archived conversation thread containing [conversationId].
+     */
+    suspend fun unarchiveConversation(conversationId: String)
+
+    /**
      * Updates the title of a conversation.
      *
      * @param conversationId The ID of the conversation

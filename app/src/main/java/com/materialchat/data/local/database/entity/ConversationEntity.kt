@@ -33,7 +33,9 @@ import androidx.room.PrimaryKey
         Index(value = ["provider_id"]),
         Index(value = ["updated_at"]),
         Index(value = ["parent_id"]),
-        Index(value = ["is_ephemeral"])
+        Index(value = ["is_ephemeral"]),
+        Index(value = ["is_archived"]),
+        Index(value = ["archive_time"])
     ]
 )
 data class ConversationEntity(
@@ -55,6 +57,12 @@ data class ConversationEntity(
 
     @ColumnInfo(name = "is_ephemeral", defaultValue = "0")
     val isEphemeral: Boolean = false,
+
+    @ColumnInfo(name = "is_archived", defaultValue = "0")
+    val isArchived: Boolean = false,
+
+    @ColumnInfo(name = "archive_time", defaultValue = "NULL")
+    val archiveTime: Long? = null,
 
     @ColumnInfo(name = "parent_id", defaultValue = "NULL")
     val parentId: String? = null,

@@ -49,7 +49,7 @@ import com.materialchat.data.local.database.entity.WorkflowStepEntity
         WorkflowEntity::class,
         WorkflowStepEntity::class
     ],
-    version = 12,
+    version = 13,
     exportSchema = true
 )
 abstract class MaterialChatDatabase : RoomDatabase() {
@@ -287,6 +287,18 @@ abstract class MaterialChatDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * Migration from version 12 to 13: Add chat archiving support.
+         */
+        private val MIGRATION_12_13 = object : Migration(12, 13) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE conversations ADD COLUMN is_archived INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE conversations ADD COLUMN archive_time INTEGER DEFAULT NULL")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_conversations_is_archived ON conversations(is_archived)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_conversations_archive_time ON conversations(archive_time)")
+            }
+        }
+
         internal val MIGRATIONS = arrayOf(
             MIGRATION_2_3,
             MIGRATION_3_4,
@@ -297,7 +309,8 @@ abstract class MaterialChatDatabase : RoomDatabase() {
             MIGRATION_8_9,
             MIGRATION_9_10,
             MIGRATION_10_11,
-            MIGRATION_11_12
+            MIGRATION_11_12,
+            MIGRATION_12_13
         )
 
         /**

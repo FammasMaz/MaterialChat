@@ -49,12 +49,25 @@ interface ConversationDao {
     suspend fun deleteEphemeralConversations()
 
     /**
+     * Get archived conversations ordered by archive time.
+     */
+    @Query("""
+        SELECT c.* FROM conversations c
+        WHERE c.is_ephemeral = 0
+        AND c.is_archived = 1
+        AND EXISTS (SELECT 1 FROM messages m WHERE m.conversation_id = c.id)
+        ORDER BY c.archive_time DESC, c.updated_at DESC
+    """)
+    fun getArchivedConversations(): Flow<List<ConversationEntity>>
+
+    /**
      * Get all conversations as a Flow, ordered by updated_at (newest first).
      * Only includes conversations that have at least one message.
      */
     @Query("""
         SELECT c.* FROM conversations c
         WHERE c.is_ephemeral = 0
+        AND c.is_archived = 0
         AND EXISTS (SELECT 1 FROM messages m WHERE m.conversation_id = c.id)
         ORDER BY c.updated_at DESC
     """)
@@ -67,10 +80,34 @@ interface ConversationDao {
     @Query("""
         SELECT c.* FROM conversations c
         WHERE c.is_ephemeral = 0
+        AND c.is_archived = 0
         AND EXISTS (SELECT 1 FROM messages m WHERE m.conversation_id = c.id)
         ORDER BY c.updated_at DESC
     """)
     suspend fun getAllConversationsOnce(): List<ConversationEntity>
+
+    /**
+     * Updates the archived state for a conversation tree rooted at [rootConversationId].
+     */
+    @Query("""
+        WITH RECURSIVE conversation_tree(id) AS (
+            SELECT id FROM conversations WHERE id = :rootConversationId
+            UNION ALL
+            SELECT c.id FROM conversations c
+            INNER JOIN conversation_tree ct ON c.parent_id = ct.id
+        )
+        UPDATE conversations
+        SET is_archived = :archived,
+            archive_time = :archiveTime,
+            updated_at = :updatedAt
+        WHERE id IN (SELECT id FROM conversation_tree)
+    """)
+    suspend fun updateArchivedStateForTree(
+        rootConversationId: String,
+        archived: Boolean,
+        archiveTime: Long?,
+        updatedAt: Long
+    )
 
     /**
      * Get a conversation by ID.

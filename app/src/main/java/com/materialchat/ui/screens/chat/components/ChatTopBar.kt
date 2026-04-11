@@ -20,6 +20,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.outlined.Archive
 import androidx.compose.material.icons.outlined.AccountTree
 import androidx.compose.material.icons.outlined.AutoDelete
 import androidx.compose.material.icons.outlined.CloudDownload
@@ -82,6 +83,7 @@ fun ChatTopBar(
     title: String,
     icon: String? = null,
     isEphemeral: Boolean = false,
+    isArchived: Boolean = false,
     modelName: String,
     providerName: String,
     isStreaming: Boolean,
@@ -204,25 +206,41 @@ fun ChatTopBar(
                     // Streaming indicator removed - now shown in the morphing send button
                 }
 
-                if (isEphemeral) {
+                if (isEphemeral || isArchived) {
                     Spacer(modifier = Modifier.height(6.dp))
                     Surface(
                         shape = RoundedCornerShape(999.dp),
-                        color = MaterialTheme.colorScheme.tertiaryContainer,
-                        contentColor = MaterialTheme.colorScheme.onTertiaryContainer
+                        color = if (isEphemeral) {
+                            MaterialTheme.colorScheme.tertiaryContainer
+                        } else {
+                            MaterialTheme.colorScheme.secondaryContainer
+                        },
+                        contentColor = if (isEphemeral) {
+                            MaterialTheme.colorScheme.onTertiaryContainer
+                        } else {
+                            MaterialTheme.colorScheme.onSecondaryContainer
+                        }
                     ) {
                         Row(
                             modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Icon(
-                                imageVector = Icons.Outlined.AutoDelete,
+                                imageVector = if (isEphemeral) {
+                                    Icons.Outlined.AutoDelete
+                                } else {
+                                    Icons.Outlined.Archive
+                                },
                                 contentDescription = null,
                                 modifier = Modifier.size(14.dp)
                             )
                             Spacer(modifier = Modifier.width(6.dp))
                             Text(
-                                text = "Temporary · Deletes on close",
+                                text = if (isEphemeral) {
+                                    "Temporary · Deletes on close"
+                                } else {
+                                    "Archived"
+                                },
                                 style = MaterialTheme.typography.labelMedium
                             )
                         }

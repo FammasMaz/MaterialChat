@@ -21,6 +21,8 @@ data class Conversation(
     val providerId: String,
     val modelName: String,
     val isEphemeral: Boolean = false,
+    val isArchived: Boolean = false,
+    val archiveTime: Long? = null,
     val parentId: String? = null,
     val branchSourceMessageId: String? = null,
     val personaId: String? = null,

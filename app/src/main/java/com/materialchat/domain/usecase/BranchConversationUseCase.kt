@@ -63,6 +63,8 @@ class BranchConversationUseCase @Inject constructor(
             providerId = sourceConversation.providerId,
             modelName = sourceConversation.modelName,
             isEphemeral = sourceConversation.isEphemeral,
+            isArchived = sourceConversation.isArchived,
+            archiveTime = sourceConversation.archiveTime,
             parentId = parentId,
             branchSourceMessageId = branchSourceMessageId ?: sourceConversation.branchSourceMessageId
         )

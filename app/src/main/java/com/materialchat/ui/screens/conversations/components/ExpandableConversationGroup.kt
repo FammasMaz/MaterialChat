@@ -75,6 +75,7 @@ fun ExpandableConversationGroup(
     onBranchClick: (String) -> Unit,
     onExpandToggle: (String) -> Unit,
     onDelete: (Conversation) -> Unit,
+    trailingActionProvider: (Conversation) -> SwipeActionSpec? = { null },
     onSwipeRight: (Conversation) -> Unit = {},
     cornerRadius: Dp = 20.dp, // M3: largeIncreased
     isFirst: Boolean = false,
@@ -124,6 +125,7 @@ fun ExpandableConversationGroup(
         SwipeToDeleteBox(
             onDelete = { onDelete(group.parent.conversation) },
             hapticsEnabled = hapticsEnabled,
+            trailingAction = trailingActionProvider(group.parent.conversation),
             onSwipeRight = { onSwipeRight(group.parent.conversation) },
             baseCorners = SwipeCornerSpec(
                 topStart = topCornerRadius,
@@ -207,6 +209,18 @@ fun ExpandableConversationGroup(
                                     overflow = TextOverflow.Ellipsis,
                                     modifier = Modifier.weight(1f, fill = false)
                                 )
+
+                                if (group.parent.conversation.isArchived) {
+                                    Text(
+                                        text = "Archived",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                        modifier = Modifier
+                                            .clip(RoundedCornerShape(50))
+                                            .background(MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.7f))
+                                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                                    )
+                                }
 
                                 // Branch count badge - M3: secondaryContainer
                                 if (group.hasBranches) {
@@ -325,6 +339,7 @@ fun ExpandableConversationGroup(
                     SwipeToDeleteBox(
                         onDelete = { onDelete(branch.conversation) },
                         hapticsEnabled = hapticsEnabled,
+                        trailingAction = trailingActionProvider(branch.conversation),
                         onSwipeRight = { onSwipeRight(branch.conversation) },
                         baseCorners = SwipeCornerSpec(12.dp, 12.dp, 12.dp, 12.dp),
                         activeCorners = SwipeCornerSpec(16.dp, 16.dp, 16.dp, 16.dp),

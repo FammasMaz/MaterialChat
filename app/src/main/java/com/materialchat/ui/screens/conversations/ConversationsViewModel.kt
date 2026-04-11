@@ -50,6 +50,7 @@ class ConversationsViewModel @Inject constructor(
 
     // Track expanded conversation groups by parent ID
     private val _expandedGroupIds = MutableStateFlow<Set<String>>(emptySet())
+    private val _selectedFilter = MutableStateFlow(ConversationListFilter.ACTIVE)
 
     // Track multiple pending deletions: conversation ID -> delete job
     private val pendingDeletions = mutableMapOf<String, Job>()
@@ -69,13 +70,27 @@ class ConversationsViewModel @Inject constructor(
     private fun observeConversations() {
         viewModelScope.launch {
             combine(
-                getConversationsUseCase.observeConversations(),
+                combine(
+                    getConversationsUseCase.observeConversations(),
+                    conversationRepository.observeArchivedConversations()
+                ) { conversations, archivedConversations ->
+                    conversations to archivedConversations
+                },
                 manageProvidersUseCase.observeProviders(),
                 appPreferences.hapticsEnabled,
-                _expandedGroupIds
-            ) { conversations, providers, hapticsEnabled, expandedIds ->
+                _expandedGroupIds,
+                _selectedFilter
+            ) { conversationSets, providers, hapticsEnabled, expandedIds, selectedFilter ->
                 val activeProvider = providers.find { it.isActive }
-                ConversationsData(conversations, providers, activeProvider, hapticsEnabled, expandedIds)
+                ConversationsData(
+                    conversations = conversationSets.first,
+                    archivedConversations = conversationSets.second,
+                    providers = providers,
+                    activeProvider = activeProvider,
+                    hapticsEnabled = hapticsEnabled,
+                    expandedIds = expandedIds,
+                    selectedFilter = selectedFilter
+                )
             }
                 .catch { e ->
                     _uiState.value = ConversationsUiState.Error(
@@ -83,43 +98,35 @@ class ConversationsViewModel @Inject constructor(
                     )
                 }
                 .collect { data ->
-                    // Filter out all conversations pending deletion
-                    val filteredConversations = if (pendingDeleteIds.isNotEmpty()) {
-                        data.conversations.filter { it.id !in pendingDeleteIds }
-                    } else {
-                        data.conversations
-                    }
+                    val filteredActiveConversations = data.conversations.filterNot { it.id in pendingDeleteIds }
+                    val filteredArchivedConversations = data.archivedConversations.filterNot { it.id in pendingDeleteIds }
 
-                    // Separate root conversations and branches
-                    val (branches, roots) = filteredConversations.partition { it.isBranch }
+                    val activeDisplay = buildDisplayData(
+                        conversations = filteredActiveConversations,
+                        providers = data.providers,
+                        expandedIds = data.expandedIds
+                    )
+                    val archivedDisplay = buildDisplayData(
+                        conversations = filteredArchivedConversations,
+                        providers = data.providers,
+                        expandedIds = data.expandedIds
+                    )
 
-                    // Build a map of parent ID to branches
-                    val branchMap = branches.groupBy { it.parentId!! }
+                    val hasAnyConversation =
+                        activeDisplay.groups.isNotEmpty() || archivedDisplay.groups.isNotEmpty()
 
-                    // Create grouped structure
-                    val groups = roots.map { root ->
-                        val rootUiItem = root.toUiItem(data.providers)
-                        val branchUiItems = branchMap[root.id]?.map { it.toUiItem(data.providers) } ?: emptyList()
-
-                        ConversationGroupUiItem(
-                            parent = rootUiItem,
-                            branches = branchUiItems,
-                            isExpanded = root.id in data.expandedIds
-                        )
-                    }
-
-                    // Also create flat list for compatibility
-                    val flatList = roots.map { it.toUiItem(data.providers) }
-
-                    _uiState.value = if (groups.isEmpty()) {
+                    _uiState.value = if (!hasAnyConversation) {
                         ConversationsUiState.Empty(
                             hasActiveProvider = data.activeProvider != null,
                             hapticsEnabled = data.hapticsEnabled
                         )
                     } else {
                         ConversationsUiState.Success(
-                            conversations = flatList,
-                            conversationGroups = groups,
+                            conversations = activeDisplay.flatList,
+                            conversationGroups = activeDisplay.groups,
+                            archivedConversations = archivedDisplay.flatList,
+                            archivedConversationGroups = archivedDisplay.groups,
+                            selectedFilter = data.selectedFilter,
                             activeProvider = data.activeProvider,
                             deletedConversation = lastDeletedConversation,
                             hapticsEnabled = data.hapticsEnabled
@@ -134,10 +141,17 @@ class ConversationsViewModel @Inject constructor(
      */
     private data class ConversationsData(
         val conversations: List<Conversation>,
+        val archivedConversations: List<Conversation>,
         val providers: List<Provider>,
         val activeProvider: Provider?,
         val hapticsEnabled: Boolean,
-        val expandedIds: Set<String>
+        val expandedIds: Set<String>,
+        val selectedFilter: ConversationListFilter
+    )
+
+    private data class ConversationDisplayData(
+        val flatList: List<ConversationUiItem>,
+        val groups: List<ConversationGroupUiItem>
     )
 
     /**
@@ -152,6 +166,10 @@ class ConversationsViewModel @Inject constructor(
         } else {
             currentExpanded + parentId
         }
+    }
+
+    fun selectFilter(filter: ConversationListFilter) {
+        _selectedFilter.value = filter
     }
 
     /**
@@ -231,17 +249,18 @@ class ConversationsViewModel @Inject constructor(
         // Update state to remove the conversation visually
         val currentState = _uiState.value
         if (currentState is ConversationsUiState.Success) {
-            val updatedGroups = currentState.conversationGroups.filter {
-                it.parent.conversation.id !in pendingDeleteIds
-            }.map { group ->
-                group.copy(
-                    branches = group.branches.filter { it.conversation.id !in pendingDeleteIds }
-                )
+            val updatedActiveGroups = currentState.conversationGroups.filterGroups(pendingDeleteIds)
+            val updatedArchivedGroups = currentState.archivedConversationGroups.filterGroups(pendingDeleteIds)
+            val updatedConversations = currentState.conversations.filterNot {
+                it.conversation.id in pendingDeleteIds
             }
-            val updatedConversations = currentState.conversations.filter {
-                it.conversation.id !in pendingDeleteIds
+            val updatedArchivedConversations = currentState.archivedConversations.filterNot {
+                it.conversation.id in pendingDeleteIds
             }
-            _uiState.value = if (updatedGroups.isEmpty()) {
+
+            val hasAnyConversation = updatedActiveGroups.isNotEmpty() || updatedArchivedGroups.isNotEmpty()
+
+            _uiState.value = if (!hasAnyConversation) {
                 ConversationsUiState.Empty(
                     hasActiveProvider = currentState.activeProvider != null,
                     hapticsEnabled = currentState.hapticsEnabled
@@ -249,7 +268,9 @@ class ConversationsViewModel @Inject constructor(
             } else {
                 currentState.copy(
                     conversations = updatedConversations,
-                    conversationGroups = updatedGroups,
+                    conversationGroups = updatedActiveGroups,
+                    archivedConversations = updatedArchivedConversations,
+                    archivedConversationGroups = updatedArchivedGroups,
                     deletedConversation = conversation
                 )
             }
@@ -309,6 +330,56 @@ class ConversationsViewModel @Inject constructor(
         lastDeletedConversation?.let { undoDelete(it.id) }
     }
 
+    fun archiveConversation(conversation: Conversation) {
+        viewModelScope.launch {
+            try {
+                conversationRepository.archiveConversation(conversation.id)
+                _events.emit(
+                    ConversationsEvent.ShowSnackbar(
+                        message = "Chat archived",
+                        actionLabel = "Undo",
+                        onAction = {
+                            viewModelScope.launch {
+                                conversationRepository.unarchiveConversation(conversation.id)
+                            }
+                        }
+                    )
+                )
+            } catch (e: Exception) {
+                _events.emit(
+                    ConversationsEvent.ShowSnackbar(
+                        message = "Failed to archive chat: ${e.message}"
+                    )
+                )
+            }
+        }
+    }
+
+    fun unarchiveConversation(conversation: Conversation) {
+        viewModelScope.launch {
+            try {
+                conversationRepository.unarchiveConversation(conversation.id)
+                _events.emit(
+                    ConversationsEvent.ShowSnackbar(
+                        message = "Chat restored",
+                        actionLabel = "Undo",
+                        onAction = {
+                            viewModelScope.launch {
+                                conversationRepository.archiveConversation(conversation.id)
+                            }
+                        }
+                    )
+                )
+            } catch (e: Exception) {
+                _events.emit(
+                    ConversationsEvent.ShowSnackbar(
+                        message = "Failed to restore chat: ${e.message}"
+                    )
+                )
+            }
+        }
+    }
+
     /**
      * Performs the actual deletion of a conversation.
      *
@@ -346,7 +417,11 @@ class ConversationsViewModel @Inject constructor(
      */
     private fun Conversation.toUiItem(providers: List<Provider>): ConversationUiItem {
         val provider = providers.find { it.id == providerId }
-        val relativeTime = formatRelativeTime(updatedAt)
+        val relativeTime = if (isArchived && archiveTime != null) {
+            "Archived ${formatRelativeTime(archiveTime)}"
+        } else {
+            formatRelativeTime(updatedAt)
+        }
 
         return ConversationUiItem(
             conversation = this,
@@ -367,6 +442,41 @@ class ConversationsViewModel @Inject constructor(
             DateUtils.MINUTE_IN_MILLIS,
             DateUtils.FORMAT_ABBREV_RELATIVE
         ).toString()
+    }
+
+    private fun buildDisplayData(
+        conversations: List<Conversation>,
+        providers: List<Provider>,
+        expandedIds: Set<String>
+    ): ConversationDisplayData {
+        val (branches, roots) = conversations.partition { it.isBranch }
+        val rootIds = roots.map { it.id }.toSet()
+        val parentConversations = conversations.filter { conversation ->
+            conversation.parentId == null || conversation.parentId !in rootIds
+        }
+        val branchMap = branches.groupBy { it.parentId!! }
+
+        val groups = parentConversations.map { parent ->
+            ConversationGroupUiItem(
+                parent = parent.toUiItem(providers),
+                branches = branchMap[parent.id].orEmpty().map { it.toUiItem(providers) },
+                isExpanded = parent.id in expandedIds
+            )
+        }
+
+        return ConversationDisplayData(
+            flatList = parentConversations.map { it.toUiItem(providers) },
+            groups = groups
+        )
+    }
+
+    private fun List<ConversationGroupUiItem>.filterGroups(hiddenIds: Set<String>): List<ConversationGroupUiItem> {
+        return filter { it.parent.conversation.id !in hiddenIds }
+            .map { group ->
+                group.copy(
+                    branches = group.branches.filterNot { it.conversation.id in hiddenIds }
+                )
+            }
     }
 
     /**
