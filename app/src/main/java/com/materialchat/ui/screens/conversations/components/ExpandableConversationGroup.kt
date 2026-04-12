@@ -75,7 +75,6 @@ fun ExpandableConversationGroup(
     onBranchClick: (String) -> Unit,
     onExpandToggle: (String) -> Unit,
     onDelete: (Conversation) -> Unit,
-    trailingActionProvider: (Conversation) -> SwipeActionSpec? = { null },
     onSwipeRight: (Conversation) -> Unit = {},
     cornerRadius: Dp = 20.dp, // M3: largeIncreased
     isFirst: Boolean = false,
@@ -125,7 +124,6 @@ fun ExpandableConversationGroup(
         SwipeToDeleteBox(
             onDelete = { onDelete(group.parent.conversation) },
             hapticsEnabled = hapticsEnabled,
-            trailingAction = trailingActionProvider(group.parent.conversation),
             onSwipeRight = { onSwipeRight(group.parent.conversation) },
             baseCorners = SwipeCornerSpec(
                 topStart = topCornerRadius,
@@ -339,7 +337,6 @@ fun ExpandableConversationGroup(
                     SwipeToDeleteBox(
                         onDelete = { onDelete(branch.conversation) },
                         hapticsEnabled = hapticsEnabled,
-                        trailingAction = trailingActionProvider(branch.conversation),
                         onSwipeRight = { onSwipeRight(branch.conversation) },
                         baseCorners = SwipeCornerSpec(12.dp, 12.dp, 12.dp, 12.dp),
                         activeCorners = SwipeCornerSpec(16.dp, 16.dp, 16.dp, 16.dp),

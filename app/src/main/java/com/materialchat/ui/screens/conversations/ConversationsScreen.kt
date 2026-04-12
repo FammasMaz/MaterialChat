@@ -37,6 +37,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.outlined.Archive
+import androidx.compose.material.icons.outlined.AutoDelete
 import androidx.compose.material.icons.outlined.ChatBubbleOutline
 import androidx.compose.material.icons.outlined.SearchOff
 import androidx.compose.material.icons.outlined.Unarchive
@@ -101,7 +102,6 @@ import com.materialchat.ui.components.HapticPattern
 import com.materialchat.ui.components.rememberHapticFeedback
 import com.materialchat.ui.screens.conversations.components.ConversationItem
 import com.materialchat.ui.screens.conversations.components.ExpandableConversationGroup
-import com.materialchat.ui.screens.conversations.components.SwipeActionSpec
 import com.materialchat.ui.screens.conversations.components.SwipeToDeleteBox
 import com.materialchat.ui.screens.conversations.components.SwipeCornerSpec
 import com.materialchat.ui.screens.search.SearchUiState
@@ -235,7 +235,8 @@ fun ConversationsScreen(
                     // Normal mode - show regular top bar
                     ConversationsTopBar(
                         scrollBehavior = scrollBehavior,
-                        onSearchClick = { isSearchActive = true }
+                        onSearchClick = { isSearchActive = true },
+                        onTempChatClick = { viewModel.createTemporaryConversation() }
                     )
                 }
             }
@@ -270,8 +271,6 @@ fun ConversationsScreen(
                 listState = conversationListState,
                 onConversationClick = { viewModel.openConversation(it) },
                 onConversationDelete = { viewModel.deleteConversation(it) },
-                onArchiveConversation = { viewModel.archiveConversation(it) },
-                onUnarchiveConversation = { viewModel.unarchiveConversation(it) },
                 onSelectFilter = { viewModel.selectFilter(it) },
 
                 onConversationSwipeRight = { conversation ->
@@ -279,6 +278,7 @@ fun ConversationsScreen(
                     renameText = conversation.title
                     showRenameDialog = true
                 },
+                onCreateTemporaryConversation = { viewModel.createTemporaryConversation() },
                 onRetry = { viewModel.retry() },
                 onNavigateToSettings = { viewModel.navigateToSettings() },
                 onToggleGroupExpanded = { viewModel.toggleGroupExpanded(it) }
@@ -326,6 +326,25 @@ fun ConversationsScreen(
                     ) {
                         Text("Delete", color = MaterialTheme.colorScheme.error)
                     }
+                    val conv = renameConversation
+                    if (conv != null) {
+                        TextButton(
+                            onClick = {
+                                if (conv.isArchived) {
+                                    viewModel.unarchiveConversation(conv)
+                                } else {
+                                    viewModel.archiveConversation(conv)
+                                }
+                                showRenameDialog = false
+                                renameConversation = null
+                            }
+                        ) {
+                            Text(
+                                if (conv.isArchived) "Unarchive" else "Archive",
+                                color = MaterialTheme.colorScheme.secondary
+                            )
+                        }
+                    }
                 }
             },
             confirmButton = {
@@ -361,7 +380,8 @@ fun ConversationsScreen(
 @Composable
 private fun ConversationsTopBar(
     scrollBehavior: TopAppBarScrollBehavior,
-    onSearchClick: () -> Unit = {}
+    onSearchClick: () -> Unit = {},
+    onTempChatClick: () -> Unit = {}
 ) {
     val expandedHeight = 152.dp
     val collapsedHeight = 72.dp
@@ -637,7 +657,7 @@ private fun ConversationsTopBar(
                 )
             }
 
-            // Search icon button - M3 Expressive: encircled tonal container
+            // M3 Expressive: encircled tonal containers
             val searchInteractionSource = remember { MutableInteractionSource() }
             val isSearchPressed by searchInteractionSource.collectIsPressedAsState()
             val searchScale by animateFloatAsState(
@@ -646,29 +666,56 @@ private fun ConversationsTopBar(
                 label = "searchScale"
             )
 
-            Surface(
-                onClick = { haptics.perform(HapticPattern.CLICK); onSearchClick() },
+            // Temp chat & Search buttons - aligned bottom-end
+            Row(
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
-                    .padding(bottom = baseBottomPadding)
-                    .size(40.dp)
-                    .graphicsLayer {
-                        scaleX = searchScale
-                        scaleY = searchScale
-                    },
-                shape = CircleShape,
-                color = MaterialTheme.colorScheme.surfaceContainerHighest,
-                interactionSource = searchInteractionSource
+                    .padding(bottom = baseBottomPadding),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Box(
-                    contentAlignment = Alignment.Center,
-                    modifier = Modifier.fillMaxSize()
+                // Temp chat icon button
+                Surface(
+                    onClick = { haptics.perform(HapticPattern.CLICK); onTempChatClick() },
+                    modifier = Modifier.size(40.dp),
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.tertiaryContainer
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Search,
-                        contentDescription = "Search",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    Box(
+                        contentAlignment = Alignment.Center,
+                        modifier = Modifier.fillMaxSize()
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.AutoDelete,
+                            contentDescription = "Temporary Chat",
+                            tint = MaterialTheme.colorScheme.onTertiaryContainer
+                        )
+                    }
+                }
+
+                // Search icon button
+                Surface(
+                    onClick = { haptics.perform(HapticPattern.CLICK); onSearchClick() },
+                    modifier = Modifier
+                        .size(40.dp)
+                        .graphicsLayer {
+                            scaleX = searchScale
+                            scaleY = searchScale
+                        },
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.surfaceContainerHighest,
+                    interactionSource = searchInteractionSource
+                ) {
+                    Box(
+                        contentAlignment = Alignment.Center,
+                        modifier = Modifier.fillMaxSize()
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Search,
+                            contentDescription = "Search",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
             }
         }
@@ -690,10 +737,9 @@ private fun ConversationsContent(
     listState: androidx.compose.foundation.lazy.LazyListState,
     onConversationClick: (String) -> Unit,
     onConversationDelete: (com.materialchat.domain.model.Conversation) -> Unit,
-    onArchiveConversation: (com.materialchat.domain.model.Conversation) -> Unit,
-    onUnarchiveConversation: (com.materialchat.domain.model.Conversation) -> Unit,
     onSelectFilter: (ConversationListFilter) -> Unit,
     onConversationSwipeRight: (com.materialchat.domain.model.Conversation) -> Unit = {},
+    onCreateTemporaryConversation: () -> Unit,
     onRetry: () -> Unit,
     onNavigateToSettings: () -> Unit,
     onToggleGroupExpanded: (String) -> Unit = {}
@@ -754,9 +800,6 @@ private fun ConversationsContent(
                                 listState = listState,
                                 onConversationClick = onConversationClick,
                                 onConversationDelete = onConversationDelete,
-                                onArchiveConversation = onArchiveConversation,
-                                onUnarchiveConversation = onUnarchiveConversation,
-                                isArchivedList = showingArchived,
                                 onConversationSwipeRight = onConversationSwipeRight,
                                 onToggleGroupExpanded = onToggleGroupExpanded,
                                 hapticsEnabled = uiState.hapticsEnabled,
@@ -768,9 +811,6 @@ private fun ConversationsContent(
                                 listState = listState,
                                 onConversationClick = onConversationClick,
                                 onConversationDelete = onConversationDelete,
-                                onArchiveConversation = onArchiveConversation,
-                                onUnarchiveConversation = onUnarchiveConversation,
-                                isArchivedList = showingArchived,
                                 onConversationSwipeRight = onConversationSwipeRight,
                                 hapticsEnabled = uiState.hapticsEnabled,
                                 modifier = Modifier.weight(1f)
@@ -994,9 +1034,6 @@ private fun ConversationList(
     listState: androidx.compose.foundation.lazy.LazyListState,
     onConversationClick: (String) -> Unit,
     onConversationDelete: (com.materialchat.domain.model.Conversation) -> Unit,
-    onArchiveConversation: (com.materialchat.domain.model.Conversation) -> Unit,
-    onUnarchiveConversation: (com.materialchat.domain.model.Conversation) -> Unit,
-    isArchivedList: Boolean = false,
     onConversationSwipeRight: (com.materialchat.domain.model.Conversation) -> Unit = {},
     hapticsEnabled: Boolean = true,
     modifier: Modifier = Modifier
@@ -1033,30 +1070,9 @@ private fun ConversationList(
                 bottomStart = baseCorners.bottomStart,
                 bottomEnd = baseCorners.bottomEnd
             )
-            val trailingAction = if (isArchivedList) {
-                SwipeActionSpec(
-                    label = "Restore",
-                    contentDescription = "Restore chat",
-                    icon = Icons.Outlined.Unarchive,
-                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                    onClick = { onUnarchiveConversation(conversationItem.conversation) }
-                )
-            } else {
-                SwipeActionSpec(
-                    label = "Archive",
-                    contentDescription = "Archive chat",
-                    icon = Icons.Outlined.Archive,
-                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                    onClick = { onArchiveConversation(conversationItem.conversation) }
-                )
-            }
-
             SwipeToDeleteBox(
                 onDelete = { onConversationDelete(conversationItem.conversation) },
                 hapticsEnabled = hapticsEnabled,
-                trailingAction = trailingAction,
                 onSwipeRight = { onConversationSwipeRight(conversationItem.conversation) },
                 baseCorners = baseCorners,
                 activeCorners = SwipeCornerSpec(cornerRadius, cornerRadius, cornerRadius, cornerRadius),
@@ -1095,17 +1111,12 @@ private fun GroupedConversationList(
     listState: androidx.compose.foundation.lazy.LazyListState,
     onConversationClick: (String) -> Unit,
     onConversationDelete: (com.materialchat.domain.model.Conversation) -> Unit,
-    onArchiveConversation: (com.materialchat.domain.model.Conversation) -> Unit,
-    onUnarchiveConversation: (com.materialchat.domain.model.Conversation) -> Unit,
-    isArchivedList: Boolean = false,
     onConversationSwipeRight: (com.materialchat.domain.model.Conversation) -> Unit = {},
     onToggleGroupExpanded: (String) -> Unit,
     hapticsEnabled: Boolean = true,
     modifier: Modifier = Modifier
 ) {
     val cornerRadius = 20.dp
-    val actionContainerColor = MaterialTheme.colorScheme.secondaryContainer
-    val actionContentColor = MaterialTheme.colorScheme.onSecondaryContainer
 
     LazyColumn(
         state = listState,
@@ -1131,27 +1142,6 @@ private fun GroupedConversationList(
                 onBranchClick = onConversationClick,
                 onExpandToggle = onToggleGroupExpanded,
                 onDelete = onConversationDelete,
-                trailingActionProvider = { conversation ->
-                    if (isArchivedList) {
-                        SwipeActionSpec(
-                            label = "Restore",
-                            contentDescription = "Restore chat",
-                            icon = Icons.Outlined.Unarchive,
-                            containerColor = actionContainerColor,
-                            contentColor = actionContentColor,
-                            onClick = { onUnarchiveConversation(conversation) }
-                        )
-                    } else {
-                        SwipeActionSpec(
-                            label = "Archive",
-                            contentDescription = "Archive chat",
-                            icon = Icons.Outlined.Archive,
-                            containerColor = actionContainerColor,
-                            contentColor = actionContentColor,
-                            onClick = { onArchiveConversation(conversation) }
-                        )
-                    }
-                },
                 onSwipeRight = onConversationSwipeRight,
                 cornerRadius = cornerRadius,
                 isFirst = isFirst,
