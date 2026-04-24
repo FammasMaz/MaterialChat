@@ -299,16 +299,17 @@ fun MessageBubble(
                     color = bubbleStyle.backgroundColor,
                     modifier = Modifier
                         .widthIn(min = 40.dp, max = bubbleStyle.maxWidth)
-                        .then(
-                            if (!message.isStreaming) {
-                                Modifier.animateContentSize(
-                                    animationSpec = spring(
-                                        dampingRatio = 0.6f,
-                                        stiffness = 380f
-                                    )
+                        .animateContentSize(
+                            animationSpec = if (message.isStreaming) {
+                                spring(
+                                    dampingRatio = Spring.DampingRatioNoBouncy,
+                                    stiffness = 520f
                                 )
                             } else {
-                                Modifier
+                                spring(
+                                    dampingRatio = 0.6f,
+                                    stiffness = 380f
+                                )
                             }
                         )
                         .then(

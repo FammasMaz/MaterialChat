@@ -22,6 +22,7 @@ sealed interface SettingsUiState {
      * @property providers List of all configured providers
      * @property systemPrompt Current global system prompt
      * @property themeMode Current theme mode setting
+     * @property controlShapeStyle Current control shape intensity
      * @property dynamicColorEnabled Whether dynamic color is enabled
      * @property isDynamicColorSupported Whether the device supports dynamic color (Android 12+)
      * @property hapticsEnabled Whether haptic feedback is enabled
@@ -43,6 +44,7 @@ sealed interface SettingsUiState {
         val themeMode: AppPreferences.ThemeMode,
         val themePalette: AppPreferences.ThemePalette = AppPreferences.DEFAULT_THEME_PALETTE,
         val chatBubbleStyle: AppPreferences.ChatBubbleStyle = AppPreferences.DEFAULT_CHAT_BUBBLE_STYLE,
+        val controlShapeStyle: AppPreferences.ControlShapeStyle = AppPreferences.DEFAULT_CONTROL_SHAPE_STYLE,
         val dynamicColorEnabled: Boolean,
         val isDynamicColorSupported: Boolean,
         val hapticsEnabled: Boolean = true,

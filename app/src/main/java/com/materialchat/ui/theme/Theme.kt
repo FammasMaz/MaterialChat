@@ -21,6 +21,7 @@ import androidx.core.view.WindowCompat
 import com.materialchat.data.local.preferences.AppPreferences
 
 val LocalChatBubbleStyle = staticCompositionLocalOf { AppPreferences.ChatBubbleStyle.EXPRESSIVE }
+val LocalControlShapeStyle = staticCompositionLocalOf { AppPreferences.DEFAULT_CONTROL_SHAPE_STYLE }
 
 /**
  * Light color scheme for MaterialChat.
@@ -133,6 +134,7 @@ fun MaterialChatTheme(
     dynamicColor: Boolean = isDynamicColorSupported(),
     themePalette: AppPreferences.ThemePalette = AppPreferences.DEFAULT_THEME_PALETTE,
     chatBubbleStyle: AppPreferences.ChatBubbleStyle = AppPreferences.DEFAULT_CHAT_BUBBLE_STYLE,
+    controlShapeStyle: AppPreferences.ControlShapeStyle = AppPreferences.DEFAULT_CONTROL_SHAPE_STYLE,
     content: @Composable () -> Unit
 ) {
     // Determine if we should use dark theme
@@ -169,7 +171,8 @@ fun MaterialChatTheme(
     }
 
     CompositionLocalProvider(
-        LocalChatBubbleStyle provides chatBubbleStyle
+        LocalChatBubbleStyle provides chatBubbleStyle,
+        LocalControlShapeStyle provides controlShapeStyle
     ) {
         MaterialTheme(
             colorScheme = colorScheme,

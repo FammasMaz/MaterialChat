@@ -3,7 +3,6 @@ package com.materialchat.ui.screens.conversations
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.spring
@@ -48,7 +47,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.LoadingIndicator
-import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -60,7 +58,6 @@ import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.toShape
 import com.materialchat.ui.components.ExpressiveButton
 import com.materialchat.ui.components.ExpressiveButtonStyle
 import androidx.compose.material3.TopAppBarDefaults
@@ -86,7 +83,6 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -115,6 +111,8 @@ import com.materialchat.ui.screens.search.components.ChatSearchBar
 import com.materialchat.ui.screens.search.components.SearchResultItem
 import com.materialchat.ui.theme.CustomShapes
 import com.materialchat.ui.theme.ExpressiveMotion
+import com.materialchat.ui.theme.ExpressiveShapeToken
+import com.materialchat.ui.theme.expressiveControlShape
 import kotlin.math.roundToInt
 import kotlin.random.Random
 
@@ -682,7 +680,8 @@ private fun ConversationsTopBar(
                     contentDescription = "Temporary chat",
                     containerColor = MaterialTheme.colorScheme.tertiaryContainer,
                     contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
-                    shape = MaterialShapes.Clover4Leaf.toShape(startAngle = 45),
+                    shapeToken = ExpressiveShapeToken.Clover,
+                    startAngle = 45,
                     onClick = {
                         haptics.perform(HapticPattern.MORPH_TRANSITION)
                         onTempChatClick()
@@ -694,7 +693,8 @@ private fun ConversationsTopBar(
                     contentDescription = "Search",
                     containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
                     contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                    shape = MaterialShapes.Cookie6Sided.toShape(startAngle = 30),
+                    shapeToken = ExpressiveShapeToken.CookieSoft,
+                    startAngle = 30,
                     onClick = {
                         haptics.perform(HapticPattern.CLICK)
                         onSearchClick()
@@ -711,7 +711,8 @@ private fun TopBarShapeAction(
     contentDescription: String,
     containerColor: androidx.compose.ui.graphics.Color,
     contentColor: androidx.compose.ui.graphics.Color,
-    shape: Shape,
+    shapeToken: ExpressiveShapeToken,
+    startAngle: Int,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -722,10 +723,10 @@ private fun TopBarShapeAction(
         animationSpec = ExpressiveMotion.Spatial.scale(),
         label = "topBarActionScale"
     )
-    val pressedRadius by animateDpAsState(
-        targetValue = if (isPressed) 13.dp else 24.dp,
-        animationSpec = ExpressiveMotion.Spatial.shapeMorph(),
-        label = "topBarActionPressedRadius"
+    val shape = expressiveControlShape(
+        token = shapeToken,
+        pressed = isPressed,
+        startAngle = startAngle
     )
 
     Surface(
@@ -736,7 +737,7 @@ private fun TopBarShapeAction(
                 scaleX = scale
                 scaleY = scale
             },
-        shape = if (isPressed) RoundedCornerShape(pressedRadius) else shape,
+        shape = shape,
         color = containerColor,
         contentColor = contentColor,
         tonalElevation = 3.dp,

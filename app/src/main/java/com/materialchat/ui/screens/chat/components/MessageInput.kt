@@ -53,13 +53,11 @@ import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
-import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -73,7 +71,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -100,7 +97,9 @@ import com.materialchat.ui.navigation.LocalSharedTransitionScope
 import com.materialchat.ui.navigation.SHARED_ELEMENT_FAB_TO_INPUT
 import com.materialchat.ui.theme.CustomShapes
 import com.materialchat.ui.theme.ExpressiveMotion
+import com.materialchat.ui.theme.ExpressiveShapeToken
 import com.materialchat.ui.theme.MaterialChatMotion
+import com.materialchat.ui.theme.expressiveControlShape
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -239,7 +238,8 @@ fun MessageInput(
                 } else {
                     MaterialTheme.colorScheme.onSurfaceVariant
                 },
-                shape = MaterialShapes.Cookie6Sided.toShape(startAngle = 30),
+                shapeToken = ExpressiveShapeToken.CookieSoft,
+                startAngle = 30,
                 onClick = {
                     haptics.perform(HapticPattern.MORPH_TRANSITION, hapticsEnabled)
                     onAttachImage()
@@ -384,7 +384,8 @@ private fun InputShapeButton(
     enabled: Boolean,
     containerColor: androidx.compose.ui.graphics.Color,
     contentColor: androidx.compose.ui.graphics.Color,
-    shape: Shape,
+    shapeToken: ExpressiveShapeToken,
+    startAngle: Int,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -395,10 +396,10 @@ private fun InputShapeButton(
         animationSpec = ExpressiveMotion.Spatial.scale(),
         label = "inputShapeButtonScale"
     )
-    val pressedRadius by animateDpAsState(
-        targetValue = if (isPressed) 13.dp else 24.dp,
-        animationSpec = ExpressiveMotion.Spatial.shapeMorph(),
-        label = "inputShapeButtonPressedRadius"
+    val shape = expressiveControlShape(
+        token = shapeToken,
+        pressed = isPressed,
+        startAngle = startAngle
     )
 
     Surface(
@@ -410,7 +411,7 @@ private fun InputShapeButton(
                 scaleX = scale
                 scaleY = scale
             },
-        shape = if (isPressed) RoundedCornerShape(pressedRadius) else shape,
+        shape = shape,
         color = containerColor,
         contentColor = contentColor,
         tonalElevation = 3.dp,
@@ -505,16 +506,15 @@ private fun ReasoningEffortSelector(
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
     val buttonSize = 48.dp
-    val cornerRadius by animateDpAsState(
-        targetValue = if (isPressed) 13.dp else 24.dp,
-        animationSpec = ExpressiveMotion.Spatial.shapeMorph(),
-        label = "reasoningButtonCorner"
+    val reasoningShape = expressiveControlShape(
+        token = when {
+            expanded -> ExpressiveShapeToken.Flower
+            isActive -> ExpressiveShapeToken.Puffy
+            else -> ExpressiveShapeToken.Cookie
+        },
+        pressed = isPressed,
+        startAngle = if (expanded) 12 else if (isActive) 8 else 45
     )
-    val restingShape = when {
-        expanded -> MaterialShapes.Flower.toShape(startAngle = 12)
-        isActive -> MaterialShapes.Puffy.toShape(startAngle = 8)
-        else -> MaterialShapes.Cookie4Sided.toShape(startAngle = 45)
-    }
     val buttonScale by animateFloatAsState(
         targetValue = if (isPressed) 0.9f else 1f,
         animationSpec = ExpressiveMotion.Spatial.scale(),
@@ -550,7 +550,7 @@ private fun ReasoningEffortSelector(
         Surface(
             onClick = { if (enabled) { haptics.perform(HapticPattern.CLICK); expanded = !expanded } },
             enabled = enabled,
-            shape = if (isPressed) RoundedCornerShape(cornerRadius) else restingShape,
+            shape = reasoningShape,
             color = containerColor,
             contentColor = contentColor,
             interactionSource = interactionSource,

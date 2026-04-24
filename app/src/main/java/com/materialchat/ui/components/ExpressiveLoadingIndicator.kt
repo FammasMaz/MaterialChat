@@ -32,18 +32,15 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LoadingIndicator
-import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -65,6 +62,8 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.materialchat.ui.theme.ExpressiveMotion
+import com.materialchat.ui.theme.ExpressiveShapeToken
+import com.materialchat.ui.theme.expressiveControlShape
 import com.materialchat.domain.model.ReasoningEffort
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -635,16 +634,19 @@ fun MorphingSendButton(
         animationSpec = ExpressiveMotion.Spatial.scale(),
         label = "pressScale"
     )
-    val pressedRadius by androidx.compose.animation.core.animateDpAsState(
-        targetValue = if (isPressed) 13.dp else 24.dp,
-        animationSpec = ExpressiveMotion.Spatial.shapeMorph(),
-        label = "sendPressedRadius"
+    val buttonShape = expressiveControlShape(
+        token = when {
+            isStreaming -> ExpressiveShapeToken.Flower
+            canSend -> ExpressiveShapeToken.SoftBurst
+            else -> ExpressiveShapeToken.Cookie
+        },
+        pressed = isPressed,
+        startAngle = when {
+            isStreaming -> 12
+            canSend -> 18
+            else -> 45
+        }
     )
-    val buttonShape = when {
-        isStreaming -> MaterialShapes.Flower.toShape(startAngle = 12)
-        canSend -> MaterialShapes.SoftBurst.toShape(startAngle = 18)
-        else -> MaterialShapes.Cookie4Sided.toShape(startAngle = 45)
-    }
 
     // Accessibility description
     val semanticsDescription = when {
@@ -671,7 +673,7 @@ fun MorphingSendButton(
                 scaleY = combinedScale
             }
             .semantics { contentDescription = semanticsDescription },
-        shape = if (isPressed) RoundedCornerShape(pressedRadius) else buttonShape,
+        shape = buttonShape,
         color = containerColor,
         enabled = canSend || isStreaming,
         interactionSource = interactionSource

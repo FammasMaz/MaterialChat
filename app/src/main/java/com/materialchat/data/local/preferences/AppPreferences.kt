@@ -39,6 +39,7 @@ class AppPreferences(private val context: Context) {
         val THEME_MODE = stringPreferencesKey("theme_mode")
         val THEME_PALETTE = stringPreferencesKey("theme_palette")
         val CHAT_BUBBLE_STYLE = stringPreferencesKey("chat_bubble_style")
+        val CONTROL_SHAPE_STYLE = stringPreferencesKey("control_shape_style")
         val DYNAMIC_COLOR_ENABLED = booleanPreferencesKey("dynamic_color_enabled")
         val HAPTICS_ENABLED = booleanPreferencesKey("haptics_enabled")
         val NOTIFICATIONS_ENABLED = booleanPreferencesKey("notifications_enabled")
@@ -101,6 +102,15 @@ class AppPreferences(private val context: Context) {
     }
 
     /**
+     * Material Expressive control shape intensity.
+     */
+    enum class ControlShapeStyle {
+        CLASSIC,
+        BALANCED,
+        EXPRESSIVE
+    }
+
+    /**
      * Default values for preferences.
      */
     companion object {
@@ -108,6 +118,7 @@ class AppPreferences(private val context: Context) {
         val DEFAULT_THEME_MODE = ThemeMode.SYSTEM
         val DEFAULT_THEME_PALETTE = ThemePalette.VIOLET
         val DEFAULT_CHAT_BUBBLE_STYLE = ChatBubbleStyle.EXPRESSIVE
+        val DEFAULT_CONTROL_SHAPE_STYLE = ControlShapeStyle.BALANCED
         const val DEFAULT_DYNAMIC_COLOR_ENABLED = true
         const val DEFAULT_HAPTICS_ENABLED = true
         const val DEFAULT_NOTIFICATIONS_ENABLED = false
@@ -206,6 +217,29 @@ class AppPreferences(private val context: Context) {
     suspend fun setChatBubbleStyle(style: ChatBubbleStyle) {
         dataStore.edit { preferences ->
             preferences[Keys.CHAT_BUBBLE_STYLE] = style.name
+        }
+    }
+
+    // ========== Control Shape Style ==========
+
+    /**
+     * Get the selected Material Expressive control shape intensity as a Flow.
+     */
+    val controlShapeStyle: Flow<ControlShapeStyle> = dataStore.data.map { preferences ->
+        val styleName = preferences[Keys.CONTROL_SHAPE_STYLE] ?: DEFAULT_CONTROL_SHAPE_STYLE.name
+        try {
+            ControlShapeStyle.valueOf(styleName)
+        } catch (e: IllegalArgumentException) {
+            DEFAULT_CONTROL_SHAPE_STYLE
+        }
+    }
+
+    /**
+     * Set the Material Expressive control shape intensity.
+     */
+    suspend fun setControlShapeStyle(style: ControlShapeStyle) {
+        dataStore.edit { preferences ->
+            preferences[Keys.CONTROL_SHAPE_STYLE] = style.name
         }
     }
 

@@ -261,6 +261,7 @@ fun SettingsScreen(
             onThemeModeChange = { viewModel.updateThemeMode(it) },
             onThemePaletteChange = { viewModel.updateThemePalette(it) },
             onChatBubbleStyleChange = { viewModel.updateChatBubbleStyle(it) },
+            onControlShapeStyleChange = { viewModel.updateControlShapeStyle(it) },
             onDynamicColorChange = { viewModel.updateDynamicColorEnabled(it) },
             onHapticsChange = { viewModel.updateHapticsEnabled(it) },
             onFontSizeScaleChange = { viewModel.updateFontSizeScale(it) },
@@ -351,6 +352,7 @@ private fun SettingsContent(
     onThemeModeChange: (AppPreferences.ThemeMode) -> Unit,
     onThemePaletteChange: (AppPreferences.ThemePalette) -> Unit,
     onChatBubbleStyleChange: (AppPreferences.ChatBubbleStyle) -> Unit,
+    onControlShapeStyleChange: (AppPreferences.ControlShapeStyle) -> Unit,
     onDynamicColorChange: (Boolean) -> Unit,
     onHapticsChange: (Boolean) -> Unit,
     onFontSizeScaleChange: (Float) -> Unit,
@@ -408,6 +410,7 @@ private fun SettingsContent(
                     onThemeModeChange = onThemeModeChange,
                     onThemePaletteChange = onThemePaletteChange,
                     onChatBubbleStyleChange = onChatBubbleStyleChange,
+                    onControlShapeStyleChange = onControlShapeStyleChange,
                     onDynamicColorChange = onDynamicColorChange,
                     onHapticsChange = onHapticsChange,
                     onFontSizeScaleChange = onFontSizeScaleChange,
@@ -471,6 +474,7 @@ private fun SuccessContent(
     onThemeModeChange: (AppPreferences.ThemeMode) -> Unit,
     onThemePaletteChange: (AppPreferences.ThemePalette) -> Unit,
     onChatBubbleStyleChange: (AppPreferences.ChatBubbleStyle) -> Unit,
+    onControlShapeStyleChange: (AppPreferences.ControlShapeStyle) -> Unit,
     onDynamicColorChange: (Boolean) -> Unit,
     onHapticsChange: (Boolean) -> Unit,
     onFontSizeScaleChange: (Float) -> Unit,
@@ -569,6 +573,13 @@ private fun SuccessContent(
             ChatBubbleStyleSelector(
                 selectedStyle = uiState.chatBubbleStyle,
                 onStyleSelected = onChatBubbleStyleChange
+            )
+        }
+
+        item {
+            ControlShapeStyleSelector(
+                selectedStyle = uiState.controlShapeStyle,
+                onStyleSelected = onControlShapeStyleChange
             )
         }
 
@@ -1047,11 +1058,132 @@ private fun ChatBubbleStyleSelector(
     }
 }
 
+@Composable
+private fun ControlShapeStyleSelector(
+    selectedStyle: AppPreferences.ControlShapeStyle,
+    onStyleSelected: (AppPreferences.ControlShapeStyle) -> Unit
+) {
+    val haptics = rememberHapticFeedback()
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+        ),
+        shape = RoundedCornerShape(20.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 16.dp)
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.AutoAwesome,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(24.dp)
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                Column {
+                    Text(
+                        text = "Control shape intensity",
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = "Choose how playful buttons and controls feel",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            LazyRow(
+                contentPadding = PaddingValues(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                items(AppPreferences.ControlShapeStyle.entries) { style ->
+                    val selected = selectedStyle == style
+                    Surface(
+                        onClick = {
+                            haptics.perform(HapticPattern.MORPH_TRANSITION)
+                            onStyleSelected(style)
+                        },
+                        shape = RoundedCornerShape(if (selected) 28.dp else 20.dp),
+                        color = if (selected) MaterialTheme.colorScheme.primaryContainer
+                            else MaterialTheme.colorScheme.surfaceContainerHigh,
+                        contentColor = if (selected) MaterialTheme.colorScheme.onPrimaryContainer
+                            else MaterialTheme.colorScheme.onSurface,
+                        tonalElevation = if (selected) 4.dp else 1.dp,
+                        border = BorderStroke(
+                            width = if (selected) 2.dp else 1.dp,
+                            color = if (selected) MaterialTheme.colorScheme.primary
+                                else MaterialTheme.colorScheme.outlineVariant
+                        ),
+                        modifier = Modifier.defaultMinSize(minHeight = 56.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .width(124.dp)
+                                .padding(12.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                ShapePreviewDot(style = style, selected = selected)
+                                ShapePreviewDot(style = style, selected = false)
+                            }
+                            Text(
+                                text = style.prettyName(),
+                                style = MaterialTheme.typography.labelLarge,
+                                maxLines = 1
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ShapePreviewDot(
+    style: AppPreferences.ControlShapeStyle,
+    selected: Boolean
+) {
+    val radius = when (style) {
+        AppPreferences.ControlShapeStyle.CLASSIC -> 24.dp
+        AppPreferences.ControlShapeStyle.BALANCED -> if (selected) 16.dp else 20.dp
+        AppPreferences.ControlShapeStyle.EXPRESSIVE -> if (selected) 8.dp else 14.dp
+    }
+    Box(
+        modifier = Modifier
+            .size(28.dp)
+            .clip(RoundedCornerShape(radius))
+            .background(
+                if (selected) MaterialTheme.colorScheme.primary
+                else MaterialTheme.colorScheme.secondaryContainer
+            )
+    )
+}
+
 private fun AppPreferences.ThemePalette.prettyName(): String {
     return name.lowercase().replaceFirstChar { it.uppercase() }
 }
 
 private fun AppPreferences.ChatBubbleStyle.prettyName(): String {
+    return name.lowercase().replaceFirstChar { it.uppercase() }
+}
+
+private fun AppPreferences.ControlShapeStyle.prettyName(): String {
     return name.lowercase().replaceFirstChar { it.uppercase() }
 }
 

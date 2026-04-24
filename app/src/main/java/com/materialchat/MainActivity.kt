@@ -123,6 +123,9 @@ class MainActivity : ComponentActivity() {
             val chatBubbleStyle by appPreferences.chatBubbleStyle.collectAsState(
                 initial = AppPreferences.DEFAULT_CHAT_BUBBLE_STYLE
             )
+            val controlShapeStyle by appPreferences.controlShapeStyle.collectAsState(
+                initial = AppPreferences.DEFAULT_CONTROL_SHAPE_STYLE
+            )
             val chatFontSizeScale by appPreferences.fontSizeScale.collectAsState(
                 initial = AppPreferences.DEFAULT_FONT_SIZE_SCALE_VALUE
             )
@@ -131,7 +134,8 @@ class MainActivity : ComponentActivity() {
                 themeMode = themeMode,
                 dynamicColor = dynamicColorEnabled && isDynamicColorSupported(),
                 themePalette = themePalette,
-                chatBubbleStyle = chatBubbleStyle
+                chatBubbleStyle = chatBubbleStyle,
+                controlShapeStyle = controlShapeStyle
             ) {
                 // Provide chat-specific font size via CompositionLocal
                 CompositionLocalProvider(

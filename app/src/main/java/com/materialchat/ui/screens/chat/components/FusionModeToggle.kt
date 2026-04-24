@@ -1,11 +1,9 @@
 package com.materialchat.ui.screens.chat.components
 
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.CallMerge
 import androidx.compose.material3.Badge
@@ -15,11 +13,9 @@ import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -28,6 +24,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
 import com.materialchat.ui.theme.ExpressiveMotion
+import com.materialchat.ui.theme.ExpressiveShapeToken
+import com.materialchat.ui.theme.expressiveControlShape
 
 /**
  * Toggle button for enabling/disabling fusion mode.
@@ -75,17 +73,11 @@ fun FusionModeToggle(
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
 
-    // M3 Expressive: shape family changes from cookie to clover for selected fusion state.
-    val cornerRadius by animateDpAsState(
-        targetValue = if (isPressed) 13.dp else 24.dp,
-        animationSpec = ExpressiveMotion.Spatial.shapeMorph(),
-        label = "fusionToggleCorner"
+    val shape = expressiveControlShape(
+        token = if (isEnabled) ExpressiveShapeToken.Clover else ExpressiveShapeToken.Cookie,
+        pressed = isPressed,
+        startAngle = 45
     )
-    val restingShape = if (isEnabled) {
-        MaterialShapes.Clover4Leaf.toShape(startAngle = 45)
-    } else {
-        MaterialShapes.Cookie4Sided.toShape(startAngle = 45)
-    }
 
     // M3 Expressive: Subtle scale bounce on state change
     val scale by animateFloatAsState(
@@ -107,7 +99,7 @@ fun FusionModeToggle(
                 scaleX = scale
                 scaleY = scale
             },
-        shape = if (isPressed) RoundedCornerShape(cornerRadius) else restingShape,
+        shape = shape,
         color = containerColor,
         contentColor = contentColor,
         tonalElevation = if (isEnabled) 4.dp else 2.dp,

@@ -1,5 +1,6 @@
 package com.materialchat.ui.screens.chat.components
 
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -98,14 +99,31 @@ fun SmoothStreamingText(
         }
     }
 
+    val tailText = remember(rawText, renderedMarkdown) {
+        if (rawText.startsWith(renderedMarkdown)) {
+            rawText.removePrefix(renderedMarkdown)
+        } else {
+            ""
+        }
+    }
+
     Column(modifier = modifier) {
-        MarkdownText(
-            markdown = renderedMarkdown,
-            textColor = textColor,
-            style = style,
-            isStreaming = true,
-            onOpenCanvas = onOpenCanvas
-        )
+        if (renderedMarkdown.isNotBlank()) {
+            MarkdownText(
+                markdown = renderedMarkdown,
+                textColor = textColor,
+                style = style,
+                isStreaming = true,
+                onOpenCanvas = onOpenCanvas
+            )
+        }
+        if (tailText.isNotEmpty()) {
+            FadingStreamingTailText(
+                text = tailText,
+                style = style,
+                color = textColor
+            )
+        }
         StreamingTailEffect(
             tokenVersion = rawText.length,
             color = MaterialTheme.colorScheme.primary
@@ -163,6 +181,39 @@ fun SmoothStreamingThinkingText(
         color = textColor,
         fontStyle = FontStyle.Italic,
         modifier = modifier
+    )
+}
+
+@Composable
+private fun FadingStreamingTailText(
+    text: String,
+    style: TextStyle,
+    color: Color
+) {
+    val alpha = remember { Animatable(1f) }
+    val lift = remember { Animatable(0f) }
+
+    LaunchedEffect(text.length) {
+        alpha.snapTo(0.28f)
+        lift.snapTo(4f)
+        alpha.animateTo(
+            targetValue = 1f,
+            animationSpec = ExpressiveMotion.Effects.alpha()
+        )
+        lift.animateTo(
+            targetValue = 0f,
+            animationSpec = ExpressiveMotion.Spatial.default()
+        )
+    }
+
+    Text(
+        text = text,
+        style = style,
+        color = color,
+        modifier = Modifier.graphicsLayer {
+            this.alpha = alpha.value
+            translationY = lift.value
+        }
     )
 }
 

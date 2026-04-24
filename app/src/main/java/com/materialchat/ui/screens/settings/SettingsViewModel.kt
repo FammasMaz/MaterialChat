@@ -62,9 +62,15 @@ class SettingsViewModel @Inject constructor(
                     combine(
                         appPreferences.dynamicColorEnabled,
                         appPreferences.themePalette,
-                        appPreferences.chatBubbleStyle
-                    ) { dynamicColorEnabled, themePalette, chatBubbleStyle ->
-                        AppearancePrefs(dynamicColorEnabled, themePalette, chatBubbleStyle)
+                        appPreferences.chatBubbleStyle,
+                        appPreferences.controlShapeStyle
+                    ) { dynamicColorEnabled, themePalette, chatBubbleStyle, controlShapeStyle ->
+                        AppearancePrefs(
+                            dynamicColorEnabled,
+                            themePalette,
+                            chatBubbleStyle,
+                            controlShapeStyle
+                        )
                     },
                     combine(
                         combine(
@@ -119,6 +125,7 @@ class SettingsViewModel @Inject constructor(
                         dynamicColorEnabled = appearancePrefs.dynamicColorEnabled,
                         themePalette = appearancePrefs.themePalette,
                         chatBubbleStyle = appearancePrefs.chatBubbleStyle,
+                        controlShapeStyle = appearancePrefs.controlShapeStyle,
                         hapticsEnabled = toggles.haptics,
                         notificationsEnabled = toggles.notifications,
                         aiGeneratedTitlesEnabled = toggles.aiTitles,
@@ -180,6 +187,7 @@ class SettingsViewModel @Inject constructor(
                         themeMode = data.themeMode,
                         themePalette = data.themePalette,
                         chatBubbleStyle = data.chatBubbleStyle,
+                        controlShapeStyle = data.controlShapeStyle,
                         dynamicColorEnabled = data.dynamicColorEnabled,
                         isDynamicColorSupported = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S,
                         hapticsEnabled = data.hapticsEnabled,
@@ -626,6 +634,21 @@ class SettingsViewModel @Inject constructor(
     }
 
     /**
+     * Updates Material Expressive control shape intensity.
+     */
+    fun updateControlShapeStyle(style: AppPreferences.ControlShapeStyle) {
+        viewModelScope.launch {
+            try {
+                appPreferences.setControlShapeStyle(style)
+            } catch (e: Exception) {
+                _events.emit(SettingsEvent.ShowSnackbar(
+                    message = "Failed to save control shape style"
+                ))
+            }
+        }
+    }
+
+    /**
      * Updates the dynamic color setting.
      */
     fun updateDynamicColorEnabled(enabled: Boolean) {
@@ -1002,6 +1025,7 @@ class SettingsViewModel @Inject constructor(
         val dynamicColorEnabled: Boolean,
         val themePalette: AppPreferences.ThemePalette,
         val chatBubbleStyle: AppPreferences.ChatBubbleStyle,
+        val controlShapeStyle: AppPreferences.ControlShapeStyle,
         val hapticsEnabled: Boolean,
         val notificationsEnabled: Boolean,
         val aiGeneratedTitlesEnabled: Boolean,
@@ -1028,7 +1052,8 @@ class SettingsViewModel @Inject constructor(
     private data class AppearancePrefs(
         val dynamicColorEnabled: Boolean,
         val themePalette: AppPreferences.ThemePalette,
-        val chatBubbleStyle: AppPreferences.ChatBubbleStyle
+        val chatBubbleStyle: AppPreferences.ChatBubbleStyle,
+        val controlShapeStyle: AppPreferences.ControlShapeStyle
     )
 
     /**
