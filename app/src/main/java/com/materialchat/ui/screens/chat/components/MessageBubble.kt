@@ -1,7 +1,10 @@
 package com.materialchat.ui.screens.chat.components
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
@@ -18,6 +21,8 @@ import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.awaitHorizontalTouchSlopOrCancellation
 import androidx.compose.foundation.gestures.horizontalDrag
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -59,6 +64,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ripple
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -528,12 +534,61 @@ fun MessageBubble(
 
                         // Bookmark button — tap to toggle, long-press for detail sheet
                         if (onBookmarkToggle != null) {
+                            val bookmarkInteractionSource = remember { MutableInteractionSource() }
+                            val bookmarkPressed by bookmarkInteractionSource.collectIsPressedAsState()
+                            val bookmarkRadius by animateDpAsState(
+                                targetValue = when {
+                                    bookmarkPressed -> 14.dp
+                                    isBookmarked -> 18.dp
+                                    else -> 24.dp
+                                },
+                                animationSpec = com.materialchat.ui.theme.ExpressiveMotion.Spatial.shapeMorph(),
+                                label = "bookmarkActionShape"
+                            )
+                            val bookmarkScale by animateFloatAsState(
+                                targetValue = if (bookmarkPressed) 0.90f else 1f,
+                                animationSpec = com.materialchat.ui.theme.ExpressiveMotion.Spatial.scale(),
+                                label = "bookmarkActionScale"
+                            )
+                            val bookmarkContainer by animateColorAsState(
+                                targetValue = if (isBookmarked) {
+                                    MaterialTheme.colorScheme.primaryContainer
+                                } else {
+                                    MaterialTheme.colorScheme.surfaceContainerHigh
+                                },
+                                animationSpec = com.materialchat.ui.theme.ExpressiveMotion.Effects.color(),
+                                label = "bookmarkActionContainer"
+                            )
+                            val bookmarkContent by animateColorAsState(
+                                targetValue = if (isBookmarked) {
+                                    MaterialTheme.colorScheme.onPrimaryContainer
+                                } else {
+                                    MaterialTheme.colorScheme.onSurfaceVariant
+                                },
+                                animationSpec = com.materialchat.ui.theme.ExpressiveMotion.Effects.color(),
+                                label = "bookmarkActionContent"
+                            )
+
                             Box(
                                 modifier = Modifier
                                     .size(48.dp)
+                                    .graphicsLayer {
+                                        scaleX = bookmarkScale
+                                        scaleY = bookmarkScale
+                                    }
+                                    .clip(RoundedCornerShape(bookmarkRadius))
+                                    .background(bookmarkContainer)
                                     .combinedClickable(
-                                        onClick = { haptics.perform(HapticPattern.CLICK, hapticsEnabled); onBookmarkToggle() },
-                                        onLongClick = { haptics.perform(HapticPattern.CLICK, hapticsEnabled); onBookmarkLongPress?.invoke() }
+                                        interactionSource = bookmarkInteractionSource,
+                                        indication = ripple(),
+                                        onClick = {
+                                            haptics.perform(HapticPattern.MORPH_TRANSITION, hapticsEnabled)
+                                            onBookmarkToggle()
+                                        },
+                                        onLongClick = {
+                                            haptics.perform(HapticPattern.LONG_PRESS, hapticsEnabled)
+                                            onBookmarkLongPress?.invoke()
+                                        }
                                     ),
                                 contentAlignment = Alignment.Center
                             ) {
@@ -543,11 +598,7 @@ fun MessageBubble(
                                     contentDescription = if (isBookmarked) "Remove bookmark"
                                                          else "Bookmark message",
                                     modifier = Modifier.size(20.dp),
-                                    tint = if (isBookmarked) {
-                                        MaterialTheme.colorScheme.primary
-                                    } else {
-                                        MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
-                                    }
+                                    tint = bookmarkContent
                                 )
                             }
                         }

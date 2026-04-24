@@ -1,13 +1,12 @@
 package com.materialchat.ui.screens.chat.components
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.Spring
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
@@ -17,46 +16,27 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.SwapHoriz
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.materialchat.ui.components.HapticPattern
 import com.materialchat.ui.components.rememberHapticFeedback
+import com.materialchat.ui.theme.ExpressiveMotion
 
 /**
  * Action buttons for chat messages (copy, regenerate, branch, redo with model).
  *
- * This component provides quick actions for messages following Material 3 Expressive design:
- * - Copy button: Copies message content to clipboard (available for all messages)
- * - Regenerate button: Regenerates the AI response (only for last assistant message)
- * - Branch button: Creates a new conversation branch from this message
- * - Redo with model button: Redo response with a different model
- *
- * Features:
- * - Animated visibility with scale and fade transitions
- * - Press feedback with spring-physics scale animation
- * - Consistent Material 3 styling
- *
- * @param showCopy Whether to show the copy button
- * @param showRegenerate Whether to show the regenerate button
- * @param showBranch Whether to show the branch button
- * @param showRedoWithModel Whether to show the redo with model button
- * @param onCopy Callback when copy button is clicked
- * @param onRegenerate Callback when regenerate button is clicked
- * @param onBranch Callback when branch button is clicked
- * @param onRedoWithModel Callback when redo with model button is clicked
- * @param modifier Modifier for the action row
+ * Uses a small connected Material 3 Expressive button group. Each item morphs its
+ * corner family on press instead of being a plain transparent icon button.
  */
 @Composable
 fun MessageActions(
@@ -72,188 +52,182 @@ fun MessageActions(
     onEdit: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
+    val actions = buildList {
+        if (showCopy) {
+            add(MessageActionItem(Icons.Default.ContentCopy, "Copy message", MessageActionTone.Neutral, onCopy))
+        }
+        if (showEdit && onEdit != null) {
+            add(MessageActionItem(Icons.Outlined.Edit, "Edit message", MessageActionTone.Secondary) { onEdit() })
+        }
+        if (showBranch && onBranch != null) {
+            add(MessageActionItem(Icons.AutoMirrored.Outlined.CallSplit, "Branch conversation", MessageActionTone.Tertiary) { onBranch() })
+        }
+        if (showRedoWithModel && onRedoWithModel != null) {
+            add(MessageActionItem(Icons.Outlined.SwapHoriz, "Redo with different model", MessageActionTone.Secondary) { onRedoWithModel() })
+        }
+        if (showRegenerate && onRegenerate != null) {
+            add(MessageActionItem(Icons.Default.Refresh, "Regenerate response", MessageActionTone.Primary) { onRegenerate() })
+        }
+    }
+
     Row(
         modifier = modifier,
-        verticalAlignment = Alignment.CenterVertically
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(3.dp)
     ) {
-        // Copy button
-        AnimatedVisibility(
-            visible = showCopy,
-            enter = fadeIn(
-                animationSpec = spring(
-                    dampingRatio = Spring.DampingRatioMediumBouncy,
-                    stiffness = Spring.StiffnessMedium
-                )
-            ) + scaleIn(
-                animationSpec = spring(
-                    dampingRatio = Spring.DampingRatioMediumBouncy,
-                    stiffness = Spring.StiffnessMedium
-                )
-            ),
-            exit = fadeOut() + scaleOut()
-        ) {
+        actions.forEachIndexed { index, action ->
             ActionButton(
-                icon = Icons.Default.ContentCopy,
-                contentDescription = "Copy message",
-                onClick = onCopy
-            )
-        }
-
-        // Edit button
-        AnimatedVisibility(
-            visible = showEdit && onEdit != null,
-            enter = fadeIn(
-                animationSpec = spring(
-                    dampingRatio = Spring.DampingRatioMediumBouncy,
-                    stiffness = Spring.StiffnessMedium
-                )
-            ) + scaleIn(
-                animationSpec = spring(
-                    dampingRatio = Spring.DampingRatioMediumBouncy,
-                    stiffness = Spring.StiffnessMedium
-                )
-            ),
-            exit = fadeOut() + scaleOut()
-        ) {
-            ActionButton(
-                icon = Icons.Outlined.Edit,
-                contentDescription = "Edit message",
-                onClick = { onEdit?.invoke() }
-            )
-        }
-
-        // Branch button
-        AnimatedVisibility(
-            visible = showBranch && onBranch != null,
-            enter = fadeIn(
-                animationSpec = spring(
-                    dampingRatio = Spring.DampingRatioMediumBouncy,
-                    stiffness = Spring.StiffnessMedium
-                )
-            ) + scaleIn(
-                animationSpec = spring(
-                    dampingRatio = Spring.DampingRatioMediumBouncy,
-                    stiffness = Spring.StiffnessMedium
-                )
-            ),
-            exit = fadeOut() + scaleOut()
-        ) {
-            ActionButton(
-                icon = Icons.AutoMirrored.Outlined.CallSplit,
-                contentDescription = "Branch conversation",
-                onClick = { onBranch?.invoke() }
-            )
-        }
-
-        // Redo with model button
-        AnimatedVisibility(
-            visible = showRedoWithModel && onRedoWithModel != null,
-            enter = fadeIn(
-                animationSpec = spring(
-                    dampingRatio = Spring.DampingRatioMediumBouncy,
-                    stiffness = Spring.StiffnessMedium
-                )
-            ) + scaleIn(
-                animationSpec = spring(
-                    dampingRatio = Spring.DampingRatioMediumBouncy,
-                    stiffness = Spring.StiffnessMedium
-                )
-            ),
-            exit = fadeOut() + scaleOut()
-        ) {
-            ActionButton(
-                icon = Icons.Outlined.SwapHoriz,
-                contentDescription = "Redo with different model",
-                onClick = { onRedoWithModel?.invoke() }
-            )
-        }
-
-        // Regenerate button (only for last assistant message)
-        AnimatedVisibility(
-            visible = showRegenerate && onRegenerate != null,
-            enter = fadeIn(
-                animationSpec = spring(
-                    dampingRatio = Spring.DampingRatioMediumBouncy,
-                    stiffness = Spring.StiffnessMedium
-                )
-            ) + scaleIn(
-                animationSpec = spring(
-                    dampingRatio = Spring.DampingRatioMediumBouncy,
-                    stiffness = Spring.StiffnessMedium
-                )
-            ),
-            exit = fadeOut() + scaleOut()
-        ) {
-            ActionButton(
-                icon = Icons.Default.Refresh,
-                contentDescription = "Regenerate response",
-                onClick = { onRegenerate?.invoke() }
+                item = action,
+                index = index,
+                count = actions.size
             )
         }
     }
 }
 
-/**
- * Individual action button with press animation.
- *
- * Features spring-physics scale animation on press for Material 3 Expressive feel.
- *
- * @param icon The icon to display
- * @param contentDescription Accessibility description for the button
- * @param onClick Callback when button is clicked
- * @param modifier Modifier for the button
- */
+private data class MessageActionItem(
+    val icon: ImageVector,
+    val contentDescription: String,
+    val tone: MessageActionTone,
+    val onClick: () -> Unit
+)
+
+private enum class MessageActionTone { Neutral, Primary, Secondary, Tertiary }
+
 @Composable
 private fun ActionButton(
-    icon: ImageVector,
-    contentDescription: String,
-    onClick: () -> Unit,
+    item: MessageActionItem,
+    index: Int,
+    count: Int,
     modifier: Modifier = Modifier
 ) {
     val haptics = rememberHapticFeedback()
-    var isPressed by remember { mutableStateOf(false) }
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
 
     val scale by animateFloatAsState(
-        targetValue = if (isPressed) 0.85f else 1f,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessHigh
-        ),
-        label = "action_button_scale"
+        targetValue = if (isPressed) 0.90f else 1f,
+        animationSpec = ExpressiveMotion.Spatial.scale(),
+        label = "messageActionScale"
+    )
+    val shape = expressiveActionShape(index, count, isPressed)
+    val colors = actionColors(item.tone)
+    val containerColor by animateColorAsState(
+        targetValue = if (isPressed) colors.pressedContainer else colors.container,
+        animationSpec = ExpressiveMotion.Effects.color(),
+        label = "messageActionContainer"
+    )
+    val contentColor by animateColorAsState(
+        targetValue = colors.content,
+        animationSpec = ExpressiveMotion.Effects.color(),
+        label = "messageActionContent"
+    )
+    val width by animateDpAsState(
+        targetValue = if (item.tone == MessageActionTone.Primary) 54.dp else 48.dp,
+        animationSpec = ExpressiveMotion.Spatial.default(),
+        label = "messageActionWidth"
     )
 
-    IconButton(
+    Surface(
         onClick = {
-            isPressed = true
-            haptics.perform(HapticPattern.CLICK)
-            onClick()
-            isPressed = false
+            haptics.perform(
+                if (item.tone == MessageActionTone.Primary) HapticPattern.MORPH_TRANSITION
+                else HapticPattern.CLICK
+            )
+            item.onClick()
         },
         modifier = modifier
-            .size(48.dp) // M3 Expressive: 48dp minimum touch target
-            .scale(scale),
-        colors = IconButtonDefaults.iconButtonColors(
-            containerColor = Color.Transparent,
-            contentColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
-        )
+            .size(width = width, height = 48.dp)
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            },
+        shape = shape,
+        color = containerColor,
+        contentColor = contentColor,
+        tonalElevation = if (item.tone == MessageActionTone.Neutral) 1.dp else 3.dp,
+        shadowElevation = 0.dp,
+        interactionSource = interactionSource
     ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = contentDescription,
-            modifier = Modifier.size(20.dp) // Slightly larger icon for 48dp container
+        Box(contentAlignment = Alignment.Center) {
+            Icon(
+                imageVector = item.icon,
+                contentDescription = item.contentDescription,
+                modifier = Modifier.size(20.dp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun expressiveActionShape(
+    index: Int,
+    count: Int,
+    pressed: Boolean
+): androidx.compose.foundation.shape.RoundedCornerShape {
+    @Composable
+    fun animated(target: Dp, label: String): Dp {
+        val value by animateDpAsState(
+            targetValue = target,
+            animationSpec = ExpressiveMotion.Spatial.shapeMorph(),
+            label = label
+        )
+        return value
+    }
+
+    val isFirst = index == 0
+    val isLast = index == count - 1
+    val outer = if (pressed) 18.dp else 24.dp
+    val inner = if (pressed) 26.dp else 13.dp
+    val single = if (pressed) 14.dp else 24.dp
+
+    return if (count == 1) {
+        androidx.compose.foundation.shape.RoundedCornerShape(animated(single, "singleActionShape"))
+    } else {
+        androidx.compose.foundation.shape.RoundedCornerShape(
+            topStart = animated(if (isFirst) outer else inner, "actionTopStart"),
+            topEnd = animated(if (isLast) outer else inner, "actionTopEnd"),
+            bottomStart = animated(if (isFirst) outer else inner, "actionBottomStart"),
+            bottomEnd = animated(if (isLast) outer else inner, "actionBottomEnd")
         )
     }
 }
 
+@Composable
+private fun actionColors(tone: MessageActionTone): ActionColors {
+    val scheme = MaterialTheme.colorScheme
+    return when (tone) {
+        MessageActionTone.Neutral -> ActionColors(
+            container = scheme.surfaceContainerHigh,
+            pressedContainer = scheme.surfaceContainerHighest,
+            content = scheme.onSurfaceVariant
+        )
+        MessageActionTone.Primary -> ActionColors(
+            container = scheme.primaryContainer,
+            pressedContainer = scheme.primaryContainer,
+            content = scheme.onPrimaryContainer
+        )
+        MessageActionTone.Secondary -> ActionColors(
+            container = scheme.secondaryContainer,
+            pressedContainer = scheme.secondaryContainer,
+            content = scheme.onSecondaryContainer
+        )
+        MessageActionTone.Tertiary -> ActionColors(
+            container = scheme.tertiaryContainer,
+            pressedContainer = scheme.tertiaryContainer,
+            content = scheme.onTertiaryContainer
+        )
+    }
+}
+
+private data class ActionColors(
+    val container: Color,
+    val pressedContainer: Color,
+    val content: Color
+)
+
 /**
  * Compact version of message actions shown inline.
- *
- * @param isUser Whether this is a user message (affects alignment)
- * @param showRegenerate Whether to show the regenerate button
- * @param showBranch Whether to show the branch button
- * @param onCopy Callback when copy button is clicked
- * @param onRegenerate Optional callback when regenerate button is clicked
- * @param onBranch Optional callback when branch button is clicked
  */
 @Composable
 fun CompactMessageActions(

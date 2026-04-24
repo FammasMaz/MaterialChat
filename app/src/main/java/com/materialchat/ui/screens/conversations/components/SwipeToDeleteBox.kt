@@ -93,14 +93,18 @@ fun SwipeToDeleteBox(
     var hasTriggeredRevealHaptic by remember { mutableStateOf(false) }
     var hasTriggeredDeleteHaptic by remember { mutableStateOf(false) }
 
-    val actionButtonWidthDp = 82.dp
+    val actionButtonWidthDp = 84.dp
     val actionGapDp = 8.dp
-    val actionRevealDp = if (onArchive != null) {
+    val actionGutterDp = 6.dp
+    val leftActionContentWidthDp = if (onArchive != null) {
         (actionButtonWidthDp * 2) + actionGapDp
     } else {
         actionButtonWidthDp
     }
+    val actionRevealDp = leftActionContentWidthDp + (actionGutterDp * 2)
+    val rightActionRevealDp = actionButtonWidthDp + (actionGutterDp * 2)
     val actionRevealPx = with(density) { actionRevealDp.toPx() }
+    val leftActionContentWidthPx = with(density) { leftActionContentWidthDp.toPx() }
     val revealThresholdPx = with(density) { 48.dp.toPx() }
     val rightActionThresholdPx = with(density) { 100.dp.toPx() }
     val maxRightSwipePx = with(density) { 150.dp.toPx() }
@@ -125,8 +129,8 @@ fun SwipeToDeleteBox(
 
     val leftDistancePx = animatedOffsetX.absoluteValue
     val leftProgress = (leftDistancePx / actionRevealPx.coerceAtLeast(1f)).coerceIn(0f, 1f)
-    val deleteProgress = ((leftDistancePx - actionRevealPx) /
-        (deleteThresholdPx - actionRevealPx).coerceAtLeast(1f)).coerceIn(0f, 1f)
+    val deleteProgress = ((leftDistancePx - leftActionContentWidthPx) /
+        (deleteThresholdPx - leftActionContentWidthPx).coerceAtLeast(1f)).coerceIn(0f, 1f)
     val rightProgress = (animatedOffsetX / rightActionThresholdPx).coerceIn(0f, 1f)
 
     LaunchedEffect(leftProgress > 0.55f, deleteProgress >= 1f) {
@@ -189,7 +193,7 @@ fun SwipeToDeleteBox(
         label = "archiveActionWidth"
     )
     val deleteWidth = with(density) {
-        (actionButtonWidthDp.toPx() + (leftDistancePx - actionRevealPx).coerceAtLeast(0f)).toDp()
+        (actionButtonWidthDp.toPx() + (leftDistancePx - leftActionContentWidthPx).coerceAtLeast(0f)).toDp()
     }
     val deleteButtonWidth by animateDpAsState(
         targetValue = deleteWidth.coerceAtLeast(actionButtonWidthDp),
@@ -234,13 +238,14 @@ fun SwipeToDeleteBox(
                 modifier = Modifier
                     .matchParentSize()
                     .clip(currentShape)
-                    .background(MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.66f))
-                    .padding(horizontal = 6.dp),
+                    .background(MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.66f)),
                 contentAlignment = Alignment.CenterEnd
             ) {
                 Row(
                     modifier = Modifier
-                        .fillMaxHeight(),
+                        .width(actionRevealDp)
+                        .fillMaxHeight()
+                        .padding(horizontal = actionGutterDp),
                     horizontalArrangement = Arrangement.spacedBy(actionGapDp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -283,21 +288,31 @@ fun SwipeToDeleteBox(
                 modifier = Modifier
                     .matchParentSize()
                     .clip(currentShape)
-                    .background(
-                        if (rightProgress > 0.8f) MaterialTheme.colorScheme.primaryContainer
-                        else MaterialTheme.colorScheme.secondaryContainer
-                    ),
+                    .background(MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.66f)),
                 contentAlignment = Alignment.CenterStart
             ) {
-                Icon(
-                    imageVector = Icons.Outlined.Edit,
-                    contentDescription = "Edit title",
-                    tint = if (rightProgress > 0.8f) MaterialTheme.colorScheme.onPrimaryContainer
-                        else MaterialTheme.colorScheme.onSecondaryContainer,
+                Row(
                     modifier = Modifier
-                        .padding(start = 24.dp)
-                        .scale(iconScale)
-                )
+                        .width(rightActionRevealDp)
+                        .fillMaxHeight()
+                        .padding(horizontal = actionGutterDp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    SwipeActionButton(
+                        label = "Edit",
+                        icon = Icons.Outlined.Edit,
+                        containerColor = MaterialTheme.colorScheme.primaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                        width = actionButtonWidthDp,
+                        iconScale = iconScale,
+                        emphasized = rightProgress > 0.72f,
+                        onClick = {
+                            haptics.perform(HapticPattern.CLICK, hapticsEnabled)
+                            closeActions()
+                            onSwipeRight()
+                        }
+                    )
+                }
             }
         }
 
@@ -393,7 +408,7 @@ private fun SwipeActionButton(
         color = containerColor,
         contentColor = contentColor,
         tonalElevation = if (emphasized) 6.dp else 2.dp,
-        shadowElevation = if (emphasized) 2.dp else 0.dp
+        shadowElevation = 0.dp
     ) {
         Column(
             modifier = Modifier
@@ -410,12 +425,14 @@ private fun SwipeActionButton(
                     .size(22.dp)
                     .scale(iconScale)
             )
-            Text(
-                text = label,
-                style = MaterialTheme.typography.labelSmall,
-                color = contentColor,
-                maxLines = 1
-            )
+            if (width >= 72.dp) {
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = contentColor,
+                    maxLines = 1
+                )
+            }
         }
     }
 }
