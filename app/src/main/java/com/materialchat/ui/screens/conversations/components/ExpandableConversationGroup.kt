@@ -62,6 +62,7 @@ import com.materialchat.ui.components.rememberHapticFeedback
  * @param onBranchClick Callback when a branch conversation is clicked
  * @param onExpandToggle Callback to toggle the expanded state
  * @param onDelete Callback when delete is triggered on parent or branch
+ * @param onArchiveToggle Callback when archive/restore is tapped on parent or branch
  * @param cornerRadius Corner radius for the container (M3: largeIncreased = 20dp)
  * @param isFirst Whether this is the first item in the list
  * @param isLast Whether this is the last item in the list
@@ -75,6 +76,7 @@ fun ExpandableConversationGroup(
     onBranchClick: (String) -> Unit,
     onExpandToggle: (String) -> Unit,
     onDelete: (Conversation) -> Unit,
+    onArchiveToggle: (Conversation) -> Unit,
     onSwipeRight: (Conversation) -> Unit = {},
     cornerRadius: Dp = 20.dp, // M3: largeIncreased
     isFirst: Boolean = false,
@@ -124,6 +126,8 @@ fun ExpandableConversationGroup(
         SwipeToDeleteBox(
             onDelete = { onDelete(group.parent.conversation) },
             hapticsEnabled = hapticsEnabled,
+            onArchive = { onArchiveToggle(group.parent.conversation) },
+            isArchived = group.parent.conversation.isArchived,
             onSwipeRight = { onSwipeRight(group.parent.conversation) },
             baseCorners = SwipeCornerSpec(
                 topStart = topCornerRadius,
@@ -337,6 +341,8 @@ fun ExpandableConversationGroup(
                     SwipeToDeleteBox(
                         onDelete = { onDelete(branch.conversation) },
                         hapticsEnabled = hapticsEnabled,
+                        onArchive = { onArchiveToggle(branch.conversation) },
+                        isArchived = branch.conversation.isArchived,
                         onSwipeRight = { onSwipeRight(branch.conversation) },
                         baseCorners = SwipeCornerSpec(12.dp, 12.dp, 12.dp, 12.dp),
                         activeCorners = SwipeCornerSpec(16.dp, 16.dp, 16.dp, 16.dp),

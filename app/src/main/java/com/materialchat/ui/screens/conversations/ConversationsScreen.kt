@@ -68,11 +68,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
@@ -271,6 +273,13 @@ fun ConversationsScreen(
                 listState = conversationListState,
                 onConversationClick = { viewModel.openConversation(it) },
                 onConversationDelete = { viewModel.deleteConversation(it) },
+                onConversationArchiveToggle = { conversation ->
+                    if (conversation.isArchived) {
+                        viewModel.unarchiveConversation(conversation)
+                    } else {
+                        viewModel.archiveConversation(conversation)
+                    }
+                },
                 onSelectFilter = { viewModel.selectFilter(it) },
 
                 onConversationSwipeRight = { conversation ->
@@ -737,6 +746,7 @@ private fun ConversationsContent(
     listState: androidx.compose.foundation.lazy.LazyListState,
     onConversationClick: (String) -> Unit,
     onConversationDelete: (com.materialchat.domain.model.Conversation) -> Unit,
+    onConversationArchiveToggle: (com.materialchat.domain.model.Conversation) -> Unit,
     onSelectFilter: (ConversationListFilter) -> Unit,
     onConversationSwipeRight: (com.materialchat.domain.model.Conversation) -> Unit = {},
     onCreateTemporaryConversation: () -> Unit,
@@ -800,6 +810,7 @@ private fun ConversationsContent(
                                 listState = listState,
                                 onConversationClick = onConversationClick,
                                 onConversationDelete = onConversationDelete,
+                                onConversationArchiveToggle = onConversationArchiveToggle,
                                 onConversationSwipeRight = onConversationSwipeRight,
                                 onToggleGroupExpanded = onToggleGroupExpanded,
                                 hapticsEnabled = uiState.hapticsEnabled,
@@ -811,6 +822,7 @@ private fun ConversationsContent(
                                 listState = listState,
                                 onConversationClick = onConversationClick,
                                 onConversationDelete = onConversationDelete,
+                                onConversationArchiveToggle = onConversationArchiveToggle,
                                 onConversationSwipeRight = onConversationSwipeRight,
                                 hapticsEnabled = uiState.hapticsEnabled,
                                 modifier = Modifier.weight(1f)
@@ -1029,17 +1041,58 @@ private fun FilteredEmptyContent(
 }
 
 @Composable
+private fun ConversationScrollHaptics(
+    listState: androidx.compose.foundation.lazy.LazyListState,
+    hapticsEnabled: Boolean
+) {
+    val haptics = rememberHapticFeedback()
+    val density = LocalDensity.current
+    val tickPx = remember(density) {
+        with(density) { 28.dp.toPx().roundToInt().coerceAtLeast(1) }
+    }
+    var lastTickBucket by remember(listState) { mutableIntStateOf(Int.MIN_VALUE) }
+
+    LaunchedEffect(listState, hapticsEnabled, tickPx) {
+        snapshotFlow {
+            if (!listState.isScrollInProgress) {
+                null
+            } else {
+                val firstVisibleItem = listState.layoutInfo.visibleItemsInfo.firstOrNull()
+                val approximateItemSize = firstVisibleItem?.size?.coerceAtLeast(tickPx) ?: tickPx * 3
+                ((listState.firstVisibleItemIndex * approximateItemSize) +
+                    listState.firstVisibleItemScrollOffset) / tickPx
+            }
+        }.collect { bucket ->
+            if (bucket == null) {
+                lastTickBucket = Int.MIN_VALUE
+                return@collect
+            }
+            if (lastTickBucket == Int.MIN_VALUE) {
+                lastTickBucket = bucket
+                return@collect
+            }
+            if (bucket != lastTickBucket) {
+                haptics.perform(HapticPattern.SEGMENT_TICK, hapticsEnabled)
+                lastTickBucket = bucket
+            }
+        }
+    }
+}
+
+@Composable
 private fun ConversationList(
     conversations: List<ConversationUiItem>,
     listState: androidx.compose.foundation.lazy.LazyListState,
     onConversationClick: (String) -> Unit,
     onConversationDelete: (com.materialchat.domain.model.Conversation) -> Unit,
+    onConversationArchiveToggle: (com.materialchat.domain.model.Conversation) -> Unit,
     onConversationSwipeRight: (com.materialchat.domain.model.Conversation) -> Unit = {},
     hapticsEnabled: Boolean = true,
     modifier: Modifier = Modifier
 ) {
     val haptics = rememberHapticFeedback()
     val cornerRadius = 20.dp
+    ConversationScrollHaptics(listState = listState, hapticsEnabled = hapticsEnabled)
 
     LazyColumn(
         state = listState,
@@ -1054,7 +1107,8 @@ private fun ConversationList(
     ) {
         itemsIndexed(
             items = conversations,
-            key = { _, item -> item.conversation.id }
+            key = { _, item -> item.conversation.id },
+            contentType = { _, item -> item.conversation.isArchived }
         ) { index, conversationItem ->
             val isFirst = index == 0
             val isLast = index == conversations.lastIndex
@@ -1073,6 +1127,8 @@ private fun ConversationList(
             SwipeToDeleteBox(
                 onDelete = { onConversationDelete(conversationItem.conversation) },
                 hapticsEnabled = hapticsEnabled,
+                onArchive = { onConversationArchiveToggle(conversationItem.conversation) },
+                isArchived = conversationItem.conversation.isArchived,
                 onSwipeRight = { onConversationSwipeRight(conversationItem.conversation) },
                 baseCorners = baseCorners,
                 activeCorners = SwipeCornerSpec(cornerRadius, cornerRadius, cornerRadius, cornerRadius),
@@ -1111,12 +1167,14 @@ private fun GroupedConversationList(
     listState: androidx.compose.foundation.lazy.LazyListState,
     onConversationClick: (String) -> Unit,
     onConversationDelete: (com.materialchat.domain.model.Conversation) -> Unit,
+    onConversationArchiveToggle: (com.materialchat.domain.model.Conversation) -> Unit,
     onConversationSwipeRight: (com.materialchat.domain.model.Conversation) -> Unit = {},
     onToggleGroupExpanded: (String) -> Unit,
     hapticsEnabled: Boolean = true,
     modifier: Modifier = Modifier
 ) {
     val cornerRadius = 20.dp
+    ConversationScrollHaptics(listState = listState, hapticsEnabled = hapticsEnabled)
 
     LazyColumn(
         state = listState,
@@ -1131,7 +1189,8 @@ private fun GroupedConversationList(
     ) {
         itemsIndexed(
             items = groups,
-            key = { _, group -> group.parent.conversation.id }
+            key = { _, group -> group.parent.conversation.id },
+            contentType = { _, group -> group.parent.conversation.isArchived }
         ) { index, group ->
             val isFirst = index == 0
             val isLast = index == groups.lastIndex
@@ -1142,6 +1201,7 @@ private fun GroupedConversationList(
                 onBranchClick = onConversationClick,
                 onExpandToggle = onToggleGroupExpanded,
                 onDelete = onConversationDelete,
+                onArchiveToggle = onConversationArchiveToggle,
                 onSwipeRight = onConversationSwipeRight,
                 cornerRadius = cornerRadius,
                 isFirst = isFirst,

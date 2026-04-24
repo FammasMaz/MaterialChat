@@ -3,17 +3,27 @@ package com.materialchat.ui.screens.conversations.components
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Archive
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material.icons.outlined.Unarchive
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -25,6 +35,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
@@ -47,16 +59,11 @@ data class SwipeCornerSpec(
 )
 
 /**
- * A swipe-to-delete container that wraps content and handles swipe gestures.
+ * Swipe container for conversation rows.
  *
- * When the user swipes left beyond the threshold, the onDelete callback is triggered.
- * The background reveals a delete icon as the content is swiped.
- *
- * @param onDelete Callback when the item should be deleted
- * @param modifier Modifier for the container
- * @param enabled Whether swipe-to-delete is enabled
- * @param hapticsEnabled Whether haptic feedback is enabled
- * @param content The content to display
+ * A partial left swipe settles open and reveals Archive/Restore plus Delete actions.
+ * A full left swipe intentionally does not delete anymore; destructive actions must
+ * be tapped explicitly. Optional right swipe remains available for the edit action.
  */
 @Composable
 fun SwipeToDeleteBox(
@@ -66,108 +73,98 @@ fun SwipeToDeleteBox(
     hapticsEnabled: Boolean = true,
     baseCorners: SwipeCornerSpec = SwipeCornerSpec(20.dp, 20.dp, 20.dp, 20.dp),
     activeCorners: SwipeCornerSpec = SwipeCornerSpec(20.dp, 20.dp, 20.dp, 20.dp),
+    onArchive: (() -> Unit)? = null,
+    isArchived: Boolean = false,
     onSwipeRight: (() -> Unit)? = null,
     content: @Composable () -> Unit
 ) {
     val density = LocalDensity.current
     val haptics = rememberHapticFeedback()
 
-    // Track the horizontal offset of the content
     var offsetX by remember { mutableFloatStateOf(0f) }
     var isDragging by remember { mutableStateOf(false) }
-    var shouldDelete by remember { mutableStateOf(false) }
-    var shouldTriggerRightAction by remember { mutableStateOf(false) }
-    var hasTriggeredThresholdHaptic by remember { mutableStateOf(false) }
+    var isOpen by remember { mutableStateOf(false) }
+    var hasTriggeredRevealHaptic by remember { mutableStateOf(false) }
 
-    // Threshold for triggering delete (in dp)
-    val deleteThresholdDp = 100.dp
-    val deleteThresholdPx = with(density) { deleteThresholdDp.toPx() }
+    val actionButtonWidthDp = 84.dp
+    val actionRevealDp = if (onArchive != null) actionButtonWidthDp * 2 else actionButtonWidthDp
+    val actionRevealPx = with(density) { actionRevealDp.toPx() }
+    val revealThresholdPx = with(density) { 48.dp.toPx() }
+    val rightActionThresholdPx = with(density) { 100.dp.toPx() }
+    val maxRightSwipePx = with(density) { 150.dp.toPx() }
 
-    // Maximum swipe distance
-    val maxSwipeDp = 150.dp
-    val maxSwipePx = with(density) { maxSwipeDp.toPx() }
-
-    // M3 Expressive: SPATIAL spring for position (can bounce)
     val animatedOffsetX by animateFloatAsState(
-        targetValue = if (isDragging) offsetX else 0f,
+        targetValue = when {
+            isDragging -> offsetX
+            isOpen -> -actionRevealPx
+            else -> 0f
+        },
         animationSpec = ExpressiveMotion.Spatial.default(),
         label = "offsetX"
     )
 
-    // Calculate delete progress (0 to 1)
-    val deleteProgress = (animatedOffsetX.absoluteValue / deleteThresholdPx).coerceIn(0f, 1f)
+    val leftProgress = (animatedOffsetX.absoluteValue / actionRevealPx.coerceAtLeast(1f)).coerceIn(0f, 1f)
+    val rightProgress = (animatedOffsetX / rightActionThresholdPx).coerceIn(0f, 1f)
 
-    // Trigger haptic feedback when crossing the threshold
-    LaunchedEffect(deleteProgress > 0.9f) {
-        if (deleteProgress > 0.9f && !hasTriggeredThresholdHaptic) {
+    LaunchedEffect(leftProgress > 0.55f) {
+        if (leftProgress > 0.55f && !hasTriggeredRevealHaptic) {
             haptics.perform(HapticPattern.SWIPE_THRESHOLD, hapticsEnabled)
-            hasTriggeredThresholdHaptic = true
-        } else if (deleteProgress <= 0.9f) {
-            hasTriggeredThresholdHaptic = false
+            hasTriggeredRevealHaptic = true
+        } else if (leftProgress <= 0.55f) {
+            hasTriggeredRevealHaptic = false
         }
     }
 
-    // M3 Expressive: EFFECTS spring for color (no bounce!)
-    val backgroundColor by animateColorAsState(
-        targetValue = if (deleteProgress > 0.9f) {
+    val deleteBackgroundColor by animateColorAsState(
+        targetValue = if (leftProgress > 0.75f) {
             MaterialTheme.colorScheme.error
         } else {
             MaterialTheme.colorScheme.errorContainer
         },
         animationSpec = ExpressiveMotion.Effects.color(),
-        label = "backgroundColor"
+        label = "deleteBackgroundColor"
     )
-
-    // M3 Expressive: SPATIAL spring for scale (bouncy feedback)
-    val iconScale by animateFloatAsState(
-        targetValue = if (deleteProgress > 0.5f) 1.2f else 0.8f + (deleteProgress * 0.4f),
-        animationSpec = ExpressiveMotion.Spatial.playful(),
-        label = "iconScale"
-    )
-
-    // M3 Expressive: EFFECTS spring for icon color (no bounce)
-    val iconColor by animateColorAsState(
-        targetValue = if (deleteProgress > 0.9f) {
+    val deleteContentColor by animateColorAsState(
+        targetValue = if (leftProgress > 0.75f) {
             MaterialTheme.colorScheme.onError
         } else {
             MaterialTheme.colorScheme.onErrorContainer
         },
         animationSpec = ExpressiveMotion.Effects.color(),
-        label = "iconColor"
+        label = "deleteContentColor"
+    )
+    val archiveBackgroundColor by animateColorAsState(
+        targetValue = if (isArchived) {
+            MaterialTheme.colorScheme.tertiaryContainer
+        } else {
+            MaterialTheme.colorScheme.secondaryContainer
+        },
+        animationSpec = ExpressiveMotion.Effects.color(),
+        label = "archiveBackgroundColor"
+    )
+    val archiveContentColor by animateColorAsState(
+        targetValue = if (isArchived) {
+            MaterialTheme.colorScheme.onTertiaryContainer
+        } else {
+            MaterialTheme.colorScheme.onSecondaryContainer
+        },
+        animationSpec = ExpressiveMotion.Effects.color(),
+        label = "archiveContentColor"
     )
 
-    // M3 Expressive: EFFECTS spring for padding (smooth)
-    val iconPadding by animateFloatAsState(
-        targetValue = if (deleteProgress > 0.5f) 24f else 16f,
-        animationSpec = ExpressiveMotion.Effects.elevation(),
-        label = "iconPadding"
+    val iconScale by animateFloatAsState(
+        targetValue = if (leftProgress > 0.5f || rightProgress > 0.5f) 1.05f else 0.9f,
+        animationSpec = ExpressiveMotion.Spatial.playful(),
+        label = "iconScale"
     )
 
-    // Trigger delete when swipe is complete
-    LaunchedEffect(shouldDelete) {
-        if (shouldDelete) {
-            onDelete()
-            shouldDelete = false
-            offsetX = 0f
-        }
-    }
-
-    // Trigger right-swipe actions
-    LaunchedEffect(shouldTriggerRightAction) {
-        if (shouldTriggerRightAction) {
-            onSwipeRight?.invoke()
-            shouldTriggerRightAction = false
-            offsetX = 0f
-        }
-    }
-
-    val swipeActive = animatedOffsetX.absoluteValue > 1f || isDragging
+    val swipeActive = animatedOffsetX.absoluteValue > 1f || isDragging || isOpen
     val shapeProgressRaw by animateFloatAsState(
         targetValue = if (swipeActive) 1f else 0f,
         animationSpec = ExpressiveMotion.Spatial.shapeMorph(),
         label = "shapeProgress"
     )
-    val shapeProgress = shapeProgressRaw.coerceIn(0f, 1f) // Avoid negative corner sizes on overshoot.
+    val shapeProgress = shapeProgressRaw.coerceIn(0f, 1f)
     val currentShape = RoundedCornerShape(
         topStart = lerpDp(baseCorners.topStart, activeCorners.topStart, shapeProgress),
         topEnd = lerpDp(baseCorners.topEnd, activeCorners.topEnd, shapeProgress),
@@ -175,100 +172,174 @@ fun SwipeToDeleteBox(
         bottomEnd = lerpDp(baseCorners.bottomEnd, activeCorners.bottomEnd, shapeProgress)
     )
 
+    fun closeActions() {
+        isOpen = false
+        offsetX = 0f
+    }
+
     Box(modifier = modifier) {
-        // Background with delete icon - only show when swiping left
-        if (animatedOffsetX < -1f) {
+        if (animatedOffsetX < -1f || isOpen) {
             Box(
                 modifier = Modifier
                     .matchParentSize()
-                    .clip(currentShape)
-                    .background(backgroundColor),
+                    .clip(currentShape),
                 contentAlignment = Alignment.CenterEnd
             ) {
-                if (deleteProgress > 0.1f) {
-                    Icon(
-                        imageVector = Icons.Outlined.Delete,
-                        contentDescription = "Delete",
-                        tint = iconColor,
-                        modifier = Modifier
-                            .padding(end = iconPadding.dp)
-                            .scale(iconScale)
+                Row(
+                    modifier = Modifier
+                        .width(actionRevealDp)
+                        .fillMaxHeight(),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    if (onArchive != null) {
+                        SwipeActionButton(
+                            label = if (isArchived) "Restore" else "Archive",
+                            icon = if (isArchived) Icons.Outlined.Unarchive else Icons.Outlined.Archive,
+                            containerColor = archiveBackgroundColor,
+                            contentColor = archiveContentColor,
+                            width = actionButtonWidthDp,
+                            iconScale = iconScale,
+                            onClick = {
+                                haptics.perform(HapticPattern.CLICK, hapticsEnabled)
+                                closeActions()
+                                onArchive()
+                            }
+                        )
+                    }
+                    SwipeActionButton(
+                        label = "Delete",
+                        icon = Icons.Outlined.Delete,
+                        containerColor = deleteBackgroundColor,
+                        contentColor = deleteContentColor,
+                        width = actionButtonWidthDp,
+                        iconScale = iconScale,
+                        onClick = {
+                            haptics.perform(HapticPattern.SWIPE_THRESHOLD, hapticsEnabled)
+                            closeActions()
+                            onDelete()
+                        }
                     )
                 }
             }
         }
 
-        // Right-swipe background with edit icon
         if (animatedOffsetX > 1f && onSwipeRight != null) {
             Box(
                 modifier = Modifier
                     .matchParentSize()
                     .clip(currentShape)
                     .background(
-                        if (deleteProgress > 0.9f) MaterialTheme.colorScheme.primaryContainer
+                        if (rightProgress > 0.8f) MaterialTheme.colorScheme.primaryContainer
                         else MaterialTheme.colorScheme.secondaryContainer
                     ),
                 contentAlignment = Alignment.CenterStart
             ) {
-                if (deleteProgress > 0.1f) {
-                    Icon(
-                        imageVector = Icons.Outlined.Edit,
-                        contentDescription = "Edit title",
-                        tint = if (deleteProgress > 0.9f) MaterialTheme.colorScheme.onPrimaryContainer
-                               else MaterialTheme.colorScheme.onSecondaryContainer,
-                        modifier = Modifier
-                            .padding(start = iconPadding.dp)
-                            .scale(iconScale)
-                    )
-                }
+                Icon(
+                    imageVector = Icons.Outlined.Edit,
+                    contentDescription = "Edit title",
+                    tint = if (rightProgress > 0.8f) MaterialTheme.colorScheme.onPrimaryContainer
+                        else MaterialTheme.colorScheme.onSecondaryContainer,
+                    modifier = Modifier
+                        .padding(start = 24.dp)
+                        .scale(iconScale)
+                )
             }
         }
 
-        // Foreground content
         Box(
             modifier = Modifier
                 .offset { IntOffset(animatedOffsetX.roundToInt(), 0) }
-                .fillMaxSize()
+                .fillMaxWidth()
                 .clip(currentShape)
-                .pointerInput(enabled) {
+                .pointerInput(enabled, isOpen, actionRevealPx) {
                     if (!enabled) return@pointerInput
 
                     detectHorizontalDragGestures(
                         onDragStart = {
                             isDragging = true
+                            offsetX = if (isOpen) -actionRevealPx else animatedOffsetX
                             haptics.perform(HapticPattern.GESTURE_START, hapticsEnabled)
                         },
                         onDragEnd = {
                             isDragging = false
                             haptics.perform(HapticPattern.GESTURE_END, hapticsEnabled)
-                            if (offsetX < 0 && offsetX.absoluteValue > deleteThresholdPx) {
-                                shouldDelete = true
-                            } else if (offsetX > 0 && offsetX > deleteThresholdPx) {
-                                shouldTriggerRightAction = true
-                            } else {
-                                offsetX = 0f
+                            when {
+                                offsetX < -revealThresholdPx -> {
+                                    isOpen = true
+                                    offsetX = -actionRevealPx
+                                }
+                                offsetX > rightActionThresholdPx && onSwipeRight != null && !isOpen -> {
+                                    closeActions()
+                                    onSwipeRight()
+                                }
+                                else -> closeActions()
                             }
                         },
                         onDragCancel = {
                             isDragging = false
-                            offsetX = 0f
+                            closeActions()
                         },
                         onHorizontalDrag = { change, dragAmount ->
                             change.consume()
                             val newOffset = offsetX + dragAmount
-                            if (newOffset <= 0) {
-                                // Left swipe (delete)
-                                offsetX = newOffset.coerceIn(-maxSwipePx, 0f)
-                            } else if (onSwipeRight != null) {
-                                // Right swipe (edit/retry) - only if actions are provided
-                                offsetX = newOffset.coerceIn(0f, maxSwipePx)
+                            offsetX = when {
+                                isOpen || newOffset <= 0f -> newOffset.coerceIn(-actionRevealPx, 0f)
+                                onSwipeRight != null -> newOffset.coerceIn(0f, maxRightSwipePx)
+                                else -> 0f
                             }
                         }
                     )
                 }
         ) {
             content()
+            if (isOpen && !isDragging) {
+                Box(
+                    modifier = Modifier
+                        .matchParentSize()
+                        .clickable {
+                            haptics.perform(HapticPattern.CLICK, hapticsEnabled)
+                            closeActions()
+                        }
+                )
+            }
         }
+    }
+}
+
+@Composable
+private fun SwipeActionButton(
+    label: String,
+    icon: ImageVector,
+    containerColor: Color,
+    contentColor: Color,
+    width: Dp,
+    iconScale: Float,
+    onClick: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .width(width)
+            .fillMaxHeight()
+            .background(containerColor)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 6.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = label,
+            tint = contentColor,
+            modifier = Modifier
+                .size(22.dp)
+                .scale(iconScale)
+        )
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            color = contentColor,
+            maxLines = 1
+        )
     }
 }
 
