@@ -1,38 +1,45 @@
 package com.materialchat.ui.screens.chat.components
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.unit.dp
 import com.materialchat.domain.model.CanvasArtifact
 import com.materialchat.ui.components.HapticPattern
 import com.materialchat.ui.components.MarkdownText
 import com.materialchat.ui.components.rememberHapticFeedback
+import com.materialchat.ui.theme.ExpressiveMotion
+import kotlinx.coroutines.delay
 
 /**
- * Streaming text composable optimized for long responses.
+ * Streaming text composable optimized for long responses without looking raw.
  *
- * While a response is streaming, this intentionally renders lightweight plain text
- * and throttled haptics. Full Markdown formatting is applied immediately when the
- * message completes. This avoids reparsing and relaying out large Markdown trees
- * on every token or word while the model is still producing content.
- *
- * @param rawText The full accumulated text from the streaming provider
- * @param isStreaming Whether the provider is actively streaming
- * @param textColor The text color for rendering
- * @param style The text style for rendering
- * @param hapticsEnabled Whether haptic feedback is enabled (user preference)
- * @param onOpenCanvas Callback for opening canvas artifacts
- * @param modifier Modifier for the container
+ * While streaming, Markdown is rendered at a reduced cadence instead of on every
+ * provider token. Word-level haptics continue independently, so the stream keeps
+ * the tactile rhythm of the original word-drip behavior without hammering Room,
+ * Markdown parsing, or layout on every tiny chunk.
  */
 @Composable
 fun SmoothStreamingText(
@@ -44,7 +51,6 @@ fun SmoothStreamingText(
     onOpenCanvas: ((CanvasArtifact) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
-    // When not streaming, render full text with markdown immediately
     if (!isStreaming) {
         MarkdownText(
             markdown = rawText,
@@ -57,49 +63,58 @@ fun SmoothStreamingText(
         return
     }
 
-    // Empty content during streaming — nothing to show yet
     if (rawText.isEmpty()) return
 
     val haptics = rememberHapticFeedback()
-    var lastHapticLength by remember { mutableIntStateOf(0) }
-    var lastHapticTimeMs by remember { mutableLongStateOf(0L) }
+    val latestRawText by rememberUpdatedState(rawText)
+    val latestWordCount by rememberUpdatedState(rawText.streamingWordCount())
+    var renderedMarkdown by remember { mutableStateOf(rawText) }
+    var hapticWordCount by remember { mutableIntStateOf(0) }
 
-    // Streaming used to re-parse and re-layout markdown once per revealed word.
-    // That looked nice on short replies, but it becomes very expensive for large
-    // responses and long chats. While streaming, render lightweight plain text and
-    // let final markdown formatting appear when the message completes.
-    LaunchedEffect(rawText.length) {
-        val now = System.currentTimeMillis()
-        if (rawText.length - lastHapticLength >= STREAMING_HAPTIC_CHAR_STEP &&
-            now - lastHapticTimeMs >= STREAMING_HAPTIC_MIN_INTERVAL_MS
-        ) {
-            haptics.perform(HapticPattern.CONTENT_TICK, hapticsEnabled)
-            lastHapticLength = rawText.length
-            lastHapticTimeMs = now
+    // Progressive Markdown: update at a comfortable cadence rather than once per token.
+    LaunchedEffect(isStreaming) {
+        while (isStreaming) {
+            val latest = latestRawText
+            if (renderedMarkdown != latest) {
+                renderedMarkdown = latest
+            }
+            delay(STREAMING_MARKDOWN_UPDATE_INTERVAL_MS)
         }
     }
 
-    Text(
-        text = rawText,
-        style = style,
-        color = textColor,
-        modifier = modifier
-    )
+    // Per-word haptics restored: decoupled from visual render cadence.
+    LaunchedEffect(isStreaming) {
+        while (isStreaming) {
+            val target = latestWordCount
+            when {
+                hapticWordCount > target -> hapticWordCount = target
+                hapticWordCount < target -> {
+                    hapticWordCount++
+                    haptics.perform(HapticPattern.CONTENT_TICK, hapticsEnabled)
+                    delay(STREAMING_WORD_HAPTIC_INTERVAL_MS)
+                }
+                else -> delay(STREAMING_HAPTIC_IDLE_POLL_MS)
+            }
+        }
+    }
+
+    Column(modifier = modifier) {
+        MarkdownText(
+            markdown = renderedMarkdown,
+            textColor = textColor,
+            style = style,
+            isStreaming = true,
+            onOpenCanvas = onOpenCanvas
+        )
+        StreamingTailEffect(
+            tokenVersion = rawText.length,
+            color = MaterialTheme.colorScheme.primary
+        )
+    }
 }
 
 /**
  * Smooth streaming text for thinking/reasoning content.
- *
- * Same lightweight streaming behavior as [SmoothStreamingText] but renders as
- * italic text, matching ThinkingSection's visual style. Fires ultra-subtle
- * [HapticPattern.THINKING_TICK] at a throttled cadence.
- *
- * @param rawText The full accumulated thinking text from the provider
- * @param isStreaming Whether the provider is actively streaming
- * @param textColor The text color (typically muted/alpha'd)
- * @param style The text style
- * @param hapticsEnabled Whether haptic feedback is enabled
- * @param modifier Modifier for the container
  */
 @Composable
 fun SmoothStreamingThinkingText(
@@ -110,7 +125,6 @@ fun SmoothStreamingThinkingText(
     hapticsEnabled: Boolean = true,
     modifier: Modifier = Modifier
 ) {
-    // When not streaming, show full text immediately
     if (!isStreaming) {
         Text(
             text = rawText,
@@ -125,17 +139,21 @@ fun SmoothStreamingThinkingText(
     if (rawText.isEmpty()) return
 
     val haptics = rememberHapticFeedback()
-    var lastHapticLength by remember { mutableIntStateOf(0) }
-    var lastHapticTimeMs by remember { mutableLongStateOf(0L) }
+    val latestWordCount by rememberUpdatedState(rawText.streamingWordCount())
+    var hapticWordCount by remember { mutableIntStateOf(0) }
 
-    LaunchedEffect(rawText.length) {
-        val now = System.currentTimeMillis()
-        if (rawText.length - lastHapticLength >= THINKING_HAPTIC_CHAR_STEP &&
-            now - lastHapticTimeMs >= STREAMING_HAPTIC_MIN_INTERVAL_MS
-        ) {
-            haptics.perform(HapticPattern.THINKING_TICK, hapticsEnabled)
-            lastHapticLength = rawText.length
-            lastHapticTimeMs = now
+    LaunchedEffect(isStreaming) {
+        while (isStreaming) {
+            val target = latestWordCount
+            when {
+                hapticWordCount > target -> hapticWordCount = target
+                hapticWordCount < target -> {
+                    hapticWordCount++
+                    haptics.perform(HapticPattern.THINKING_TICK, hapticsEnabled)
+                    delay(THINKING_WORD_HAPTIC_INTERVAL_MS)
+                }
+                else -> delay(STREAMING_HAPTIC_IDLE_POLL_MS)
+            }
         }
     }
 
@@ -148,6 +166,52 @@ fun SmoothStreamingThinkingText(
     )
 }
 
-private const val STREAMING_HAPTIC_CHAR_STEP = 36
-private const val THINKING_HAPTIC_CHAR_STEP = 56
-private const val STREAMING_HAPTIC_MIN_INTERVAL_MS = 120L
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun StreamingTailEffect(
+    tokenVersion: Int,
+    color: Color
+) {
+    val pulse by animateFloatAsState(
+        targetValue = if (tokenVersion % 2 == 0) 1f else 0.72f,
+        animationSpec = ExpressiveMotion.Spatial.playful(),
+        label = "streamingTailPulse"
+    )
+    val tailShape = MaterialShapes.SoftBurst.toShape(startAngle = 18)
+
+    Box(
+        modifier = Modifier
+            .padding(top = 2.dp, start = 2.dp)
+            .size(12.dp)
+            .graphicsLayer {
+                scaleX = pulse
+                scaleY = pulse
+                alpha = 0.36f + (pulse * 0.22f)
+            }
+            .clip(tailShape)
+            .background(color.copy(alpha = 0.32f))
+    )
+}
+
+private fun String.streamingWordCount(): Int {
+    if (isEmpty()) return 0
+    var count = 0
+    var inWord = false
+    for (char in this) {
+        if (char.isWhitespace()) {
+            if (inWord) {
+                count++
+                inWord = false
+            }
+        } else {
+            inWord = true
+        }
+    }
+    if (inWord) count++
+    return count
+}
+
+private const val STREAMING_MARKDOWN_UPDATE_INTERVAL_MS = 160L
+private const val STREAMING_WORD_HAPTIC_INTERVAL_MS = 34L
+private const val THINKING_WORD_HAPTIC_INTERVAL_MS = 56L
+private const val STREAMING_HAPTIC_IDLE_POLL_MS = 20L

@@ -195,11 +195,7 @@ fun SwipeToDeleteBox(
     val deleteWidth = with(density) {
         (actionButtonWidthDp.toPx() + (leftDistancePx - leftActionContentWidthPx).coerceAtLeast(0f)).toDp()
     }
-    val deleteButtonWidth by animateDpAsState(
-        targetValue = deleteWidth.coerceAtLeast(actionButtonWidthDp),
-        animationSpec = ExpressiveMotion.Spatial.default(),
-        label = "deleteActionWidth"
-    )
+    val deleteButtonWidth = deleteWidth.coerceAtLeast(actionButtonWidthDp)
 
     val iconScale by animateFloatAsState(
         targetValue = when {
@@ -249,7 +245,7 @@ fun SwipeToDeleteBox(
                     horizontalArrangement = Arrangement.spacedBy(actionGapDp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    if (onArchive != null && deleteProgress < 0.92f) {
+                    if (onArchive != null) {
                         SwipeActionButton(
                             label = if (isArchived) "Restore" else "Archive",
                             icon = if (isArchived) Icons.Outlined.Unarchive else Icons.Outlined.Archive,

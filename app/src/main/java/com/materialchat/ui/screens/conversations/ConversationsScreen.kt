@@ -3,6 +3,7 @@ package com.materialchat.ui.screens.conversations
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.spring
@@ -28,7 +29,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -45,10 +45,10 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.LoadingIndicator
+import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -60,6 +60,7 @@ import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.toShape
 import com.materialchat.ui.components.ExpressiveButton
 import com.materialchat.ui.components.ExpressiveButtonStyle
 import androidx.compose.material3.TopAppBarDefaults
@@ -85,10 +86,12 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -385,7 +388,7 @@ fun ConversationsScreen(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun ConversationsTopBar(
     scrollBehavior: TopAppBarScrollBehavior,
@@ -666,15 +669,6 @@ private fun ConversationsTopBar(
                 )
             }
 
-            // M3 Expressive: encircled tonal containers
-            val searchInteractionSource = remember { MutableInteractionSource() }
-            val isSearchPressed by searchInteractionSource.collectIsPressedAsState()
-            val searchScale by animateFloatAsState(
-                targetValue = if (isSearchPressed) 0.9f else 1f,
-                animationSpec = ExpressiveMotion.Spatial.scale(),
-                label = "searchScale"
-            )
-
             // Temp chat & Search buttons - aligned bottom-end
             Row(
                 modifier = Modifier
@@ -683,50 +677,78 @@ private fun ConversationsTopBar(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Temp chat icon button
-                Surface(
-                    onClick = { haptics.perform(HapticPattern.CLICK); onTempChatClick() },
-                    modifier = Modifier.size(48.dp),
-                    shape = CircleShape,
-                    color = MaterialTheme.colorScheme.tertiaryContainer
-                ) {
-                    Box(
-                        contentAlignment = Alignment.Center,
-                        modifier = Modifier.fillMaxSize()
-                    ) {
-                        Icon(
-                            imageVector = Icons.Outlined.AutoDelete,
-                            contentDescription = "Temporary Chat",
-                            tint = MaterialTheme.colorScheme.onTertiaryContainer
-                        )
+                TopBarShapeAction(
+                    icon = Icons.Outlined.AutoDelete,
+                    contentDescription = "Temporary chat",
+                    containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
+                    shape = MaterialShapes.Clover4Leaf.toShape(startAngle = 45),
+                    onClick = {
+                        haptics.perform(HapticPattern.MORPH_TRANSITION)
+                        onTempChatClick()
                     }
-                }
+                )
 
-                // Search icon button
-                Surface(
-                    onClick = { haptics.perform(HapticPattern.CLICK); onSearchClick() },
-                    modifier = Modifier
-                        .size(48.dp)
-                        .graphicsLayer {
-                            scaleX = searchScale
-                            scaleY = searchScale
-                        },
-                    shape = CircleShape,
-                    color = MaterialTheme.colorScheme.surfaceContainerHighest,
-                    interactionSource = searchInteractionSource
-                ) {
-                    Box(
-                        contentAlignment = Alignment.Center,
-                        modifier = Modifier.fillMaxSize()
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Search,
-                            contentDescription = "Search",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                TopBarShapeAction(
+                    icon = Icons.Default.Search,
+                    contentDescription = "Search",
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    shape = MaterialShapes.Cookie6Sided.toShape(startAngle = 30),
+                    onClick = {
+                        haptics.perform(HapticPattern.CLICK)
+                        onSearchClick()
                     }
-                }
+                )
             }
+        }
+    }
+}
+
+@Composable
+private fun TopBarShapeAction(
+    icon: ImageVector,
+    contentDescription: String,
+    containerColor: androidx.compose.ui.graphics.Color,
+    contentColor: androidx.compose.ui.graphics.Color,
+    shape: Shape,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.90f else 1f,
+        animationSpec = ExpressiveMotion.Spatial.scale(),
+        label = "topBarActionScale"
+    )
+    val pressedRadius by animateDpAsState(
+        targetValue = if (isPressed) 13.dp else 24.dp,
+        animationSpec = ExpressiveMotion.Spatial.shapeMorph(),
+        label = "topBarActionPressedRadius"
+    )
+
+    Surface(
+        onClick = onClick,
+        modifier = modifier
+            .size(48.dp)
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            },
+        shape = if (isPressed) RoundedCornerShape(pressedRadius) else shape,
+        color = containerColor,
+        contentColor = contentColor,
+        tonalElevation = 3.dp,
+        shadowElevation = 0.dp,
+        interactionSource = interactionSource
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            Icon(
+                imageVector = icon,
+                contentDescription = contentDescription,
+                tint = contentColor
+            )
         }
     }
 }

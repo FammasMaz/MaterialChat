@@ -49,14 +49,17 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.outlined.Lightbulb
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -70,8 +73,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -123,7 +128,7 @@ import kotlinx.coroutines.launch
  * @param modifier Modifier for the input bar container
  * @param hapticsEnabled Whether haptic feedback is enabled
  */
-@OptIn(ExperimentalSharedTransitionApi::class)
+@OptIn(ExperimentalSharedTransitionApi::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun MessageInput(
     inputText: String,
@@ -219,34 +224,27 @@ fun MessageInput(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            // Attach button - M3 Expressive tertiary color for complementary accent
-            Surface(
-                onClick = {
-                    haptics.perform(HapticPattern.CLICK, hapticsEnabled)
-                    onAttachImage()
-                },
-                modifier = Modifier.size(48.dp),
-                shape = CircleShape,
-                color = if (!isStreaming)
+            // Attach button — expressive cookie shape, subtle tertiary accent
+            InputShapeButton(
+                icon = Icons.Default.Add,
+                contentDescription = "Attach image",
+                enabled = !isStreaming,
+                containerColor = if (!isStreaming) {
                     MaterialTheme.colorScheme.tertiaryContainer
-                else
-                    MaterialTheme.colorScheme.surfaceContainerHigh,
-                enabled = !isStreaming
-            ) {
-                Box(
-                    contentAlignment = Alignment.Center,
-                    modifier = Modifier.fillMaxSize()
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Add,
-                        contentDescription = "Attach",
-                        tint = if (!isStreaming)
-                            MaterialTheme.colorScheme.onTertiaryContainer
-                        else
-                            MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                } else {
+                    MaterialTheme.colorScheme.surfaceContainerHigh
+                },
+                contentColor = if (!isStreaming) {
+                    MaterialTheme.colorScheme.onTertiaryContainer
+                } else {
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                },
+                shape = MaterialShapes.Cookie6Sided.toShape(startAngle = 30),
+                onClick = {
+                    haptics.perform(HapticPattern.MORPH_TRANSITION, hapticsEnabled)
+                    onAttachImage()
                 }
-            }
+            )
 
             // Fusion mode toggle - M3 Expressive merge icon with badge
             FusionModeToggle(
@@ -380,6 +378,60 @@ fun MessageInput(
 }
 
 @Composable
+private fun InputShapeButton(
+    icon: ImageVector,
+    contentDescription: String,
+    enabled: Boolean,
+    containerColor: androidx.compose.ui.graphics.Color,
+    contentColor: androidx.compose.ui.graphics.Color,
+    shape: Shape,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.90f else 1f,
+        animationSpec = ExpressiveMotion.Spatial.scale(),
+        label = "inputShapeButtonScale"
+    )
+    val pressedRadius by animateDpAsState(
+        targetValue = if (isPressed) 13.dp else 24.dp,
+        animationSpec = ExpressiveMotion.Spatial.shapeMorph(),
+        label = "inputShapeButtonPressedRadius"
+    )
+
+    Surface(
+        onClick = onClick,
+        enabled = enabled,
+        modifier = modifier
+            .size(48.dp)
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            },
+        shape = if (isPressed) RoundedCornerShape(pressedRadius) else shape,
+        color = containerColor,
+        contentColor = contentColor,
+        tonalElevation = 3.dp,
+        shadowElevation = 0.dp,
+        interactionSource = interactionSource
+    ) {
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier.fillMaxSize()
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = contentDescription,
+                tint = contentColor
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
 private fun ReasoningEffortSelector(
     reasoningEffort: ReasoningEffort,
     enabled: Boolean,
@@ -454,10 +506,15 @@ private fun ReasoningEffortSelector(
     val isPressed by interactionSource.collectIsPressedAsState()
     val buttonSize = 48.dp
     val cornerRadius by animateDpAsState(
-        targetValue = if (expanded || isPressed) buttonSize / 2 else 8.dp,
+        targetValue = if (isPressed) 13.dp else 24.dp,
         animationSpec = ExpressiveMotion.Spatial.shapeMorph(),
         label = "reasoningButtonCorner"
     )
+    val restingShape = when {
+        expanded -> MaterialShapes.Flower.toShape(startAngle = 12)
+        isActive -> MaterialShapes.Puffy.toShape(startAngle = 8)
+        else -> MaterialShapes.Cookie4Sided.toShape(startAngle = 45)
+    }
     val buttonScale by animateFloatAsState(
         targetValue = if (isPressed) 0.9f else 1f,
         animationSpec = ExpressiveMotion.Spatial.scale(),
@@ -493,7 +550,7 @@ private fun ReasoningEffortSelector(
         Surface(
             onClick = { if (enabled) { haptics.perform(HapticPattern.CLICK); expanded = !expanded } },
             enabled = enabled,
-            shape = RoundedCornerShape(cornerRadius),
+            shape = if (isPressed) RoundedCornerShape(cornerRadius) else restingShape,
             color = containerColor,
             contentColor = contentColor,
             interactionSource = interactionSource,

@@ -91,21 +91,21 @@ fun buildTypography(
     // Display - Extra large, impactful text
     displayLarge = TextStyle(
         fontFamily = fontFamily,
-        fontWeight = FontWeight.Normal,
+        fontWeight = FontWeight.Bold,
         fontSize = (57 * sizeScale).sp,
         lineHeight = (64 * sizeScale).sp,
         letterSpacing = (-0.25).sp
     ),
     displayMedium = TextStyle(
         fontFamily = fontFamily,
-        fontWeight = FontWeight.Normal,
+        fontWeight = FontWeight.SemiBold,
         fontSize = (45 * sizeScale).sp,
         lineHeight = (52 * sizeScale).sp,
         letterSpacing = 0.sp
     ),
     displaySmall = TextStyle(
         fontFamily = fontFamily,
-        fontWeight = FontWeight.Normal,
+        fontWeight = FontWeight.SemiBold,
         fontSize = (36 * sizeScale).sp,
         lineHeight = (44 * sizeScale).sp,
         letterSpacing = 0.sp
@@ -114,21 +114,21 @@ fun buildTypography(
     // Headline - Section headers, app bar titles
     headlineLarge = TextStyle(
         fontFamily = fontFamily,
-        fontWeight = FontWeight.Medium,
+        fontWeight = FontWeight.Bold,
         fontSize = (32 * sizeScale).sp,
         lineHeight = (40 * sizeScale).sp,
         letterSpacing = 0.sp
     ),
     headlineMedium = TextStyle(
         fontFamily = fontFamily,
-        fontWeight = FontWeight.Medium,
+        fontWeight = FontWeight.SemiBold,
         fontSize = (28 * sizeScale).sp,
         lineHeight = (36 * sizeScale).sp,
         letterSpacing = 0.sp
     ),
     headlineSmall = TextStyle(
         fontFamily = fontFamily,
-        fontWeight = FontWeight.Medium,
+        fontWeight = FontWeight.SemiBold,
         fontSize = (24 * sizeScale).sp,
         lineHeight = (32 * sizeScale).sp,
         letterSpacing = 0.sp
@@ -137,7 +137,7 @@ fun buildTypography(
     // Title - Card titles, dialog titles, top bar
     titleLarge = TextStyle(
         fontFamily = fontFamily,
-        fontWeight = FontWeight.Medium,
+        fontWeight = FontWeight.SemiBold,
         fontSize = (22 * sizeScale).sp,
         lineHeight = (28 * sizeScale).sp,
         letterSpacing = 0.sp
@@ -151,7 +151,7 @@ fun buildTypography(
     ),
     titleSmall = TextStyle(
         fontFamily = fontFamily,
-        fontWeight = FontWeight.Medium,
+        fontWeight = FontWeight.SemiBold,
         fontSize = (14 * sizeScale).sp,
         lineHeight = (20 * sizeScale).sp,
         letterSpacing = 0.1.sp
@@ -183,21 +183,21 @@ fun buildTypography(
     // Label - Buttons, chips, tabs, captions
     labelLarge = TextStyle(
         fontFamily = fontFamily,
-        fontWeight = FontWeight.Medium,
+        fontWeight = FontWeight.Bold,
         fontSize = (14 * sizeScale).sp,
         lineHeight = (20 * sizeScale).sp,
         letterSpacing = 0.1.sp
     ),
     labelMedium = TextStyle(
         fontFamily = fontFamily,
-        fontWeight = FontWeight.Medium,
+        fontWeight = FontWeight.SemiBold,
         fontSize = (12 * sizeScale).sp,
         lineHeight = (16 * sizeScale).sp,
         letterSpacing = 0.5.sp
     ),
     labelSmall = TextStyle(
         fontFamily = fontFamily,
-        fontWeight = FontWeight.Medium,
+        fontWeight = FontWeight.SemiBold,
         fontSize = (11 * sizeScale).sp,
         lineHeight = (16 * sizeScale).sp,
         letterSpacing = 0.5.sp

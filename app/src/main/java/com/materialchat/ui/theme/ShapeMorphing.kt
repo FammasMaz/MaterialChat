@@ -16,7 +16,7 @@ import androidx.compose.ui.unit.dp
  * tactile, responsive feedback.
  *
  * Key principles:
- * - Shapes become slightly MORE rounded on press (feels like "squishing")
+ * - Round shapes become slightly LESS rounded on press for tactile compression
  * - Use spatial springs for shape morphing (can overshoot)
  * - Shape changes should be subtle but noticeable
  */
@@ -24,7 +24,7 @@ object ShapeMorphing {
 
     /**
      * Animated button shape that morphs on press.
-     * Corners become slightly more rounded when pressed.
+     * Round buttons become slightly less rounded when pressed.
      *
      * @param isPressed Whether the button is currently pressed
      * @param defaultRadius Default corner radius
@@ -34,8 +34,8 @@ object ShapeMorphing {
     @Composable
     fun buttonShape(
         isPressed: Boolean,
-        defaultRadius: Dp = 16.dp,
-        pressedRadius: Dp = 20.dp
+        defaultRadius: Dp = 24.dp,
+        pressedRadius: Dp = 12.dp
     ): RoundedCornerShape {
         val radius by animateDpAsState(
             targetValue = if (isPressed) pressedRadius else defaultRadius,
@@ -118,7 +118,7 @@ object ShapeMorphing {
 
     /**
      * Animated chip shape.
-     * Chips become more rounded on press.
+     * Chips become slightly less rounded on press.
      *
      * @param isPressed Whether the chip is pressed
      * @param isSelected Whether the chip is in selected state
@@ -129,8 +129,8 @@ object ShapeMorphing {
         isPressed: Boolean,
         isSelected: Boolean = false
     ): RoundedCornerShape {
-        val baseRadius = if (isSelected) 10.dp else 8.dp
-        val pressedRadius = if (isSelected) 12.dp else 10.dp
+        val baseRadius = if (isSelected) 12.dp else 10.dp
+        val pressedRadius = if (isSelected) 8.dp else 6.dp
 
         val radius by animateDpAsState(
             targetValue = if (isPressed) pressedRadius else baseRadius,
@@ -188,10 +188,10 @@ object ExpressiveShapeDefaults {
      * Button shape defaults
      */
     object Button {
-        val defaultRadius = 16.dp
-        val pressedRadius = 20.dp
-        val largeDefaultRadius = 20.dp
-        val largePressedRadius = 24.dp
+        val defaultRadius = 24.dp
+        val pressedRadius = 12.dp
+        val largeDefaultRadius = 28.dp
+        val largePressedRadius = 16.dp
     }
 
     /**

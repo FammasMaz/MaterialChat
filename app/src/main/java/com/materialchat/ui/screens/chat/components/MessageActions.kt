@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.CallSplit
 import androidx.compose.material.icons.filled.ContentCopy
@@ -24,19 +25,19 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import com.materialchat.ui.components.HapticPattern
 import com.materialchat.ui.components.rememberHapticFeedback
 import com.materialchat.ui.theme.ExpressiveMotion
 
 /**
- * Action buttons for chat messages (copy, regenerate, branch, redo with model).
+ * Subtle message action toolbar.
  *
- * Uses a small connected Material 3 Expressive button group. Each item morphs its
- * corner family on press instead of being a plain transparent icon button.
+ * These actions intentionally use separate, matching tonal icon containers instead
+ * of a connected group. That keeps the row calm under chat bubbles while still
+ * using M3 Expressive press morphs, spring scale, haptics, and emphasis color.
  */
 @Composable
 fun MessageActions(
@@ -53,34 +54,20 @@ fun MessageActions(
     modifier: Modifier = Modifier
 ) {
     val actions = buildList {
-        if (showCopy) {
-            add(MessageActionItem(Icons.Default.ContentCopy, "Copy message", MessageActionTone.Neutral, onCopy))
-        }
-        if (showEdit && onEdit != null) {
-            add(MessageActionItem(Icons.Outlined.Edit, "Edit message", MessageActionTone.Secondary) { onEdit() })
-        }
-        if (showBranch && onBranch != null) {
-            add(MessageActionItem(Icons.AutoMirrored.Outlined.CallSplit, "Branch conversation", MessageActionTone.Tertiary) { onBranch() })
-        }
-        if (showRedoWithModel && onRedoWithModel != null) {
-            add(MessageActionItem(Icons.Outlined.SwapHoriz, "Redo with different model", MessageActionTone.Secondary) { onRedoWithModel() })
-        }
-        if (showRegenerate && onRegenerate != null) {
-            add(MessageActionItem(Icons.Default.Refresh, "Regenerate response", MessageActionTone.Primary) { onRegenerate() })
-        }
+        if (showCopy) add(MessageActionItem(Icons.Default.ContentCopy, "Copy message", MessageActionTone.Neutral, onCopy))
+        if (showEdit && onEdit != null) add(MessageActionItem(Icons.Outlined.Edit, "Edit message", MessageActionTone.Neutral) { onEdit() })
+        if (showBranch && onBranch != null) add(MessageActionItem(Icons.AutoMirrored.Outlined.CallSplit, "Branch conversation", MessageActionTone.Secondary) { onBranch() })
+        if (showRedoWithModel && onRedoWithModel != null) add(MessageActionItem(Icons.Outlined.SwapHoriz, "Redo with different model", MessageActionTone.Secondary) { onRedoWithModel() })
+        if (showRegenerate && onRegenerate != null) add(MessageActionItem(Icons.Default.Refresh, "Regenerate response", MessageActionTone.Primary) { onRegenerate() })
     }
 
     Row(
         modifier = modifier,
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(3.dp)
+        horizontalArrangement = Arrangement.spacedBy(6.dp)
     ) {
-        actions.forEachIndexed { index, action ->
-            ActionButton(
-                item = action,
-                index = index,
-                count = actions.size
-            )
+        actions.forEach { action ->
+            ActionButton(item = action)
         }
     }
 }
@@ -92,25 +79,32 @@ private data class MessageActionItem(
     val onClick: () -> Unit
 )
 
-private enum class MessageActionTone { Neutral, Primary, Secondary, Tertiary }
+private enum class MessageActionTone { Neutral, Primary, Secondary }
 
 @Composable
 private fun ActionButton(
     item: MessageActionItem,
-    index: Int,
-    count: Int,
     modifier: Modifier = Modifier
 ) {
     val haptics = rememberHapticFeedback()
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
+    val emphasized = item.tone != MessageActionTone.Neutral
 
     val scale by animateFloatAsState(
         targetValue = if (isPressed) 0.90f else 1f,
         animationSpec = ExpressiveMotion.Spatial.scale(),
         label = "messageActionScale"
     )
-    val shape = expressiveActionShape(index, count, isPressed)
+    val radius by animateDpAsState(
+        targetValue = when {
+            isPressed -> 13.dp
+            emphasized -> 20.dp
+            else -> 18.dp
+        },
+        animationSpec = ExpressiveMotion.Spatial.shapeMorph(),
+        label = "messageActionRadius"
+    )
     val colors = actionColors(item.tone)
     val containerColor by animateColorAsState(
         targetValue = if (isPressed) colors.pressedContainer else colors.container,
@@ -122,30 +116,22 @@ private fun ActionButton(
         animationSpec = ExpressiveMotion.Effects.color(),
         label = "messageActionContent"
     )
-    val width by animateDpAsState(
-        targetValue = if (item.tone == MessageActionTone.Primary) 54.dp else 48.dp,
-        animationSpec = ExpressiveMotion.Spatial.default(),
-        label = "messageActionWidth"
-    )
 
     Surface(
         onClick = {
-            haptics.perform(
-                if (item.tone == MessageActionTone.Primary) HapticPattern.MORPH_TRANSITION
-                else HapticPattern.CLICK
-            )
+            haptics.perform(if (emphasized) HapticPattern.MORPH_TRANSITION else HapticPattern.CLICK)
             item.onClick()
         },
         modifier = modifier
-            .size(width = width, height = 48.dp)
+            .size(48.dp)
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
             },
-        shape = shape,
+        shape = RoundedCornerShape(radius),
         color = containerColor,
         contentColor = contentColor,
-        tonalElevation = if (item.tone == MessageActionTone.Neutral) 1.dp else 3.dp,
+        tonalElevation = if (emphasized) 3.dp else 1.dp,
         shadowElevation = 0.dp,
         interactionSource = interactionSource
     ) {
@@ -153,43 +139,10 @@ private fun ActionButton(
             Icon(
                 imageVector = item.icon,
                 contentDescription = item.contentDescription,
-                modifier = Modifier.size(20.dp)
+                modifier = Modifier.size(if (emphasized) 21.dp else 20.dp),
+                tint = contentColor
             )
         }
-    }
-}
-
-@Composable
-private fun expressiveActionShape(
-    index: Int,
-    count: Int,
-    pressed: Boolean
-): androidx.compose.foundation.shape.RoundedCornerShape {
-    @Composable
-    fun animated(target: Dp, label: String): Dp {
-        val value by animateDpAsState(
-            targetValue = target,
-            animationSpec = ExpressiveMotion.Spatial.shapeMorph(),
-            label = label
-        )
-        return value
-    }
-
-    val isFirst = index == 0
-    val isLast = index == count - 1
-    val outer = if (pressed) 18.dp else 24.dp
-    val inner = if (pressed) 26.dp else 13.dp
-    val single = if (pressed) 14.dp else 24.dp
-
-    return if (count == 1) {
-        androidx.compose.foundation.shape.RoundedCornerShape(animated(single, "singleActionShape"))
-    } else {
-        androidx.compose.foundation.shape.RoundedCornerShape(
-            topStart = animated(if (isFirst) outer else inner, "actionTopStart"),
-            topEnd = animated(if (isLast) outer else inner, "actionTopEnd"),
-            bottomStart = animated(if (isFirst) outer else inner, "actionBottomStart"),
-            bottomEnd = animated(if (isLast) outer else inner, "actionBottomEnd")
-        )
     }
 }
 
@@ -198,7 +151,7 @@ private fun actionColors(tone: MessageActionTone): ActionColors {
     val scheme = MaterialTheme.colorScheme
     return when (tone) {
         MessageActionTone.Neutral -> ActionColors(
-            container = scheme.surfaceContainerHigh,
+            container = scheme.surfaceContainerHigh.copy(alpha = 0.78f),
             pressedContainer = scheme.surfaceContainerHighest,
             content = scheme.onSurfaceVariant
         )
@@ -208,14 +161,9 @@ private fun actionColors(tone: MessageActionTone): ActionColors {
             content = scheme.onPrimaryContainer
         )
         MessageActionTone.Secondary -> ActionColors(
-            container = scheme.secondaryContainer,
+            container = scheme.secondaryContainer.copy(alpha = 0.74f),
             pressedContainer = scheme.secondaryContainer,
             content = scheme.onSecondaryContainer
-        )
-        MessageActionTone.Tertiary -> ActionColors(
-            container = scheme.tertiaryContainer,
-            pressedContainer = scheme.tertiaryContainer,
-            content = scheme.onTertiaryContainer
         )
     }
 }
