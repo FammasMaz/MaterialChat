@@ -167,7 +167,9 @@ fun MessageBubble(
     val swipeOffset = remember { Animatable(0f) }
     val swipeThreshold = with(density) { 72.dp.toPx() }
     val maxSwipe = with(density) { 96.dp.toPx() }
-    val swipeActivationEdge = with(density) { 28.dp.toPx() }
+    // Keep the quote gesture on a narrow edge strip so horizontal children
+    // (notably Markdown tables/code blocks) can reliably claim side-to-side drags.
+    val swipeActivationEdge = with(density) { 12.dp.toPx() }
     var hasTriggeredSwipeHaptic by remember { mutableStateOf(false) }
     var swipeGestureWidthPx by remember { mutableIntStateOf(0) }
     val swipeProgress = (swipeOffset.value / swipeThreshold).coerceIn(0f, 1f)
@@ -289,17 +291,16 @@ fun MessageBubble(
                     color = bubbleStyle.backgroundColor,
                     modifier = Modifier
                         .widthIn(min = 40.dp, max = bubbleStyle.maxWidth)
-                        .animateContentSize(
-                            animationSpec = if (message.isStreaming) {
-                                spring(
-                                    dampingRatio = Spring.DampingRatioNoBouncy,
-                                    stiffness = 1400f
+                        .then(
+                            if (!message.isStreaming) {
+                                Modifier.animateContentSize(
+                                    animationSpec = spring(
+                                        dampingRatio = 0.6f,
+                                        stiffness = 380f
+                                    )
                                 )
                             } else {
-                                spring(
-                                    dampingRatio = 0.6f,
-                                    stiffness = 380f
-                                )
+                                Modifier
                             }
                         )
                         .then(

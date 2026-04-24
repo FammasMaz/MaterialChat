@@ -97,7 +97,7 @@ fun MarkdownText(
     val linkColor = MaterialTheme.colorScheme.primary
 
     val parsedContent = remember(markdown, textColor, codeTextColor, linkColor) {
-        parseMarkdown(
+        cachedParseMarkdown(
             markdown = markdown,
             baseColor = textColor,
             codeColor = codeTextColor,
@@ -105,16 +105,14 @@ fun MarkdownText(
         )
     }
 
-    SelectionContainer {
-        MarkdownContent(
-            content = parsedContent,
-            modifier = modifier,
-            style = style,
-            codeBlockBackground = codeBlockBackground,
-            isStreaming = isStreaming,
-            onOpenCanvas = onOpenCanvas
-        )
-    }
+    MarkdownContent(
+        content = parsedContent,
+        modifier = modifier,
+        style = style,
+        codeBlockBackground = codeBlockBackground,
+        isStreaming = isStreaming,
+        onOpenCanvas = onOpenCanvas
+    )
 }
 
 /**
@@ -145,6 +143,49 @@ private data class InlineMathContent(
     val expression: String
 )
 
+private data class MarkdownCacheKey(
+    val markdown: String,
+    val baseColor: Int,
+    val codeColor: Int,
+    val linkColor: Int
+)
+
+private const val MARKDOWN_PARSE_CACHE_SIZE = 160
+
+private val markdownParseCache = object : android.util.LruCache<MarkdownCacheKey, List<MarkdownElement>>(
+    MARKDOWN_PARSE_CACHE_SIZE
+) {}
+
+private fun cachedParseMarkdown(
+    markdown: String,
+    baseColor: Color,
+    codeColor: Color,
+    linkColor: Color
+): List<MarkdownElement> {
+    val key = MarkdownCacheKey(
+        markdown = markdown,
+        baseColor = baseColor.toArgb(),
+        codeColor = codeColor.toArgb(),
+        linkColor = linkColor.toArgb()
+    )
+
+    synchronized(markdownParseCache) {
+        markdownParseCache.get(key)?.let { return it }
+    }
+
+    val parsed = parseMarkdown(
+        markdown = markdown,
+        baseColor = baseColor,
+        codeColor = codeColor,
+        linkColor = linkColor
+    )
+
+    synchronized(markdownParseCache) {
+        markdownParseCache.put(key, parsed)
+    }
+    return parsed
+}
+
 /**
  * Renders the parsed markdown content with proper layout for code blocks.
  */
@@ -172,11 +213,13 @@ private fun MarkdownContent(
                         } else {
                             style
                         }
-                        MarkdownInlineText(
-                            content = element.content,
-                            style = effectiveStyle,
-                            modifier = Modifier.fillMaxWidth()
-                        )
+                        SelectionContainer(modifier = Modifier.fillMaxWidth()) {
+                            MarkdownInlineText(
+                                content = element.content,
+                                style = effectiveStyle,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
                     }
                 }
                 is MarkdownElement.CodeBlock -> {
@@ -227,11 +270,13 @@ private fun MarkdownContent(
                                 .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.4f))
                         )
                         Spacer(modifier = Modifier.width(8.dp))
-                        MarkdownInlineText(
-                            content = element.content,
-                            style = style.copy(fontStyle = FontStyle.Italic),
-                            modifier = Modifier.weight(1f)
-                        )
+                        SelectionContainer(modifier = Modifier.weight(1f)) {
+                            MarkdownInlineText(
+                                content = element.content,
+                                style = style.copy(fontStyle = FontStyle.Italic),
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
                     }
                 }
             }

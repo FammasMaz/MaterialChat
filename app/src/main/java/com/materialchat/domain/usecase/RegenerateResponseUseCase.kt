@@ -10,10 +10,12 @@ import com.materialchat.domain.repository.ConversationRepository
 import com.materialchat.domain.repository.PersonaRepository
 import com.materialchat.domain.repository.ProviderRepository
 import com.materialchat.domain.repository.WebSearchRepository
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.onCompletion
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import javax.inject.Inject
@@ -104,9 +106,12 @@ class RegenerateResponseUseCase @Inject constructor(
         emit(StreamingState.Starting)
 
         var hasError = false
-        var accumulatedThinking: String? = null
         val streamStartTime = System.currentTimeMillis()
         var thinkingEndTime: Long? = null
+        val contentUpdater = StreamingMessageContentUpdater(
+            conversationRepository = conversationRepository,
+            messageId = assistantMessageId
+        )
 
         // Stream the response from the chat repository
         chatRepository.sendMessage(
@@ -119,15 +124,8 @@ class RegenerateResponseUseCase @Inject constructor(
         ).onEach { state ->
             when (state) {
                 is StreamingState.Streaming -> {
-                    // Update the message content in the database
-                    if (state.thinkingContent != null) {
-                        accumulatedThinking = state.thinkingContent
-                        conversationRepository.updateMessageContentWithThinking(
-                            assistantMessageId, state.content, state.thinkingContent
-                        )
-                    } else {
-                        conversationRepository.updateMessageContent(assistantMessageId, state.content)
-                    }
+                    // Coalesce Room writes so each token does not invalidate the whole chat list.
+                    contentUpdater.onStreaming(state.content, state.thinkingContent)
                     // Track when thinking ends
                     if (thinkingEndTime == null && state.content.isNotEmpty() && !state.thinkingContent.isNullOrEmpty()) {
                         thinkingEndTime = System.currentTimeMillis()
@@ -140,25 +138,19 @@ class RegenerateResponseUseCase @Inject constructor(
                     hasError = true
                     // Save partial content if available
                     state.partialContent?.let { content ->
-                        conversationRepository.updateMessageContent(assistantMessageId, content)
-                    }
+                        contentUpdater.persistPartial(content)
+                    } ?: contentUpdater.flush()
                     conversationRepository.setMessageStreaming(assistantMessageId, false)
                 }
                 is StreamingState.Cancelled -> {
                     // Save partial content if available
                     state.partialContent?.let { content ->
-                        conversationRepository.updateMessageContent(assistantMessageId, content)
-                    }
+                        contentUpdater.persistPartial(content)
+                    } ?: contentUpdater.flush()
                     conversationRepository.setMessageStreaming(assistantMessageId, false)
                 }
                 is StreamingState.Completed -> {
-                    if (state.finalThinkingContent != null) {
-                        conversationRepository.updateMessageContentWithThinking(
-                            assistantMessageId, state.finalContent, state.finalThinkingContent
-                        )
-                    } else {
-                        conversationRepository.updateMessageContent(assistantMessageId, state.finalContent)
-                    }
+                    contentUpdater.persistFinal(state.finalContent, state.finalThinkingContent)
                     conversationRepository.setMessageStreaming(assistantMessageId, false)
 
                     // Save duration data
@@ -181,9 +173,12 @@ class RegenerateResponseUseCase @Inject constructor(
             // Always mark streaming as complete, regardless of success, error, or cancellation.
             // This prevents messages from getting stuck with isStreaming=true forever
             // (e.g. when the coroutine is cancelled by navigation or user action).
-            try {
-                conversationRepository.setMessageStreaming(assistantMessageId, false)
-            } catch (_: Exception) { }
+            withContext(NonCancellable) {
+                try {
+                    contentUpdater.flush()
+                    conversationRepository.setMessageStreaming(assistantMessageId, false)
+                } catch (_: Exception) { }
+            }
         }.collect { state ->
             // Re-emit with the correct message ID for the UI
             val mappedState = when (state) {

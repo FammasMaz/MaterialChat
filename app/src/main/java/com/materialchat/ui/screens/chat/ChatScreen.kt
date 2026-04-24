@@ -624,8 +624,10 @@ private fun ChatContent(
     // regardless of provider chunk granularity.
 
     val lastMessage = state.messages.lastOrNull()?.message
-    val lastContentHash = lastMessage?.content?.hashCode() ?: 0
-    val lastThinkingHash = lastMessage?.thinkingContent?.hashCode() ?: 0
+    // Use lengths instead of hashCode() to avoid O(n) work on every recomposition
+    // while very large assistant messages are streaming or being scrolled.
+    val lastContentVersion = lastMessage?.content?.length ?: 0
+    val lastThinkingVersion = lastMessage?.thinkingContent?.length ?: 0
     val lastAttachmentCount = lastMessage?.attachments?.size ?: 0
     // Fix 2: Track streaming state to scroll when it ends (to reveal action buttons)
     val isLastMessageStreaming = lastMessage?.isStreaming ?: false
@@ -668,8 +670,8 @@ private fun ChatContent(
 
     // Discrete auto-scroll for non-streaming events (new message, streaming end, etc.)
     LaunchedEffect(
-        lastContentHash,
-        lastThinkingHash,
+        lastContentVersion,
+        lastThinkingVersion,
         lastAttachmentCount,
         state.messages.size,
         inputHeightPx,
@@ -870,7 +872,8 @@ private fun MessageList(
     ) {
         itemsIndexed(
             items = messages,
-            key = { _, item -> item.message.id }
+            key = { _, item -> item.message.id },
+            contentType = { _, item -> item.message.role }
         ) { index, messageItem ->
             val topSpacing = when (messageItem.groupPosition) {
                 MessageGroupPosition.Middle,

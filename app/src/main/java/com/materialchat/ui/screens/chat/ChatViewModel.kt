@@ -56,6 +56,7 @@ import javax.inject.Inject
 import kotlin.math.abs
 
 private const val MESSAGE_GROUP_TIME_WINDOW_MS = 5 * 60 * 1000L
+private const val STREAMING_UI_UPDATE_INTERVAL_MS = 120L
 
 /**
  * ViewModel for the Chat screen.
@@ -98,6 +99,8 @@ class ChatViewModel @Inject constructor(
 
     private var streamingJob: Job? = null
     private var fusionJob: Job? = null
+    private var lastStreamingUiUpdateMs: Long = 0L
+    private var lastStreamingUiMessageId: String? = null
     private var currentSystemPrompt: String = AppPreferences.DEFAULT_SYSTEM_PROMPT
     private var currentHapticsEnabled: Boolean = AppPreferences.DEFAULT_HAPTICS_ENABLED
     private var currentReasoningEffort: ReasoningEffort = AppPreferences.DEFAULT_REASONING_EFFORT
@@ -683,11 +686,39 @@ class ChatViewModel @Inject constructor(
         // Clear regenerating ID when streaming completes or errors
         if (state is StreamingState.Completed || state is StreamingState.Error || state is StreamingState.Cancelled) {
             regeneratingMessageId = null
+            lastStreamingUiUpdateMs = 0L
+            lastStreamingUiMessageId = null
+        }
+
+        val stateForUi = when (state) {
+            is StreamingState.Streaming -> {
+                val now = System.currentTimeMillis()
+                val sameMessage = lastStreamingUiMessageId == state.messageId
+                if (sameMessage && now - lastStreamingUiUpdateMs < STREAMING_UI_UPDATE_INTERVAL_MS) {
+                    return
+                }
+                lastStreamingUiUpdateMs = now
+                lastStreamingUiMessageId = state.messageId
+                // Message text is rendered from the throttled Room stream; keeping the
+                // large accumulated string here just forces extra StateFlow equality work.
+                StreamingState.Streaming(content = "", thinkingContent = null, messageId = state.messageId)
+            }
+            is StreamingState.Completed -> StreamingState.Idle
+            is StreamingState.Error -> StreamingState.Error(
+                error = state.error,
+                partialContent = null,
+                messageId = state.messageId
+            )
+            is StreamingState.Cancelled -> StreamingState.Cancelled(
+                partialContent = null,
+                messageId = state.messageId
+            )
+            else -> state
         }
 
         _uiState.update { currentState ->
             if (currentState is ChatUiState.Success) {
-                currentState.copy(streamingState = state)
+                currentState.copy(streamingState = stateForUi)
             } else {
                 currentState
             }
