@@ -41,6 +41,8 @@ sealed interface SettingsUiState {
         val providers: List<ProviderUiItem>,
         val systemPrompt: String,
         val themeMode: AppPreferences.ThemeMode,
+        val themePalette: AppPreferences.ThemePalette = AppPreferences.DEFAULT_THEME_PALETTE,
+        val chatBubbleStyle: AppPreferences.ChatBubbleStyle = AppPreferences.DEFAULT_CHAT_BUBBLE_STYLE,
         val dynamicColorEnabled: Boolean,
         val isDynamicColorSupported: Boolean,
         val hapticsEnabled: Boolean = true,

@@ -10,6 +10,9 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -25,7 +28,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -52,6 +57,7 @@ import androidx.compose.material.icons.outlined.Language
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ElevatedFilterChip
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -73,6 +79,7 @@ import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
+import androidx.compose.material3.SuggestionChipDefaults
 import com.materialchat.ui.components.ExpressiveSwitch
 import androidx.compose.material3.Text
 import com.materialchat.ui.components.ExpressiveButtonStyle
@@ -87,6 +94,7 @@ import androidx.compose.runtime.setValue
 import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
@@ -102,7 +110,10 @@ import com.materialchat.domain.model.UpdateState
 import com.materialchat.ui.screens.settings.components.AddProviderSheet
 import com.materialchat.ui.screens.settings.components.ProviderCard
 import com.materialchat.ui.screens.settings.components.SystemPromptField
+import com.materialchat.ui.components.HapticPattern
+import com.materialchat.ui.components.rememberHapticFeedback
 import com.materialchat.ui.theme.CustomShapes
+import com.materialchat.ui.theme.MaterialChatThemePalettes
 
 /**
  * Settings screen for managing providers, theme, and app preferences.
@@ -248,6 +259,8 @@ fun SettingsScreen(
             onTestConnection = { viewModel.testConnection(it) },
             onSystemPromptChange = { viewModel.updateSystemPrompt(it) },
             onThemeModeChange = { viewModel.updateThemeMode(it) },
+            onThemePaletteChange = { viewModel.updateThemePalette(it) },
+            onChatBubbleStyleChange = { viewModel.updateChatBubbleStyle(it) },
             onDynamicColorChange = { viewModel.updateDynamicColorEnabled(it) },
             onHapticsChange = { viewModel.updateHapticsEnabled(it) },
             onFontSizeScaleChange = { viewModel.updateFontSizeScale(it) },
@@ -336,6 +349,8 @@ private fun SettingsContent(
     onTestConnection: (String) -> Unit,
     onSystemPromptChange: (String) -> Unit,
     onThemeModeChange: (AppPreferences.ThemeMode) -> Unit,
+    onThemePaletteChange: (AppPreferences.ThemePalette) -> Unit,
+    onChatBubbleStyleChange: (AppPreferences.ChatBubbleStyle) -> Unit,
     onDynamicColorChange: (Boolean) -> Unit,
     onHapticsChange: (Boolean) -> Unit,
     onFontSizeScaleChange: (Float) -> Unit,
@@ -391,6 +406,8 @@ private fun SettingsContent(
                     onTestConnection = onTestConnection,
                     onSystemPromptChange = onSystemPromptChange,
                     onThemeModeChange = onThemeModeChange,
+                    onThemePaletteChange = onThemePaletteChange,
+                    onChatBubbleStyleChange = onChatBubbleStyleChange,
                     onDynamicColorChange = onDynamicColorChange,
                     onHapticsChange = onHapticsChange,
                     onFontSizeScaleChange = onFontSizeScaleChange,
@@ -452,6 +469,8 @@ private fun SuccessContent(
     onTestConnection: (String) -> Unit,
     onSystemPromptChange: (String) -> Unit,
     onThemeModeChange: (AppPreferences.ThemeMode) -> Unit,
+    onThemePaletteChange: (AppPreferences.ThemePalette) -> Unit,
+    onChatBubbleStyleChange: (AppPreferences.ChatBubbleStyle) -> Unit,
     onDynamicColorChange: (Boolean) -> Unit,
     onHapticsChange: (Boolean) -> Unit,
     onFontSizeScaleChange: (Float) -> Unit,
@@ -535,6 +554,21 @@ private fun SuccessContent(
             ThemeModeSelector(
                 selectedMode = uiState.themeMode,
                 onModeSelected = onThemeModeChange
+            )
+        }
+
+        item {
+            ColorPaletteSelector(
+                selectedPalette = uiState.themePalette,
+                dynamicColorEnabled = uiState.dynamicColorEnabled && uiState.isDynamicColorSupported,
+                onPaletteSelected = onThemePaletteChange
+            )
+        }
+
+        item {
+            ChatBubbleStyleSelector(
+                selectedStyle = uiState.chatBubbleStyle,
+                onStyleSelected = onChatBubbleStyleChange
             )
         }
 
@@ -744,6 +778,8 @@ private fun ThemeModeSelector(
     selectedMode: AppPreferences.ThemeMode,
     onModeSelected: (AppPreferences.ThemeMode) -> Unit
 ) {
+    val haptics = rememberHapticFeedback()
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
@@ -771,7 +807,10 @@ private fun ThemeModeSelector(
                 AppPreferences.ThemeMode.entries.forEach { mode ->
                     FilterChip(
                         selected = selectedMode == mode,
-                        onClick = { onModeSelected(mode) },
+                        onClick = {
+                            haptics.perform(HapticPattern.CLICK)
+                            onModeSelected(mode)
+                        },
                         label = { Text(mode.name.lowercase().replaceFirstChar { it.uppercase() }) },
                         leadingIcon = {
                             Icon(
@@ -794,6 +833,248 @@ private fun ThemeModeSelector(
                     )
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun ColorPaletteSelector(
+    selectedPalette: AppPreferences.ThemePalette,
+    dynamicColorEnabled: Boolean,
+    onPaletteSelected: (AppPreferences.ThemePalette) -> Unit
+) {
+    val haptics = rememberHapticFeedback()
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+        ),
+        shape = RoundedCornerShape(20.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 16.dp)
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.Palette,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(24.dp)
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                Column {
+                    Text(
+                        text = "Material palette",
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = if (dynamicColorEnabled) {
+                            "Used when Dynamic Color is off or unavailable"
+                        } else {
+                            "Choose a colorful Material 3 fallback theme"
+                        },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            LazyRow(
+                contentPadding = PaddingValues(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                items(AppPreferences.ThemePalette.entries) { palette ->
+                    val selected = selectedPalette == palette
+                    Surface(
+                        onClick = {
+                            haptics.perform(HapticPattern.CLICK)
+                            onPaletteSelected(palette)
+                        },
+                        shape = RoundedCornerShape(if (selected) 28.dp else 20.dp),
+                        color = if (selected) MaterialTheme.colorScheme.primaryContainer
+                            else MaterialTheme.colorScheme.surfaceContainerHigh,
+                        contentColor = if (selected) MaterialTheme.colorScheme.onPrimaryContainer
+                            else MaterialTheme.colorScheme.onSurface,
+                        tonalElevation = if (selected) 4.dp else 1.dp,
+                        border = BorderStroke(
+                            width = if (selected) 2.dp else 1.dp,
+                            color = if (selected) MaterialTheme.colorScheme.primary
+                                else MaterialTheme.colorScheme.outlineVariant
+                        ),
+                        modifier = Modifier.defaultMinSize(minHeight = 56.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            Row(horizontalArrangement = Arrangement.spacedBy((-6).dp)) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(24.dp)
+                                        .clip(CircleShape)
+                                        .background(MaterialChatThemePalettes.previewColor(palette))
+                                )
+                                Box(
+                                    modifier = Modifier
+                                        .size(24.dp)
+                                        .clip(CircleShape)
+                                        .background(MaterialChatThemePalettes.previewSecondaryColor(palette))
+                                )
+                            }
+                            Text(
+                                text = palette.prettyName(),
+                                style = MaterialTheme.typography.labelLarge
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ChatBubbleStyleSelector(
+    selectedStyle: AppPreferences.ChatBubbleStyle,
+    onStyleSelected: (AppPreferences.ChatBubbleStyle) -> Unit
+) {
+    val haptics = rememberHapticFeedback()
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+        ),
+        shape = RoundedCornerShape(20.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 16.dp)
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.AutoAwesome,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(24.dp)
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                Column {
+                    Text(
+                        text = "Chat bubble shape",
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = "Pick a Material 3 bubble geometry",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            LazyRow(
+                contentPadding = PaddingValues(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                items(AppPreferences.ChatBubbleStyle.entries) { style ->
+                    val selected = selectedStyle == style
+                    Surface(
+                        onClick = {
+                            haptics.perform(HapticPattern.MORPH_TRANSITION)
+                            onStyleSelected(style)
+                        },
+                        shape = RoundedCornerShape(if (selected) 28.dp else 20.dp),
+                        color = if (selected) MaterialTheme.colorScheme.secondaryContainer
+                            else MaterialTheme.colorScheme.surfaceContainerHigh,
+                        contentColor = if (selected) MaterialTheme.colorScheme.onSecondaryContainer
+                            else MaterialTheme.colorScheme.onSurface,
+                        tonalElevation = if (selected) 4.dp else 1.dp,
+                        border = BorderStroke(
+                            width = if (selected) 2.dp else 1.dp,
+                            color = if (selected) MaterialTheme.colorScheme.secondary
+                                else MaterialTheme.colorScheme.outlineVariant
+                        )
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .width(128.dp)
+                                .padding(12.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Surface(
+                                    modifier = Modifier.size(width = 52.dp, height = 24.dp),
+                                    shape = previewBubbleShape(style, isUser = false),
+                                    color = MaterialTheme.colorScheme.surfaceContainerHighest
+                                ) {}
+                                Surface(
+                                    modifier = Modifier.size(width = 48.dp, height = 24.dp),
+                                    shape = previewBubbleShape(style, isUser = true),
+                                    color = MaterialTheme.colorScheme.primaryContainer
+                                ) {}
+                            }
+                            Text(
+                                text = style.prettyName(),
+                                style = MaterialTheme.typography.labelLarge,
+                                maxLines = 1
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+private fun AppPreferences.ThemePalette.prettyName(): String {
+    return name.lowercase().replaceFirstChar { it.uppercase() }
+}
+
+private fun AppPreferences.ChatBubbleStyle.prettyName(): String {
+    return name.lowercase().replaceFirstChar { it.uppercase() }
+}
+
+private fun previewBubbleShape(
+    style: AppPreferences.ChatBubbleStyle,
+    isUser: Boolean
+): RoundedCornerShape {
+    return when (style) {
+        AppPreferences.ChatBubbleStyle.EXPRESSIVE -> if (isUser) {
+            RoundedCornerShape(24.dp, 6.dp, 24.dp, 24.dp)
+        } else {
+            RoundedCornerShape(6.dp, 24.dp, 24.dp, 24.dp)
+        }
+        AppPreferences.ChatBubbleStyle.ROUNDED -> RoundedCornerShape(28.dp)
+        AppPreferences.ChatBubbleStyle.COMPACT -> if (isUser) {
+            RoundedCornerShape(16.dp, 6.dp, 16.dp, 16.dp)
+        } else {
+            RoundedCornerShape(6.dp, 16.dp, 16.dp, 16.dp)
+        }
+        AppPreferences.ChatBubbleStyle.GEOMETRIC -> if (isUser) {
+            RoundedCornerShape(18.dp, 4.dp, 18.dp, 10.dp)
+        } else {
+            RoundedCornerShape(4.dp, 18.dp, 10.dp, 18.dp)
         }
     }
 }

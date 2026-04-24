@@ -37,6 +37,8 @@ class AppPreferences(private val context: Context) {
     private object Keys {
         val SYSTEM_PROMPT = stringPreferencesKey("system_prompt")
         val THEME_MODE = stringPreferencesKey("theme_mode")
+        val THEME_PALETTE = stringPreferencesKey("theme_palette")
+        val CHAT_BUBBLE_STYLE = stringPreferencesKey("chat_bubble_style")
         val DYNAMIC_COLOR_ENABLED = booleanPreferencesKey("dynamic_color_enabled")
         val HAPTICS_ENABLED = booleanPreferencesKey("haptics_enabled")
         val NOTIFICATIONS_ENABLED = booleanPreferencesKey("notifications_enabled")
@@ -76,11 +78,36 @@ class AppPreferences(private val context: Context) {
     }
 
     /**
+     * Static Material 3 palette options used when dynamic color is off or unavailable.
+     */
+    enum class ThemePalette {
+        VIOLET,
+        OCEAN,
+        JADE,
+        SUNSET,
+        ROSE,
+        AMBER,
+        GRAPHITE
+    }
+
+    /**
+     * Material 3 chat bubble shape families.
+     */
+    enum class ChatBubbleStyle {
+        EXPRESSIVE,
+        ROUNDED,
+        COMPACT,
+        GEOMETRIC
+    }
+
+    /**
      * Default values for preferences.
      */
     companion object {
         const val DEFAULT_SYSTEM_PROMPT = "You are a helpful assistant."
         val DEFAULT_THEME_MODE = ThemeMode.SYSTEM
+        val DEFAULT_THEME_PALETTE = ThemePalette.VIOLET
+        val DEFAULT_CHAT_BUBBLE_STYLE = ChatBubbleStyle.EXPRESSIVE
         const val DEFAULT_DYNAMIC_COLOR_ENABLED = true
         const val DEFAULT_HAPTICS_ENABLED = true
         const val DEFAULT_NOTIFICATIONS_ENABLED = false
@@ -133,6 +160,52 @@ class AppPreferences(private val context: Context) {
     suspend fun setThemeMode(mode: ThemeMode) {
         dataStore.edit { preferences ->
             preferences[Keys.THEME_MODE] = mode.name
+        }
+    }
+
+    // ========== Theme Palette ==========
+
+    /**
+     * Get the selected static Material 3 color palette as a Flow.
+     */
+    val themePalette: Flow<ThemePalette> = dataStore.data.map { preferences ->
+        val paletteName = preferences[Keys.THEME_PALETTE] ?: DEFAULT_THEME_PALETTE.name
+        try {
+            ThemePalette.valueOf(paletteName)
+        } catch (e: IllegalArgumentException) {
+            DEFAULT_THEME_PALETTE
+        }
+    }
+
+    /**
+     * Set the static Material 3 color palette.
+     */
+    suspend fun setThemePalette(palette: ThemePalette) {
+        dataStore.edit { preferences ->
+            preferences[Keys.THEME_PALETTE] = palette.name
+        }
+    }
+
+    // ========== Chat Bubble Style ==========
+
+    /**
+     * Get the selected chat bubble shape family as a Flow.
+     */
+    val chatBubbleStyle: Flow<ChatBubbleStyle> = dataStore.data.map { preferences ->
+        val styleName = preferences[Keys.CHAT_BUBBLE_STYLE] ?: DEFAULT_CHAT_BUBBLE_STYLE.name
+        try {
+            ChatBubbleStyle.valueOf(styleName)
+        } catch (e: IllegalArgumentException) {
+            DEFAULT_CHAT_BUBBLE_STYLE
+        }
+    }
+
+    /**
+     * Set the chat bubble shape family.
+     */
+    suspend fun setChatBubbleStyle(style: ChatBubbleStyle) {
+        dataStore.edit { preferences ->
+            preferences[Keys.CHAT_BUBBLE_STYLE] = style.name
         }
     }
 

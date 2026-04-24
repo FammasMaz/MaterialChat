@@ -99,7 +99,9 @@ import com.materialchat.ui.screens.chat.MessageGroupPosition
 import com.materialchat.ui.screens.chat.SiblingInfo
 import com.materialchat.ui.components.HapticPattern
 import com.materialchat.ui.components.rememberHapticFeedback
+import com.materialchat.data.local.preferences.AppPreferences
 import com.materialchat.ui.theme.CustomShapes
+import com.materialchat.ui.theme.LocalChatBubbleStyle
 import com.materialchat.ui.theme.MessageBubbleShapes
 import kotlinx.coroutines.launch
 
@@ -324,8 +326,8 @@ fun MessageBubble(
                 Column(
                     modifier = Modifier
                         .padding(
-                            horizontal = 14.dp,
-                            vertical = 10.dp
+                            horizontal = bubbleStyle.horizontalPadding,
+                            vertical = bubbleStyle.verticalPadding
                         )
                 ) {
                     // Thinking content (collapsible for assistant messages)
@@ -675,7 +677,9 @@ private data class BubbleStyle(
     val shape: Shape,
     val backgroundColor: Color,
     val textColor: Color,
-    val maxWidth: Dp
+    val maxWidth: Dp,
+    val horizontalPadding: Dp,
+    val verticalPadding: Dp
 )
 
 /**
@@ -693,40 +697,129 @@ private fun getBubbleStyle(
     val maxBubbleWidth = (configuration.screenWidthDp * 0.82f).dp
     val maxAssistantWidth = configuration.screenWidthDp.dp
     val maxSystemWidth = (configuration.screenWidthDp * 0.7f).dp
+    val bubbleFamily = LocalChatBubbleStyle.current
     val surfaceBase = MaterialTheme.colorScheme.surfaceContainer
-    val userBubble = lerp(surfaceBase, MaterialTheme.colorScheme.primaryContainer, 0.75f)
-    val assistantBubble = lerp(surfaceBase, MaterialTheme.colorScheme.surfaceContainerHigh, 0.7f)
+    val userBubble = when (bubbleFamily) {
+        AppPreferences.ChatBubbleStyle.GEOMETRIC -> lerp(
+            MaterialTheme.colorScheme.primaryContainer,
+            MaterialTheme.colorScheme.tertiaryContainer,
+            0.24f
+        )
+        else -> lerp(surfaceBase, MaterialTheme.colorScheme.primaryContainer, 0.75f)
+    }
+    val assistantBubble = when (bubbleFamily) {
+        AppPreferences.ChatBubbleStyle.GEOMETRIC -> lerp(
+            MaterialTheme.colorScheme.surfaceContainerHigh,
+            MaterialTheme.colorScheme.secondaryContainer,
+            0.18f
+        )
+        else -> lerp(surfaceBase, MaterialTheme.colorScheme.surfaceContainerHigh, 0.7f)
+    }
     val systemBubble = lerp(surfaceBase, MaterialTheme.colorScheme.tertiaryContainer, 0.55f)
+    val horizontalPadding = if (bubbleFamily == AppPreferences.ChatBubbleStyle.COMPACT) 12.dp else 14.dp
+    val verticalPadding = if (bubbleFamily == AppPreferences.ChatBubbleStyle.COMPACT) 8.dp else 10.dp
 
     return when {
         isUser -> BubbleStyle(
-            shape = when (groupPosition) {
+            shape = bubbleShapeFor(
+                style = bubbleFamily,
+                isUser = true,
+                isAssistant = false,
+                groupPosition = groupPosition
+            ),
+            backgroundColor = userBubble,
+            textColor = MaterialTheme.colorScheme.onPrimaryContainer,
+            maxWidth = maxBubbleWidth,
+            horizontalPadding = horizontalPadding,
+            verticalPadding = verticalPadding
+        )
+        isAssistant -> BubbleStyle(
+            shape = bubbleShapeFor(
+                style = bubbleFamily,
+                isUser = false,
+                isAssistant = true,
+                groupPosition = groupPosition
+            ),
+            backgroundColor = if (isErrored) lerp(assistantBubble, MaterialTheme.colorScheme.errorContainer, 0.3f) else assistantBubble,
+            textColor = MaterialTheme.colorScheme.onSurface,
+            maxWidth = maxAssistantWidth,
+            horizontalPadding = horizontalPadding,
+            verticalPadding = verticalPadding
+        )
+        else -> BubbleStyle(
+            shape = bubbleShapeFor(
+                style = bubbleFamily,
+                isUser = false,
+                isAssistant = false,
+                groupPosition = MessageGroupPosition.Single
+            ),
+            backgroundColor = systemBubble,
+            textColor = MaterialTheme.colorScheme.onTertiaryContainer,
+            maxWidth = maxSystemWidth,
+            horizontalPadding = horizontalPadding,
+            verticalPadding = verticalPadding
+        )
+    }
+}
+
+private fun bubbleShapeFor(
+    style: AppPreferences.ChatBubbleStyle,
+    isUser: Boolean,
+    isAssistant: Boolean,
+    groupPosition: MessageGroupPosition
+): Shape {
+    if (!isUser && !isAssistant) {
+        return when (style) {
+            AppPreferences.ChatBubbleStyle.COMPACT -> RoundedCornerShape(16.dp)
+            AppPreferences.ChatBubbleStyle.GEOMETRIC -> RoundedCornerShape(12.dp)
+            else -> MessageBubbleShapes.SystemBubble
+        }
+    }
+
+    return when (style) {
+        AppPreferences.ChatBubbleStyle.EXPRESSIVE -> when {
+            isUser -> when (groupPosition) {
                 MessageGroupPosition.First -> MessageBubbleShapes.Grouped.UserFirst
                 MessageGroupPosition.Middle -> MessageBubbleShapes.Grouped.UserMiddle
                 MessageGroupPosition.Last -> MessageBubbleShapes.Grouped.UserLast
                 MessageGroupPosition.Single -> MessageBubbleShapes.UserBubble
-            },
-            backgroundColor = userBubble,
-            textColor = MaterialTheme.colorScheme.onPrimaryContainer,
-            maxWidth = maxBubbleWidth
-        )
-        isAssistant -> BubbleStyle(
-            shape = when (groupPosition) {
+            }
+            else -> when (groupPosition) {
                 MessageGroupPosition.First -> MessageBubbleShapes.Grouped.AssistantFirst
                 MessageGroupPosition.Middle -> MessageBubbleShapes.Grouped.AssistantMiddle
                 MessageGroupPosition.Last -> MessageBubbleShapes.Grouped.AssistantLast
                 MessageGroupPosition.Single -> MessageBubbleShapes.AssistantBubble
-            },
-            backgroundColor = if (isErrored) lerp(assistantBubble, MaterialTheme.colorScheme.errorContainer, 0.3f) else assistantBubble,
-            textColor = MaterialTheme.colorScheme.onSurface,
-            maxWidth = maxAssistantWidth
-        )
-        else -> BubbleStyle(
-            shape = MessageBubbleShapes.SystemBubble,
-            backgroundColor = systemBubble,
-            textColor = MaterialTheme.colorScheme.onTertiaryContainer,
-            maxWidth = maxSystemWidth
-        )
+            }
+        }
+        AppPreferences.ChatBubbleStyle.ROUNDED -> RoundedCornerShape(30.dp)
+        AppPreferences.ChatBubbleStyle.COMPACT -> when {
+            isUser -> RoundedCornerShape(
+                topStart = 18.dp,
+                topEnd = 6.dp,
+                bottomStart = 18.dp,
+                bottomEnd = 18.dp
+            )
+            else -> RoundedCornerShape(
+                topStart = 6.dp,
+                topEnd = 18.dp,
+                bottomStart = 18.dp,
+                bottomEnd = 18.dp
+            )
+        }
+        AppPreferences.ChatBubbleStyle.GEOMETRIC -> when {
+            isUser -> RoundedCornerShape(
+                topStart = 18.dp,
+                topEnd = 4.dp,
+                bottomStart = 18.dp,
+                bottomEnd = 10.dp
+            )
+            else -> RoundedCornerShape(
+                topStart = 4.dp,
+                topEnd = 18.dp,
+                bottomStart = 10.dp,
+                bottomEnd = 18.dp
+            )
+        }
     }
 }
 

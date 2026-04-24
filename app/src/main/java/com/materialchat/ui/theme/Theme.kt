@@ -12,11 +12,15 @@ import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 import com.materialchat.data.local.preferences.AppPreferences
+
+val LocalChatBubbleStyle = staticCompositionLocalOf { AppPreferences.ChatBubbleStyle.EXPRESSIVE }
 
 /**
  * Light color scheme for MaterialChat.
@@ -127,6 +131,8 @@ fun isDynamicColorSupported(): Boolean = Build.VERSION.SDK_INT >= Build.VERSION_
 fun MaterialChatTheme(
     themeMode: AppPreferences.ThemeMode = AppPreferences.ThemeMode.SYSTEM,
     dynamicColor: Boolean = isDynamicColorSupported(),
+    themePalette: AppPreferences.ThemePalette = AppPreferences.DEFAULT_THEME_PALETTE,
+    chatBubbleStyle: AppPreferences.ChatBubbleStyle = AppPreferences.DEFAULT_CHAT_BUBBLE_STYLE,
     content: @Composable () -> Unit
 ) {
     // Determine if we should use dark theme
@@ -139,7 +145,8 @@ fun MaterialChatTheme(
     // Select the appropriate color scheme
     val colorScheme = selectColorScheme(
         darkTheme = darkTheme,
-        dynamicColor = dynamicColor
+        dynamicColor = dynamicColor,
+        themePalette = themePalette
     )
 
     // Update status bar and navigation bar colors
@@ -161,13 +168,17 @@ fun MaterialChatTheme(
         }
     }
 
-    MaterialTheme(
-        colorScheme = colorScheme,
-        typography = MaterialChatTypography,
-        shapes = MaterialChatShapes,
-        motionScheme = MotionScheme.expressive(),
-        content = content
-    )
+    CompositionLocalProvider(
+        LocalChatBubbleStyle provides chatBubbleStyle
+    ) {
+        MaterialTheme(
+            colorScheme = colorScheme,
+            typography = MaterialChatTypography,
+            shapes = MaterialChatShapes,
+            motionScheme = MotionScheme.expressive(),
+            content = content
+        )
+    }
 }
 
 /**
@@ -180,7 +191,8 @@ fun MaterialChatTheme(
 @Composable
 private fun selectColorScheme(
     darkTheme: Boolean,
-    dynamicColor: Boolean
+    dynamicColor: Boolean,
+    themePalette: AppPreferences.ThemePalette
 ): ColorScheme {
     val context = LocalContext.current
 
@@ -193,9 +205,8 @@ private fun selectColorScheme(
                 dynamicLightColorScheme(context)
             }
         }
-        // Use static color schemes
-        darkTheme -> DarkColorScheme
-        else -> LightColorScheme
+        // Use selected static Material 3 palette
+        else -> MaterialChatThemePalettes.colorScheme(themePalette, darkTheme)
     }
 }
 

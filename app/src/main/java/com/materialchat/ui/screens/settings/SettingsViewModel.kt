@@ -59,7 +59,13 @@ class SettingsViewModel @Inject constructor(
                     manageProvidersUseCase.observeProviders(),
                     appPreferences.systemPrompt,
                     appPreferences.themeMode,
-                    appPreferences.dynamicColorEnabled,
+                    combine(
+                        appPreferences.dynamicColorEnabled,
+                        appPreferences.themePalette,
+                        appPreferences.chatBubbleStyle
+                    ) { dynamicColorEnabled, themePalette, chatBubbleStyle ->
+                        AppearancePrefs(dynamicColorEnabled, themePalette, chatBubbleStyle)
+                    },
                     combine(
                         combine(
                             appPreferences.hapticsEnabled,
@@ -105,12 +111,14 @@ class SettingsViewModel @Inject constructor(
                             assistantSettings = assistantSettings
                         )
                     }
-                ) { providers, systemPrompt, themeMode, dynamicColorEnabled, toggles ->
+                ) { providers, systemPrompt, themeMode, appearancePrefs, toggles ->
                     SettingsData(
                         providers = providers,
                         systemPrompt = systemPrompt,
                         themeMode = themeMode,
-                        dynamicColorEnabled = dynamicColorEnabled,
+                        dynamicColorEnabled = appearancePrefs.dynamicColorEnabled,
+                        themePalette = appearancePrefs.themePalette,
+                        chatBubbleStyle = appearancePrefs.chatBubbleStyle,
                         hapticsEnabled = toggles.haptics,
                         notificationsEnabled = toggles.notifications,
                         aiGeneratedTitlesEnabled = toggles.aiTitles,
@@ -170,6 +178,8 @@ class SettingsViewModel @Inject constructor(
                         providers = providerUiItems,
                         systemPrompt = data.systemPrompt,
                         themeMode = data.themeMode,
+                        themePalette = data.themePalette,
+                        chatBubbleStyle = data.chatBubbleStyle,
                         dynamicColorEnabled = data.dynamicColorEnabled,
                         isDynamicColorSupported = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S,
                         hapticsEnabled = data.hapticsEnabled,
@@ -586,6 +596,36 @@ class SettingsViewModel @Inject constructor(
     }
 
     /**
+     * Updates the static Material 3 palette.
+     */
+    fun updateThemePalette(palette: AppPreferences.ThemePalette) {
+        viewModelScope.launch {
+            try {
+                appPreferences.setThemePalette(palette)
+            } catch (e: Exception) {
+                _events.emit(SettingsEvent.ShowSnackbar(
+                    message = "Failed to save color palette"
+                ))
+            }
+        }
+    }
+
+    /**
+     * Updates the chat bubble shape family.
+     */
+    fun updateChatBubbleStyle(style: AppPreferences.ChatBubbleStyle) {
+        viewModelScope.launch {
+            try {
+                appPreferences.setChatBubbleStyle(style)
+            } catch (e: Exception) {
+                _events.emit(SettingsEvent.ShowSnackbar(
+                    message = "Failed to save chat bubble style"
+                ))
+            }
+        }
+    }
+
+    /**
      * Updates the dynamic color setting.
      */
     fun updateDynamicColorEnabled(enabled: Boolean) {
@@ -960,6 +1000,8 @@ class SettingsViewModel @Inject constructor(
         val systemPrompt: String,
         val themeMode: AppPreferences.ThemeMode,
         val dynamicColorEnabled: Boolean,
+        val themePalette: AppPreferences.ThemePalette,
+        val chatBubbleStyle: AppPreferences.ChatBubbleStyle,
         val hapticsEnabled: Boolean,
         val notificationsEnabled: Boolean,
         val aiGeneratedTitlesEnabled: Boolean,
@@ -978,6 +1020,15 @@ class SettingsViewModel @Inject constructor(
         val webSearchProvider: String = "EXA",
         val searxngBaseUrl: String = "",
         val webSearchMaxResults: Int = 5
+    )
+
+    /**
+     * Internal data class for appearance-related settings.
+     */
+    private data class AppearancePrefs(
+        val dynamicColorEnabled: Boolean,
+        val themePalette: AppPreferences.ThemePalette,
+        val chatBubbleStyle: AppPreferences.ChatBubbleStyle
     )
 
     /**
