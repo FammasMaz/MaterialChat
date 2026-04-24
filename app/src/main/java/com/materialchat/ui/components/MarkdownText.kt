@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.rememberScrollState
@@ -288,13 +289,17 @@ private fun MarkdownContent(
 private fun MarkdownInlineText(
     content: ParsedInlineContent,
     style: TextStyle,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    softWrap: Boolean = true,
+    maxLines: Int = Int.MAX_VALUE
 ) {
     if (content.inlineMath.isEmpty()) {
         Text(
             text = content.text,
             style = style,
-            modifier = modifier
+            modifier = modifier,
+            softWrap = softWrap,
+            maxLines = maxLines
         )
         return
     }
@@ -327,7 +332,9 @@ private fun MarkdownInlineText(
         text = content.text,
         style = style,
         inlineContent = inlineContent,
-        modifier = modifier
+        modifier = modifier,
+        softWrap = softWrap,
+        maxLines = maxLines
     )
 }
 
@@ -796,7 +803,11 @@ private fun TableView(
     val headerBackground = MaterialTheme.colorScheme.surfaceContainerHigh
     val alternateRowColor = MaterialTheme.colorScheme.surfaceContainerLow
 
-    val numCols = headers.size
+    val numCols = maxOf(
+        headers.size,
+        alignments.size,
+        rows.maxOfOrNull { it.size } ?: 0
+    )
     val textMeasurer = rememberTextMeasurer()
     val headerStyle = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold)
     val bodyStyle = MaterialTheme.typography.bodyMedium
@@ -807,7 +818,9 @@ private fun TableView(
     val columnWidths = remember(headers, rows) {
         val widths = IntArray(numCols)
         headers.forEachIndexed { index, header ->
-            widths[index] = maxOf(widths[index], textMeasurer.measure(header, headerStyle).size.width)
+            if (index < numCols) {
+                widths[index] = maxOf(widths[index], textMeasurer.measure(header, headerStyle).size.width)
+            }
         }
         rows.forEach { row ->
             row.forEachIndexed { index, cell ->
@@ -816,18 +829,26 @@ private fun TableView(
                 }
             }
         }
-        widths.map { with(density) { it.toDp() + cellPaddingH * 2 } }
+        widths.map { width ->
+            with(density) {
+                (width.toDp() + cellPaddingH * 2).coerceIn(96.dp, 320.dp)
+            }
+        }
     }
 
     Box(
         modifier = Modifier
+            .fillMaxWidth()
             .padding(vertical = 8.dp)
-            .clip(RoundedCornerShape(12.dp))
+            .clip(RoundedCornerShape(16.dp))
             .background(MaterialTheme.colorScheme.surfaceContainer)
     ) {
         val scrollState = rememberScrollState()
         androidx.compose.foundation.layout.Column(
-            modifier = Modifier.horizontalScroll(scrollState)
+            modifier = Modifier
+                .fillMaxWidth()
+                .widthIn(min = columnWidths.fold(0.dp) { total, width -> total + width })
+                .horizontalScroll(scrollState)
         ) {
             // Header row
             Row(
@@ -835,15 +856,18 @@ private fun TableView(
                     .background(headerBackground)
                     .padding(horizontal = 4.dp)
             ) {
-                headers.forEachIndexed { index, header ->
+                repeat(numCols) { index ->
+                    val header = headers.getOrElse(index) { "" }
                     MarkdownInlineText(
                         content = parseInlineMarkdown(header, baseColor, codeColor, linkColor),
                         style = headerStyle.copy(
                             textAlign = tableTextAlign(alignments.getOrElse(index) { TableAlignment.LEFT })
                         ),
                         modifier = Modifier
-                            .width(columnWidths.getOrElse(index) { 80.dp })
-                            .padding(horizontal = cellPaddingH, vertical = 8.dp)
+                            .width(columnWidths.getOrElse(index) { 96.dp })
+                            .padding(horizontal = cellPaddingH, vertical = 8.dp),
+                        softWrap = false,
+                        maxLines = 1
                     )
                 }
             }
@@ -866,15 +890,18 @@ private fun TableView(
                         )
                         .padding(horizontal = 4.dp)
                 ) {
-                    row.forEachIndexed { colIndex, cell ->
+                    repeat(numCols) { colIndex ->
+                        val cell = row.getOrElse(colIndex) { "" }
                         MarkdownInlineText(
                             content = parseInlineMarkdown(cell, baseColor, codeColor, linkColor),
                             style = bodyStyle.copy(
                                 textAlign = tableTextAlign(alignments.getOrElse(colIndex) { TableAlignment.LEFT })
                             ),
                             modifier = Modifier
-                                .width(columnWidths.getOrElse(colIndex) { 80.dp })
-                                .padding(horizontal = cellPaddingH, vertical = 8.dp)
+                                .width(columnWidths.getOrElse(colIndex) { 96.dp })
+                                .padding(horizontal = cellPaddingH, vertical = 8.dp),
+                            softWrap = false,
+                            maxLines = 1
                         )
                     }
                 }
@@ -1102,23 +1129,22 @@ private fun parseTextWithTables(
 
 private fun isTableRow(line: String): Boolean {
     val trimmed = line.trim()
-    return trimmed.startsWith("|") && trimmed.endsWith("|") && trimmed.count { it == '|' } >= 2
+    return !trimmed.startsWith(">") && tableCells(trimmed).size >= 2
 }
 
 private fun isTableSeparator(line: String): Boolean {
-    val trimmed = line.trim()
-    if (!trimmed.startsWith("|") || !trimmed.endsWith("|")) return false
-    return trimmed.split("|").drop(1).dropLast(1).all { cell ->
+    val cells = tableCells(line)
+    return cells.size >= 2 && cells.all { cell ->
         cell.trim().matches(Regex(":?-{1,}:?"))
     }
 }
 
 private fun parseTableRow(line: String): List<String> {
-    return line.trim().removeSurrounding("|").split("|").map { it.trim() }
+    return tableCells(line).map { it.trim() }
 }
 
 private fun parseTableAlignments(line: String): List<TableAlignment> {
-    return line.trim().removeSurrounding("|").split("|").map { cell ->
+    return tableCells(line).map { cell ->
         val trimmed = cell.trim()
         when {
             trimmed.startsWith(":") && trimmed.endsWith(":") -> TableAlignment.CENTER
@@ -1126,6 +1152,14 @@ private fun parseTableAlignments(line: String): List<TableAlignment> {
             else -> TableAlignment.LEFT
         }
     }
+}
+
+private fun tableCells(line: String): List<String> {
+    val trimmed = line.trim()
+    if ('|' !in trimmed) return emptyList()
+    return trimmed
+        .trim('|')
+        .split('|')
 }
 
 /**
