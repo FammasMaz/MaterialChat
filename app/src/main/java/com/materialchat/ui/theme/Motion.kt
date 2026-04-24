@@ -1,11 +1,7 @@
 package com.materialchat.ui.theme
 
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.SpringSpec
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
@@ -271,7 +267,7 @@ object MaterialChatMotion {
     }
 
     /**
-     * Tween animation specifications for specific use cases.
+     * Spring animation specifications for legacy call sites.
      */
     object Tweens {
 
@@ -299,18 +295,12 @@ object MaterialChatMotion {
         /**
          * Exit animation for content disappearing.
          */
-        val Exit = tween<Float>(
-            durationMillis = ShortDuration,
-            easing = FastOutSlowInEasing
-        )
+        val Exit: SpringSpec<Float> = ExpressiveMotion.Effects.alpha()
 
         /**
          * Fade animation for opacity changes.
          */
-        val Fade = tween<Float>(
-            durationMillis = ShortDuration,
-            easing = LinearOutSlowInEasing
-        )
+        val Fade: SpringSpec<Float> = ExpressiveMotion.Effects.alpha()
 
         /**
          * Screen transition animation.
@@ -405,27 +395,3 @@ object IntSprings {
     )
 }
 
-/**
- * Commonly used easing curves.
- */
-object Easings {
-    /**
-     * Standard easing for most animations.
-     */
-    val Standard = CubicBezierEasing(0.4f, 0.0f, 0.2f, 1.0f)
-
-    /**
-     * Emphasized easing for entrances.
-     */
-    val EmphasizedDecelerate = CubicBezierEasing(0.05f, 0.7f, 0.1f, 1.0f)
-
-    /**
-     * Emphasized easing for exits.
-     */
-    val EmphasizedAccelerate = CubicBezierEasing(0.3f, 0.0f, 0.8f, 0.15f)
-
-    /**
-     * Linear easing (no acceleration).
-     */
-    val Linear = CubicBezierEasing(0.0f, 0.0f, 1.0f, 1.0f)
-}

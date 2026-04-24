@@ -38,7 +38,7 @@ import com.materialchat.ui.theme.ExpressiveMotion
  * Displays a row of circles connected by lines representing workflow steps:
  * - Completed steps: filled primary circle with a checkmark icon
  * - Current step: filled pulsing primary circle with step number
- * - Pending steps: outlined surfaceVariant circle with step number
+ * - Pending steps: outlined surface container circle with step number
  *
  * Uses M3 color tokens and spring-based animation for the pulsing effect.
  *
@@ -58,7 +58,7 @@ fun StepProgressIndicator(
 
     val primaryColor = MaterialTheme.colorScheme.primary
     val onPrimaryColor = MaterialTheme.colorScheme.onPrimary
-    val surfaceVariantColor = MaterialTheme.colorScheme.surfaceVariant
+    val pendingContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh
     val onSurfaceVariantColor = MaterialTheme.colorScheme.onSurfaceVariant
     val outlineColor = MaterialTheme.colorScheme.outline
 
@@ -94,7 +94,7 @@ fun StepProgressIndicator(
                 pulseAlpha = if (isCurrent) pulseAlpha else 1f,
                 primaryColor = primaryColor,
                 onPrimaryColor = onPrimaryColor,
-                surfaceVariantColor = surfaceVariantColor,
+                pendingContainerColor = pendingContainerColor,
                 onSurfaceVariantColor = onSurfaceVariantColor,
                 outlineColor = outlineColor
             )
@@ -137,7 +137,7 @@ private fun StepCircle(
     pulseAlpha: Float,
     primaryColor: Color,
     onPrimaryColor: Color,
-    surfaceVariantColor: Color,
+    pendingContainerColor: Color,
     onSurfaceVariantColor: Color,
     outlineColor: Color
 ) {
@@ -150,8 +150,8 @@ private fun StepCircle(
         val bgColor by animateColorAsState(
             targetValue = when {
                 isCompleted -> primaryColor
-                isCurrent -> primaryColor.copy(alpha = pulseAlpha)
-                else -> Color.Transparent
+                isCurrent -> primaryColor
+                else -> pendingContainerColor
             },
             animationSpec = ExpressiveMotion.Effects.color(),
             label = "circleBgColor"
@@ -160,14 +160,13 @@ private fun StepCircle(
         Canvas(modifier = Modifier.size(circleSize)) {
             val radius = size.minDimension / 2
 
-            if (isCompleted || isCurrent) {
-                // Filled circle
-                drawCircle(
-                    color = bgColor,
-                    radius = radius
-                )
-            } else {
-                // Outlined circle
+            // Filled circle for all states so every step has a clear container.
+            drawCircle(
+                color = bgColor,
+                radius = radius
+            )
+
+            if (!isCompleted && !isCurrent) {
                 drawCircle(
                     color = outlineColor.copy(alpha = 0.4f),
                     radius = radius,

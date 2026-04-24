@@ -686,7 +686,7 @@ private fun ConversationsTopBar(
                 // Temp chat icon button
                 Surface(
                     onClick = { haptics.perform(HapticPattern.CLICK); onTempChatClick() },
-                    modifier = Modifier.size(40.dp),
+                    modifier = Modifier.size(48.dp),
                     shape = CircleShape,
                     color = MaterialTheme.colorScheme.tertiaryContainer
                 ) {
@@ -706,7 +706,7 @@ private fun ConversationsTopBar(
                 Surface(
                     onClick = { haptics.perform(HapticPattern.CLICK); onSearchClick() },
                     modifier = Modifier
-                        .size(40.dp)
+                        .size(48.dp)
                         .graphicsLayer {
                             scaleX = searchScale
                             scaleY = searchScale

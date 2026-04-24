@@ -99,7 +99,7 @@ fun PersonaPickerSheet(
                         modifier = Modifier
                             .size(40.dp)
                             .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.surfaceVariant),
+                            .background(MaterialTheme.colorScheme.surfaceContainerHigh),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(

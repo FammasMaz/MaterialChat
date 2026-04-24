@@ -168,7 +168,7 @@ private fun LeaderboardItem(
         1 -> MaterialTheme.colorScheme.primaryContainer
         2 -> MaterialTheme.colorScheme.secondaryContainer
         3 -> MaterialTheme.colorScheme.tertiaryContainer
-        else -> MaterialTheme.colorScheme.surfaceVariant
+        else -> MaterialTheme.colorScheme.surfaceContainerHigh
     }
     val contentColor = when (rank) {
         1 -> MaterialTheme.colorScheme.onPrimaryContainer

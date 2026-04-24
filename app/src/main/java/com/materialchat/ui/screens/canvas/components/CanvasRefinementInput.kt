@@ -135,7 +135,7 @@ fun CanvasRefinementInput(
             Surface(
                 onClick = { if (canSend) onSend() },
                 modifier = Modifier
-                    .size(40.dp)
+                    .size(48.dp)
                     .scale(sendButtonScale),
                 shape = CircleShape,
                 color = sendButtonColor,

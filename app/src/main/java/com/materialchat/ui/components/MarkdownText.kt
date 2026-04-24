@@ -93,7 +93,7 @@ fun MarkdownText(
 ) {
     val isDarkTheme = isSystemInDarkTheme()
     val codeBlockBackground = if (isDarkTheme) CodeBlockBackgroundDark else CodeBlockBackgroundLight
-    val codeTextColor = if (isDarkTheme) Color(0xFFD4D4D4) else Color(0xFF1E1E1E)
+    val codeTextColor = MaterialTheme.colorScheme.onSurface
     val linkColor = MaterialTheme.colorScheme.primary
 
     val parsedContent = remember(markdown, textColor, codeTextColor, linkColor) {
@@ -237,7 +237,7 @@ private fun MarkdownContent(
                         alignments = element.alignments,
                         baseColor = style.color.takeIf { it != Color.Unspecified }
                             ?: MaterialTheme.colorScheme.onSurface,
-                        codeColor = if (isSystemInDarkTheme()) Color(0xFFD4D4D4) else Color(0xFF1E1E1E),
+                        codeColor = MaterialTheme.colorScheme.onSurface,
                         linkColor = MaterialTheme.colorScheme.primary
                     )
                 }
@@ -395,12 +395,11 @@ private fun CodeBlockView(
     backgroundColor: Color,
     onOpenCanvas: ((CanvasArtifact) -> Unit)? = null
 ) {
-    val isDarkTheme = isSystemInDarkTheme()
-    val textColor = if (isDarkTheme) Color(0xFFD4D4D4) else Color(0xFF1E1E1E)
-    val keywordColor = if (isDarkTheme) Color(0xFF569CD6) else Color(0xFF0000FF)
-    val stringColor = if (isDarkTheme) Color(0xFFCE9178) else Color(0xFFA31515)
-    val commentColor = if (isDarkTheme) Color(0xFF6A9955) else Color(0xFF008000)
-    val numberColor = if (isDarkTheme) Color(0xFFB5CEA8) else Color(0xFF098658)
+    val textColor = MaterialTheme.colorScheme.onSurface
+    val keywordColor = MaterialTheme.colorScheme.primary
+    val stringColor = MaterialTheme.colorScheme.tertiary
+    val commentColor = MaterialTheme.colorScheme.onSurfaceVariant
+    val numberColor = MaterialTheme.colorScheme.secondary
 
     // Detect if this code block is a renderable artifact
     val artifact = remember(code, language) {
@@ -411,7 +410,7 @@ private fun CodeBlockView(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 8.dp)
-            .clip(RoundedCornerShape(8.dp))
+            .clip(RoundedCornerShape(16.dp))
             .background(backgroundColor)
     ) {
         val highlightedCode = remember(code, language) {
@@ -450,7 +449,7 @@ private fun CodeBlockView(
                 modifier = Modifier
                     .align(Alignment.TopEnd)
                     .padding(4.dp)
-                    .size(32.dp),
+                    .size(48.dp),
                 colors = IconButtonDefaults.iconButtonColors(
                     contentColor = MaterialTheme.colorScheme.primary
                 )
@@ -1325,7 +1324,7 @@ private fun AnnotatedString.Builder.parseInlineFormatting(
                     withStyle(SpanStyle(
                         fontFamily = FontFamily.Monospace,
                         fontStyle = FontStyle.Italic,
-                        background = Color(0xFF7C4DFF).copy(alpha = 0.10f),
+                        background = linkColor.copy(alpha = 0.10f),
                         color = baseColor
                     )) {
                         append(renderInlineMathText(content))
@@ -1344,7 +1343,7 @@ private fun AnnotatedString.Builder.parseInlineFormatting(
                         withStyle(SpanStyle(
                             fontFamily = FontFamily.Monospace,
                             fontStyle = FontStyle.Italic,
-                            background = Color(0xFF7C4DFF).copy(alpha = 0.10f),
+                            background = linkColor.copy(alpha = 0.10f),
                             color = baseColor
                         )) {
                             append(renderInlineMathText(content))

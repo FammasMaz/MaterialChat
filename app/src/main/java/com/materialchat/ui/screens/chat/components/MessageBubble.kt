@@ -894,7 +894,7 @@ private fun ModelSiblingRow(
         IconButton(
             onClick = { haptics.perform(HapticPattern.CLICK); onNavigatePrevious?.invoke() },
             enabled = canGoPrevious,
-            modifier = Modifier.size(28.dp)
+            modifier = Modifier.size(48.dp)
         ) {
             Icon(
                 imageVector = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
@@ -917,7 +917,7 @@ private fun ModelSiblingRow(
         IconButton(
             onClick = { haptics.perform(HapticPattern.CLICK); onNavigateNext?.invoke() },
             enabled = canGoNext,
-            modifier = Modifier.size(28.dp)
+            modifier = Modifier.size(48.dp)
         ) {
             Icon(
                 imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,

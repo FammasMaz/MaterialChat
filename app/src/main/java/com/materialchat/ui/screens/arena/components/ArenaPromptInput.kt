@@ -78,7 +78,7 @@ fun ArenaPromptInput(
             colors = IconButtonDefaults.filledIconButtonColors(
                 containerColor = MaterialTheme.colorScheme.primary,
                 contentColor = MaterialTheme.colorScheme.onPrimary,
-                disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                disabledContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
                 disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant
             ),
             modifier = Modifier.padding(bottom = 4.dp)

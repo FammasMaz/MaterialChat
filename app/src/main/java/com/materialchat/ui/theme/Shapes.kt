@@ -153,14 +153,14 @@ object CustomShapes {
     val MessageActionButton = RoundedCornerShape(20.dp)
     
     /**
-     * Button shape - M3 Expressive uses 20dp.
+     * Button shape - M3 Expressive round buttons use pill-like corners.
      */
-    val Button = RoundedCornerShape(20.dp)
+    val Button = RoundedCornerShape(24.dp)
     
     /**
-     * Button shape when pressed - morphs to larger radius (M3 Expressive "squish" effect).
+     * Button shape when pressed - round buttons become less rounded.
      */
-    val ButtonPressed = RoundedCornerShape(24.dp)
+    val ButtonPressed = RoundedCornerShape(12.dp)
 
     /**
      * Shape for the message input field container - matches FAB for consistency.

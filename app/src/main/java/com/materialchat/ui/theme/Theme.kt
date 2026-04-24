@@ -4,7 +4,9 @@ import android.app.Activity
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.ColorScheme
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MotionScheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
@@ -40,6 +42,8 @@ private val LightColorScheme = lightColorScheme(
     background = BackgroundLight,
     onBackground = OnBackgroundLight,
     surface = SurfaceLight,
+    surfaceDim = SurfaceDimLight,
+    surfaceBright = SurfaceBrightLight,
     onSurface = OnSurfaceLight,
     surfaceVariant = SurfaceVariantLight,
     onSurfaceVariant = OnSurfaceVariantLight,
@@ -80,6 +84,8 @@ private val DarkColorScheme = darkColorScheme(
     background = BackgroundDark,
     onBackground = OnBackgroundDark,
     surface = SurfaceDark,
+    surfaceDim = SurfaceDimDark,
+    surfaceBright = SurfaceBrightDark,
     onSurface = OnSurfaceDark,
     surfaceVariant = SurfaceVariantDark,
     onSurfaceVariant = OnSurfaceVariantDark,
@@ -116,6 +122,7 @@ fun isDynamicColorSupported(): Boolean = Build.VERSION.SDK_INT >= Build.VERSION_
  * @param dynamicColor Whether to use dynamic colors derived from wallpaper (Android 12+)
  * @param content The composable content to apply the theme to
  */
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun MaterialChatTheme(
     themeMode: AppPreferences.ThemeMode = AppPreferences.ThemeMode.SYSTEM,
@@ -158,6 +165,7 @@ fun MaterialChatTheme(
         colorScheme = colorScheme,
         typography = MaterialChatTypography,
         shapes = MaterialChatShapes,
+        motionScheme = MotionScheme.expressive(),
         content = content
     )
 }

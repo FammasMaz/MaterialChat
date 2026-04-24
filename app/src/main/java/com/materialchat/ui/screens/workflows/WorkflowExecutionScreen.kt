@@ -400,7 +400,7 @@ private fun ExecutionContent(
                     )) {
                         StatusBanner(
                             text = "Workflow cancelled",
-                            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
                             contentColor = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
