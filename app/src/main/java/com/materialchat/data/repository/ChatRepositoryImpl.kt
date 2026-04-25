@@ -1,5 +1,8 @@
 package com.materialchat.data.repository
 
+import android.content.Context
+import android.net.Uri
+import android.util.Base64
 import com.materialchat.data.local.preferences.EncryptedPreferences
 import com.materialchat.data.remote.api.ChatApiClient
 import com.materialchat.data.remote.api.ModelListApiClient
@@ -15,8 +18,11 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.flow
+import java.io.File
+import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
+import dagger.hilt.android.qualifiers.ApplicationContext
 
 /**
  * Implementation of [ChatRepository] that handles communication with AI providers.
@@ -28,7 +34,8 @@ import javax.inject.Singleton
 class ChatRepositoryImpl @Inject constructor(
     private val chatApiClient: ChatApiClient,
     private val modelListApiClient: ModelListApiClient,
-    private val encryptedPreferences: EncryptedPreferences
+    private val encryptedPreferences: EncryptedPreferences,
+    @ApplicationContext private val context: Context
 ) : ChatRepository {
 
     override fun sendMessage(
@@ -176,12 +183,27 @@ class ChatRepositoryImpl @Inject constructor(
         }
 
         return chatApiClient.generateImage(provider, prompt, model, apiKey)
-            .map { image ->
-                Attachment(
-                    uri = "data:${image.mimeType};base64,${image.base64Data}",
-                    mimeType = image.mimeType,
-                    base64Data = image.base64Data
-                )
-            }
+            .map { image -> persistGeneratedImage(image.base64Data, image.mimeType) }
+    }
+
+    private fun persistGeneratedImage(base64Data: String, mimeType: String): Attachment {
+        val bytes = Base64.decode(base64Data, Base64.DEFAULT)
+        val extension = when (mimeType.lowercase()) {
+            "image/jpeg", "image/jpg" -> "jpg"
+            "image/webp" -> "webp"
+            else -> "png"
+        }
+        val directory = File(context.filesDir, GENERATED_IMAGES_DIR).apply { mkdirs() }
+        val file = File(directory, "generated_${System.currentTimeMillis()}_${UUID.randomUUID()}.$extension")
+        file.outputStream().use { it.write(bytes) }
+        return Attachment(
+            uri = Uri.fromFile(file).toString(),
+            mimeType = mimeType,
+            base64Data = ""
+        )
+    }
+
+    private companion object {
+        const val GENERATED_IMAGES_DIR = "generated_images"
     }
 }

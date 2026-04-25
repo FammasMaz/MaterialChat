@@ -174,6 +174,10 @@ class SendMessageUseCase @Inject constructor(
             webSearchConfig = webSearchConfig,
             webSearchRepository = webSearchRepository
         )
+        val requestSystemPrompt = appendImageToolInstructions(
+            basePrompt = webSearchContext.systemPrompt,
+            modelName = conversation.modelName
+        )
 
         // Create a placeholder assistant message for streaming (after getting messages for API)
         val assistantMessage = Message(
@@ -204,7 +208,7 @@ class SendMessageUseCase @Inject constructor(
             messages = messages,
             model = conversation.modelName,
             reasoningEffort = reasoningEffort,
-            systemPrompt = webSearchContext.systemPrompt,
+            systemPrompt = requestSystemPrompt,
             disableTools = webSearchContext.metadata != null
         ).onEach { state ->
             when (state) {
@@ -239,19 +243,54 @@ class SendMessageUseCase @Inject constructor(
                 is StreamingState.Completed -> {
                     // Capture final content for title generation
                     val hadStreamingContent = accumulatedContent.isNotBlank() || !accumulatedThinking.isNullOrBlank()
-                    accumulatedContent = state.finalContent
-                    contentUpdater.persistFinal(state.finalContent, state.finalThinkingContent)
-                    if (!hadStreamingContent && state.finalContent.isNotBlank()) {
-                        delay(calculatePostCompletionRevealHoldMs(state.finalContent))
-                    }
-                    conversationRepository.setMessageStreaming(assistantMessageId, false)
-
-                    // Save duration data
+                    val imageToolPrompt = extractImageToolPrompt(state.finalContent)
                     val totalDurationMs = System.currentTimeMillis() - streamStartTime
                     val thinkingDurationMs = if (!state.finalThinkingContent.isNullOrEmpty()) {
                         (thinkingEndTime ?: System.currentTimeMillis()) - streamStartTime
                     } else null
-                    conversationRepository.updateMessageDurations(assistantMessageId, thinkingDurationMs, totalDurationMs)
+
+                    if (imageToolPrompt != null) {
+                        accumulatedContent = "Generated image"
+                        contentUpdater.flush()
+                        val imageModel = appPreferences.defaultImageGenerationModel.first()
+                            .ifBlank { AppPreferences.DEFAULT_IMAGE_GENERATION_MODEL }
+                        val imageResult = chatRepository.generateImage(
+                            provider = provider,
+                            prompt = imageToolPrompt,
+                            model = imageModel
+                        )
+                        imageResult.onSuccess { attachment ->
+                            conversationRepository.updateMessage(
+                                assistantMessage.copy(
+                                    id = assistantMessageId,
+                                    content = "",
+                                    attachments = listOf(attachment),
+                                    isStreaming = false,
+                                    totalDurationMs = totalDurationMs,
+                                    modelName = imageModel
+                                )
+                            )
+                        }.onFailure { error ->
+                            conversationRepository.updateMessage(
+                                assistantMessage.copy(
+                                    id = assistantMessageId,
+                                    content = "Image generation failed: ${error.message ?: "Unknown error"}",
+                                    isStreaming = false,
+                                    totalDurationMs = totalDurationMs,
+                                    modelName = imageModel
+                                )
+                            )
+                        }
+                        conversationRepository.updateMessageDurations(assistantMessageId, thinkingDurationMs, totalDurationMs)
+                    } else {
+                        accumulatedContent = state.finalContent
+                        contentUpdater.persistFinal(state.finalContent, state.finalThinkingContent)
+                        if (!hadStreamingContent && state.finalContent.isNotBlank()) {
+                            delay(calculatePostCompletionRevealHoldMs(state.finalContent))
+                        }
+                        conversationRepository.setMessageStreaming(assistantMessageId, false)
+                        conversationRepository.updateMessageDurations(assistantMessageId, thinkingDurationMs, totalDurationMs)
+                    }
 
                     // Save web search metadata on the assistant message
                     webSearchContext.metadata?.let { meta ->
@@ -463,6 +502,24 @@ class SendMessageUseCase @Inject constructor(
         return cleaned.ifBlank { "Branch" }
     }
 
+    private fun appendImageToolInstructions(basePrompt: String, modelName: String): String {
+        val model = modelName.lowercase()
+        if (!model.contains("codex/")) return basePrompt
+        return buildString {
+            append(basePrompt)
+            if (basePrompt.isNotBlank()) append("\n\n")
+            append(CODEX_IMAGE_TOOL_INSTRUCTIONS)
+        }
+    }
+
+    private fun extractImageToolPrompt(content: String): String? {
+        return IMAGE_TOOL_DIRECTIVE_REGEX.find(content)
+            ?.groupValues
+            ?.getOrNull(1)
+            ?.trim()
+            ?.takeIf { it.isNotBlank() }
+    }
+
     /**
      * Resolves whether this request should be sent to the configured image model.
      * Explicit image actions always win; otherwise we route obvious create/draw/render
@@ -501,6 +558,18 @@ class SendMessageUseCase @Inject constructor(
             "You are a title generator. You ONLY output a single emoji followed by a short title (max 6 words). " +
             "Never explain, never apologize, never refuse. No quotes, no punctuation at the end. " +
             "Focus on what makes this branch different. Example: \uD83D\uDD00 Alternative API approach"
+
+        val IMAGE_TOOL_DIRECTIVE_REGEX = Regex(
+            "\\[\\[materialchat\\.generate_image:\\s*([\\s\\S]*?)]]",
+            RegexOption.IGNORE_CASE
+        )
+        const val CODEX_IMAGE_TOOL_INSTRUCTIONS = """
+MaterialChat image generation tool:
+- When the user asks you to create, draw, render, generate, or design an image, you may call the app's image generator.
+- To call it, respond with exactly one directive and no surrounding prose: [[materialchat.generate_image: rewritten image prompt]]
+- The rewritten image prompt should be detailed and self-contained.
+- Do not use this directive for normal visual analysis or when the user only asks for advice.
+"""
 
         val IMAGE_COMMAND_REGEX = Regex(
             "^\\s*(/image|/img|image:)\\s*",

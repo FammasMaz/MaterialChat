@@ -49,7 +49,7 @@ import com.materialchat.data.local.database.entity.WorkflowStepEntity
         WorkflowEntity::class,
         WorkflowStepEntity::class
     ],
-    version = 13,
+    version = 14,
     exportSchema = true
 )
 abstract class MaterialChatDatabase : RoomDatabase() {
@@ -299,6 +299,26 @@ abstract class MaterialChatDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * Migration from version 13 to 14: Prevent oversized generated-image
+         * base64 blobs from crashing Room CursorWindow reads.
+         */
+        private val MIGRATION_13_14 = object : Migration(13, 14) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("""
+                    UPDATE messages
+                    SET image_attachments = NULL,
+                        content = CASE
+                            WHEN content = '' THEN 'Generated image could not be restored. Please regenerate it.'
+                            ELSE content
+                        END,
+                        is_streaming = 0
+                    WHERE image_attachments IS NOT NULL
+                      AND length(image_attachments) > 750000
+                """)
+            }
+        }
+
         internal val MIGRATIONS = arrayOf(
             MIGRATION_2_3,
             MIGRATION_3_4,
@@ -310,7 +330,8 @@ abstract class MaterialChatDatabase : RoomDatabase() {
             MIGRATION_9_10,
             MIGRATION_10_11,
             MIGRATION_11_12,
-            MIGRATION_12_13
+            MIGRATION_12_13,
+            MIGRATION_13_14
         )
 
         /**

@@ -468,19 +468,6 @@ class ChatApiClient(
             quality = quality
         )
 
-        val requestBody = json.encodeToString(request)
-            .toRequestBody(JSON_MEDIA_TYPE)
-
-        val url = buildImagesGenerationsUrl(baseUrl)
-        val httpRequestBuilder = Request.Builder()
-            .url(url)
-            .addHeader("Content-Type", "application/json")
-            .post(requestBody)
-
-        if (apiKey.isNotBlank()) {
-            httpRequestBuilder.addHeader("Authorization", "Bearer $apiKey")
-        }
-
         val imageClient = okHttpClient.newBuilder()
             .connectTimeout(30, TimeUnit.SECONDS)
             .readTimeout(6, TimeUnit.MINUTES)
@@ -488,38 +475,59 @@ class ChatApiClient(
             .callTimeout(7, TimeUnit.MINUTES)
             .build()
 
-        val call = imageClient.newCall(httpRequestBuilder.build())
-        activeCalls.add(call)
-        return try {
-            val response = call.execute()
-            response.use { resp ->
-                if (!resp.isSuccessful) {
-                    val errorBody = resp.body?.string() ?: "Unknown error"
-                    return@use Result.failure(IOException("Image API error ${resp.code}: $errorBody"))
-                }
+        var lastError: IOException? = null
+        val urls = buildImagesGenerationsUrlsWithFallback(baseUrl)
+        for ((index, url) in urls.withIndex()) {
+            val requestBody = json.encodeToString(request)
+                .toRequestBody(JSON_MEDIA_TYPE)
+            val httpRequestBuilder = Request.Builder()
+                .url(url)
+                .addHeader("Content-Type", "application/json")
+                .post(requestBody)
 
-                val body = resp.body?.string()
-                    ?: return@use Result.failure(IOException("Empty image response"))
-                try {
-                    val imageResponse = json.decodeFromString<OpenAiImageGenerationResponse>(body)
-                    val image = imageResponse.data.firstOrNull()
-                        ?: return@use Result.failure(IOException("Image response contained no data"))
-                    val base64 = image.b64Json
-                        ?: return@use Result.failure(IOException("Image response did not include b64_json"))
-                    Result.success(
-                        GeneratedImageData(
-                            base64Data = base64,
-                            mimeType = "image/png",
-                            model = imageResponse.model ?: model
-                        )
-                    )
-                } catch (e: Exception) {
-                    Result.failure(IOException("Failed to parse image response: ${e.message}"))
-                }
+            if (apiKey.isNotBlank()) {
+                httpRequestBuilder.addHeader("Authorization", "Bearer $apiKey")
             }
-        } finally {
-            activeCalls.remove(call)
+
+            val call = imageClient.newCall(httpRequestBuilder.build())
+            activeCalls.add(call)
+            try {
+                val response = call.execute()
+                response.use { resp ->
+                    if (!resp.isSuccessful) {
+                        val errorBody = resp.body?.string() ?: "Unknown error"
+                        lastError = IOException("Image API error ${resp.code}: $errorBody")
+                        if (resp.code != 404 || index == urls.lastIndex) {
+                            return Result.failure(lastError!!)
+                        }
+                        return@use
+                    }
+
+                    val body = resp.body?.string()
+                        ?: return Result.failure(IOException("Empty image response"))
+                    try {
+                        val imageResponse = json.decodeFromString<OpenAiImageGenerationResponse>(body)
+                        val image = imageResponse.data.firstOrNull()
+                            ?: return Result.failure(IOException("Image response contained no data"))
+                        val base64 = image.b64Json
+                            ?: return Result.failure(IOException("Image response did not include b64_json"))
+                        return Result.success(
+                            GeneratedImageData(
+                                base64Data = base64,
+                                mimeType = "image/png",
+                                model = imageResponse.model ?: model
+                            )
+                        )
+                    } catch (e: Exception) {
+                        return Result.failure(IOException("Failed to parse image response: ${e.message}"))
+                    }
+                }
+            } finally {
+                activeCalls.remove(call)
+            }
         }
+
+        return Result.failure(lastError ?: IOException("Image API request failed"))
     }
 
     /**
@@ -948,6 +956,22 @@ class ChatApiClient(
             val match = VERSION_SUFFIX_REGEX.find(trimmed)
             val version = match?.value?.removePrefix("/") ?: "v1"
             return "${normalizeBaseUrl(trimmed)}/$version/images/generations"
+        }
+
+        /**
+         * Builds image-generation URLs with a v1 fallback for providers where
+         * chat uses /v2 but image generation remains exposed under /v1.
+         */
+        fun buildImagesGenerationsUrlsWithFallback(baseUrl: String): List<String> {
+            val trimmed = baseUrl.trimEnd('/')
+            val match = VERSION_SUFFIX_REGEX.find(trimmed)
+            val primary = buildImagesGenerationsUrl(trimmed)
+            return if (match != null && match.value != "/v1") {
+                val fallback = "${normalizeBaseUrl(trimmed)}/v1/images/generations"
+                listOf(primary, fallback).distinct()
+            } else {
+                listOf(primary)
+            }
         }
 
         /**
