@@ -47,6 +47,7 @@ class AppPreferences(private val context: Context) {
         val FIRST_LAUNCH_COMPLETE = booleanPreferencesKey("first_launch_complete")
         val AI_GENERATED_TITLES_ENABLED = booleanPreferencesKey("ai_generated_titles_enabled")
         val TITLE_GENERATION_MODEL = stringPreferencesKey("title_generation_model")
+        val DEFAULT_IMAGE_GENERATION_MODEL = stringPreferencesKey("default_image_generation_model")
         val AUTO_CHECK_UPDATES = booleanPreferencesKey("auto_check_updates")
         val LAST_UPDATE_CHECK = longPreferencesKey("last_update_check")
         val SKIPPED_UPDATE_VERSION = stringPreferencesKey("skipped_update_version")
@@ -125,6 +126,7 @@ class AppPreferences(private val context: Context) {
         const val DEFAULT_AI_GENERATED_TITLES_ENABLED = true
         val DEFAULT_REASONING_EFFORT = ReasoningEffort.HIGH
         const val DEFAULT_REMEMBER_LAST_MODEL = true
+        const val DEFAULT_IMAGE_GENERATION_MODEL = "codex/gpt-image-2-medium"
         const val DEFAULT_BEAUTIFUL_MODEL_NAMES = true
         const val DEFAULT_FONT_FAMILY = "Roboto Flex"
         const val DEFAULT_FONT_SIZE_SCALE = "Default"
@@ -369,6 +371,24 @@ class AppPreferences(private val context: Context) {
     suspend fun setTitleGenerationModel(model: String) {
         dataStore.edit { preferences ->
             preferences[Keys.TITLE_GENERATION_MODEL] = model
+        }
+    }
+
+    // ========== Image Generation Model ==========
+
+    /**
+     * Get the default image generation model used when any chat asks to create an image.
+     */
+    val defaultImageGenerationModel: Flow<String> = dataStore.data.map { preferences ->
+        preferences[Keys.DEFAULT_IMAGE_GENERATION_MODEL] ?: DEFAULT_IMAGE_GENERATION_MODEL
+    }
+
+    /**
+     * Set the default image generation model.
+     */
+    suspend fun setDefaultImageGenerationModel(model: String) {
+        dataStore.edit { preferences ->
+            preferences[Keys.DEFAULT_IMAGE_GENERATION_MODEL] = model.ifBlank { DEFAULT_IMAGE_GENERATION_MODEL }
         }
     }
 

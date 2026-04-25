@@ -5,6 +5,7 @@ import com.materialchat.data.remote.api.ChatApiClient
 import com.materialchat.data.remote.api.ModelListApiClient
 import com.materialchat.data.remote.api.StreamingEvent
 import com.materialchat.domain.model.AiModel
+import com.materialchat.domain.model.Attachment
 import com.materialchat.domain.model.Message
 import com.materialchat.domain.model.Provider
 import com.materialchat.domain.model.ReasoningEffort
@@ -161,5 +162,26 @@ class ChatRepositoryImpl @Inject constructor(
         }
 
         return chatApiClient.generateSimpleCompletion(provider, prompt, model, apiKey, systemPrompt)
+    }
+
+    override suspend fun generateImage(
+        provider: Provider,
+        prompt: String,
+        model: String
+    ): Result<Attachment> {
+        val apiKey = if (provider.requiresApiKey) {
+            encryptedPreferences.getApiKey(provider.id)
+        } else {
+            null
+        }
+
+        return chatApiClient.generateImage(provider, prompt, model, apiKey)
+            .map { image ->
+                Attachment(
+                    uri = "data:${image.mimeType};base64,${image.base64Data}",
+                    mimeType = image.mimeType,
+                    base64Data = image.base64Data
+                )
+            }
     }
 }

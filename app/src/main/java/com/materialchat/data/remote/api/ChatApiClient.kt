@@ -7,6 +7,8 @@ import com.materialchat.data.remote.dto.OpenAiChatRequest
 import com.materialchat.data.remote.dto.OpenAiChatResponse
 import com.materialchat.data.remote.dto.OpenAiContent
 import com.materialchat.data.remote.dto.OpenAiContentPart
+import com.materialchat.data.remote.dto.OpenAiImageGenerationRequest
+import com.materialchat.data.remote.dto.OpenAiImageGenerationResponse
 import com.materialchat.data.remote.dto.OpenAiMessage
 import com.materialchat.data.remote.dto.ImageUrl
 import com.materialchat.data.remote.sse.SseEventParser
@@ -365,6 +367,37 @@ class ChatApiClient(
     }
 
     /**
+     * Generates an image using an OpenAI-compatible /v1/images/generations endpoint.
+     * Returns base64 image data so generated images can be persisted alongside chats.
+     */
+    suspend fun generateImage(
+        provider: Provider,
+        prompt: String,
+        model: String,
+        apiKey: String?,
+        size: String = "1024x1024",
+        quality: String? = null
+    ): Result<GeneratedImageData> = withContext(Dispatchers.IO) {
+        try {
+            when (provider.type) {
+                ProviderType.OPENAI_COMPATIBLE -> generateOpenAiImage(
+                    baseUrl = provider.baseUrl,
+                    model = model,
+                    prompt = prompt,
+                    apiKey = apiKey ?: "",
+                    size = size,
+                    quality = quality
+                )
+                ProviderType.OLLAMA_NATIVE -> Result.failure(
+                    IOException("Image generation requires an OpenAI-compatible provider")
+                )
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /**
      * Generates a non-streaming completion from an OpenAI-compatible API.
      */
     private fun generateOpenAiCompletion(
@@ -413,6 +446,79 @@ class ChatApiClient(
             } catch (e: Exception) {
                 Result.failure(IOException("Failed to parse response: ${e.message}"))
             }
+        }
+    }
+
+    /**
+     * Generates a base64 image from an OpenAI-compatible image endpoint.
+     */
+    private fun generateOpenAiImage(
+        baseUrl: String,
+        model: String,
+        prompt: String,
+        apiKey: String,
+        size: String,
+        quality: String?
+    ): Result<GeneratedImageData> {
+        val request = OpenAiImageGenerationRequest(
+            model = model,
+            prompt = prompt,
+            n = 1,
+            size = size,
+            quality = quality
+        )
+
+        val requestBody = json.encodeToString(request)
+            .toRequestBody(JSON_MEDIA_TYPE)
+
+        val url = buildImagesGenerationsUrl(baseUrl)
+        val httpRequestBuilder = Request.Builder()
+            .url(url)
+            .addHeader("Content-Type", "application/json")
+            .post(requestBody)
+
+        if (apiKey.isNotBlank()) {
+            httpRequestBuilder.addHeader("Authorization", "Bearer $apiKey")
+        }
+
+        val imageClient = okHttpClient.newBuilder()
+            .connectTimeout(30, TimeUnit.SECONDS)
+            .readTimeout(6, TimeUnit.MINUTES)
+            .writeTimeout(60, TimeUnit.SECONDS)
+            .callTimeout(7, TimeUnit.MINUTES)
+            .build()
+
+        val call = imageClient.newCall(httpRequestBuilder.build())
+        activeCalls.add(call)
+        return try {
+            val response = call.execute()
+            response.use { resp ->
+                if (!resp.isSuccessful) {
+                    val errorBody = resp.body?.string() ?: "Unknown error"
+                    return@use Result.failure(IOException("Image API error ${resp.code}: $errorBody"))
+                }
+
+                val body = resp.body?.string()
+                    ?: return@use Result.failure(IOException("Empty image response"))
+                try {
+                    val imageResponse = json.decodeFromString<OpenAiImageGenerationResponse>(body)
+                    val image = imageResponse.data.firstOrNull()
+                        ?: return@use Result.failure(IOException("Image response contained no data"))
+                    val base64 = image.b64Json
+                        ?: return@use Result.failure(IOException("Image response did not include b64_json"))
+                    Result.success(
+                        GeneratedImageData(
+                            base64Data = base64,
+                            mimeType = "image/png",
+                            model = imageResponse.model ?: model
+                        )
+                    )
+                } catch (e: Exception) {
+                    Result.failure(IOException("Failed to parse image response: ${e.message}"))
+                }
+            }
+        } finally {
+            activeCalls.remove(call)
         }
     }
 
@@ -831,6 +937,20 @@ class ChatApiClient(
         }
 
         /**
+         * Builds the full image generation URL, respecting any version suffix.
+         *
+         * Examples:
+         * - "https://api.openai.com"    -> "https://api.openai.com/v1/images/generations"
+         * - "https://api.example.com/v1" -> "https://api.example.com/v1/images/generations"
+         */
+        fun buildImagesGenerationsUrl(baseUrl: String): String {
+            val trimmed = baseUrl.trimEnd('/')
+            val match = VERSION_SUFFIX_REGEX.find(trimmed)
+            val version = match?.value?.removePrefix("/") ?: "v1"
+            return "${normalizeBaseUrl(trimmed)}/$version/images/generations"
+        }
+
+        /**
          * Creates a default OkHttpClient configured for streaming.
          */
         fun defaultClient(): OkHttpClient = OkHttpClient.Builder()
@@ -864,4 +984,13 @@ private data class ErrorMetadata(
     val raw: String? = null,
     @kotlinx.serialization.SerialName("provider_name")
     val providerName: String? = null
+)
+
+/**
+ * Parsed image data returned by an OpenAI-compatible image endpoint.
+ */
+data class GeneratedImageData(
+    val base64Data: String,
+    val mimeType: String,
+    val model: String
 )

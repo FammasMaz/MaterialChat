@@ -1,11 +1,14 @@
 package com.materialchat.ui.screens.chat.components
 
+import android.graphics.BitmapFactory
+import android.util.Base64
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.animation.core.Animatable
@@ -26,6 +29,7 @@ import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -46,6 +50,7 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.Reply
 import androidx.compose.material.icons.automirrored.outlined.CallSplit
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.KeyboardArrowDown
@@ -83,6 +88,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.input.pointer.pointerInput
@@ -163,6 +169,7 @@ fun MessageBubble(
     val isUser = message.role == MessageRole.USER
     val isAssistant = message.role == MessageRole.ASSISTANT
     val isSystem = message.role == MessageRole.SYSTEM
+    val isImageGenerationMessage = isAssistant && isImageGenerationModel(message.modelName)
 
     // Context menu state for user messages (long-press floating bar)
     var showUserContextMenu by remember { mutableStateOf(false) }
@@ -302,15 +309,16 @@ fun MessageBubble(
                         .animateContentSize(
                             animationSpec = if (message.isStreaming) {
                                 spring(
-                                    dampingRatio = Spring.DampingRatioNoBouncy,
-                                    stiffness = 520f
+                                    dampingRatio = 0.68f,
+                                    stiffness = 420f
                                 )
                             } else {
                                 spring(
                                     dampingRatio = 0.6f,
                                     stiffness = 380f
                                 )
-                            }
+                            },
+                            alignment = if (isUser) Alignment.CenterEnd else Alignment.CenterStart
                         )
                         .then(
                             if (isUser && !isEditing && !message.isStreaming && message.content.isNotEmpty()) {
@@ -356,7 +364,8 @@ fun MessageBubble(
                     // Image attachments (displayed before text content)
                     if (message.hasAttachments) {
                         AttachmentImagesGrid(
-                            attachments = message.attachments
+                            attachments = message.attachments,
+                            isGeneratedImage = isImageGenerationMessage
                         )
                         if (message.content.isNotEmpty()) {
                             Spacer(modifier = Modifier.height(8.dp))
@@ -373,6 +382,10 @@ fun MessageBubble(
                         )
                     } else if (isAssistant && !message.isStreaming && message.content.isEmpty() && messageItem.isErrored) {
                         ErrorStateContent()
+                    } else if (message.isStreaming && message.content.isEmpty() &&
+                        message.thinkingContent.isNullOrEmpty() && isImageGenerationMessage
+                    ) {
+                        ImageGenerationLoadingCard(modelName = message.modelName)
                     } else if (message.isStreaming && message.content.isEmpty() && message.thinkingContent.isNullOrEmpty()) {
                         // Initial streaming — compact M3 loading indicators
                         Row(
@@ -489,7 +502,7 @@ fun MessageBubble(
             }
 
             // Action buttons, model label, and sibling navigation (below the bubble)
-            if (isAssistant && !message.isStreaming && message.content.isNotEmpty()) {
+            if (isAssistant && !message.isStreaming && (message.content.isNotEmpty() || message.hasAttachments)) {
                 Spacer(modifier = Modifier.height(4.dp))
 
                 // Sibling navigation row (model label + arrows)
@@ -522,10 +535,10 @@ fun MessageBubble(
                     ) {
                         if (messageItem.showActions) {
                             MessageActions(
-                                showCopy = true,
-                                showRegenerate = messageItem.isLastAssistantMessage && onRegenerate != null,
+                                showCopy = message.content.isNotEmpty(),
+                                showRegenerate = messageItem.isLastAssistantMessage && !isImageGenerationMessage && onRegenerate != null,
                                 showBranch = onBranch != null,
-                                showRedoWithModel = messageItem.isLastAssistantMessage && onRedoWithModel != null,
+                                showRedoWithModel = messageItem.isLastAssistantMessage && !isImageGenerationMessage && onRedoWithModel != null,
                                 onCopy = onCopy,
                                 onRegenerate = onRegenerate,
                                 onBranch = onBranch,
@@ -1084,15 +1097,19 @@ private fun ModelSiblingRow(
 @Composable
 private fun AttachmentImagesGrid(
     attachments: List<Attachment>,
+    isGeneratedImage: Boolean,
     modifier: Modifier = Modifier
 ) {
     FlowRow(
         modifier = modifier,
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
-        verticalArrangement = Arrangement.spacedBy(4.dp)
+        horizontalArrangement = Arrangement.spacedBy(if (isGeneratedImage) 8.dp else 4.dp),
+        verticalArrangement = Arrangement.spacedBy(if (isGeneratedImage) 8.dp else 4.dp)
     ) {
         attachments.forEach { attachment ->
-            AttachmentImage(attachment = attachment)
+            AttachmentImage(
+                attachment = attachment,
+                isGeneratedImage = isGeneratedImage
+            )
         }
     }
 }
@@ -1103,19 +1120,116 @@ private fun AttachmentImagesGrid(
 @Composable
 private fun AttachmentImage(
     attachment: Attachment,
+    isGeneratedImage: Boolean,
     modifier: Modifier = Modifier
 ) {
-    AsyncImage(
-        model = ImageRequest.Builder(LocalContext.current)
-            .data(attachment.uri)
-            .crossfade(true)
-            .build(),
-        contentDescription = "Attached image",
-        contentScale = ContentScale.Crop,
+    val generatedModifier = Modifier
+        .fillMaxWidth()
+        .aspectRatio(1f)
+        .clip(RoundedCornerShape(28.dp))
+        .background(MaterialTheme.colorScheme.surfaceContainerHighest)
+    val thumbnailModifier = Modifier
+        .size(120.dp)
+        .clip(RoundedCornerShape(8.dp))
+
+    val imageModifier = modifier.then(if (isGeneratedImage) generatedModifier else thumbnailModifier)
+
+    val bitmap = remember(attachment.base64Data, isGeneratedImage) {
+        if (isGeneratedImage && attachment.base64Data.isNotBlank()) {
+            runCatching {
+                val bytes = Base64.decode(attachment.base64Data, Base64.DEFAULT)
+                BitmapFactory.decodeByteArray(bytes, 0, bytes.size)?.asImageBitmap()
+            }.getOrNull()
+        } else {
+            null
+        }
+    }
+
+    if (bitmap != null) {
+        Image(
+            bitmap = bitmap,
+            contentDescription = if (isGeneratedImage) "Generated image" else "Attached image",
+            contentScale = ContentScale.Crop,
+            modifier = imageModifier
+        )
+    } else {
+        AsyncImage(
+            model = ImageRequest.Builder(LocalContext.current)
+                .data(attachment.uri)
+                .crossfade(true)
+                .build(),
+            contentDescription = if (isGeneratedImage) "Generated image" else "Attached image",
+            contentScale = ContentScale.Crop,
+            modifier = imageModifier
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun ImageGenerationLoadingCard(
+    modelName: String?,
+    modifier: Modifier = Modifier
+) {
+    Surface(
         modifier = modifier
-            .size(120.dp)
-            .clip(RoundedCornerShape(8.dp))
-    )
+            .fillMaxWidth()
+            .aspectRatio(1f),
+        shape = RoundedCornerShape(28.dp),
+        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.55f),
+        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+        tonalElevation = 3.dp
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier.padding(24.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(72.dp)
+                        .clip(RoundedCornerShape(24.dp))
+                        .background(MaterialTheme.colorScheme.surfaceContainerHighest),
+                    contentAlignment = Alignment.Center
+                ) {
+                    LoadingIndicator(
+                        modifier = Modifier.size(42.dp),
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.AutoAwesome,
+                        contentDescription = null,
+                        modifier = Modifier.size(20.dp),
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                    Text(
+                        text = "Creating image",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                }
+                if (!modelName.isNullOrBlank()) {
+                    Text(
+                        text = modelName,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.72f),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+        }
+    }
+}
+
+private fun isImageGenerationModel(modelName: String?): Boolean {
+    return modelName?.contains("image", ignoreCase = true) == true
 }
 
 /**

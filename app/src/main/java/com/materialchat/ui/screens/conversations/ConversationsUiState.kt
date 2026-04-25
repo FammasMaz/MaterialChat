@@ -73,7 +73,8 @@ data class ConversationUiItem(
     val conversation: Conversation,
     val providerName: String,
     val relativeTime: String,
-    val messagePreview: String? = null
+    val messagePreview: String? = null,
+    val isStreaming: Boolean = false
 )
 
 /**

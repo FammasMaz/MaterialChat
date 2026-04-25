@@ -62,6 +62,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.HorizontalDivider
@@ -284,6 +285,7 @@ fun SettingsScreen(
             onBeautifulModelNamesChange = { viewModel.updateBeautifulModelNamesEnabled(it) },
             onAiGeneratedTitlesChange = { viewModel.updateAiGeneratedTitlesEnabled(it) },
             onTitleGenerationModelChange = { viewModel.updateTitleGenerationModel(it) },
+            onDefaultImageGenerationModelChange = { viewModel.updateDefaultImageGenerationModel(it) },
             onRememberLastModelChange = { viewModel.updateRememberLastModelEnabled(it) },
             onAlwaysShowThinkingChange = { viewModel.updateAlwaysShowThinking(it) },
             onShowTokenCounterChange = { viewModel.updateShowTokenCounter(it) },
@@ -360,6 +362,7 @@ private fun SettingsContent(
     onBeautifulModelNamesChange: (Boolean) -> Unit,
     onAiGeneratedTitlesChange: (Boolean) -> Unit,
     onTitleGenerationModelChange: (String) -> Unit,
+    onDefaultImageGenerationModelChange: (String) -> Unit,
     onRememberLastModelChange: (Boolean) -> Unit,
     onAlwaysShowThinkingChange: (Boolean) -> Unit,
     onShowTokenCounterChange: (Boolean) -> Unit,
@@ -418,6 +421,7 @@ private fun SettingsContent(
                     onBeautifulModelNamesChange = onBeautifulModelNamesChange,
                     onAiGeneratedTitlesChange = onAiGeneratedTitlesChange,
                     onTitleGenerationModelChange = onTitleGenerationModelChange,
+                    onDefaultImageGenerationModelChange = onDefaultImageGenerationModelChange,
                     onRememberLastModelChange = onRememberLastModelChange,
                     onAlwaysShowThinkingChange = onAlwaysShowThinkingChange,
                     onShowTokenCounterChange = onShowTokenCounterChange,
@@ -482,6 +486,7 @@ private fun SuccessContent(
     onBeautifulModelNamesChange: (Boolean) -> Unit,
     onAiGeneratedTitlesChange: (Boolean) -> Unit,
     onTitleGenerationModelChange: (String) -> Unit,
+    onDefaultImageGenerationModelChange: (String) -> Unit,
     onRememberLastModelChange: (Boolean) -> Unit,
     onAlwaysShowThinkingChange: (Boolean) -> Unit,
     onShowTokenCounterChange: (Boolean) -> Unit,
@@ -657,6 +662,13 @@ private fun SuccessContent(
                     onModelChange = onTitleGenerationModelChange
                 )
             }
+        }
+
+        item {
+            DefaultImageGenerationModelField(
+                currentModel = uiState.defaultImageGenerationModel,
+                onModelChange = onDefaultImageGenerationModelChange
+            )
         }
 
         item {
@@ -1804,6 +1816,87 @@ private fun TitleGenerationModelField(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(12.dp),
                 colors = androidx.compose.material3.OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                    unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
+                )
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End
+            ) {
+                ExpressiveButton(
+                    onClick = { onModelChange(text) },
+                    enabled = text != currentModel,
+                    text = "Save",
+                    style = ExpressiveButtonStyle.FilledTonal
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun DefaultImageGenerationModelField(
+    currentModel: String,
+    onModelChange: (String) -> Unit
+) {
+    var text by remember(currentModel) { mutableStateOf(currentModel) }
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+        ),
+        shape = RoundedCornerShape(20.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.AutoAwesome,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(24.dp)
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                Column {
+                    Text(
+                        text = "Default Image Model",
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = "Any chat can hand image requests to this model",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            OutlinedTextField(
+                value = text,
+                onValueChange = { newValue -> text = newValue },
+                placeholder = {
+                    Text(
+                        text = AppPreferences.DEFAULT_IMAGE_GENERATION_MODEL,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
+                colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = MaterialTheme.colorScheme.primary,
                     unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
                 )

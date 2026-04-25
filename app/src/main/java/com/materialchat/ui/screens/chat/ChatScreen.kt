@@ -353,6 +353,7 @@ fun ChatScreen(
                     listState = listState,
                     onInputChange = { viewModel.updateInputText(it) },
                     onSendMessage = { viewModel.sendMessage() },
+                    onGenerateImage = { viewModel.generateImage() },
                     onCancelStreaming = { viewModel.cancelStreaming() },
                     onCopyMessage = { content ->
                         clipboardManager.setText(AnnotatedString(content))
@@ -520,6 +521,7 @@ private fun ChatContent(
     listState: androidx.compose.foundation.lazy.LazyListState,
     onInputChange: (String) -> Unit,
     onSendMessage: () -> Unit,
+    onGenerateImage: () -> Unit,
     onCancelStreaming: () -> Unit,
     onCopyMessage: (String) -> Unit,
     onRegenerateResponse: () -> Unit,
@@ -784,6 +786,7 @@ private fun ChatContent(
                 onSend = onSendMessage,
                 onCancel = onCancelStreaming,
                 onAttachImage = onAttachImage,
+                onGenerateImage = onGenerateImage,
                 onRemoveAttachment = onRemoveAttachment,
                 reasoningEffort = reasoningEffort,
                 onReasoningEffortChange = onReasoningEffortChange,
@@ -906,12 +909,16 @@ private fun MessageList(
                 } else {
                     null
                 },
-                onBookmarkToggle = if (!messageItem.message.isStreaming && messageItem.message.content.isNotEmpty()) {
+                onBookmarkToggle = if (!messageItem.message.isStreaming &&
+                    (messageItem.message.content.isNotEmpty() || messageItem.message.hasAttachments)
+                ) {
                     { onBookmarkToggle(messageItem.message.id) }
                 } else {
                     null
                 },
-                onBookmarkLongPress = if (!messageItem.message.isStreaming && messageItem.message.content.isNotEmpty()) {
+                onBookmarkLongPress = if (!messageItem.message.isStreaming &&
+                    (messageItem.message.content.isNotEmpty() || messageItem.message.hasAttachments)
+                ) {
                     { onBookmarkLongPress(messageItem.message.id) }
                 } else {
                     null

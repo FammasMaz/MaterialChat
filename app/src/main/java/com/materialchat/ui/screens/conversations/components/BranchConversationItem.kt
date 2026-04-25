@@ -22,7 +22,9 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CallSplit
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.ripple
@@ -60,6 +62,7 @@ import com.materialchat.ui.screens.conversations.ConversationUiItem
  * @param showConnector Whether to show the branch connector line
  * @param modifier Modifier for the item
  */
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun BranchConversationItem(
     conversationItem: ConversationUiItem,
@@ -221,13 +224,36 @@ fun BranchConversationItem(
 
                 Spacer(modifier = Modifier.width(8.dp))
 
-                // Relative time
-                Text(
-                    text = conversationItem.relativeTime,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                // Relative time or active generation indicator.
+                if (conversationItem.isStreaming) {
+                    BranchActiveIndicator()
+                } else {
+                    Text(
+                        text = conversationItem.relativeTime,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
         }
+    }
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun BranchActiveIndicator() {
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        LoadingIndicator(
+            modifier = Modifier.size(22.dp),
+            color = MaterialTheme.colorScheme.primary
+        )
+        Text(
+            text = "Active",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.primary
+        )
     }
 }

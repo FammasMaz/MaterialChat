@@ -20,7 +20,9 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Chat
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.ripple
@@ -58,6 +60,7 @@ import com.materialchat.ui.theme.CustomShapes
  * @param showDivider Whether to show a divider below this item
  * @param modifier Modifier for the item
  */
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun ConversationItem(
     conversationItem: ConversationUiItem,
@@ -216,12 +219,16 @@ fun ConversationItem(
 
             Spacer(modifier = Modifier.width(8.dp))
 
-            // Relative time - M3: labelSmall, onSurfaceVariant
-            Text(
-                text = conversationItem.relativeTime,
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            // Relative time or active generation indicator.
+            if (conversationItem.isStreaming) {
+                ActiveConversationIndicator()
+            } else {
+                Text(
+                    text = conversationItem.relativeTime,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         }
 
         // Divider - M3: outlineVariant for subtle separation
@@ -234,5 +241,24 @@ fun ConversationItem(
                     .background(MaterialTheme.colorScheme.outlineVariant)
             )
         }
+    }
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun ActiveConversationIndicator() {
+    Column(
+        horizontalAlignment = Alignment.End,
+        verticalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        LoadingIndicator(
+            modifier = Modifier.size(28.dp),
+            color = MaterialTheme.colorScheme.primary
+        )
+        Text(
+            text = "Active",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.primary
+        )
     }
 }

@@ -140,6 +140,10 @@ class ConversationRepositoryImpl @Inject constructor(
         return messageDao.getMessagesForConversationOnce(conversationId).toMessageDomainList()
     }
 
+    override fun observeStreamingConversationIds(): Flow<Set<String>> {
+        return messageDao.observeStreamingConversationIds().map { ids -> ids.toSet() }
+    }
+
     override suspend fun addMessage(message: Message): String {
         messageDao.insert(message.toEntity())
 

@@ -196,6 +196,51 @@ data class OpenAiStreamChunk(
 )
 
 // ============================================================================
+// Image Generation Request/Response
+// ============================================================================
+
+/**
+ * Request body for POST /v1/images/generations.
+ * Matches OpenAI-compatible image endpoints and the self-hosted proxy's Codex
+ * image endpoint. The proxy accepts output_format/background in addition to
+ * standard OpenAI-compatible fields.
+ */
+@Serializable
+data class OpenAiImageGenerationRequest(
+    val model: String,
+    val prompt: String,
+    val n: Int = 1,
+    val size: String = "1024x1024",
+    val quality: String? = null,
+    @SerialName("response_format")
+    val responseFormat: String = "b64_json",
+    @SerialName("output_format")
+    val outputFormat: String = "png",
+    val background: String = "opaque"
+)
+
+/**
+ * Response from POST /v1/images/generations.
+ */
+@Serializable
+data class OpenAiImageGenerationResponse(
+    val created: Long? = null,
+    val data: List<OpenAiImageData> = emptyList(),
+    val model: String? = null,
+    val provider: String? = null
+)
+
+/**
+ * Individual image data from an image generation response.
+ */
+@Serializable
+data class OpenAiImageData(
+    @SerialName("b64_json")
+    val b64Json: String? = null,
+    val url: String? = null
+)
+
+// ============================================================================
 // Models List
 // ============================================================================
 

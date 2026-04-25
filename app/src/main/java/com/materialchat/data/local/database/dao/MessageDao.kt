@@ -144,6 +144,12 @@ interface MessageDao {
     suspend fun hasStreamingMessage(conversationId: String): Boolean
 
     /**
+     * Observe conversation IDs with active streaming messages.
+     */
+    @Query("SELECT DISTINCT conversation_id FROM messages WHERE is_streaming = 1")
+    fun observeStreamingConversationIds(): Flow<List<String>>
+
+    /**
      * Get all streaming messages (for cleanup on app restart).
      */
     @Query("SELECT * FROM messages WHERE is_streaming = 1")

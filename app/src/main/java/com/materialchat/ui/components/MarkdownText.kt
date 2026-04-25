@@ -90,6 +90,7 @@ fun MarkdownText(
     textColor: Color = MaterialTheme.colorScheme.onSurface,
     style: TextStyle = MaterialTheme.typography.bodyLarge,
     isStreaming: Boolean = false,
+    fillWidth: Boolean = true,
     onOpenCanvas: ((CanvasArtifact) -> Unit)? = null
 ) {
     val isDarkTheme = isSystemInDarkTheme()
@@ -112,6 +113,7 @@ fun MarkdownText(
         style = style,
         codeBlockBackground = codeBlockBackground,
         isStreaming = isStreaming,
+        fillWidth = fillWidth,
         onOpenCanvas = onOpenCanvas
     )
 }
@@ -197,6 +199,7 @@ private fun MarkdownContent(
     style: TextStyle,
     codeBlockBackground: Color,
     isStreaming: Boolean = false,
+    fillWidth: Boolean = true,
     onOpenCanvas: ((CanvasArtifact) -> Unit)? = null
 ) {
     androidx.compose.foundation.layout.Column(modifier = modifier) {
@@ -214,11 +217,13 @@ private fun MarkdownContent(
                         } else {
                             style
                         }
-                        SelectionContainer(modifier = Modifier.fillMaxWidth()) {
+                        SelectionContainer(
+                            modifier = if (fillWidth) Modifier.fillMaxWidth() else Modifier
+                        ) {
                             MarkdownInlineText(
                                 content = element.content,
                                 style = effectiveStyle,
-                                modifier = Modifier.fillMaxWidth()
+                                modifier = if (fillWidth) Modifier.fillMaxWidth() else Modifier
                             )
                         }
                     }
@@ -258,8 +263,7 @@ private fun MarkdownContent(
                 }
                 is MarkdownElement.Blockquote -> {
                     Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
+                        modifier = (if (fillWidth) Modifier.fillMaxWidth() else Modifier)
                             .padding(vertical = 2.dp)
                             .height(IntrinsicSize.Min)
                     ) {

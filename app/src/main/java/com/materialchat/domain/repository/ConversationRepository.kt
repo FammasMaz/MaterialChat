@@ -123,6 +123,12 @@ interface ConversationRepository {
     suspend fun getMessages(conversationId: String): List<Message>
 
     /**
+     * Observes conversation IDs that currently contain streaming messages.
+     * Used by the home screen to surface in-progress chats.
+     */
+    fun observeStreamingConversationIds(): Flow<Set<String>>
+
+    /**
      * Adds a new message to a conversation.
      *
      * @param message The message to add

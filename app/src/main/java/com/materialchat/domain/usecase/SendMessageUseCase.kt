@@ -57,6 +57,7 @@ class SendMessageUseCase @Inject constructor(
      * @param attachments Optional list of image attachments to include with the message
      * @param systemPrompt The system prompt to use for the conversation
      * @param reasoningEffort The reasoning effort setting for compatible models
+     * @param forceImageGeneration Whether to route this request directly to the default image model
      * @return A Flow of StreamingState representing the response progress
      */
     operator fun invoke(
@@ -65,7 +66,8 @@ class SendMessageUseCase @Inject constructor(
         attachments: List<Attachment> = emptyList(),
         systemPrompt: String,
         reasoningEffort: ReasoningEffort,
-        webSearchConfig: WebSearchConfig = WebSearchConfig()
+        webSearchConfig: WebSearchConfig = WebSearchConfig(),
+        forceImageGeneration: Boolean = false
     ): Flow<StreamingState> = flow {
         // Get the conversation and provider
         val conversation = conversationRepository.getConversation(conversationId)
@@ -90,6 +92,74 @@ class SendMessageUseCase @Inject constructor(
             attachments = attachments
         )
         conversationRepository.addMessage(userMessage)
+
+        val imagePrompt = resolveImageGenerationPrompt(
+            userContent = userContent,
+            forceImageGeneration = forceImageGeneration,
+            attachments = attachments
+        )
+        if (imagePrompt != null) {
+            val imageModel = appPreferences.defaultImageGenerationModel.first()
+                .ifBlank { AppPreferences.DEFAULT_IMAGE_GENERATION_MODEL }
+            val assistantMessage = Message(
+                conversationId = conversationId,
+                role = MessageRole.ASSISTANT,
+                content = "",
+                isStreaming = true,
+                modelName = imageModel
+            )
+            val assistantMessageId = conversationRepository.addMessage(assistantMessage)
+            emit(StreamingState.Starting)
+
+            val startedAt = System.currentTimeMillis()
+            var finalized = false
+            try {
+                val result = chatRepository.generateImage(
+                    provider = provider,
+                    prompt = imagePrompt,
+                    model = imageModel
+                )
+
+                result.onSuccess { attachment ->
+                    val totalDurationMs = System.currentTimeMillis() - startedAt
+                    conversationRepository.updateMessage(
+                        assistantMessage.copy(
+                            id = assistantMessageId,
+                            attachments = listOf(attachment),
+                            isStreaming = false,
+                            totalDurationMs = totalDurationMs,
+                            modelName = imageModel
+                        )
+                    )
+                    finalized = true
+                    emit(
+                        StreamingState.Completed(
+                            finalContent = "Generated image",
+                            finalThinkingContent = null,
+                            messageId = assistantMessageId
+                        )
+                    )
+                    updateConversationTitleIfNeeded(conversation, userContent, "Generated image")
+                }.onFailure { error ->
+                    conversationRepository.setMessageStreaming(assistantMessageId, false)
+                    finalized = true
+                    emit(
+                        StreamingState.Error(
+                            error = error,
+                            partialContent = null,
+                            messageId = assistantMessageId
+                        )
+                    )
+                }
+            } finally {
+                if (!finalized) {
+                    withContext(NonCancellable) {
+                        runCatching { conversationRepository.setMessageStreaming(assistantMessageId, false) }
+                    }
+                }
+            }
+            return@flow
+        }
 
         // Get all messages for the conversation to send to the AI
         // IMPORTANT: Get messages BEFORE adding the placeholder to avoid sending empty assistant message
@@ -386,6 +456,31 @@ class SendMessageUseCase @Inject constructor(
         return cleaned.ifBlank { "Branch" }
     }
 
+    /**
+     * Resolves whether this request should be sent to the configured image model.
+     * Explicit image actions always win; otherwise we route obvious create/draw/render
+     * image prompts so any chat model can seamlessly hand off to image generation.
+     */
+    private fun resolveImageGenerationPrompt(
+        userContent: String,
+        forceImageGeneration: Boolean,
+        attachments: List<Attachment>
+    ): String? {
+        val prompt = userContent.trim()
+        if (prompt.isBlank()) return null
+
+        val explicitCommand = IMAGE_COMMAND_REGEX.find(prompt)
+        if (explicitCommand != null) {
+            val commandPrompt = prompt.substring(explicitCommand.range.last + 1).trim()
+            return commandPrompt.ifBlank { prompt }
+        }
+
+        if (forceImageGeneration) return prompt
+        if (attachments.isNotEmpty()) return null
+
+        return if (IMAGE_REQUEST_REGEX.containsMatchIn(prompt)) prompt else null
+    }
+
     private data class BranchTitleResult(val title: String, val icon: String?)
 
     /** System instruction for branch title generation. */
@@ -394,6 +489,16 @@ class SendMessageUseCase @Inject constructor(
             "You are a title generator. You ONLY output a single emoji followed by a short title (max 6 words). " +
             "Never explain, never apologize, never refuse. No quotes, no punctuation at the end. " +
             "Focus on what makes this branch different. Example: \uD83D\uDD00 Alternative API approach"
+
+        val IMAGE_COMMAND_REGEX = Regex(
+            "^\\s*(/image|/img|image:)\\s*",
+            RegexOption.IGNORE_CASE
+        )
+        val IMAGE_REQUEST_REGEX = Regex(
+            "\\b(generate|create|make|draw|paint|render|design|illustrate|visualize)\\b[\\s\\S]{0,120}\\b(image|picture|photo|illustration|artwork|poster|logo|wallpaper|avatar|icon|sticker)\\b|" +
+                "\\b(image|picture|photo|illustration|artwork|poster|logo|wallpaper|avatar|icon|sticker)\\b[\\s\\S]{0,80}\\b(of|showing|depicting|for)\\b",
+            RegexOption.IGNORE_CASE
+        )
 
         val GARBAGE_PATTERNS = listOf(
             "i don't", "i can't", "i notice", "i apologize", "i'm sorry",

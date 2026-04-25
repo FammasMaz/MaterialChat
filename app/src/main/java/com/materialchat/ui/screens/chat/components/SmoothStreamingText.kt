@@ -1,6 +1,5 @@
 package com.materialchat.ui.screens.chat.components
 
-import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -15,7 +14,6 @@ import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
@@ -37,10 +35,10 @@ import kotlinx.coroutines.delay
 /**
  * Streaming text composable optimized for long responses without looking raw.
  *
- * While streaming, Markdown is rendered at a reduced cadence instead of on every
- * provider token. Word-level haptics continue independently, so the stream keeps
- * the tactile rhythm of the original word-drip behavior without hammering Room,
- * Markdown parsing, or layout on every tiny chunk.
+ * While streaming, text is revealed word-by-word from a local buffer instead of
+ * dumping each provider/Room chunk all at once. This keeps the M3 Expressive
+ * bubble width/height morphing naturally with each word while completed messages
+ * still render with full Markdown formatting.
  */
 @Composable
 fun SmoothStreamingText(
@@ -58,6 +56,7 @@ fun SmoothStreamingText(
             textColor = textColor,
             style = style,
             isStreaming = false,
+            fillWidth = false,
             onOpenCanvas = onOpenCanvas,
             modifier = modifier
         )
@@ -68,64 +67,42 @@ fun SmoothStreamingText(
 
     val haptics = rememberHapticFeedback()
     val latestRawText by rememberUpdatedState(rawText)
-    val latestWordCount by rememberUpdatedState(rawText.streamingWordCount())
-    var renderedMarkdown by remember { mutableStateOf(rawText) }
-    var hapticWordCount by remember { mutableIntStateOf(0) }
+    var visibleText by remember { mutableStateOf("") }
 
-    // Progressive Markdown: update at a comfortable cadence rather than once per token.
     LaunchedEffect(isStreaming) {
         while (isStreaming) {
-            val latest = latestRawText
-            if (renderedMarkdown != latest) {
-                renderedMarkdown = latest
-            }
-            delay(STREAMING_MARKDOWN_UPDATE_INTERVAL_MS)
-        }
-    }
-
-    // Per-word haptics restored: decoupled from visual render cadence.
-    LaunchedEffect(isStreaming) {
-        while (isStreaming) {
-            val target = latestWordCount
+            val target = latestRawText
             when {
-                hapticWordCount > target -> hapticWordCount = target
-                hapticWordCount < target -> {
-                    hapticWordCount++
-                    haptics.perform(HapticPattern.CONTENT_TICK, hapticsEnabled)
-                    delay(STREAMING_WORD_HAPTIC_INTERVAL_MS)
+                target.isEmpty() -> {
+                    if (visibleText.isNotEmpty()) visibleText = ""
+                    delay(STREAMING_IDLE_POLL_MS)
                 }
-                else -> delay(STREAMING_HAPTIC_IDLE_POLL_MS)
+                visibleText.length > target.length || !target.startsWith(visibleText) -> {
+                    visibleText = target.commonPrefixWith(visibleText)
+                }
+                visibleText.length < target.length -> {
+                    val nextEnd = target.nextStreamingRevealEnd(visibleText.length)
+                    if (nextEnd > visibleText.length) {
+                        visibleText = target.substring(0, nextEnd)
+                        haptics.perform(HapticPattern.CONTENT_TICK, hapticsEnabled)
+                    }
+                    delay(STREAMING_WORD_REVEAL_INTERVAL_MS)
+                }
+                else -> delay(STREAMING_IDLE_POLL_MS)
             }
-        }
-    }
-
-    val tailText = remember(rawText, renderedMarkdown) {
-        if (rawText.startsWith(renderedMarkdown)) {
-            rawText.removePrefix(renderedMarkdown)
-        } else {
-            ""
         }
     }
 
     Column(modifier = modifier) {
-        if (renderedMarkdown.isNotBlank()) {
-            MarkdownText(
-                markdown = renderedMarkdown,
-                textColor = textColor,
-                style = style,
-                isStreaming = true,
-                onOpenCanvas = onOpenCanvas
-            )
-        }
-        if (tailText.isNotEmpty()) {
-            FadingStreamingTailText(
-                text = tailText,
+        if (visibleText.isNotBlank()) {
+            Text(
+                text = visibleText,
                 style = style,
                 color = textColor
             )
         }
         StreamingTailEffect(
-            tokenVersion = rawText.length,
+            tokenVersion = visibleText.length,
             color = MaterialTheme.colorScheme.primary
         )
     }
@@ -157,63 +134,39 @@ fun SmoothStreamingThinkingText(
     if (rawText.isEmpty()) return
 
     val haptics = rememberHapticFeedback()
-    val latestWordCount by rememberUpdatedState(rawText.streamingWordCount())
-    var hapticWordCount by remember { mutableIntStateOf(0) }
+    val latestRawText by rememberUpdatedState(rawText)
+    var visibleText by remember { mutableStateOf("") }
 
     LaunchedEffect(isStreaming) {
         while (isStreaming) {
-            val target = latestWordCount
+            val target = latestRawText
             when {
-                hapticWordCount > target -> hapticWordCount = target
-                hapticWordCount < target -> {
-                    hapticWordCount++
-                    haptics.perform(HapticPattern.THINKING_TICK, hapticsEnabled)
-                    delay(THINKING_WORD_HAPTIC_INTERVAL_MS)
+                target.isEmpty() -> {
+                    if (visibleText.isNotEmpty()) visibleText = ""
+                    delay(STREAMING_IDLE_POLL_MS)
                 }
-                else -> delay(STREAMING_HAPTIC_IDLE_POLL_MS)
+                visibleText.length > target.length || !target.startsWith(visibleText) -> {
+                    visibleText = target.commonPrefixWith(visibleText)
+                }
+                visibleText.length < target.length -> {
+                    val nextEnd = target.nextStreamingRevealEnd(visibleText.length)
+                    if (nextEnd > visibleText.length) {
+                        visibleText = target.substring(0, nextEnd)
+                        haptics.perform(HapticPattern.THINKING_TICK, hapticsEnabled)
+                    }
+                    delay(THINKING_WORD_REVEAL_INTERVAL_MS)
+                }
+                else -> delay(STREAMING_IDLE_POLL_MS)
             }
         }
     }
 
     Text(
-        text = rawText,
+        text = visibleText,
         style = style,
         color = textColor,
         fontStyle = FontStyle.Italic,
         modifier = modifier
-    )
-}
-
-@Composable
-private fun FadingStreamingTailText(
-    text: String,
-    style: TextStyle,
-    color: Color
-) {
-    val alpha = remember { Animatable(1f) }
-    val lift = remember { Animatable(0f) }
-
-    LaunchedEffect(text.length) {
-        alpha.snapTo(0.28f)
-        lift.snapTo(4f)
-        alpha.animateTo(
-            targetValue = 1f,
-            animationSpec = ExpressiveMotion.Effects.alpha()
-        )
-        lift.animateTo(
-            targetValue = 0f,
-            animationSpec = ExpressiveMotion.Spatial.default()
-        )
-    }
-
-    Text(
-        text = text,
-        style = style,
-        color = color,
-        modifier = Modifier.graphicsLayer {
-            this.alpha = alpha.value
-            translationY = lift.value
-        }
     )
 }
 
@@ -244,25 +197,31 @@ private fun StreamingTailEffect(
     )
 }
 
-private fun String.streamingWordCount(): Int {
+private fun String.nextStreamingRevealEnd(startIndex: Int): Int {
     if (isEmpty()) return 0
-    var count = 0
-    var inWord = false
-    for (char in this) {
-        if (char.isWhitespace()) {
-            if (inWord) {
-                count++
-                inWord = false
-            }
-        } else {
-            inWord = true
-        }
+    var index = startIndex.coerceIn(0, length)
+    if (index >= length) return length
+
+    // Include any spacing before the next word so the bubble grows on word units,
+    // not on visually empty whitespace ticks.
+    while (index < length && this[index].isWhitespace()) {
+        index++
     }
-    if (inWord) count++
-    return count
+
+    // Reveal the next word. If the provider has only delivered a partial word,
+    // reveal that partial word so the stream never looks frozen.
+    while (index < length && !this[index].isWhitespace()) {
+        index++
+    }
+
+    // Carry trailing whitespace with the word; this keeps the next reveal clean.
+    while (index < length && this[index].isWhitespace()) {
+        index++
+    }
+
+    return index.coerceAtLeast((startIndex + 1).coerceAtMost(length))
 }
 
-private const val STREAMING_MARKDOWN_UPDATE_INTERVAL_MS = 160L
-private const val STREAMING_WORD_HAPTIC_INTERVAL_MS = 34L
-private const val THINKING_WORD_HAPTIC_INTERVAL_MS = 56L
-private const val STREAMING_HAPTIC_IDLE_POLL_MS = 20L
+private const val STREAMING_WORD_REVEAL_INTERVAL_MS = 38L
+private const val THINKING_WORD_REVEAL_INTERVAL_MS = 58L
+private const val STREAMING_IDLE_POLL_MS = 16L

@@ -1,6 +1,7 @@
 package com.materialchat.domain.repository
 
 import com.materialchat.domain.model.AiModel
+import com.materialchat.domain.model.Attachment
 import com.materialchat.domain.model.Message
 import com.materialchat.domain.model.Provider
 import com.materialchat.domain.model.ReasoningEffort
@@ -64,6 +65,20 @@ interface ChatRepository {
         model: String,
         systemPrompt: String? = null
     ): Result<String>
+
+    /**
+     * Generates a single image using the provider's OpenAI-compatible image endpoint.
+     *
+     * @param provider The provider to use
+     * @param prompt The image prompt to send
+     * @param model The configured default image generation model
+     * @return An attachment containing base64 image data, or an error
+     */
+    suspend fun generateImage(
+        provider: Provider,
+        prompt: String,
+        model: String
+    ): Result<Attachment>
 
     /**
      * Tests the connection to a provider.

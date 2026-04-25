@@ -1,9 +1,16 @@
 package com.materialchat.ui.navigation
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.expandHorizontally
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkHorizontally
+import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -13,21 +20,34 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Explore
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.defaultMinSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FloatingToolbarDefaults
 import androidx.compose.material3.HorizontalFloatingToolbar
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.materialchat.ui.theme.ExpressiveMotion
 import com.materialchat.ui.components.HapticPattern
@@ -159,53 +179,134 @@ fun MaterialChatNavBar(
         },
         content = {
             tabs.forEach { tab ->
-                val isSelected = currentRoute == tab.route
-                val icon = tabIcon(tab)
-
-
-                val interactionSource = remember { MutableInteractionSource() }
-                val isPressed by interactionSource.collectIsPressedAsState()
-
-                // M3 Expressive: Spatial spring for scale press feedback
-                val scale by animateFloatAsState(
-                    targetValue = if (isPressed) 0.85f else 1f,
-                    animationSpec = ExpressiveMotion.Spatial.scale(),
-                    label = "navScale_${tab.name}"
+                ToolbarDestinationPill(
+                    tab = tab,
+                    selected = currentRoute == tab.route,
+                    expanded = expanded,
+                    onClick = { onTabSelected(tab) }
                 )
-
-                // M3 Expressive: Effects spring for icon tint
-                // Vibrant toolbar uses primaryContainer background, so content must use onPrimaryContainer
-                val tint by animateColorAsState(
-                    targetValue = if (isSelected) {
-                        MaterialTheme.colorScheme.onPrimaryContainer
-                    } else {
-                        MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.6f)
-                    },
-                    animationSpec = spring(
-                        stiffness = 500f,
-                        dampingRatio = 1.0f  // Effects - no overshoot
-                    ),
-                    label = "navTint_${tab.name}"
-                )
-
-                IconButton(
-                    onClick = { haptics.perform(HapticPattern.CLICK); onTabSelected(tab) },
-                    modifier = Modifier.graphicsLayer {
-                        scaleX = scale
-                        scaleY = scale
-                    },
-                    interactionSource = interactionSource
-                ) {
-                    Icon(
-                        imageVector = icon,
-                        contentDescription = tab.label,
-                        tint = tint
-                    )
-                }
             }
-
         }
     )
+}
+
+@Composable
+private fun ToolbarDestinationPill(
+    tab: TopLevelTab,
+    selected: Boolean,
+    expanded: Boolean,
+    onClick: () -> Unit
+) {
+    val haptics = rememberHapticFeedback()
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val icon = tabIcon(tab)
+    val selectedColors = selectedIndicatorColors(tab)
+
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.92f else 1f,
+        animationSpec = ExpressiveMotion.Spatial.scale(),
+        label = "toolbarDestinationScale_${tab.name}"
+    )
+    val outerContainer by animateColorAsState(
+        targetValue = if (selected) {
+            MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.28f)
+        } else {
+            Color.Transparent
+        },
+        animationSpec = ExpressiveMotion.Effects.color(),
+        label = "toolbarDestinationContainer_${tab.name}"
+    )
+    val indicatorColor by animateColorAsState(
+        targetValue = if (selected) selectedColors.container else Color.Transparent,
+        animationSpec = ExpressiveMotion.Effects.color(),
+        label = "toolbarDestinationIndicator_${tab.name}"
+    )
+    val iconTint by animateColorAsState(
+        targetValue = if (selected) selectedColors.content else MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.72f),
+        animationSpec = ExpressiveMotion.Effects.color(),
+        label = "toolbarDestinationTint_${tab.name}"
+    )
+
+    Surface(
+        onClick = {
+            haptics.perform(if (selected) HapticPattern.MORPH_TRANSITION else HapticPattern.CLICK)
+            onClick()
+        },
+        modifier = Modifier
+            .defaultMinSize(minHeight = 48.dp)
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            },
+        shape = RoundedCornerShape(999.dp),
+        color = outerContainer,
+        contentColor = iconTint,
+        interactionSource = interactionSource
+    ) {
+        Row(
+            modifier = Modifier
+                .animateContentSize(animationSpec = ExpressiveMotion.Spatial.fabExpand())
+                .padding(start = 4.dp, end = if (selected && expanded) 14.dp else 4.dp, top = 4.dp, bottom = 4.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(CircleShape)
+                    .background(indicatorColor),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = tab.label,
+                    tint = iconTint,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+
+            AnimatedVisibility(
+                visible = selected && expanded,
+                enter = expandHorizontally(animationSpec = ExpressiveMotion.Spatial.fabExpand()) +
+                    fadeIn(animationSpec = ExpressiveMotion.Effects.alpha()),
+                exit = shrinkHorizontally(animationSpec = ExpressiveMotion.Spatial.fabExpand()) +
+                    fadeOut(animationSpec = ExpressiveMotion.Effects.alpha())
+            ) {
+                Text(
+                    text = tab.label,
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    maxLines = 1
+                )
+            }
+        }
+    }
+}
+
+private data class ToolbarIndicatorColors(
+    val container: Color,
+    val content: Color
+)
+
+@Composable
+private fun selectedIndicatorColors(tab: TopLevelTab): ToolbarIndicatorColors {
+    val scheme = MaterialTheme.colorScheme
+    return when (tab) {
+        TopLevelTab.CHAT -> ToolbarIndicatorColors(
+            container = scheme.secondaryContainer,
+            content = scheme.onSecondaryContainer
+        )
+        TopLevelTab.EXPLORE -> ToolbarIndicatorColors(
+            container = scheme.tertiaryContainer,
+            content = scheme.onTertiaryContainer
+        )
+        TopLevelTab.SETTINGS -> ToolbarIndicatorColors(
+            container = scheme.primaryContainer,
+            content = scheme.onPrimaryContainer
+        )
+    }
 }
 
 /**

@@ -142,9 +142,13 @@ class SettingsViewModel @Inject constructor(
                         fontSizeScale = AppPreferences.DEFAULT_FONT_SIZE_SCALE_VALUE
                     )
                 },
-                appPreferences.fontSizeScale
-            ) { data, fontSizeScale ->
-                data.copy(fontSizeScale = fontSizeScale)
+                appPreferences.fontSizeScale,
+                appPreferences.defaultImageGenerationModel
+            ) { data, fontSizeScale, imageModel ->
+                data.copy(
+                    fontSizeScale = fontSizeScale,
+                    defaultImageGenerationModel = imageModel
+                )
             },
                 combine(
                     appPreferences.webSearchEnabled,
@@ -194,6 +198,7 @@ class SettingsViewModel @Inject constructor(
                         notificationsEnabled = data.notificationsEnabled,
                         aiGeneratedTitlesEnabled = data.aiGeneratedTitlesEnabled,
                         titleGenerationModel = data.titleGenerationModel,
+                        defaultImageGenerationModel = data.defaultImageGenerationModel,
                         rememberLastModelEnabled = data.rememberLastModel,
                         assistantEnabled = data.assistantEnabled,
                         assistantVoiceEnabled = data.assistantVoiceEnabled,
@@ -724,6 +729,21 @@ class SettingsViewModel @Inject constructor(
     }
 
     /**
+     * Updates the default image generation model.
+     */
+    fun updateDefaultImageGenerationModel(model: String) {
+        viewModelScope.launch {
+            try {
+                appPreferences.setDefaultImageGenerationModel(model)
+            } catch (e: Exception) {
+                _events.emit(SettingsEvent.ShowSnackbar(
+                    message = "Failed to save image model setting"
+                ))
+            }
+        }
+    }
+
+    /**
      * Updates the remember last model setting.
      */
     fun updateRememberLastModelEnabled(enabled: Boolean) {
@@ -1030,6 +1050,7 @@ class SettingsViewModel @Inject constructor(
         val notificationsEnabled: Boolean,
         val aiGeneratedTitlesEnabled: Boolean,
         val titleGenerationModel: String,
+        val defaultImageGenerationModel: String = AppPreferences.DEFAULT_IMAGE_GENERATION_MODEL,
         val autoCheckUpdates: Boolean,
         val updateState: com.materialchat.domain.model.UpdateState,
         val rememberLastModel: Boolean,

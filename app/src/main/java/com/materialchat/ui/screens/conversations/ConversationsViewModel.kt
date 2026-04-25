@@ -78,9 +78,14 @@ class ConversationsViewModel @Inject constructor(
                 },
                 manageProvidersUseCase.observeProviders(),
                 appPreferences.hapticsEnabled,
-                _expandedGroupIds,
-                _selectedFilter
-            ) { conversationSets, providers, hapticsEnabled, expandedIds, selectedFilter ->
+                combine(
+                    _expandedGroupIds,
+                    _selectedFilter,
+                    conversationRepository.observeStreamingConversationIds()
+                ) { expandedIds, selectedFilter, streamingIds ->
+                    ConversationListPrefs(expandedIds, selectedFilter, streamingIds)
+                }
+            ) { conversationSets, providers, hapticsEnabled, listPrefs ->
                 val activeProvider = providers.find { it.isActive }
                 ConversationsData(
                     conversations = conversationSets.first,
@@ -88,8 +93,9 @@ class ConversationsViewModel @Inject constructor(
                     providers = providers,
                     activeProvider = activeProvider,
                     hapticsEnabled = hapticsEnabled,
-                    expandedIds = expandedIds,
-                    selectedFilter = selectedFilter
+                    expandedIds = listPrefs.expandedIds,
+                    selectedFilter = listPrefs.selectedFilter,
+                    streamingConversationIds = listPrefs.streamingIds
                 )
             }
                 .catch { e ->
@@ -104,12 +110,14 @@ class ConversationsViewModel @Inject constructor(
                     val activeDisplay = buildDisplayData(
                         conversations = filteredActiveConversations,
                         providers = data.providers,
-                        expandedIds = data.expandedIds
+                        expandedIds = data.expandedIds,
+                        streamingConversationIds = data.streamingConversationIds
                     )
                     val archivedDisplay = buildDisplayData(
                         conversations = filteredArchivedConversations,
                         providers = data.providers,
-                        expandedIds = data.expandedIds
+                        expandedIds = data.expandedIds,
+                        streamingConversationIds = data.streamingConversationIds
                     )
 
                     val hasAnyConversation =
@@ -146,7 +154,14 @@ class ConversationsViewModel @Inject constructor(
         val activeProvider: Provider?,
         val hapticsEnabled: Boolean,
         val expandedIds: Set<String>,
-        val selectedFilter: ConversationListFilter
+        val selectedFilter: ConversationListFilter,
+        val streamingConversationIds: Set<String>
+    )
+
+    private data class ConversationListPrefs(
+        val expandedIds: Set<String>,
+        val selectedFilter: ConversationListFilter,
+        val streamingIds: Set<String>
     )
 
     private data class ConversationDisplayData(
@@ -415,7 +430,10 @@ class ConversationsViewModel @Inject constructor(
     /**
      * Converts a domain Conversation to a UI item with additional display data.
      */
-    private fun Conversation.toUiItem(providers: List<Provider>): ConversationUiItem {
+    private fun Conversation.toUiItem(
+        providers: List<Provider>,
+        streamingConversationIds: Set<String>
+    ): ConversationUiItem {
         val provider = providers.find { it.id == providerId }
         val relativeTime = if (isArchived && archiveTime != null) {
             "Archived ${formatRelativeTime(archiveTime)}"
@@ -427,7 +445,8 @@ class ConversationsViewModel @Inject constructor(
             conversation = this,
             providerName = provider?.name ?: "Unknown Provider",
             relativeTime = relativeTime,
-            messagePreview = null // Message preview could be added later if needed
+            messagePreview = null, // Message preview could be added later if needed
+            isStreaming = id in streamingConversationIds
         )
     }
 
@@ -447,7 +466,8 @@ class ConversationsViewModel @Inject constructor(
     private fun buildDisplayData(
         conversations: List<Conversation>,
         providers: List<Provider>,
-        expandedIds: Set<String>
+        expandedIds: Set<String>,
+        streamingConversationIds: Set<String>
     ): ConversationDisplayData {
         val (branches, roots) = conversations.partition { it.isBranch }
         val rootIds = roots.map { it.id }.toSet()
@@ -457,15 +477,18 @@ class ConversationsViewModel @Inject constructor(
         val branchMap = branches.groupBy { it.parentId!! }
 
         val groups = parentConversations.map { parent ->
+            val branchesForParent = branchMap[parent.id].orEmpty()
+            val parentHasActiveBranch = branchesForParent.any { it.id in streamingConversationIds }
             ConversationGroupUiItem(
-                parent = parent.toUiItem(providers),
-                branches = branchMap[parent.id].orEmpty().map { it.toUiItem(providers) },
+                parent = parent.toUiItem(providers, streamingConversationIds)
+                    .copy(isStreaming = parent.id in streamingConversationIds || parentHasActiveBranch),
+                branches = branchesForParent.map { it.toUiItem(providers, streamingConversationIds) },
                 isExpanded = parent.id in expandedIds
             )
         }
 
         return ConversationDisplayData(
-            flatList = parentConversations.map { it.toUiItem(providers) },
+            flatList = parentConversations.map { it.toUiItem(providers, streamingConversationIds) },
             groups = groups
         )
     }

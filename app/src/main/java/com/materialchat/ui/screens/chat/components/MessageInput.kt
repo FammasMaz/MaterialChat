@@ -44,6 +44,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AddPhotoAlternate
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Lightbulb
@@ -138,6 +139,7 @@ fun MessageInput(
     onSend: () -> Unit,
     onCancel: () -> Unit,
     onAttachImage: () -> Unit = {},
+    onGenerateImage: () -> Unit = {},
     onRemoveAttachment: (Attachment) -> Unit = {},
     reasoningEffort: ReasoningEffort = ReasoningEffort.HIGH,
     onReasoningEffortChange: (ReasoningEffort) -> Unit = {},
@@ -155,6 +157,7 @@ fun MessageInput(
     val textScrollState = rememberScrollState()
     val focusRequester = remember { FocusRequester() }
     val keyboardController = LocalSoftwareKeyboardController.current
+    var imageActionMenuExpanded by remember { mutableStateOf(false) }
 
     // Auto-focus after shared element animation completes for new chats
     // Delay allows the FAB-to-input morph animation to finish smoothly
@@ -223,28 +226,43 @@ fun MessageInput(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            // Attach button — expressive cookie shape, subtle tertiary accent
-            InputShapeButton(
-                icon = Icons.Default.Add,
-                contentDescription = "Attach image",
-                enabled = !isStreaming,
-                containerColor = if (!isStreaming) {
-                    MaterialTheme.colorScheme.tertiaryContainer
-                } else {
-                    MaterialTheme.colorScheme.surfaceContainerHigh
-                },
-                contentColor = if (!isStreaming) {
-                    MaterialTheme.colorScheme.onTertiaryContainer
-                } else {
-                    MaterialTheme.colorScheme.onSurfaceVariant
-                },
-                shapeToken = ExpressiveShapeToken.CookieSoft,
-                startAngle = 30,
-                onClick = {
-                    haptics.perform(HapticPattern.MORPH_TRANSITION, hapticsEnabled)
-                    onAttachImage()
-                }
-            )
+            // Add menu — M3 Expressive FAB-menu pattern for image actions
+            Box {
+                InputShapeButton(
+                    icon = Icons.Default.Add,
+                    contentDescription = "Image actions",
+                    enabled = !isStreaming,
+                    containerColor = if (!isStreaming) {
+                        MaterialTheme.colorScheme.tertiaryContainer
+                    } else {
+                        MaterialTheme.colorScheme.surfaceContainerHigh
+                    },
+                    contentColor = if (!isStreaming) {
+                        MaterialTheme.colorScheme.onTertiaryContainer
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    },
+                    shapeToken = if (imageActionMenuExpanded) ExpressiveShapeToken.Flower else ExpressiveShapeToken.CookieSoft,
+                    startAngle = if (imageActionMenuExpanded) 12 else 30,
+                    onClick = {
+                        haptics.perform(HapticPattern.MORPH_TRANSITION, hapticsEnabled)
+                        imageActionMenuExpanded = !imageActionMenuExpanded
+                    }
+                )
+
+                ImageActionMenu(
+                    expanded = imageActionMenuExpanded,
+                    onDismiss = { imageActionMenuExpanded = false },
+                    onAttachImage = {
+                        imageActionMenuExpanded = false
+                        onAttachImage()
+                    },
+                    onGenerateImage = {
+                        imageActionMenuExpanded = false
+                        onGenerateImage()
+                    }
+                )
+            }
 
             // Fusion mode toggle - M3 Expressive merge icon with badge
             FusionModeToggle(
@@ -426,6 +444,93 @@ private fun InputShapeButton(
                 imageVector = icon,
                 contentDescription = contentDescription,
                 tint = contentColor
+            )
+        }
+    }
+}
+
+@Composable
+private fun ImageActionMenu(
+    expanded: Boolean,
+    onDismiss: () -> Unit,
+    onAttachImage: () -> Unit,
+    onGenerateImage: () -> Unit
+) {
+    if (!expanded) return
+
+    val density = LocalDensity.current
+    val menuAnchorOffset = with(density) { (48.dp + 12.dp).roundToPx() }
+
+    Popup(
+        alignment = Alignment.BottomStart,
+        offset = IntOffset(0, -menuAnchorOffset),
+        onDismissRequest = onDismiss,
+        properties = PopupProperties(focusable = true)
+    ) {
+        Column(
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalAlignment = Alignment.Start,
+            modifier = Modifier
+                .wrapContentWidth(Alignment.Start)
+                .graphicsLayer {
+                    transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0f, 1f)
+                }
+        ) {
+            ImageActionPill(
+                icon = Icons.Default.AddPhotoAlternate,
+                label = "Attach photo",
+                containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
+                onClick = onAttachImage
+            )
+            ImageActionPill(
+                icon = Icons.Filled.AutoAwesome,
+                label = "Create image",
+                containerColor = MaterialTheme.colorScheme.primaryContainer,
+                contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                onClick = onGenerateImage
+            )
+        }
+    }
+}
+
+@Composable
+private fun ImageActionPill(
+    icon: ImageVector,
+    label: String,
+    containerColor: androidx.compose.ui.graphics.Color,
+    contentColor: androidx.compose.ui.graphics.Color,
+    onClick: () -> Unit
+) {
+    val haptics = rememberHapticFeedback()
+    Surface(
+        onClick = {
+            haptics.perform(HapticPattern.CLICK)
+            onClick()
+        },
+        shape = RoundedCornerShape(999.dp),
+        color = containerColor,
+        contentColor = contentColor,
+        tonalElevation = 3.dp,
+        modifier = Modifier.defaultMinSize(minHeight = 48.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .animateContentSize(animationSpec = ExpressiveMotion.Spatial.playful())
+                .padding(horizontal = 18.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                modifier = Modifier.size(20.dp),
+                tint = contentColor
+            )
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelLarge,
+                color = contentColor
             )
         }
     }

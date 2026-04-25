@@ -273,7 +273,7 @@ class ChatViewModel @Inject constructor(
                                 showModelLabel = message.modelName != null &&
                                         message.modelName != conversation.modelName,
                                 isErrored = message.role == MessageRole.ASSISTANT &&
-                                        message.content.isEmpty() && !message.isStreaming
+                                        message.content.isEmpty() && !message.hasAttachments && !message.isStreaming
                             )
                         }
 
@@ -592,12 +592,30 @@ class ChatViewModel @Inject constructor(
      * If fusion mode is enabled, delegates to sendFusionMessage instead.
      */
     fun sendMessage() {
+        sendCurrentInput(forceImageGeneration = false)
+    }
+
+    /**
+     * Generates an image from the current input using the default image model.
+     */
+    fun generateImage() {
+        sendCurrentInput(forceImageGeneration = true)
+    }
+
+    private fun sendCurrentInput(forceImageGeneration: Boolean) {
         val currentState = _uiState.value
         if (currentState !is ChatUiState.Success) return
-        if (!currentState.canSend) return
+        if (forceImageGeneration && currentState.inputText.isBlank()) {
+            viewModelScope.launch {
+                _events.emit(ChatEvent.ShowSnackbar("Describe the image you want to create first"))
+            }
+            return
+        }
+        if (!forceImageGeneration && !currentState.canSend) return
+        if (forceImageGeneration && currentState.isStreaming) return
 
         // If fusion is enabled and configured, use fusion flow
-        if (currentState.fusionConfig.isEnabled &&
+        if (!forceImageGeneration && currentState.fusionConfig.isEnabled &&
             currentState.fusionConfig.selectedModels.size >= 2 &&
             currentState.fusionConfig.judgeModel != null
         ) {
@@ -606,8 +624,8 @@ class ChatViewModel @Inject constructor(
         }
 
         val messageContent = currentState.inputText.trim()
-        val attachments = currentState.pendingAttachments.toList()
-        val quotedMessage = currentState.quotedMessage
+        val attachments = if (forceImageGeneration) emptyList() else currentState.pendingAttachments.toList()
+        val quotedMessage = if (forceImageGeneration) null else currentState.quotedMessage
 
         // Prepend quoted text if present
         val finalContent = if (quotedMessage != null) {
@@ -651,7 +669,8 @@ class ChatViewModel @Inject constructor(
                     attachments = attachments,
                     systemPrompt = currentSystemPrompt,
                     reasoningEffort = currentReasoningEffort,
-                    webSearchConfig = webSearchConfig
+                    webSearchConfig = webSearchConfig,
+                    forceImageGeneration = forceImageGeneration
                 ).collect { state ->
                     updateStreamingState(state)
                     // Notify when completed and app is in background
