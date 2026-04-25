@@ -112,7 +112,9 @@ import com.materialchat.ui.screens.search.components.SearchResultItem
 import com.materialchat.ui.theme.CustomShapes
 import com.materialchat.ui.theme.ExpressiveMotion
 import com.materialchat.ui.theme.ExpressiveShapeToken
+import com.materialchat.ui.theme.LocalMainButtonShape
 import com.materialchat.ui.theme.expressiveControlShape
+import com.materialchat.ui.theme.toExpressiveShapeToken
 import kotlin.math.roundToInt
 import kotlin.random.Random
 
@@ -718,13 +720,14 @@ private fun TopBarShapeAction(
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
+    val preferredShape = LocalMainButtonShape.current
     val scale by animateFloatAsState(
         targetValue = if (isPressed) 0.90f else 1f,
         animationSpec = ExpressiveMotion.Spatial.scale(),
         label = "topBarActionScale"
     )
     val shape = expressiveControlShape(
-        token = shapeToken,
+        token = preferredShape.toExpressiveShapeToken(shapeToken),
         pressed = isPressed,
         startAngle = startAngle
     )

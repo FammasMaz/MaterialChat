@@ -126,6 +126,21 @@ class MainActivity : ComponentActivity() {
             val controlShapeStyle by appPreferences.controlShapeStyle.collectAsState(
                 initial = AppPreferences.DEFAULT_CONTROL_SHAPE_STYLE
             )
+            val mainButtonShape by appPreferences.mainButtonShape.collectAsState(
+                initial = AppPreferences.DEFAULT_COMPONENT_BUTTON_SHAPE
+            )
+            val chatButtonShape by appPreferences.chatButtonShape.collectAsState(
+                initial = AppPreferences.DEFAULT_COMPONENT_BUTTON_SHAPE
+            )
+            val hapticsEnabled by appPreferences.hapticsEnabled.collectAsState(
+                initial = AppPreferences.DEFAULT_HAPTICS_ENABLED
+            )
+            val navigationHapticsEnabled by appPreferences.navigationHapticsEnabled.collectAsState(
+                initial = AppPreferences.DEFAULT_HAPTICS_ENABLED
+            )
+            val gestureHapticsEnabled by appPreferences.gestureHapticsEnabled.collectAsState(
+                initial = AppPreferences.DEFAULT_HAPTICS_ENABLED
+            )
             val chatFontSizeScale by appPreferences.fontSizeScale.collectAsState(
                 initial = AppPreferences.DEFAULT_FONT_SIZE_SCALE_VALUE
             )
@@ -135,7 +150,11 @@ class MainActivity : ComponentActivity() {
                 dynamicColor = dynamicColorEnabled && isDynamicColorSupported(),
                 themePalette = themePalette,
                 chatBubbleStyle = chatBubbleStyle,
-                controlShapeStyle = controlShapeStyle
+                controlShapeStyle = controlShapeStyle,
+                mainButtonShape = mainButtonShape,
+                chatButtonShape = chatButtonShape,
+                navigationHapticsEnabled = hapticsEnabled && navigationHapticsEnabled,
+                gestureHapticsEnabled = hapticsEnabled && gestureHapticsEnabled
             ) {
                 // Provide chat-specific font size via CompositionLocal
                 CompositionLocalProvider(

@@ -22,6 +22,10 @@ import com.materialchat.data.local.preferences.AppPreferences
 
 val LocalChatBubbleStyle = staticCompositionLocalOf { AppPreferences.ChatBubbleStyle.EXPRESSIVE }
 val LocalControlShapeStyle = staticCompositionLocalOf { AppPreferences.DEFAULT_CONTROL_SHAPE_STYLE }
+val LocalMainButtonShape = staticCompositionLocalOf { AppPreferences.DEFAULT_COMPONENT_BUTTON_SHAPE }
+val LocalChatButtonShape = staticCompositionLocalOf { AppPreferences.DEFAULT_COMPONENT_BUTTON_SHAPE }
+val LocalNavigationHapticsEnabled = staticCompositionLocalOf { true }
+val LocalGestureHapticsEnabled = staticCompositionLocalOf { true }
 
 /**
  * Light color scheme for MaterialChat.
@@ -135,6 +139,10 @@ fun MaterialChatTheme(
     themePalette: AppPreferences.ThemePalette = AppPreferences.DEFAULT_THEME_PALETTE,
     chatBubbleStyle: AppPreferences.ChatBubbleStyle = AppPreferences.DEFAULT_CHAT_BUBBLE_STYLE,
     controlShapeStyle: AppPreferences.ControlShapeStyle = AppPreferences.DEFAULT_CONTROL_SHAPE_STYLE,
+    mainButtonShape: AppPreferences.ComponentButtonShape = AppPreferences.DEFAULT_COMPONENT_BUTTON_SHAPE,
+    chatButtonShape: AppPreferences.ComponentButtonShape = AppPreferences.DEFAULT_COMPONENT_BUTTON_SHAPE,
+    navigationHapticsEnabled: Boolean = true,
+    gestureHapticsEnabled: Boolean = true,
     content: @Composable () -> Unit
 ) {
     // Determine if we should use dark theme
@@ -172,7 +180,11 @@ fun MaterialChatTheme(
 
     CompositionLocalProvider(
         LocalChatBubbleStyle provides chatBubbleStyle,
-        LocalControlShapeStyle provides controlShapeStyle
+        LocalControlShapeStyle provides controlShapeStyle,
+        LocalMainButtonShape provides mainButtonShape,
+        LocalChatButtonShape provides chatButtonShape,
+        LocalNavigationHapticsEnabled provides navigationHapticsEnabled,
+        LocalGestureHapticsEnabled provides gestureHapticsEnabled
     ) {
         MaterialTheme(
             colorScheme = colorScheme,

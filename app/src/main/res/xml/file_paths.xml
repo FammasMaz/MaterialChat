@@ -9,6 +9,10 @@
         name="generated_shares"
         path="generated_shares/" />
 
+    <cache-path
+        name="updates"
+        path="updates/" />
+
     <!-- App-private generated images shared through the system share sheet -->
     <files-path
         name="generated_images"

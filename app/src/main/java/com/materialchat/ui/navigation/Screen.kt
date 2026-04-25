@@ -45,6 +45,7 @@ sealed class Screen(val route: String) {
      * Settings screen for managing providers, system prompt, and app preferences.
      */
     data object Settings : Screen("settings")
+    data object InteractionSettings : Screen("settings/interactions")
 
     /**
      * Insights screen for viewing conversation intelligence dashboard.
@@ -114,7 +115,7 @@ sealed class Screen(val route: String) {
                 Conversations, Chat, Settings,
                 Arena, ArenaLeaderboard, Insights, PersonaStudio, Bookmarks,
                 GeneratedImages, Canvas, MindMap, Workflows, WorkflowBuilder, WorkflowExecution,
-                Explore
+                Explore, InteractionSettings
             )
     }
 }

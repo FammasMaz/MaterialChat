@@ -99,8 +99,10 @@ import com.materialchat.ui.navigation.SHARED_ELEMENT_FAB_TO_INPUT
 import com.materialchat.ui.theme.CustomShapes
 import com.materialchat.ui.theme.ExpressiveMotion
 import com.materialchat.ui.theme.ExpressiveShapeToken
+import com.materialchat.ui.theme.LocalChatButtonShape
 import com.materialchat.ui.theme.MaterialChatMotion
 import com.materialchat.ui.theme.expressiveControlShape
+import com.materialchat.ui.theme.toExpressiveShapeToken
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -158,6 +160,12 @@ fun MessageInput(
     val focusRequester = remember { FocusRequester() }
     val keyboardController = LocalSoftwareKeyboardController.current
     var imageActionMenuExpanded by remember { mutableStateOf(false) }
+    val chatButtonShape = LocalChatButtonShape.current
+    val neighborPush by animateDpAsState(
+        targetValue = if (imageActionMenuExpanded) 6.dp else 0.dp,
+        animationSpec = ExpressiveMotion.Spatial.playful(),
+        label = "chatInputNeighborPush"
+    )
 
     // Auto-focus after shared element animation completes for new chats
     // Delay allows the FAB-to-input morph animation to finish smoothly
@@ -242,7 +250,11 @@ fun MessageInput(
                     } else {
                         MaterialTheme.colorScheme.onSurfaceVariant
                     },
-                    shapeToken = if (imageActionMenuExpanded) ExpressiveShapeToken.Flower else ExpressiveShapeToken.CookieSoft,
+                    shapeToken = if (imageActionMenuExpanded) {
+                        chatButtonShape.toExpressiveShapeToken(ExpressiveShapeToken.Flower)
+                    } else {
+                        chatButtonShape.toExpressiveShapeToken(ExpressiveShapeToken.CookieSoft)
+                    },
                     startAngle = if (imageActionMenuExpanded) 12 else 30,
                     onClick = {
                         haptics.perform(HapticPattern.MORPH_TRANSITION, hapticsEnabled)
@@ -265,15 +277,17 @@ fun MessageInput(
             }
 
             // Fusion mode toggle - M3 Expressive merge icon with badge
-            FusionModeToggle(
-                isEnabled = fusionEnabled,
-                modelCount = fusionModelCount,
-                enabled = !isStreaming,
-                onClick = {
-                    haptics.perform(HapticPattern.CLICK, hapticsEnabled)
-                    onFusionToggle()
-                }
-            )
+            Box(modifier = Modifier.offset(x = neighborPush)) {
+                FusionModeToggle(
+                    isEnabled = fusionEnabled,
+                    modelCount = fusionModelCount,
+                    enabled = !isStreaming,
+                    onClick = {
+                        haptics.perform(HapticPattern.CLICK, hapticsEnabled)
+                        onFusionToggle()
+                    }
+                )
+            }
 
             // Text input pill - shared element for FAB morph
             val sharedTransitionScope = LocalSharedTransitionScope.current

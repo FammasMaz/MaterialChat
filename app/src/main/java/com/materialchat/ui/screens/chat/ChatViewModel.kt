@@ -379,14 +379,17 @@ class ChatViewModel @Inject constructor(
      */
     private fun loadHapticsPreference() {
         viewModelScope.launch {
-            appPreferences.hapticsEnabled.collect { enabled ->
-                currentHapticsEnabled = enabled
-                // Update UI state if we're in Success state
-                val currentState = _uiState.value
-                if (currentState is ChatUiState.Success) {
-                    _uiState.value = currentState.copy(hapticsEnabled = enabled)
+            combine(
+                appPreferences.hapticsEnabled,
+                appPreferences.chatHapticsEnabled
+            ) { globalEnabled, chatEnabled -> globalEnabled && chatEnabled }
+                .collect { enabled ->
+                    currentHapticsEnabled = enabled
+                    val currentState = _uiState.value
+                    if (currentState is ChatUiState.Success) {
+                        _uiState.value = currentState.copy(hapticsEnabled = enabled)
+                    }
                 }
-            }
         }
     }
 

@@ -97,6 +97,7 @@ import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
@@ -132,6 +133,7 @@ import com.materialchat.ui.theme.MaterialChatThemePalettes
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
+    onNavigateToInteractionSettings: () -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -305,7 +307,8 @@ fun SettingsScreen(
             onWebSearchProviderChange = { viewModel.updateWebSearchProvider(it) },
             onExaApiKeyChange = { viewModel.updateExaApiKey(it) },
             onSearxngBaseUrlChange = { viewModel.updateSearxngBaseUrl(it) },
-            onWebSearchMaxResultsChange = { viewModel.updateWebSearchMaxResults(it) }
+            onWebSearchMaxResultsChange = { viewModel.updateWebSearchMaxResults(it) },
+            onNavigateToInteractionSettings = onNavigateToInteractionSettings
         )
     }
 
@@ -383,7 +386,8 @@ private fun SettingsContent(
     onWebSearchProviderChange: (String) -> Unit,
     onExaApiKeyChange: (String) -> Unit,
     onSearxngBaseUrlChange: (String) -> Unit,
-    onWebSearchMaxResultsChange: (Int) -> Unit
+    onWebSearchMaxResultsChange: (Int) -> Unit,
+    onNavigateToInteractionSettings: () -> Unit
 ) {
     Box(
         modifier = Modifier
@@ -442,7 +446,8 @@ private fun SettingsContent(
                     onWebSearchProviderChange = onWebSearchProviderChange,
                     onExaApiKeyChange = onExaApiKeyChange,
                     onSearxngBaseUrlChange = onSearxngBaseUrlChange,
-                    onWebSearchMaxResultsChange = onWebSearchMaxResultsChange
+                    onWebSearchMaxResultsChange = onWebSearchMaxResultsChange,
+                    onNavigateToInteractionSettings = onNavigateToInteractionSettings
                 )
             }
             is SettingsUiState.Error -> {
@@ -508,7 +513,8 @@ private fun SuccessContent(
     onWebSearchProviderChange: (String) -> Unit,
     onExaApiKeyChange: (String) -> Unit,
     onSearxngBaseUrlChange: (String) -> Unit,
-    onWebSearchMaxResultsChange: (Int) -> Unit
+    onWebSearchMaxResultsChange: (Int) -> Unit,
+    onNavigateToInteractionSettings: () -> Unit
 ) {
     LazyColumn(
         modifier = Modifier
@@ -591,6 +597,10 @@ private fun SuccessContent(
                 selectedStyle = uiState.controlShapeStyle,
                 onStyleSelected = onControlShapeStyleChange
             )
+        }
+
+        item {
+            InteractionSettingsCard(onClick = onNavigateToInteractionSettings)
         }
 
         // Dynamic Color Toggle (Android 12+ only)
@@ -1394,6 +1404,52 @@ private fun FontSizeSelector(
                 ),
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(horizontal = 4.dp, vertical = 4.dp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun InteractionSettingsCard(onClick: () -> Unit) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.primaryContainer
+        ),
+        shape = RoundedCornerShape(24.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = Icons.Outlined.Vibration,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                modifier = Modifier.size(24.dp)
+            )
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "Interaction & Motion",
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+                Text(
+                    text = "Per-component haptics, button shapes, and expressive motion controls",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.78f)
+                )
+            }
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                modifier = Modifier.graphicsLayer { rotationZ = 180f }
             )
         }
     }

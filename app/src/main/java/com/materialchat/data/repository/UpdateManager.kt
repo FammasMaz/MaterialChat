@@ -1,7 +1,11 @@
 package com.materialchat.data.repository
 
 import android.content.Context
+import android.content.Intent
 import android.net.Uri
+import android.os.Build
+import android.provider.Settings
+import androidx.core.content.FileProvider
 import com.materialchat.BuildConfig
 import com.materialchat.data.local.preferences.AppPreferences
 import com.materialchat.data.remote.api.GitHubReleaseApiClient
@@ -16,12 +20,6 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import ru.solrudev.ackpine.installer.InstallFailure
-import ru.solrudev.ackpine.installer.PackageInstaller
-import ru.solrudev.ackpine.installer.createSession
-import ru.solrudev.ackpine.session.Session
-import ru.solrudev.ackpine.session.await
-import ru.solrudev.ackpine.session.parameters.Confirmation
 import java.io.File
 import java.io.FileOutputStream
 import javax.inject.Inject
@@ -45,7 +43,6 @@ class UpdateManager @Inject constructor(
     private val _updateState = MutableStateFlow<UpdateState>(UpdateState.Idle)
     val updateState: StateFlow<UpdateState> = _updateState.asStateFlow()
 
-    private val packageInstaller = PackageInstaller.getInstance(context)
     private val updateDir = File(context.cacheDir, "updates")
 
     // Current version info from BuildConfig
@@ -196,62 +193,55 @@ class UpdateManager @Inject constructor(
                 return
             }
 
-            val uri = Uri.fromFile(apkFile)
-
-            val session = packageInstaller.createSession(uri) {
-                confirmation = Confirmation.IMMEDIATE
-                name = "MaterialChat ${currentState.update.versionName}"
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
+                !context.packageManager.canRequestPackageInstalls()
+            ) {
+                openInstallPermissionSettings()
+                _updateState.value = UpdateState.ReadyToInstall(
+                    update = currentState.update,
+                    apkPath = currentState.apkPath
+                )
+                return
             }
 
-            // Await the session to actually trigger and wait for installation
-            when (val result = session.await()) {
-                is Session.State.Succeeded -> {
-                    // Installation succeeded, reset state
-                    _updateState.value = UpdateState.Idle
-                }
-                is Session.State.Failed -> {
-                    // Check if it was cancelled or failed
-                    val failure = result.failure
-                    val message = when (failure) {
-                        is InstallFailure.Aborted -> "Installation was cancelled"
-                        is InstallFailure.Blocked -> "Installation was blocked"
-                        is InstallFailure.Conflict -> "Package conflict detected"
-                        is InstallFailure.Incompatible -> "Package is incompatible with this device"
-                        is InstallFailure.Invalid -> "Invalid APK file"
-                        is InstallFailure.Storage -> "Not enough storage space"
-                        is InstallFailure.Timeout -> "Installation timed out"
-                        is InstallFailure.Exceptional -> failure.exception.message ?: "Installation failed"
-                        is InstallFailure.Generic -> failure.message ?: "Installation failed"
-                        else -> "Installation failed"
-                    }
-
-                    // For Aborted, Blocked, Timeout, and Generic failures, go back to ready state
-                    // These can occur when Play Protect shows its "Analyze app" dialog,
-                    // which temporarily interrupts the installation flow
-                    val isRetryableFailure = failure is InstallFailure.Aborted ||
-                            failure is InstallFailure.Blocked ||
-                            failure is InstallFailure.Timeout ||
-                            failure is InstallFailure.Generic
-
-                    if (isRetryableFailure) {
-                        _updateState.value = UpdateState.ReadyToInstall(
-                            update = currentState.update,
-                            apkPath = currentState.apkPath
-                        )
-                    } else {
-                        _updateState.value = UpdateState.Error(
-                            message = message,
-                            canRetry = true
-                        )
-                    }
-                }
-            }
+            // Open the platform installer immediately and keep the update ready.
+            // If Android/Play Protect dismisses the installer, tapping Install again
+            // reuses the same verified APK instead of doing nothing.
+            launchSystemInstaller(apkFile)
+            _updateState.value = UpdateState.ReadyToInstall(
+                update = currentState.update,
+                apkPath = currentState.apkPath
+            )
         } catch (e: Exception) {
             _updateState.value = UpdateState.Error(
                 message = e.message ?: "Installation failed",
                 canRetry = true
             )
         }
+    }
+
+    private fun launchSystemInstaller(apkFile: File) {
+        val uri = FileProvider.getUriForFile(
+            context,
+            "${context.packageName}.fileprovider",
+            apkFile
+        )
+        val intent = Intent(Intent.ACTION_VIEW).apply {
+            setDataAndType(uri, "application/vnd.android.package-archive")
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        context.startActivity(intent)
+    }
+
+    private fun openInstallPermissionSettings() {
+        val intent = Intent(
+            Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+            Uri.parse("package:${context.packageName}")
+        ).apply {
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        context.startActivity(intent)
     }
 
     /**

@@ -51,6 +51,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.materialchat.ui.theme.ExpressiveMotion
+import com.materialchat.ui.theme.LocalNavigationHapticsEnabled
 import com.materialchat.ui.components.HapticPattern
 import com.materialchat.ui.components.rememberHapticFeedback
 import kotlinx.coroutines.withTimeoutOrNull
@@ -80,6 +81,7 @@ fun MaterialChatNavBar(
     modifier: Modifier = Modifier
 ) {
     val haptics = rememberHapticFeedback()
+    val navigationHapticsEnabled = LocalNavigationHapticsEnabled.current
     val tabs = TopLevelTab.entries
 
     // M3 Expressive: Slide FAB toward end position (thumb zone) on toolbar collapse
@@ -141,7 +143,7 @@ fun MaterialChatNavBar(
             }
 
             FloatingToolbarDefaults.VibrantFloatingActionButton(
-                onClick = { haptics.perform(HapticPattern.CLICK); onNewChat() },
+                onClick = { haptics.perform(HapticPattern.CLICK, navigationHapticsEnabled); onNewChat() },
                 interactionSource = fabInteractionSource,
                 modifier = fabModifier.pointerInput(onNewChatLongPress) {
                     awaitEachGesture {
@@ -199,6 +201,7 @@ private fun ToolbarDestinationPill(
     onClick: () -> Unit
 ) {
     val haptics = rememberHapticFeedback()
+    val navigationHapticsEnabled = LocalNavigationHapticsEnabled.current
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
     val icon = tabIcon(tab)
@@ -236,7 +239,10 @@ private fun ToolbarDestinationPill(
 
     Surface(
         onClick = {
-            haptics.perform(if (selected) HapticPattern.MORPH_TRANSITION else HapticPattern.CLICK)
+            haptics.perform(
+                if (selected) HapticPattern.MORPH_TRANSITION else HapticPattern.CLICK,
+                navigationHapticsEnabled
+            )
             onClick()
         },
         modifier = Modifier

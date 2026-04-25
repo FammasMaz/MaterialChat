@@ -40,8 +40,14 @@ class AppPreferences(private val context: Context) {
         val THEME_PALETTE = stringPreferencesKey("theme_palette")
         val CHAT_BUBBLE_STYLE = stringPreferencesKey("chat_bubble_style")
         val CONTROL_SHAPE_STYLE = stringPreferencesKey("control_shape_style")
+        val MAIN_BUTTON_SHAPE = stringPreferencesKey("main_button_shape")
+        val CHAT_BUTTON_SHAPE = stringPreferencesKey("chat_button_shape")
         val DYNAMIC_COLOR_ENABLED = booleanPreferencesKey("dynamic_color_enabled")
         val HAPTICS_ENABLED = booleanPreferencesKey("haptics_enabled")
+        val CHAT_HAPTICS_ENABLED = booleanPreferencesKey("chat_haptics_enabled")
+        val NAVIGATION_HAPTICS_ENABLED = booleanPreferencesKey("navigation_haptics_enabled")
+        val LIST_HAPTICS_ENABLED = booleanPreferencesKey("list_haptics_enabled")
+        val GESTURE_HAPTICS_ENABLED = booleanPreferencesKey("gesture_haptics_enabled")
         val NOTIFICATIONS_ENABLED = booleanPreferencesKey("notifications_enabled")
         val REASONING_EFFORT = stringPreferencesKey("reasoning_effort")
         val FIRST_LAUNCH_COMPLETE = booleanPreferencesKey("first_launch_complete")
@@ -113,6 +119,19 @@ class AppPreferences(private val context: Context) {
     }
 
     /**
+     * Preferred Material Expressive shape token for page-specific buttons.
+     */
+    enum class ComponentButtonShape {
+        SYSTEM,
+        COOKIE,
+        COOKIE_SOFT,
+        CLOVER,
+        FLOWER,
+        PUFFY,
+        SOFT_BURST
+    }
+
+    /**
      * Default values for preferences.
      */
     companion object {
@@ -121,6 +140,7 @@ class AppPreferences(private val context: Context) {
         val DEFAULT_THEME_PALETTE = ThemePalette.VIOLET
         val DEFAULT_CHAT_BUBBLE_STYLE = ChatBubbleStyle.EXPRESSIVE
         val DEFAULT_CONTROL_SHAPE_STYLE = ControlShapeStyle.BALANCED
+        val DEFAULT_COMPONENT_BUTTON_SHAPE = ComponentButtonShape.SYSTEM
         const val DEFAULT_DYNAMIC_COLOR_ENABLED = true
         const val DEFAULT_HAPTICS_ENABLED = true
         const val DEFAULT_NOTIFICATIONS_ENABLED = false
@@ -248,6 +268,34 @@ class AppPreferences(private val context: Context) {
         }
     }
 
+    val mainButtonShape: Flow<ComponentButtonShape> = dataStore.data.map { preferences ->
+        preferences[Keys.MAIN_BUTTON_SHAPE].toComponentButtonShape()
+    }
+
+    suspend fun setMainButtonShape(shape: ComponentButtonShape) {
+        dataStore.edit { preferences ->
+            preferences[Keys.MAIN_BUTTON_SHAPE] = shape.name
+        }
+    }
+
+    val chatButtonShape: Flow<ComponentButtonShape> = dataStore.data.map { preferences ->
+        preferences[Keys.CHAT_BUTTON_SHAPE].toComponentButtonShape()
+    }
+
+    suspend fun setChatButtonShape(shape: ComponentButtonShape) {
+        dataStore.edit { preferences ->
+            preferences[Keys.CHAT_BUTTON_SHAPE] = shape.name
+        }
+    }
+
+    private fun String?.toComponentButtonShape(): ComponentButtonShape {
+        return try {
+            ComponentButtonShape.valueOf(this ?: DEFAULT_COMPONENT_BUTTON_SHAPE.name)
+        } catch (e: IllegalArgumentException) {
+            DEFAULT_COMPONENT_BUTTON_SHAPE
+        }
+    }
+
     // ========== Dynamic Color ==========
 
     /**
@@ -282,6 +330,38 @@ class AppPreferences(private val context: Context) {
         dataStore.edit { preferences ->
             preferences[Keys.HAPTICS_ENABLED] = enabled
         }
+    }
+
+    val chatHapticsEnabled: Flow<Boolean> = dataStore.data.map { preferences ->
+        preferences[Keys.CHAT_HAPTICS_ENABLED] ?: DEFAULT_HAPTICS_ENABLED
+    }
+
+    suspend fun setChatHapticsEnabled(enabled: Boolean) {
+        dataStore.edit { preferences -> preferences[Keys.CHAT_HAPTICS_ENABLED] = enabled }
+    }
+
+    val navigationHapticsEnabled: Flow<Boolean> = dataStore.data.map { preferences ->
+        preferences[Keys.NAVIGATION_HAPTICS_ENABLED] ?: DEFAULT_HAPTICS_ENABLED
+    }
+
+    suspend fun setNavigationHapticsEnabled(enabled: Boolean) {
+        dataStore.edit { preferences -> preferences[Keys.NAVIGATION_HAPTICS_ENABLED] = enabled }
+    }
+
+    val listHapticsEnabled: Flow<Boolean> = dataStore.data.map { preferences ->
+        preferences[Keys.LIST_HAPTICS_ENABLED] ?: DEFAULT_HAPTICS_ENABLED
+    }
+
+    suspend fun setListHapticsEnabled(enabled: Boolean) {
+        dataStore.edit { preferences -> preferences[Keys.LIST_HAPTICS_ENABLED] = enabled }
+    }
+
+    val gestureHapticsEnabled: Flow<Boolean> = dataStore.data.map { preferences ->
+        preferences[Keys.GESTURE_HAPTICS_ENABLED] ?: DEFAULT_HAPTICS_ENABLED
+    }
+
+    suspend fun setGestureHapticsEnabled(enabled: Boolean) {
+        dataStore.edit { preferences -> preferences[Keys.GESTURE_HAPTICS_ENABLED] = enabled }
     }
 
     // ========== Notifications ==========

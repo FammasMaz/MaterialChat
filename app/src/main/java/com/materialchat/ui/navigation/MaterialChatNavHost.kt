@@ -29,6 +29,7 @@ import com.materialchat.ui.screens.generatedimages.GeneratedImagesScreen
 import com.materialchat.ui.screens.insights.InsightsScreen
 import com.materialchat.ui.screens.mindmap.MindMapScreen
 import com.materialchat.ui.screens.personas.PersonaStudioScreen
+import com.materialchat.ui.screens.settings.InteractionSettingsScreen
 import com.materialchat.ui.screens.settings.SettingsScreen
 import com.materialchat.ui.screens.workflows.WorkflowBuilderScreen
 import com.materialchat.ui.screens.workflows.WorkflowExecutionScreen
@@ -191,7 +192,17 @@ fun MaterialChatNavHost(
 
             // Settings screen
             composable(route = Screen.Settings.route) {
-                SettingsScreen()
+                SettingsScreen(
+                    onNavigateToInteractionSettings = {
+                        navController.navigate(Screen.InteractionSettings.route)
+                    }
+                )
+            }
+
+            composable(route = Screen.InteractionSettings.route) {
+                InteractionSettingsScreen(
+                    onNavigateBack = { navController.popBackStack() }
+                )
             }
 
             // Arena mode screen

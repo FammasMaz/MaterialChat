@@ -34,6 +34,18 @@ enum class ExpressiveShapeToken {
     SoftBurst
 }
 
+fun AppPreferences.ComponentButtonShape.toExpressiveShapeToken(
+    fallback: ExpressiveShapeToken
+): ExpressiveShapeToken = when (this) {
+    AppPreferences.ComponentButtonShape.SYSTEM -> fallback
+    AppPreferences.ComponentButtonShape.COOKIE -> ExpressiveShapeToken.Cookie
+    AppPreferences.ComponentButtonShape.COOKIE_SOFT -> ExpressiveShapeToken.CookieSoft
+    AppPreferences.ComponentButtonShape.CLOVER -> ExpressiveShapeToken.Clover
+    AppPreferences.ComponentButtonShape.FLOWER -> ExpressiveShapeToken.Flower
+    AppPreferences.ComponentButtonShape.PUFFY -> ExpressiveShapeToken.Puffy
+    AppPreferences.ComponentButtonShape.SOFT_BURST -> ExpressiveShapeToken.SoftBurst
+}
+
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun expressiveControlShape(

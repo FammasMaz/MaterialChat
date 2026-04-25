@@ -77,7 +77,10 @@ class ConversationsViewModel @Inject constructor(
                     conversations to archivedConversations
                 },
                 manageProvidersUseCase.observeProviders(),
-                appPreferences.hapticsEnabled,
+                combine(
+                    appPreferences.hapticsEnabled,
+                    appPreferences.listHapticsEnabled
+                ) { globalEnabled, listEnabled -> globalEnabled && listEnabled },
                 combine(
                     _expandedGroupIds,
                     _selectedFilter,
