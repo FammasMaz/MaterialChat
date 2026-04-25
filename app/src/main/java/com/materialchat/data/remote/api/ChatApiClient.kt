@@ -376,7 +376,8 @@ class ChatApiClient(
         model: String,
         apiKey: String?,
         size: String = "1024x1024",
-        quality: String? = null
+        quality: String? = null,
+        outputFormat: String = "png"
     ): Result<GeneratedImageData> = withContext(Dispatchers.IO) {
         try {
             when (provider.type) {
@@ -386,7 +387,8 @@ class ChatApiClient(
                     prompt = prompt,
                     apiKey = apiKey ?: "",
                     size = size,
-                    quality = quality
+                    quality = quality,
+                    outputFormat = outputFormat
                 )
                 ProviderType.OLLAMA_NATIVE -> Result.failure(
                     IOException("Image generation requires an OpenAI-compatible provider")
@@ -458,14 +460,16 @@ class ChatApiClient(
         prompt: String,
         apiKey: String,
         size: String,
-        quality: String?
+        quality: String?,
+        outputFormat: String
     ): Result<GeneratedImageData> {
         val request = OpenAiImageGenerationRequest(
             model = model,
             prompt = prompt,
             n = 1,
             size = size,
-            quality = quality
+            quality = quality,
+            outputFormat = outputFormat.lowercase()
         )
 
         val imageClient = okHttpClient.newBuilder()
@@ -514,7 +518,7 @@ class ChatApiClient(
                         return Result.success(
                             GeneratedImageData(
                                 base64Data = base64,
-                                mimeType = "image/png",
+                                mimeType = outputFormat.toMimeType(),
                                 model = imageResponse.model ?: model
                             )
                         )
@@ -1009,6 +1013,12 @@ private data class ErrorMetadata(
     @kotlinx.serialization.SerialName("provider_name")
     val providerName: String? = null
 )
+
+private fun String.toMimeType(): String = when (lowercase()) {
+    "jpg", "jpeg" -> "image/jpeg"
+    "webp" -> "image/webp"
+    else -> "image/png"
+}
 
 /**
  * Parsed image data returned by an OpenAI-compatible image endpoint.

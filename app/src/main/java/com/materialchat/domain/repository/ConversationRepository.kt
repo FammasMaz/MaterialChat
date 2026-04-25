@@ -1,6 +1,7 @@
 package com.materialchat.domain.repository
 
 import com.materialchat.domain.model.Conversation
+import com.materialchat.domain.model.GeneratedImage
 import com.materialchat.domain.model.Message
 import com.materialchat.domain.model.SearchQuery
 import com.materialchat.domain.model.SearchResult
@@ -127,6 +128,11 @@ interface ConversationRepository {
      * Used by the home screen to surface in-progress chats.
      */
     fun observeStreamingConversationIds(): Flow<Set<String>>
+
+    /**
+     * Observes generated images saved from assistant image-generation messages.
+     */
+    fun observeGeneratedImages(): Flow<List<GeneratedImage>>
 
     /**
      * Adds a new message to a conversation.

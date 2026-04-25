@@ -409,6 +409,16 @@ private fun InputShapeButton(
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
+    val animatedContainerColor by animateColorAsState(
+        targetValue = containerColor,
+        animationSpec = ExpressiveMotion.Effects.color(),
+        label = "inputShapeButtonContainer"
+    )
+    val animatedContentColor by animateColorAsState(
+        targetValue = contentColor,
+        animationSpec = ExpressiveMotion.Effects.color(),
+        label = "inputShapeButtonContent"
+    )
     val scale by animateFloatAsState(
         targetValue = if (isPressed) 0.90f else 1f,
         animationSpec = ExpressiveMotion.Spatial.scale(),
@@ -430,8 +440,8 @@ private fun InputShapeButton(
                 scaleY = scale
             },
         shape = shape,
-        color = containerColor,
-        contentColor = contentColor,
+        color = animatedContainerColor,
+        contentColor = animatedContentColor,
         tonalElevation = 3.dp,
         shadowElevation = 0.dp,
         interactionSource = interactionSource
@@ -443,7 +453,7 @@ private fun InputShapeButton(
             Icon(
                 imageVector = icon,
                 contentDescription = contentDescription,
-                tint = contentColor
+                tint = animatedContentColor
             )
         }
     }
@@ -456,10 +466,35 @@ private fun ImageActionMenu(
     onAttachImage: () -> Unit,
     onGenerateImage: () -> Unit
 ) {
-    if (!expanded) return
+    var visible by remember { mutableStateOf(false) }
+    LaunchedEffect(expanded) {
+        if (expanded) {
+            visible = true
+        } else {
+            delay(MaterialChatMotion.Durations.Short.toLong())
+            visible = false
+        }
+    }
+    if (!visible) return
 
     val density = LocalDensity.current
     val menuAnchorOffset = with(density) { (48.dp + 12.dp).roundToPx() }
+    val menuScale by animateFloatAsState(
+        targetValue = if (expanded) 1f else 0.88f,
+        animationSpec = ExpressiveMotion.Spatial.playful(),
+        label = "imageActionMenuScale"
+    )
+    val menuAlpha by animateFloatAsState(
+        targetValue = if (expanded) 1f else 0f,
+        animationSpec = ExpressiveMotion.Effects.alpha(),
+        label = "imageActionMenuAlpha"
+    )
+    val menuOffset by animateFloatAsState(
+        targetValue = if (expanded) 0f else 10f,
+        animationSpec = ExpressiveMotion.Spatial.playful(),
+        label = "imageActionMenuOffset"
+    )
+    val menuOffsetPx = with(density) { menuOffset.dp.toPx() }
 
     Popup(
         alignment = Alignment.BottomStart,
@@ -473,6 +508,10 @@ private fun ImageActionMenu(
             modifier = Modifier
                 .wrapContentWidth(Alignment.Start)
                 .graphicsLayer {
+                    alpha = menuAlpha
+                    scaleX = menuScale
+                    scaleY = menuScale
+                    translationY = menuOffsetPx
                     transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0f, 1f)
                 }
         ) {

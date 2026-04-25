@@ -52,6 +52,7 @@ sealed interface SettingsUiState {
         val aiGeneratedTitlesEnabled: Boolean = true,
         val titleGenerationModel: String = "",
         val defaultImageGenerationModel: String = AppPreferences.DEFAULT_IMAGE_GENERATION_MODEL,
+        val defaultImageOutputFormat: String = AppPreferences.DEFAULT_IMAGE_OUTPUT_FORMAT,
         val rememberLastModelEnabled: Boolean = true,
         val appVersion: String = "",
         val autoCheckUpdates: Boolean = true,

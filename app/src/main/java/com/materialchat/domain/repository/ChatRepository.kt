@@ -77,7 +77,8 @@ interface ChatRepository {
     suspend fun generateImage(
         provider: Provider,
         prompt: String,
-        model: String
+        model: String,
+        outputFormat: String = "png"
     ): Result<Attachment>
 
     /**

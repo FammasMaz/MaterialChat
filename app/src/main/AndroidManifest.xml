@@ -22,6 +22,10 @@
         android:name="android.permission.READ_EXTERNAL_STORAGE"
         android:maxSdkVersion="32" />
 
+    <uses-permission
+        android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="28" />
+
     <!-- Permission to install APK updates -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 

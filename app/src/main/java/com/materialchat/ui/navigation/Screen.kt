@@ -55,6 +55,7 @@ sealed class Screen(val route: String) {
     data object ArenaLeaderboard : Screen("arena/leaderboard")
     data object PersonaStudio : Screen("personas")
     data object Bookmarks : Screen("bookmarks")
+    data object GeneratedImages : Screen("generated-images")
 
     /**
      * Smart Canvas screen for rendering live artifacts (HTML, Mermaid, SVG, LaTeX).
@@ -112,7 +113,7 @@ sealed class Screen(val route: String) {
             get() = listOf(
                 Conversations, Chat, Settings,
                 Arena, ArenaLeaderboard, Insights, PersonaStudio, Bookmarks,
-                Canvas, MindMap, Workflows, WorkflowBuilder, WorkflowExecution,
+                GeneratedImages, Canvas, MindMap, Workflows, WorkflowBuilder, WorkflowExecution,
                 Explore
             )
     }

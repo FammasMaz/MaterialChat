@@ -25,6 +25,7 @@ import com.materialchat.ui.screens.canvas.SmartCanvasScreen
 import com.materialchat.ui.screens.chat.ChatScreen
 import com.materialchat.ui.screens.conversations.ConversationsScreen
 import com.materialchat.ui.screens.explore.ExploreScreen
+import com.materialchat.ui.screens.generatedimages.GeneratedImagesScreen
 import com.materialchat.ui.screens.insights.InsightsScreen
 import com.materialchat.ui.screens.mindmap.MindMapScreen
 import com.materialchat.ui.screens.personas.PersonaStudioScreen
@@ -307,6 +308,16 @@ fun MaterialChatNavHost(
                 )
             }
 
+            // Generated image library
+            composable(route = Screen.GeneratedImages.route) {
+                GeneratedImagesScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onNavigateToConversation = { conversationId ->
+                        navController.navigate(Screen.Chat.createRoute(conversationId))
+                    }
+                )
+            }
+
             // Explore hub screen
             composable(route = Screen.Explore.route) {
                 ExploreScreen(
@@ -318,6 +329,9 @@ fun MaterialChatNavHost(
                     },
                     onNavigateToBookmarks = {
                         navController.navigate(Screen.Bookmarks.route)
+                    },
+                    onNavigateToGeneratedImages = {
+                        navController.navigate(Screen.GeneratedImages.route)
                     },
                     onNavigateToWorkflows = {
                         navController.navigate(Screen.Workflows.route)

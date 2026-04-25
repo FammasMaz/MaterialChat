@@ -4,4 +4,13 @@
     <cache-path
         name="exports"
         path="exports/" />
+
+    <cache-path
+        name="generated_shares"
+        path="generated_shares/" />
+
+    <!-- App-private generated images shared through the system share sheet -->
+    <files-path
+        name="generated_images"
+        path="generated_images/" />
 </paths>

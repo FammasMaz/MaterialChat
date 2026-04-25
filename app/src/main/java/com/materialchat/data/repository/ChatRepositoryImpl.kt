@@ -174,7 +174,8 @@ class ChatRepositoryImpl @Inject constructor(
     override suspend fun generateImage(
         provider: Provider,
         prompt: String,
-        model: String
+        model: String,
+        outputFormat: String
     ): Result<Attachment> {
         val apiKey = if (provider.requiresApiKey) {
             encryptedPreferences.getApiKey(provider.id)
@@ -182,7 +183,7 @@ class ChatRepositoryImpl @Inject constructor(
             null
         }
 
-        return chatApiClient.generateImage(provider, prompt, model, apiKey)
+        return chatApiClient.generateImage(provider, prompt, model, apiKey, outputFormat = outputFormat)
             .map { image -> persistGeneratedImage(image.base64Data, image.mimeType) }
     }
 

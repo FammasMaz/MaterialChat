@@ -2,7 +2,7 @@ package com.materialchat.domain.usecase
 
 import com.materialchat.domain.repository.ConversationRepository
 
-private const val STREAMING_DB_UPDATE_INTERVAL_MS = 96L
+private const val STREAMING_DB_UPDATE_INTERVAL_MS = 64L
 
 /**
  * Coalesces high-frequency provider token events before writing them to Room.

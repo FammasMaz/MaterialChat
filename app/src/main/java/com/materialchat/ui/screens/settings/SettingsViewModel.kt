@@ -143,11 +143,13 @@ class SettingsViewModel @Inject constructor(
                     )
                 },
                 appPreferences.fontSizeScale,
-                appPreferences.defaultImageGenerationModel
-            ) { data, fontSizeScale, imageModel ->
+                appPreferences.defaultImageGenerationModel,
+                appPreferences.defaultImageOutputFormat
+            ) { data, fontSizeScale, imageModel, imageFormat ->
                 data.copy(
                     fontSizeScale = fontSizeScale,
-                    defaultImageGenerationModel = imageModel
+                    defaultImageGenerationModel = imageModel,
+                    defaultImageOutputFormat = imageFormat
                 )
             },
                 combine(
@@ -199,6 +201,7 @@ class SettingsViewModel @Inject constructor(
                         aiGeneratedTitlesEnabled = data.aiGeneratedTitlesEnabled,
                         titleGenerationModel = data.titleGenerationModel,
                         defaultImageGenerationModel = data.defaultImageGenerationModel,
+                        defaultImageOutputFormat = data.defaultImageOutputFormat,
                         rememberLastModelEnabled = data.rememberLastModel,
                         assistantEnabled = data.assistantEnabled,
                         assistantVoiceEnabled = data.assistantVoiceEnabled,
@@ -744,6 +747,21 @@ class SettingsViewModel @Inject constructor(
     }
 
     /**
+     * Updates the default image output format.
+     */
+    fun updateDefaultImageOutputFormat(format: String) {
+        viewModelScope.launch {
+            try {
+                appPreferences.setDefaultImageOutputFormat(format)
+            } catch (e: Exception) {
+                _events.emit(SettingsEvent.ShowSnackbar(
+                    message = "Failed to save image format setting"
+                ))
+            }
+        }
+    }
+
+    /**
      * Updates the remember last model setting.
      */
     fun updateRememberLastModelEnabled(enabled: Boolean) {
@@ -1051,6 +1069,7 @@ class SettingsViewModel @Inject constructor(
         val aiGeneratedTitlesEnabled: Boolean,
         val titleGenerationModel: String,
         val defaultImageGenerationModel: String = AppPreferences.DEFAULT_IMAGE_GENERATION_MODEL,
+        val defaultImageOutputFormat: String = AppPreferences.DEFAULT_IMAGE_OUTPUT_FORMAT,
         val autoCheckUpdates: Boolean,
         val updateState: com.materialchat.domain.model.UpdateState,
         val rememberLastModel: Boolean,

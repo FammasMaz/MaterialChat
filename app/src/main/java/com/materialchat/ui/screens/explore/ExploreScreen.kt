@@ -1,13 +1,19 @@
 package com.materialchat.ui.screens.explore
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.slideInVertically
+import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -18,12 +24,16 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountTree
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.Face
+import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Insights
+import androidx.compose.material.icons.filled.NorthEast
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -40,77 +50,88 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.materialchat.ui.theme.ExpressiveMotion
 import kotlinx.coroutines.delay
 
-/**
- * Data class representing a feature card in the Explore hub.
- */
 private data class ExploreFeature(
     val title: String,
+    val eyebrow: String,
     val description: String,
     val icon: ImageVector,
     val onClick: () -> Unit,
-    val isHero: Boolean = false
+    val tone: ExploreTone,
+    val isWide: Boolean = false
 )
 
-/**
- * Explore hub screen with M3 Expressive design.
- *
- * Features visual hierarchy with a full-width hero card (Arena),
- * color variety per card, staggered entry animations, and shape variety.
- */
+private enum class ExploreTone { Primary, Secondary, Tertiary, Neutral }
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ExploreScreen(
     onNavigateToArena: () -> Unit,
     onNavigateToInsights: () -> Unit,
     onNavigateToBookmarks: () -> Unit,
+    onNavigateToGeneratedImages: () -> Unit,
     onNavigateToWorkflows: () -> Unit,
     onNavigateToPersonas: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val features = remember(
-        onNavigateToArena, onNavigateToInsights,
-        onNavigateToBookmarks, onNavigateToWorkflows, onNavigateToPersonas
+        onNavigateToInsights,
+        onNavigateToBookmarks,
+        onNavigateToGeneratedImages,
+        onNavigateToWorkflows,
+        onNavigateToPersonas
     ) {
         listOf(
             ExploreFeature(
-                title = "Arena",
-                description = "Compare models head-to-head",
-                icon = Icons.Filled.EmojiEvents,
-                onClick = onNavigateToArena,
-                isHero = true
+                title = "Generated Images",
+                eyebrow = "Library",
+                description = "Browse every image, save it, share it, or return to the source thread.",
+                icon = Icons.Filled.Image,
+                onClick = onNavigateToGeneratedImages,
+                tone = ExploreTone.Primary,
+                isWide = true
             ),
             ExploreFeature(
                 title = "Insights",
-                description = "Conversation analytics",
+                eyebrow = "Signals",
+                description = "Usage patterns, model speed, and conversation intelligence.",
                 icon = Icons.Filled.Insights,
-                onClick = onNavigateToInsights
+                onClick = onNavigateToInsights,
+                tone = ExploreTone.Secondary
             ),
             ExploreFeature(
                 title = "Bookmarks",
-                description = "Saved messages & knowledge",
+                eyebrow = "Knowledge",
+                description = "Saved answers and reusable fragments.",
                 icon = Icons.Filled.Bookmark,
-                onClick = onNavigateToBookmarks
+                onClick = onNavigateToBookmarks,
+                tone = ExploreTone.Tertiary
             ),
             ExploreFeature(
                 title = "Workflows",
-                description = "Prompt chain automation",
+                eyebrow = "Automation",
+                description = "Run prompt chains for repeatable tasks.",
                 icon = Icons.Filled.AccountTree,
-                onClick = onNavigateToWorkflows
+                onClick = onNavigateToWorkflows,
+                tone = ExploreTone.Neutral
             ),
             ExploreFeature(
                 title = "Personas",
-                description = "Create & apply AI characters to chats",
+                eyebrow = "Style",
+                description = "Shape how assistants answer across chats.",
                 icon = Icons.Filled.Face,
-                onClick = onNavigateToPersonas
+                onClick = onNavigateToPersonas,
+                tone = ExploreTone.Secondary
             )
         )
     }
@@ -121,10 +142,18 @@ fun ExploreScreen(
         topBar = {
             TopAppBar(
                 title = {
-                    Text(
-                        text = "Explore",
-                        style = MaterialTheme.typography.headlineLarge
-                    )
+                    Column {
+                        Text(
+                            text = "Explore",
+                            style = MaterialTheme.typography.headlineLarge,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Text(
+                            text = "Tools, memory, and creative output",
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surfaceContainer,
@@ -133,17 +162,11 @@ fun ExploreScreen(
             )
         }
     ) { paddingValues ->
-        // M3 Expressive: Rounded content surface matching other screens
         Surface(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(top = paddingValues.calculateTopPadding()),
-            shape = RoundedCornerShape(
-                topStart = 28.dp,
-                topEnd = 28.dp,
-                bottomStart = 0.dp,
-                bottomEnd = 0.dp
-            ),
+            shape = RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp),
             color = MaterialTheme.colorScheme.surfaceContainerLow
         ) {
             LazyVerticalGrid(
@@ -152,208 +175,233 @@ fun ExploreScreen(
                     start = 16.dp,
                     end = 16.dp,
                     top = 16.dp,
-                    bottom = 88.dp // Clearance for floating toolbar
+                    bottom = 96.dp
                 ),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
                 modifier = Modifier.fillMaxSize()
             ) {
+                item(span = { GridItemSpan(maxLineSpan) }) {
+                    ArenaHeroCard(onClick = onNavigateToArena)
+                }
+
+                item(span = { GridItemSpan(maxLineSpan) }) {
+                    Text(
+                        text = "Create and organize",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.padding(top = 6.dp, bottom = 2.dp)
+                    )
+                }
+
                 itemsIndexed(
                     items = features,
                     key = { _, feature -> feature.title },
-                    span = { _, feature ->
-                        if (feature.isHero) GridItemSpan(maxLineSpan) else GridItemSpan(1)
-                    }
+                    span = { _, feature -> if (feature.isWide) GridItemSpan(maxLineSpan) else GridItemSpan(1) }
                 ) { index, feature ->
-                    StaggeredEntryCard(
-                        index = index,
-                        feature = feature
-                    )
+                    StaggeredFeatureCard(index = index, feature = feature)
                 }
             }
         }
     }
 }
 
-/**
- * Wrapper that applies staggered entry animation (fade + scale) to each card.
- */
 @Composable
-private fun StaggeredEntryCard(
-    index: Int,
-    feature: ExploreFeature
-) {
-    val entryAlpha = remember { Animatable(0f) }
-    val entryScale = remember { Animatable(0.85f) }
-
-    LaunchedEffect(Unit) {
-        delay(index * 60L) // Stagger by 60ms per card
-        entryAlpha.animateTo(
-            targetValue = 1f,
-            animationSpec = spring(stiffness = 500f, dampingRatio = 1.0f)
-        )
-    }
-
-    LaunchedEffect(Unit) {
-        delay(index * 60L)
-        entryScale.animateTo(
-            targetValue = 1f,
-            animationSpec = spring(stiffness = 500f, dampingRatio = 0.7f)
-        )
-    }
-
-    ExploreFeatureCard(
-        feature = feature,
-        modifier = Modifier.graphicsLayer {
-            alpha = entryAlpha.value
-            scaleX = entryScale.value
-            scaleY = entryScale.value
-        }
-    )
-}
-
-/**
- * Returns the container color for a given card title.
- * Provides M3 Expressive color variety across the grid.
- */
-@Composable
-private fun containerColorFor(title: String): Color {
-    return when (title) {
-        "Arena" -> MaterialTheme.colorScheme.primaryContainer
-        "Insights" -> MaterialTheme.colorScheme.secondaryContainer
-        "Bookmarks" -> MaterialTheme.colorScheme.tertiaryContainer
-        else -> MaterialTheme.colorScheme.surfaceContainerLow
-    }
-}
-
-/**
- * Returns the content color for a given card title.
- */
-@Composable
-private fun contentColorFor(title: String): Color {
-    return when (title) {
-        "Arena" -> MaterialTheme.colorScheme.onPrimaryContainer
-        "Insights" -> MaterialTheme.colorScheme.onSecondaryContainer
-        "Bookmarks" -> MaterialTheme.colorScheme.onTertiaryContainer
-        else -> MaterialTheme.colorScheme.onSurface
-    }
-}
-
-/**
- * Individual feature card with M3 Expressive styling.
- *
- * Hero cards (Arena) span full width with larger height, larger typography,
- * and 28dp corners. Standard cards use 20dp corners and centered layout.
- */
-@Composable
-private fun ExploreFeatureCard(
-    feature: ExploreFeature,
-    modifier: Modifier = Modifier
-) {
+private fun ArenaHeroCard(onClick: () -> Unit) {
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
-
-    // M3 Expressive: Spatial spring for scale (can bounce)
     val scale by animateFloatAsState(
-        targetValue = if (isPressed) 0.95f else 1f,
-        animationSpec = spring(
-            stiffness = 500f,
-            dampingRatio = 0.7f
-        ),
-        label = "cardScale_${feature.title}"
+        targetValue = if (isPressed) 0.98f else 1f,
+        animationSpec = ExpressiveMotion.Spatial.scale(),
+        label = "arenaHeroScale"
     )
-
-    // M3 Expressive: Effects spring for elevation (no bounce)
-    val elevationDp by animateFloatAsState(
-        targetValue = if (isPressed) 1f else 4f,
-        animationSpec = spring(
-            stiffness = 500f,
-            dampingRatio = 1.0f
-        ),
-        label = "cardElevation_${feature.title}"
-    )
-
-    val containerColor = containerColorFor(feature.title)
-    val contentColor = contentColorFor(feature.title)
-    val cardHeight: Dp = if (feature.isHero) 160.dp else 140.dp
-    val cornerRadius: Dp = if (feature.isHero) 28.dp else 20.dp
 
     ElevatedCard(
-        onClick = feature.onClick,
-        modifier = modifier
+        onClick = onClick,
+        interactionSource = interactionSource,
+        shape = RoundedCornerShape(32.dp),
+        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 4.dp),
+        colors = CardDefaults.elevatedCardColors(
+            containerColor = MaterialTheme.colorScheme.primaryContainer
+        ),
+        modifier = Modifier
             .fillMaxWidth()
-            .height(cardHeight)
+            .height(184.dp)
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
-            },
-        shape = RoundedCornerShape(cornerRadius),
-        elevation = CardDefaults.elevatedCardElevation(
-            defaultElevation = elevationDp.dp
-        ),
-        colors = CardDefaults.elevatedCardColors(
-            containerColor = containerColor
-        ),
-        interactionSource = interactionSource
+            }
     ) {
-        if (feature.isHero) {
-            // Hero card: left-aligned content with larger typography
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.linearGradient(
+                        colors = listOf(
+                            MaterialTheme.colorScheme.primaryContainer,
+                            MaterialTheme.colorScheme.tertiaryContainer
+                        )
+                    )
+                )
+                .padding(22.dp)
+        ) {
             Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(24.dp),
-                verticalArrangement = Arrangement.Center,
-                horizontalAlignment = Alignment.Start
+                modifier = Modifier.align(Alignment.CenterStart),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                Icon(
-                    imageVector = feature.icon,
-                    contentDescription = feature.title,
-                    modifier = Modifier.size(40.dp),
-                    tint = contentColor
-                )
-                Spacer(modifier = Modifier.height(12.dp))
+                Surface(
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.38f),
+                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.EmojiEvents,
+                        contentDescription = null,
+                        modifier = Modifier.padding(12.dp).size(30.dp)
+                    )
+                }
                 Text(
-                    text = feature.title,
-                    style = MaterialTheme.typography.titleLarge,
+                    text = "Arena",
+                    style = MaterialTheme.typography.headlineMedium,
                     fontWeight = FontWeight.Bold,
-                    color = contentColor
+                    color = MaterialTheme.colorScheme.onPrimaryContainer
                 )
-                Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = feature.description,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = contentColor.copy(alpha = 0.8f)
+                    text = "Compare models head-to-head and vote on the better answer.",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.78f),
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
-        } else {
-            // Standard card: centered content
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(16.dp),
-                verticalArrangement = Arrangement.Center,
-                horizontalAlignment = Alignment.CenterHorizontally
+            Surface(
+                shape = CircleShape,
+                color = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary,
+                modifier = Modifier.align(Alignment.TopEnd)
             ) {
                 Icon(
-                    imageVector = feature.icon,
-                    contentDescription = feature.title,
-                    modifier = Modifier.size(36.dp),
-                    tint = contentColor
-                )
-                Spacer(modifier = Modifier.height(12.dp))
-                Text(
-                    text = feature.title,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = contentColor
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = feature.description,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = contentColor.copy(alpha = 0.7f)
+                    imageVector = Icons.Filled.NorthEast,
+                    contentDescription = null,
+                    modifier = Modifier.padding(10.dp).size(20.dp)
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun StaggeredFeatureCard(index: Int, feature: ExploreFeature) {
+    val alpha = remember { Animatable(0f) }
+    val offset = remember { Animatable(18f) }
+
+    LaunchedEffect(Unit) {
+        delay(index * 45L)
+        alpha.animateTo(1f, animationSpec = ExpressiveMotion.Effects.alpha())
+    }
+    LaunchedEffect(Unit) {
+        delay(index * 45L)
+        offset.animateTo(0f, animationSpec = spring(stiffness = 420f, dampingRatio = 0.8f))
+    }
+
+    AnimatedVisibility(
+        visible = alpha.value > 0f,
+        enter = fadeIn() + slideInVertically { it / 8 }
+    ) {
+        ExploreFeatureCard(
+            feature = feature,
+            modifier = Modifier.graphicsLayer {
+                this.alpha = alpha.value
+                translationY = offset.value
+            }
+        )
+    }
+}
+
+@Composable
+private fun ExploreFeatureCard(feature: ExploreFeature, modifier: Modifier = Modifier) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.96f else 1f,
+        animationSpec = ExpressiveMotion.Spatial.scale(),
+        label = "featureScale_${feature.title}"
+    )
+    val colors = feature.colors()
+
+    ElevatedCard(
+        onClick = feature.onClick,
+        interactionSource = interactionSource,
+        shape = RoundedCornerShape(if (feature.isWide) 28.dp else 24.dp),
+        colors = CardDefaults.elevatedCardColors(containerColor = colors.first),
+        elevation = CardDefaults.elevatedCardElevation(defaultElevation = if (feature.isWide) 3.dp else 1.dp),
+        modifier = modifier
+            .fillMaxWidth()
+            .height(if (feature.isWide) 144.dp else 156.dp)
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(if (feature.isWide) 18.dp else 16.dp),
+            verticalArrangement = Arrangement.SpaceBetween
+        ) {
+            Row(
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.Top,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Surface(
+                    shape = RoundedCornerShape(18.dp),
+                    color = colors.second.copy(alpha = 0.18f),
+                    contentColor = colors.second
+                ) {
+                    Icon(
+                        imageVector = feature.icon,
+                        contentDescription = null,
+                        modifier = Modifier.padding(10.dp).size(if (feature.isWide) 26.dp else 22.dp)
+                    )
+                }
+                Text(
+                    text = feature.eyebrow,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = colors.second.copy(alpha = 0.78f),
+                    maxLines = 1
+                )
+            }
+
+            Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                Text(
+                    text = feature.title,
+                    style = if (feature.isWide) MaterialTheme.typography.titleLarge else MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = colors.second,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = feature.description,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = colors.second.copy(alpha = 0.72f),
+                    maxLines = if (feature.isWide) 2 else 3,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ExploreFeature.colors(): Pair<Color, Color> {
+    val scheme = MaterialTheme.colorScheme
+    return when (tone) {
+        ExploreTone.Primary -> scheme.primaryContainer to scheme.onPrimaryContainer
+        ExploreTone.Secondary -> scheme.secondaryContainer to scheme.onSecondaryContainer
+        ExploreTone.Tertiary -> scheme.tertiaryContainer to scheme.onTertiaryContainer
+        ExploreTone.Neutral -> scheme.surfaceContainerHighest to scheme.onSurface
     }
 }

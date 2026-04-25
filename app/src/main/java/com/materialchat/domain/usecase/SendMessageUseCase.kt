@@ -104,6 +104,7 @@ class SendMessageUseCase @Inject constructor(
             val imageModel = imageModelOverride?.takeIf { it.isNotBlank() }
                 ?: appPreferences.defaultImageGenerationModel.first()
                     .ifBlank { AppPreferences.DEFAULT_IMAGE_GENERATION_MODEL }
+            val outputFormat = appPreferences.defaultImageOutputFormat.first()
             val assistantMessage = Message(
                 conversationId = conversationId,
                 role = MessageRole.ASSISTANT,
@@ -120,7 +121,8 @@ class SendMessageUseCase @Inject constructor(
                 val result = chatRepository.generateImage(
                     provider = provider,
                     prompt = imagePrompt,
-                    model = imageModel
+                    model = imageModel,
+                    outputFormat = outputFormat
                 )
 
                 result.onSuccess { attachment ->
@@ -197,6 +199,7 @@ class SendMessageUseCase @Inject constructor(
         var hasError = false
         val streamStartTime = System.currentTimeMillis()
         var thinkingEndTime: Long? = null
+        var firstContentAtMs: Long? = null
         val contentUpdater = StreamingMessageContentUpdater(
             conversationRepository = conversationRepository,
             messageId = assistantMessageId
@@ -215,6 +218,9 @@ class SendMessageUseCase @Inject constructor(
                 is StreamingState.Streaming -> {
                     accumulatedContent = state.content
                     accumulatedThinking = state.thinkingContent
+                    if (firstContentAtMs == null && state.content.isNotEmpty()) {
+                        firstContentAtMs = System.currentTimeMillis()
+                    }
                     // Track when thinking ends (first time we get content while thinking exists)
                     if (thinkingEndTime == null && state.content.isNotEmpty() && !state.thinkingContent.isNullOrEmpty()) {
                         thinkingEndTime = System.currentTimeMillis()
@@ -242,7 +248,6 @@ class SendMessageUseCase @Inject constructor(
                 }
                 is StreamingState.Completed -> {
                     // Capture final content for title generation
-                    val hadStreamingContent = accumulatedContent.isNotBlank() || !accumulatedThinking.isNullOrBlank()
                     val imageToolPrompt = extractImageToolPrompt(state.finalContent)
                     val totalDurationMs = System.currentTimeMillis() - streamStartTime
                     val thinkingDurationMs = if (!state.finalThinkingContent.isNullOrEmpty()) {
@@ -254,10 +259,12 @@ class SendMessageUseCase @Inject constructor(
                         contentUpdater.flush()
                         val imageModel = appPreferences.defaultImageGenerationModel.first()
                             .ifBlank { AppPreferences.DEFAULT_IMAGE_GENERATION_MODEL }
+                        val outputFormat = appPreferences.defaultImageOutputFormat.first()
                         val imageResult = chatRepository.generateImage(
                             provider = provider,
                             prompt = imageToolPrompt,
-                            model = imageModel
+                            model = imageModel,
+                            outputFormat = outputFormat
                         )
                         imageResult.onSuccess { attachment ->
                             conversationRepository.updateMessage(
@@ -285,8 +292,13 @@ class SendMessageUseCase @Inject constructor(
                     } else {
                         accumulatedContent = state.finalContent
                         contentUpdater.persistFinal(state.finalContent, state.finalThinkingContent)
-                        if (!hadStreamingContent && state.finalContent.isNotBlank()) {
-                            delay(calculatePostCompletionRevealHoldMs(state.finalContent))
+                        val revealHoldMs = calculatePostCompletionRevealHoldMs(
+                            content = state.finalContent,
+                            revealStartedAtMs = firstContentAtMs,
+                            completedAtMs = System.currentTimeMillis()
+                        )
+                        if (revealHoldMs > 0) {
+                            delay(revealHoldMs)
                         }
                         conversationRepository.setMessageStreaming(assistantMessageId, false)
                         conversationRepository.updateMessageDurations(assistantMessageId, thinkingDurationMs, totalDurationMs)
@@ -525,9 +537,16 @@ class SendMessageUseCase @Inject constructor(
      * Explicit image actions always win; otherwise we route obvious create/draw/render
      * image prompts so any chat model can seamlessly hand off to image generation.
      */
-    private fun calculatePostCompletionRevealHoldMs(content: String): Long {
+    private fun calculatePostCompletionRevealHoldMs(
+        content: String,
+        revealStartedAtMs: Long?,
+        completedAtMs: Long
+    ): Long {
+        if (content.isBlank()) return 0L
         val words = content.trim().split(Regex("\\s+")).count { it.isNotBlank() }
-        return (words * 38L).coerceIn(420L, 2200L)
+        val estimatedRevealMs = (words * 30L).coerceIn(360L, 2400L)
+        val elapsedRevealMs = revealStartedAtMs?.let { completedAtMs - it } ?: 0L
+        return (estimatedRevealMs - elapsedRevealMs).coerceIn(0L, 1800L)
     }
 
     private fun resolveImageGenerationPrompt(

@@ -7,6 +7,7 @@ import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
 import com.materialchat.data.local.database.entity.DailyMessageCount
+import com.materialchat.data.local.database.entity.GeneratedImageMessageEntity
 import com.materialchat.data.local.database.entity.MessageEntity
 import com.materialchat.data.local.database.entity.ModelAvgDuration
 import com.materialchat.data.local.database.entity.ModelUsageCount
@@ -148,6 +149,37 @@ interface MessageDao {
      */
     @Query("SELECT DISTINCT conversation_id FROM messages WHERE is_streaming = 1")
     fun observeStreamingConversationIds(): Flow<List<String>>
+
+    /**
+     * Observe assistant messages that contain generated images.
+     */
+    @Query("""
+        SELECT
+            m.id AS message_id,
+            m.conversation_id AS conversation_id,
+            m.image_attachments AS image_attachments,
+            m.model_name AS model_name,
+            m.created_at AS created_at,
+            c.title AS conversation_title,
+            c.icon AS conversation_icon,
+            (
+                SELECT u.content
+                FROM messages u
+                WHERE u.conversation_id = m.conversation_id
+                  AND u.role = 'USER'
+                  AND u.created_at <= m.created_at
+                ORDER BY u.created_at DESC
+                LIMIT 1
+            ) AS prompt
+        FROM messages m
+        INNER JOIN conversations c ON c.id = m.conversation_id
+        WHERE m.role = 'ASSISTANT'
+          AND m.image_attachments IS NOT NULL
+          AND m.model_name IS NOT NULL
+          AND lower(m.model_name) LIKE '%image%'
+        ORDER BY m.created_at DESC
+    """)
+    fun observeGeneratedImageMessages(): Flow<List<GeneratedImageMessageEntity>>
 
     /**
      * Get all streaming messages (for cleanup on app restart).

@@ -2,11 +2,13 @@ package com.materialchat.data.repository
 
 import com.materialchat.data.local.database.dao.ConversationDao
 import com.materialchat.data.local.database.dao.MessageDao
+import com.materialchat.data.mapper.AttachmentData
 import com.materialchat.data.mapper.toDomain
 import com.materialchat.data.mapper.toEntity
 import com.materialchat.data.mapper.toConversationDomainList
 import com.materialchat.data.mapper.toMessageDomainList
 import com.materialchat.domain.model.Conversation
+import com.materialchat.domain.model.GeneratedImage
 import com.materialchat.domain.model.MatchType
 import com.materialchat.domain.model.Message
 import com.materialchat.domain.model.MessageMatch
@@ -17,6 +19,7 @@ import com.materialchat.domain.repository.ConversationRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import javax.inject.Inject
@@ -34,6 +37,7 @@ class ConversationRepositoryImpl @Inject constructor(
     private val json = Json {
         prettyPrint = true
         encodeDefaults = true
+        ignoreUnknownKeys = true
     }
 
     // ========== Conversation Operations ==========
@@ -142,6 +146,31 @@ class ConversationRepositoryImpl @Inject constructor(
 
     override fun observeStreamingConversationIds(): Flow<Set<String>> {
         return messageDao.observeStreamingConversationIds().map { ids -> ids.toSet() }
+    }
+
+    override fun observeGeneratedImages(): Flow<List<GeneratedImage>> {
+        return messageDao.observeGeneratedImageMessages().map { rows ->
+            rows.flatMap { row ->
+                val attachments = runCatching {
+                    json.decodeFromString<List<AttachmentData>>(row.imageAttachments.orEmpty())
+                }.getOrDefault(emptyList())
+
+                attachments.map { attachment ->
+                    GeneratedImage(
+                        id = "${row.messageId}:${attachment.id}",
+                        uri = attachment.uri,
+                        mimeType = attachment.mimeType,
+                        conversationId = row.conversationId,
+                        messageId = row.messageId,
+                        conversationTitle = row.conversationTitle,
+                        conversationIcon = row.conversationIcon,
+                        prompt = row.prompt,
+                        modelName = row.modelName,
+                        createdAt = row.createdAt
+                    )
+                }
+            }
+        }
     }
 
     override suspend fun addMessage(message: Message): String {

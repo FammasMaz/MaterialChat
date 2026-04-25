@@ -39,6 +39,7 @@ import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.DarkMode
 import androidx.compose.material.icons.outlined.FormatSize
 import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material.icons.outlined.LightMode
 import androidx.compose.material.icons.outlined.Mic
 import androidx.compose.material.icons.outlined.Palette
@@ -286,6 +287,7 @@ fun SettingsScreen(
             onAiGeneratedTitlesChange = { viewModel.updateAiGeneratedTitlesEnabled(it) },
             onTitleGenerationModelChange = { viewModel.updateTitleGenerationModel(it) },
             onDefaultImageGenerationModelChange = { viewModel.updateDefaultImageGenerationModel(it) },
+            onDefaultImageOutputFormatChange = { viewModel.updateDefaultImageOutputFormat(it) },
             onRememberLastModelChange = { viewModel.updateRememberLastModelEnabled(it) },
             onAlwaysShowThinkingChange = { viewModel.updateAlwaysShowThinking(it) },
             onShowTokenCounterChange = { viewModel.updateShowTokenCounter(it) },
@@ -363,6 +365,7 @@ private fun SettingsContent(
     onAiGeneratedTitlesChange: (Boolean) -> Unit,
     onTitleGenerationModelChange: (String) -> Unit,
     onDefaultImageGenerationModelChange: (String) -> Unit,
+    onDefaultImageOutputFormatChange: (String) -> Unit,
     onRememberLastModelChange: (Boolean) -> Unit,
     onAlwaysShowThinkingChange: (Boolean) -> Unit,
     onShowTokenCounterChange: (Boolean) -> Unit,
@@ -422,6 +425,7 @@ private fun SettingsContent(
                     onAiGeneratedTitlesChange = onAiGeneratedTitlesChange,
                     onTitleGenerationModelChange = onTitleGenerationModelChange,
                     onDefaultImageGenerationModelChange = onDefaultImageGenerationModelChange,
+                    onDefaultImageOutputFormatChange = onDefaultImageOutputFormatChange,
                     onRememberLastModelChange = onRememberLastModelChange,
                     onAlwaysShowThinkingChange = onAlwaysShowThinkingChange,
                     onShowTokenCounterChange = onShowTokenCounterChange,
@@ -487,6 +491,7 @@ private fun SuccessContent(
     onAiGeneratedTitlesChange: (Boolean) -> Unit,
     onTitleGenerationModelChange: (String) -> Unit,
     onDefaultImageGenerationModelChange: (String) -> Unit,
+    onDefaultImageOutputFormatChange: (String) -> Unit,
     onRememberLastModelChange: (Boolean) -> Unit,
     onAlwaysShowThinkingChange: (Boolean) -> Unit,
     onShowTokenCounterChange: (Boolean) -> Unit,
@@ -668,6 +673,13 @@ private fun SuccessContent(
             DefaultImageGenerationModelField(
                 currentModel = uiState.defaultImageGenerationModel,
                 onModelChange = onDefaultImageGenerationModelChange
+            )
+        }
+
+        item {
+            DefaultImageOutputFormatField(
+                currentFormat = uiState.defaultImageOutputFormat,
+                onFormatChange = onDefaultImageOutputFormatChange
             )
         }
 
@@ -1914,6 +1926,67 @@ private fun DefaultImageGenerationModelField(
                     text = "Save",
                     style = ExpressiveButtonStyle.FilledTonal
                 )
+            }
+        }
+    }
+}
+
+@Composable
+private fun DefaultImageOutputFormatField(
+    currentFormat: String,
+    onFormatChange: (String) -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+        ),
+        shape = RoundedCornerShape(20.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = Icons.Outlined.Image,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(24.dp)
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                Column {
+                    Text(
+                        text = "Image Output Format",
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = "Generated images are saved in this format",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                AppPreferences.SUPPORTED_IMAGE_OUTPUT_FORMATS.forEach { format ->
+                    FilterChip(
+                        selected = currentFormat == format,
+                        onClick = { onFormatChange(format) },
+                        label = { Text(format.uppercase()) },
+                        modifier = Modifier.weight(1f),
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                            selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                    )
+                }
             }
         }
     }

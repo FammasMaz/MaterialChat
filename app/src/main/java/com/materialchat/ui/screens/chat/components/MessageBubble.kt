@@ -2,6 +2,7 @@ package com.materialchat.ui.screens.chat.components
 
 import android.graphics.BitmapFactory
 import android.util.Base64
+import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
@@ -53,9 +54,11 @@ import androidx.compose.material.icons.automirrored.outlined.CallSplit
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.outlined.BookmarkBorder
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.ErrorOutline
@@ -115,6 +118,7 @@ import com.materialchat.data.local.preferences.AppPreferences
 import com.materialchat.ui.theme.CustomShapes
 import com.materialchat.ui.theme.LocalChatBubbleStyle
 import com.materialchat.ui.theme.MessageBubbleShapes
+import com.materialchat.util.GeneratedImageActions
 import kotlinx.coroutines.launch
 
 /**
@@ -308,7 +312,7 @@ fun MessageBubble(
                         .widthIn(min = 40.dp, max = bubbleStyle.maxWidth)
                         .animateContentSize(
                             animationSpec = if (message.isStreaming) {
-                                tween(durationMillis = 80)
+                                tween(durationMillis = 140)
                             } else {
                                 spring(
                                     dampingRatio = 0.6f,
@@ -426,14 +430,6 @@ fun MessageBubble(
                             }
                         }
 
-                        // Streaming indicator below content
-                        if (message.isStreaming) {
-                            Spacer(modifier = Modifier.height(4.dp))
-                            ShimmerSkeletonLines(
-                                color = bubbleStyle.textColor,
-                                lines = 1
-                            )
-                        }
                     }
 
                 }
@@ -1142,23 +1138,89 @@ private fun AttachmentImage(
         }
     }
 
-    if (bitmap != null) {
-        Image(
-            bitmap = bitmap,
-            contentDescription = if (isGeneratedImage) "Generated image" else "Attached image",
-            contentScale = ContentScale.Crop,
-            modifier = imageModifier
-        )
-    } else {
-        AsyncImage(
-            model = ImageRequest.Builder(LocalContext.current)
-                .data(attachment.uri)
-                .crossfade(true)
-                .build(),
-            contentDescription = if (isGeneratedImage) "Generated image" else "Attached image",
-            contentScale = ContentScale.Crop,
-            modifier = imageModifier
-        )
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        if (bitmap != null) {
+            Image(
+                bitmap = bitmap,
+                contentDescription = if (isGeneratedImage) "Generated image" else "Attached image",
+                contentScale = ContentScale.Crop,
+                modifier = imageModifier
+            )
+        } else {
+            AsyncImage(
+                model = ImageRequest.Builder(context)
+                    .data(attachment.uri)
+                    .crossfade(true)
+                    .build(),
+                contentDescription = if (isGeneratedImage) "Generated image" else "Attached image",
+                contentScale = ContentScale.Crop,
+                modifier = imageModifier
+            )
+        }
+
+        if (isGeneratedImage) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                GeneratedImageActionChip(
+                    icon = Icons.Filled.Share,
+                    label = "Share",
+                    onClick = {
+                        runCatching {
+                            GeneratedImageActions.share(context, attachment.uri, attachment.mimeType)
+                        }.onFailure {
+                            Toast.makeText(context, "Could not share image", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                )
+                GeneratedImageActionChip(
+                    icon = Icons.Filled.Download,
+                    label = "Save",
+                    onClick = {
+                        scope.launch {
+                            val saved = GeneratedImageActions.saveToGallery(
+                                context = context,
+                                uriString = attachment.uri,
+                                mimeType = attachment.mimeType
+                            )
+                            Toast.makeText(
+                                context,
+                                if (saved) "Saved to Pictures/MaterialChat" else "Could not save image",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        }
+                    }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun GeneratedImageActionChip(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    onClick: () -> Unit
+) {
+    Surface(
+        onClick = onClick,
+        shape = RoundedCornerShape(999.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerHighest,
+        contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+        tonalElevation = 1.dp
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(imageVector = icon, contentDescription = null, modifier = Modifier.size(18.dp))
+            Text(text = label, style = MaterialTheme.typography.labelMedium)
+        }
     }
 }
 
