@@ -5,12 +5,20 @@
     android:viewportWidth="108"
     android:viewportHeight="108">
 
-    <!-- Material 3 Expressive tonal backdrop -->
+    <!-- Material 3 tonal surface for adaptive icons -->
     <path
-        android:fillColor="#F7F2FA"
+        android:fillColor="#FFFBFE"
         android:pathData="M0,0h108v108h-108z" />
 
     <path
         android:fillColor="#EADDFF"
-        android:pathData="M0,0h108v108h-108z" />
+        android:pathData="M10,10
+            C24,1 40,8 48,20
+            C57,8 76,4 91,16
+            C105,28 101,49 89,57
+            C100,68 97,88 82,98
+            C67,108 50,99 44,86
+            C33,97 15,96 6,82
+            C-3,68 5,53 18,47
+            C6,38 -2,22 10,10Z" />
 </vector>
