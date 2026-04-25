@@ -50,31 +50,16 @@ fun SmoothStreamingText(
     onOpenCanvas: ((CanvasArtifact) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
-    if (!isStreaming) {
-        MarkdownText(
-            markdown = rawText,
-            textColor = textColor,
-            style = style,
-            isStreaming = false,
-            fillWidth = false,
-            onOpenCanvas = onOpenCanvas,
-            modifier = modifier
-        )
-        return
-    }
-
-    if (rawText.isEmpty()) return
-
     val haptics = rememberHapticFeedback()
     val latestRawText by rememberUpdatedState(rawText)
-    var visibleText by remember { mutableStateOf("") }
+    var visibleText by remember { mutableStateOf(if (isStreaming) "" else rawText) }
 
-    LaunchedEffect(isStreaming) {
-        while (isStreaming) {
+    LaunchedEffect(rawText, isStreaming) {
+        while (visibleText != latestRawText) {
             val target = latestRawText
             when {
                 target.isEmpty() -> {
-                    if (visibleText.isNotEmpty()) visibleText = ""
+                    visibleText = ""
                     delay(STREAMING_IDLE_POLL_MS)
                 }
                 visibleText.length > target.length || !target.startsWith(visibleText) -> {
@@ -88,17 +73,33 @@ fun SmoothStreamingText(
                     }
                     delay(STREAMING_WORD_REVEAL_INTERVAL_MS)
                 }
-                else -> delay(STREAMING_IDLE_POLL_MS)
             }
         }
     }
 
+    val revealInProgress = isStreaming || visibleText != rawText
+    if (!revealInProgress) {
+        MarkdownText(
+            markdown = rawText,
+            textColor = textColor,
+            style = style,
+            isStreaming = false,
+            fillWidth = false,
+            onOpenCanvas = onOpenCanvas,
+            modifier = modifier
+        )
+        return
+    }
+
     Column(modifier = modifier) {
         if (visibleText.isNotBlank()) {
-            Text(
-                text = visibleText,
+            MarkdownText(
+                markdown = visibleText,
+                textColor = textColor,
                 style = style,
-                color = textColor
+                isStreaming = true,
+                fillWidth = false,
+                onOpenCanvas = onOpenCanvas
             )
         }
         StreamingTailEffect(
@@ -120,29 +121,16 @@ fun SmoothStreamingThinkingText(
     hapticsEnabled: Boolean = true,
     modifier: Modifier = Modifier
 ) {
-    if (!isStreaming) {
-        Text(
-            text = rawText,
-            style = style,
-            color = textColor,
-            fontStyle = FontStyle.Italic,
-            modifier = modifier
-        )
-        return
-    }
-
-    if (rawText.isEmpty()) return
-
     val haptics = rememberHapticFeedback()
     val latestRawText by rememberUpdatedState(rawText)
-    var visibleText by remember { mutableStateOf("") }
+    var visibleText by remember { mutableStateOf(if (isStreaming) "" else rawText) }
 
-    LaunchedEffect(isStreaming) {
-        while (isStreaming) {
+    LaunchedEffect(rawText, isStreaming) {
+        while (visibleText != latestRawText) {
             val target = latestRawText
             when {
                 target.isEmpty() -> {
-                    if (visibleText.isNotEmpty()) visibleText = ""
+                    visibleText = ""
                     delay(STREAMING_IDLE_POLL_MS)
                 }
                 visibleText.length > target.length || !target.startsWith(visibleText) -> {
@@ -156,7 +144,6 @@ fun SmoothStreamingThinkingText(
                     }
                     delay(THINKING_WORD_REVEAL_INTERVAL_MS)
                 }
-                else -> delay(STREAMING_IDLE_POLL_MS)
             }
         }
     }

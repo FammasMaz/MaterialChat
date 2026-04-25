@@ -309,8 +309,8 @@ fun MessageBubble(
                         .animateContentSize(
                             animationSpec = if (message.isStreaming) {
                                 spring(
-                                    dampingRatio = 0.68f,
-                                    stiffness = 420f
+                                    dampingRatio = 0.9f,
+                                    stiffness = 320f
                                 )
                             } else {
                                 spring(

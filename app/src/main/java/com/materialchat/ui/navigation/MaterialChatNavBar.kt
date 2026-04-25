@@ -2,8 +2,8 @@ package com.materialchat.ui.navigation
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.expandHorizontally
@@ -26,6 +26,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.filled.Settings
@@ -227,6 +228,11 @@ private fun ToolbarDestinationPill(
         animationSpec = ExpressiveMotion.Effects.color(),
         label = "toolbarDestinationTint_${tab.name}"
     )
+    val pillWidth by animateDpAsState(
+        targetValue = if (selected && expanded) 116.dp else 48.dp,
+        animationSpec = ExpressiveMotion.Spatial.fabExpand(),
+        label = "toolbarDestinationWidth_${tab.name}"
+    )
 
     Surface(
         onClick = {
@@ -234,6 +240,7 @@ private fun ToolbarDestinationPill(
             onClick()
         },
         modifier = Modifier
+            .width(pillWidth)
             .defaultMinSize(minHeight = 48.dp)
             .graphicsLayer {
                 scaleX = scale
@@ -246,8 +253,7 @@ private fun ToolbarDestinationPill(
     ) {
         Row(
             modifier = Modifier
-                .animateContentSize(animationSpec = ExpressiveMotion.Spatial.fabExpand())
-                .padding(start = 4.dp, end = if (selected && expanded) 14.dp else 4.dp, top = 4.dp, bottom = 4.dp),
+                .padding(start = 4.dp, end = 4.dp, top = 4.dp, bottom = 4.dp),
             horizontalArrangement = Arrangement.spacedBy(10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {

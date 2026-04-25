@@ -602,20 +602,27 @@ class ChatViewModel @Inject constructor(
         sendCurrentInput(forceImageGeneration = true)
     }
 
+    private fun isImageGenerationModelId(modelId: String): Boolean {
+        val model = modelId.substringAfter('/', modelId).lowercase()
+        return model.startsWith("gpt-image-") || model == "gpt-image-2"
+    }
+
     private fun sendCurrentInput(forceImageGeneration: Boolean) {
         val currentState = _uiState.value
         if (currentState !is ChatUiState.Success) return
-        if (forceImageGeneration && currentState.inputText.isBlank()) {
+        val selectedModelIsImage = isImageGenerationModelId(currentState.modelName)
+        val shouldGenerateImage = forceImageGeneration || selectedModelIsImage
+        if (shouldGenerateImage && currentState.inputText.isBlank()) {
             viewModelScope.launch {
                 _events.emit(ChatEvent.ShowSnackbar("Describe the image you want to create first"))
             }
             return
         }
-        if (!forceImageGeneration && !currentState.canSend) return
-        if (forceImageGeneration && currentState.isStreaming) return
+        if (!shouldGenerateImage && !currentState.canSend) return
+        if (shouldGenerateImage && currentState.isStreaming) return
 
         // If fusion is enabled and configured, use fusion flow
-        if (!forceImageGeneration && currentState.fusionConfig.isEnabled &&
+        if (!shouldGenerateImage && currentState.fusionConfig.isEnabled &&
             currentState.fusionConfig.selectedModels.size >= 2 &&
             currentState.fusionConfig.judgeModel != null
         ) {
@@ -624,8 +631,9 @@ class ChatViewModel @Inject constructor(
         }
 
         val messageContent = currentState.inputText.trim()
-        val attachments = if (forceImageGeneration) emptyList() else currentState.pendingAttachments.toList()
-        val quotedMessage = if (forceImageGeneration) null else currentState.quotedMessage
+        val attachments = if (shouldGenerateImage) emptyList() else currentState.pendingAttachments.toList()
+        val quotedMessage = if (shouldGenerateImage) null else currentState.quotedMessage
+        val imageModelOverride = currentState.modelName.takeIf { selectedModelIsImage }
 
         // Prepend quoted text if present
         val finalContent = if (quotedMessage != null) {
@@ -670,7 +678,8 @@ class ChatViewModel @Inject constructor(
                     systemPrompt = currentSystemPrompt,
                     reasoningEffort = currentReasoningEffort,
                     webSearchConfig = webSearchConfig,
-                    forceImageGeneration = forceImageGeneration
+                    forceImageGeneration = shouldGenerateImage,
+                    imageModelOverride = imageModelOverride
                 ).collect { state ->
                     updateStreamingState(state)
                     // Notify when completed and app is in background
@@ -868,6 +877,7 @@ class ChatViewModel @Inject constructor(
 
                 val modelsResult = manageProvidersUseCase.fetchModels(conversation.providerId)
                 val models = modelsResult.getOrElse { emptyList() }
+                    .filterNot { isImageGenerationModelId(it.id) }
 
                 val updatedState = _uiState.value
                 if (updatedState is ChatUiState.Success) {

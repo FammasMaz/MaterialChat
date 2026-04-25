@@ -18,6 +18,7 @@ import com.materialchat.domain.repository.WebSearchRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.onCompletion
@@ -67,7 +68,8 @@ class SendMessageUseCase @Inject constructor(
         systemPrompt: String,
         reasoningEffort: ReasoningEffort,
         webSearchConfig: WebSearchConfig = WebSearchConfig(),
-        forceImageGeneration: Boolean = false
+        forceImageGeneration: Boolean = false,
+        imageModelOverride: String? = null
     ): Flow<StreamingState> = flow {
         // Get the conversation and provider
         val conversation = conversationRepository.getConversation(conversationId)
@@ -99,8 +101,9 @@ class SendMessageUseCase @Inject constructor(
             attachments = attachments
         )
         if (imagePrompt != null) {
-            val imageModel = appPreferences.defaultImageGenerationModel.first()
-                .ifBlank { AppPreferences.DEFAULT_IMAGE_GENERATION_MODEL }
+            val imageModel = imageModelOverride?.takeIf { it.isNotBlank() }
+                ?: appPreferences.defaultImageGenerationModel.first()
+                    .ifBlank { AppPreferences.DEFAULT_IMAGE_GENERATION_MODEL }
             val assistantMessage = Message(
                 conversationId = conversationId,
                 role = MessageRole.ASSISTANT,
@@ -235,8 +238,12 @@ class SendMessageUseCase @Inject constructor(
                 }
                 is StreamingState.Completed -> {
                     // Capture final content for title generation
+                    val hadStreamingContent = accumulatedContent.isNotBlank() || !accumulatedThinking.isNullOrBlank()
                     accumulatedContent = state.finalContent
                     contentUpdater.persistFinal(state.finalContent, state.finalThinkingContent)
+                    if (!hadStreamingContent && state.finalContent.isNotBlank()) {
+                        delay(calculatePostCompletionRevealHoldMs(state.finalContent))
+                    }
                     conversationRepository.setMessageStreaming(assistantMessageId, false)
 
                     // Save duration data
@@ -461,6 +468,11 @@ class SendMessageUseCase @Inject constructor(
      * Explicit image actions always win; otherwise we route obvious create/draw/render
      * image prompts so any chat model can seamlessly hand off to image generation.
      */
+    private fun calculatePostCompletionRevealHoldMs(content: String): Long {
+        val words = content.trim().split(Regex("\\s+")).count { it.isNotBlank() }
+        return (words * 38L).coerceIn(420L, 2200L)
+    }
+
     private fun resolveImageGenerationPrompt(
         userContent: String,
         forceImageGeneration: Boolean,
