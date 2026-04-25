@@ -42,6 +42,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AddPhotoAlternate
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Check
@@ -156,6 +157,7 @@ fun MessageInput(
     val textScrollState = rememberScrollState()
     val focusRequester = remember { FocusRequester() }
     val keyboardController = LocalSoftwareKeyboardController.current
+    var imageActionMenuExpanded by remember { mutableStateOf(false) }
 
     // Auto-focus after shared element animation completes for new chats
     // Delay allows the FAB-to-input morph animation to finish smoothly
@@ -218,22 +220,50 @@ fun MessageInput(
             )
         }
 
-        ImageQuickActionsRow(
-            visible = !isStreaming,
-            hapticsEnabled = hapticsEnabled,
-            onAttachImage = onAttachImage,
-            onGenerateImage = onGenerateImage,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 4.dp, vertical = 4.dp)
-        )
-
         // M3 Expressive: Row with separate circular buttons + pill input
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
+            // Add menu - compact image actions, kept behind the familiar plus affordance.
+            Box {
+                InputShapeButton(
+                    icon = Icons.Default.Add,
+                    contentDescription = "Image actions",
+                    enabled = !isStreaming,
+                    containerColor = if (!isStreaming) {
+                        MaterialTheme.colorScheme.tertiaryContainer
+                    } else {
+                        MaterialTheme.colorScheme.surfaceContainerHigh
+                    },
+                    contentColor = if (!isStreaming) {
+                        MaterialTheme.colorScheme.onTertiaryContainer
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    },
+                    shapeToken = if (imageActionMenuExpanded) ExpressiveShapeToken.Flower else ExpressiveShapeToken.CookieSoft,
+                    startAngle = if (imageActionMenuExpanded) 12 else 30,
+                    onClick = {
+                        haptics.perform(HapticPattern.MORPH_TRANSITION, hapticsEnabled)
+                        imageActionMenuExpanded = !imageActionMenuExpanded
+                    }
+                )
+
+                ImageActionMenu(
+                    expanded = imageActionMenuExpanded,
+                    onDismiss = { imageActionMenuExpanded = false },
+                    onAttachImage = {
+                        imageActionMenuExpanded = false
+                        onAttachImage()
+                    },
+                    onGenerateImage = {
+                        imageActionMenuExpanded = false
+                        onGenerateImage()
+                    }
+                )
+            }
+
             // Fusion mode toggle - M3 Expressive merge icon with badge
             FusionModeToggle(
                 isEnabled = fusionEnabled,
@@ -360,87 +390,6 @@ fun MessageInput(
             TokenCounter(
                 text = inputText,
                 modifier = Modifier.fillMaxWidth()
-            )
-        }
-    }
-}
-
-@Composable
-private fun ImageQuickActionsRow(
-    visible: Boolean,
-    hapticsEnabled: Boolean,
-    onAttachImage: () -> Unit,
-    onGenerateImage: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    AnimatedVisibility(
-        visible = visible,
-        enter = expandVertically(animationSpec = ExpressiveMotion.Spatial.default()) +
-            fadeIn(animationSpec = ExpressiveMotion.Effects.alpha()),
-        exit = shrinkVertically(animationSpec = ExpressiveMotion.Spatial.default()) +
-            fadeOut(animationSpec = ExpressiveMotion.Effects.alpha())
-    ) {
-        Row(
-            modifier = modifier.horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            ImageQuickActionChip(
-                icon = Icons.Filled.AutoAwesome,
-                label = "Create image",
-                containerColor = MaterialTheme.colorScheme.primaryContainer,
-                contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                hapticsEnabled = hapticsEnabled,
-                onClick = onGenerateImage
-            )
-            ImageQuickActionChip(
-                icon = Icons.Default.AddPhotoAlternate,
-                label = "Attach photo",
-                containerColor = MaterialTheme.colorScheme.tertiaryContainer,
-                contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
-                hapticsEnabled = hapticsEnabled,
-                onClick = onAttachImage
-            )
-        }
-    }
-}
-
-@Composable
-private fun ImageQuickActionChip(
-    icon: ImageVector,
-    label: String,
-    containerColor: androidx.compose.ui.graphics.Color,
-    contentColor: androidx.compose.ui.graphics.Color,
-    hapticsEnabled: Boolean,
-    onClick: () -> Unit
-) {
-    val haptics = rememberHapticFeedback()
-    Surface(
-        onClick = {
-            haptics.perform(HapticPattern.CLICK, hapticsEnabled)
-            onClick()
-        },
-        shape = RoundedCornerShape(999.dp),
-        color = containerColor,
-        contentColor = contentColor,
-        tonalElevation = 2.dp,
-        modifier = Modifier.defaultMinSize(minHeight = 40.dp)
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 14.dp, vertical = 9.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = contentColor,
-                modifier = Modifier.size(18.dp)
-            )
-            Text(
-                text = label,
-                style = MaterialTheme.typography.labelLarge,
-                color = contentColor
             )
         }
     }

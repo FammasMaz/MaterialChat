@@ -35,10 +35,9 @@ import kotlinx.coroutines.delay
 /**
  * Streaming text composable optimized for long responses without looking raw.
  *
- * While streaming, text is revealed word-by-word from a local buffer instead of
- * dumping each provider/Room chunk all at once. This keeps the M3 Expressive
- * bubble width/height morphing naturally with each word while completed messages
- * still render with full Markdown formatting.
+ * While streaming, text is revealed from a tiny local buffer instead of showing
+ * each provider/Room update immediately. This smooths uneven chunks while still
+ * rendering Markdown during the reveal and full Markdown after completion.
  */
 @Composable
 fun SmoothStreamingText(
@@ -54,26 +53,23 @@ fun SmoothStreamingText(
     val latestRawText by rememberUpdatedState(rawText)
     var visibleText by remember { mutableStateOf(if (isStreaming) "" else rawText) }
 
-    LaunchedEffect(rawText, isStreaming) {
-        while (visibleText != latestRawText) {
+    LaunchedEffect(isStreaming) {
+        while (isStreaming || visibleText != latestRawText) {
             val target = latestRawText
             when {
-                target.isEmpty() -> {
-                    visibleText = ""
-                    delay(STREAMING_IDLE_POLL_MS)
-                }
+                target.isEmpty() -> visibleText = ""
                 visibleText.length > target.length || !target.startsWith(visibleText) -> {
                     visibleText = target.commonPrefixWith(visibleText)
                 }
                 visibleText.length < target.length -> {
-                    val nextEnd = target.nextStreamingRevealEnd(visibleText.length)
+                    val nextEnd = target.nextSmoothStreamingRevealEnd(visibleText.length)
                     if (nextEnd > visibleText.length) {
                         visibleText = target.substring(0, nextEnd)
                         haptics.perform(HapticPattern.CONTENT_TICK, hapticsEnabled)
                     }
-                    delay(STREAMING_WORD_REVEAL_INTERVAL_MS)
                 }
             }
+            delay(if (visibleText == target) STREAMING_IDLE_POLL_MS else STREAMING_TEXT_FRAME_MS)
         }
     }
 
@@ -125,26 +121,23 @@ fun SmoothStreamingThinkingText(
     val latestRawText by rememberUpdatedState(rawText)
     var visibleText by remember { mutableStateOf(if (isStreaming) "" else rawText) }
 
-    LaunchedEffect(rawText, isStreaming) {
-        while (visibleText != latestRawText) {
+    LaunchedEffect(isStreaming) {
+        while (isStreaming || visibleText != latestRawText) {
             val target = latestRawText
             when {
-                target.isEmpty() -> {
-                    visibleText = ""
-                    delay(STREAMING_IDLE_POLL_MS)
-                }
+                target.isEmpty() -> visibleText = ""
                 visibleText.length > target.length || !target.startsWith(visibleText) -> {
                     visibleText = target.commonPrefixWith(visibleText)
                 }
                 visibleText.length < target.length -> {
-                    val nextEnd = target.nextStreamingRevealEnd(visibleText.length)
+                    val nextEnd = target.nextSmoothStreamingRevealEnd(visibleText.length)
                     if (nextEnd > visibleText.length) {
                         visibleText = target.substring(0, nextEnd)
                         haptics.perform(HapticPattern.THINKING_TICK, hapticsEnabled)
                     }
-                    delay(THINKING_WORD_REVEAL_INTERVAL_MS)
                 }
             }
+            delay(if (visibleText == target) STREAMING_IDLE_POLL_MS else THINKING_TEXT_FRAME_MS)
         }
     }
 
@@ -184,31 +177,35 @@ private fun StreamingTailEffect(
     )
 }
 
-private fun String.nextStreamingRevealEnd(startIndex: Int): Int {
+private fun String.nextSmoothStreamingRevealEnd(startIndex: Int): Int {
     if (isEmpty()) return 0
-    var index = startIndex.coerceIn(0, length)
-    if (index >= length) return length
+    val start = startIndex.coerceIn(0, length)
+    if (start >= length) return length
 
-    // Include any spacing before the next word so the bubble grows on word units,
-    // not on visually empty whitespace ticks.
-    while (index < length && this[index].isWhitespace()) {
-        index++
+    val remaining = length - start
+    val step = when {
+        remaining > 280 -> 24
+        remaining > 120 -> 16
+        remaining > 48 -> 10
+        else -> 5
+    }
+    var end = (start + step).coerceAtMost(length)
+
+    // If we are very close to a natural boundary, include it so words do not
+    // appear as visibly chopped fragments.
+    while (end < length && end - start < step + 6 && !this[end - 1].isWhitespace()) {
+        val char = this[end]
+        if (char.isWhitespace() || char in NATURAL_STREAMING_BOUNDARIES) {
+            end++
+            break
+        }
+        end++
     }
 
-    // Reveal the next word. If the provider has only delivered a partial word,
-    // reveal that partial word so the stream never looks frozen.
-    while (index < length && !this[index].isWhitespace()) {
-        index++
-    }
-
-    // Carry trailing whitespace with the word; this keeps the next reveal clean.
-    while (index < length && this[index].isWhitespace()) {
-        index++
-    }
-
-    return index.coerceAtLeast((startIndex + 1).coerceAtMost(length))
+    return end.coerceAtLeast((start + 1).coerceAtMost(length))
 }
 
-private const val STREAMING_WORD_REVEAL_INTERVAL_MS = 38L
-private const val THINKING_WORD_REVEAL_INTERVAL_MS = 58L
-private const val STREAMING_IDLE_POLL_MS = 16L
+private val NATURAL_STREAMING_BOUNDARIES = setOf('.', ',', ';', ':', '!', '?', ')', ']', '}')
+private const val STREAMING_TEXT_FRAME_MS = 18L
+private const val THINKING_TEXT_FRAME_MS = 28L
+private const val STREAMING_IDLE_POLL_MS = 24L
