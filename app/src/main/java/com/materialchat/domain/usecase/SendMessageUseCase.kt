@@ -1,5 +1,6 @@
 package com.materialchat.domain.usecase
 
+import android.content.Context
 import com.materialchat.data.local.preferences.AppPreferences
 import com.materialchat.di.ApplicationScope
 import com.materialchat.domain.model.Attachment
@@ -15,6 +16,8 @@ import com.materialchat.domain.repository.ConversationRepository
 import com.materialchat.domain.repository.PersonaRepository
 import com.materialchat.domain.repository.ProviderRepository
 import com.materialchat.domain.repository.WebSearchRepository
+import com.materialchat.notifications.ImageGenerationForegroundService
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.Flow
@@ -48,7 +51,8 @@ class SendMessageUseCase @Inject constructor(
     private val webSearchRepository: WebSearchRepository,
     private val appPreferences: AppPreferences,
     private val generateConversationTitleUseCase: GenerateConversationTitleUseCase,
-    @ApplicationScope private val applicationScope: CoroutineScope
+    @ApplicationScope private val applicationScope: CoroutineScope,
+    @ApplicationContext private val context: Context
 ) {
     /**
      * Sends a message and returns a flow of streaming states.
@@ -118,6 +122,7 @@ class SendMessageUseCase @Inject constructor(
             val startedAt = System.currentTimeMillis()
             var finalized = false
             try {
+                ImageGenerationForegroundService.startImage(context, imageModel)
                 val result = chatRepository.generateImage(
                     provider = provider,
                     prompt = imagePrompt,
@@ -157,6 +162,7 @@ class SendMessageUseCase @Inject constructor(
                     )
                 }
             } finally {
+                ImageGenerationForegroundService.stop(context)
                 if (!finalized) {
                     withContext(NonCancellable) {
                         runCatching { conversationRepository.setMessageStreaming(assistantMessageId, false) }
@@ -204,6 +210,8 @@ class SendMessageUseCase @Inject constructor(
             conversationRepository = conversationRepository,
             messageId = assistantMessageId
         )
+
+        ImageGenerationForegroundService.startChat(context, conversation.modelName)
 
         // Stream the response from the chat repository
         chatRepository.sendMessage(
@@ -260,6 +268,7 @@ class SendMessageUseCase @Inject constructor(
                         val imageModel = appPreferences.defaultImageGenerationModel.first()
                             .ifBlank { AppPreferences.DEFAULT_IMAGE_GENERATION_MODEL }
                         val outputFormat = appPreferences.defaultImageOutputFormat.first()
+                        ImageGenerationForegroundService.startImage(context, imageModel)
                         val imageResult = chatRepository.generateImage(
                             provider = provider,
                             prompt = imageToolPrompt,
@@ -322,6 +331,7 @@ class SendMessageUseCase @Inject constructor(
                 try {
                     contentUpdater.flush()
                     conversationRepository.setMessageStreaming(assistantMessageId, false)
+                    ImageGenerationForegroundService.stop(context)
                 } catch (_: Exception) { }
             }
         }.collect { state ->

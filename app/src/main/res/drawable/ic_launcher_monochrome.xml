@@ -4,47 +4,35 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    
-    <!--
-    MaterialChat Monochrome Icon for Themed Icons (Android 13+)
-    Single color version - system will tint this based on wallpaper
-    -->
 
-    <!-- Sparkle accent -->
-    <path
-        android:fillColor="#000000"
-        android:pathData="M72,24 L78,30 L72,36 L66,30 Z" />
-
-    <!-- Chat bubble with cut-out dots -->
     <path
         android:fillColor="#000000"
         android:fillType="evenOdd"
-        android:pathData="M38,38
-                         H70
-                         C75,38 79,42 79,47
-                         V59
-                         C79,64 75,68 70,68
-                         H53
-                         L45,76
-                         L46,68
-                         H38
-                         C33,68 29,64 29,59
-                         V47
-                         C29,42 33,38 38,38
-                         Z
-                         M48,53
-                         m-3,0
-                         a3,3 0,1 0,6 0
-                         a3,3 0,1 0,-6 0
-                         Z
-                         M58,53
-                         m-3,0
-                         a3,3 0,1 0,6 0
-                         a3,3 0,1 0,-6 0
-                         Z
-                         M68,53
-                         m-3,0
-                         a3,3 0,1 0,6 0
-                         a3,3 0,1 0,-6 0
-                         Z" />
+        android:pathData="M35,30
+            C28,30 22,36 22,44
+            V59
+            C22,69 30,77 41,77
+            H51
+            L61,86
+            C62,87 64,86 64,84
+            L63,77
+            H73
+            C82,77 88,70 88,61
+            V45
+            C88,36 81,30 72,30
+            H35Z
+            M41,53m-4,0a4,4 0,1 0,8 0a4,4 0,1 0,-8 0
+            M51,53m-4,0a4,4 0,1 0,8 0a4,4 0,1 0,-8 0
+            M61,53m-4,0a4,4 0,1 0,8 0a4,4 0,1 0,-8 0" />
+
+    <path
+        android:fillColor="#000000"
+        android:pathData="M77,21
+            L81,31
+            L91,35
+            L81,39
+            L77,49
+            L73,39
+            L63,35
+            L73,31Z" />
 </vector>

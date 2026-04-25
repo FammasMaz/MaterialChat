@@ -524,7 +524,8 @@ fun MessageBubble(
                 ) {
                     // Action buttons (including bookmark)
                     Row(
-                        verticalAlignment = Alignment.CenterVertically
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         if (messageItem.showActions) {
                             MessageActions(
@@ -578,7 +579,7 @@ fun MessageBubble(
 
                             Box(
                                 modifier = Modifier
-                                    .size(48.dp)
+                                    .size(46.dp)
                                     .graphicsLayer {
                                         scaleX = bookmarkScale
                                         scaleY = bookmarkScale
@@ -763,7 +764,7 @@ private fun getBubbleStyle(
             MaterialTheme.colorScheme.tertiaryContainer,
             0.24f
         )
-        else -> lerp(surfaceBase, MaterialTheme.colorScheme.primaryContainer, 0.75f)
+        else -> MaterialTheme.colorScheme.primaryContainer
     }
     val assistantBubble = when (bubbleFamily) {
         AppPreferences.ChatBubbleStyle.GEOMETRIC -> lerp(
@@ -771,7 +772,7 @@ private fun getBubbleStyle(
             MaterialTheme.colorScheme.secondaryContainer,
             0.18f
         )
-        else -> lerp(surfaceBase, MaterialTheme.colorScheme.surfaceContainerHigh, 0.7f)
+        else -> lerp(surfaceBase, MaterialTheme.colorScheme.surfaceContainerHighest, 0.86f)
     }
     val systemBubble = lerp(surfaceBase, MaterialTheme.colorScheme.tertiaryContainer, 0.55f)
     val horizontalPadding = if (bubbleFamily == AppPreferences.ChatBubbleStyle.COMPACT) 12.dp else 14.dp

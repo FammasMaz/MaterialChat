@@ -13,12 +13,12 @@ if (file("google-services.json").exists()) {
 
 android {
     namespace = "com.materialchat"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.materialchat"
         minSdk = 26
-        targetSdk = 35
+        targetSdk = 36
         versionCode = 87
         versionName = "2.15.6"
 

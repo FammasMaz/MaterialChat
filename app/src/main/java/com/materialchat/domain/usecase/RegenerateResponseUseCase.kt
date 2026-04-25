@@ -1,5 +1,6 @@
 package com.materialchat.domain.usecase
 
+import android.content.Context
 import com.materialchat.domain.model.Message
 import com.materialchat.domain.model.MessageRole
 import com.materialchat.domain.model.ReasoningEffort
@@ -10,6 +11,8 @@ import com.materialchat.domain.repository.ConversationRepository
 import com.materialchat.domain.repository.PersonaRepository
 import com.materialchat.domain.repository.ProviderRepository
 import com.materialchat.domain.repository.WebSearchRepository
+import com.materialchat.notifications.ImageGenerationForegroundService
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
@@ -34,7 +37,8 @@ class RegenerateResponseUseCase @Inject constructor(
     private val conversationRepository: ConversationRepository,
     private val providerRepository: ProviderRepository,
     private val personaRepository: PersonaRepository,
-    private val webSearchRepository: WebSearchRepository
+    private val webSearchRepository: WebSearchRepository,
+    @ApplicationContext private val context: Context
 ) {
     /**
      * Regenerates the last response in a conversation.
@@ -113,6 +117,8 @@ class RegenerateResponseUseCase @Inject constructor(
             messageId = assistantMessageId
         )
 
+        ImageGenerationForegroundService.startChat(context, modelToUse)
+
         // Stream the response from the chat repository
         chatRepository.sendMessage(
             provider = provider,
@@ -177,6 +183,7 @@ class RegenerateResponseUseCase @Inject constructor(
                 try {
                     contentUpdater.flush()
                     conversationRepository.setMessageStreaming(assistantMessageId, false)
+                    ImageGenerationForegroundService.stop(context)
                 } catch (_: Exception) { }
             }
         }.collect { state ->

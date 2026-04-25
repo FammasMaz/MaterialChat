@@ -4,45 +4,73 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    
-    <!--
-    MaterialChat Adaptive Icon Foreground
 
-    Design: Warm, friendly chat bubble with sparkle accent
-    Safe zone: 66dp circle centered at (54, 54)
-    Content bounds: 21dp to 87dp
-    -->
+    <!-- MaterialChat: expressive chat form + generative sparkle -->
+    <path
+        android:fillColor="#6750A4"
+        android:pathData="M35,30
+            C28,30 22,36 22,44
+            V59
+            C22,69 30,77 41,77
+            H51
+            L61,86
+            C62,87 64,86 64,84
+            L63,77
+            H73
+            C82,77 88,70 88,61
+            V45
+            C88,36 81,30 72,30
+            H35Z" />
 
-    <!-- Sparkle accent -->
     <path
-        android:fillColor="#D9824A"
-        android:pathData="M72,24 L78,30 L72,36 L66,30 Z" />
+        android:fillColor="#D0BCFF"
+        android:pathData="M39,40
+            C34,40 30,44 30,49
+            V57
+            C30,62 34,66 39,66
+            H60
+            C65,66 69,62 69,57
+            V49
+            C69,44 65,40 60,40
+            H39Z" />
 
-    <!-- Chat bubble -->
     <path
-        android:fillColor="#5A3A2C"
-        android:pathData="M38,38
-                         H70
-                         C75,38 79,42 79,47
-                         V59
-                         C79,64 75,68 70,68
-                         H53
-                         L45,76
-                         L46,68
-                         H38
-                         C33,68 29,64 29,59
-                         V47
-                         C29,42 33,38 38,38
-                         Z" />
+        android:fillColor="#FFFBFE"
+        android:pathData="M41,53m-4,0a4,4 0,1 1,8 0a4,4 0,1 1,-8 0" />
+    <path
+        android:fillColor="#FFFBFE"
+        android:pathData="M51,53m-4,0a4,4 0,1 1,8 0a4,4 0,1 1,-8 0" />
+    <path
+        android:fillColor="#FFFBFE"
+        android:pathData="M61,53m-4,0a4,4 0,1 1,8 0a4,4 0,1 1,-8 0" />
 
-    <!-- Three dots -->
     <path
-        android:fillColor="#FDF7F1"
-        android:pathData="M48,53m-3,0a3,3 0,1 1,6 0a3,3 0,1 1,-6 0" />
+        android:fillColor="#FFD8E4"
+        android:pathData="M77,21
+            L81,31
+            L91,35
+            L81,39
+            L77,49
+            L73,39
+            L63,35
+            L73,31Z" />
+
     <path
-        android:fillColor="#FDF7F1"
-        android:pathData="M58,53m-3,0a3,3 0,1 1,6 0a3,3 0,1 1,-6 0" />
+        android:fillColor="#B3261E"
+        android:pathData="M78,29
+            L80,35
+            L86,37
+            L80,39
+            L78,45
+            L76,39
+            L70,37
+            L76,35Z" />
+
     <path
-        android:fillColor="#FDF7F1"
-        android:pathData="M68,53m-3,0a3,3 0,1 1,6 0a3,3 0,1 1,-6 0" />
+        android:fillColor="#7D5260"
+        android:pathData="M29,73
+            C27,72 25,75 27,77
+            C31,81 37,83 43,82
+            C45,82 45,79 43,78
+            C38,78 33,76 29,73Z" />
 </vector>

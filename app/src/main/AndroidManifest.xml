@@ -12,6 +12,7 @@
 
     <!-- Runtime notification permission (Android 13+) -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.POST_PROMOTED_NOTIFICATIONS" />
 
     <!-- Image attachment permissions -->
     <!-- For Android 13+ (API 33+): Read images from media store -->
@@ -33,6 +34,7 @@
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
 
     <application
         android:name=".MaterialChatApplication"
@@ -74,6 +76,11 @@
         </provider>
 
         <!-- Note: Ackpine library automatically registers its FileProvider for APK installation -->
+
+        <service
+            android:name=".notifications.ImageGenerationForegroundService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
 
         <!-- VoiceInteractionService for system-level assistant integration -->
         <!-- Allows MaterialChat to replace Google Gemini on Pixel phones -->
