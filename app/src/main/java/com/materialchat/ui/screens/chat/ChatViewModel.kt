@@ -848,9 +848,21 @@ class ChatViewModel @Inject constructor(
         viewModelScope.launch {
             val conversation = getConversationsUseCase.getConversation(activeConversationId.value)
             if (conversation?.isEphemeral == true) {
-                cancelStreaming()
-                runCatching {
-                    conversationRepository.deleteConversation(conversation.parentId ?: conversation.id)
+                val hasActiveStreamingMessage = conversationRepository
+                    .getMessages(activeConversationId.value)
+                    .any { it.isStreaming }
+
+                if (hasActiveStreamingMessage) {
+                    // Let background image/chat generation finish and make the chat visible
+                    // from the home screen while it is still active.
+                    conversationRepository.updateConversation(
+                        conversation.copy(isEphemeral = false)
+                    )
+                } else {
+                    cancelStreaming()
+                    runCatching {
+                        conversationRepository.deleteConversation(conversation.parentId ?: conversation.id)
+                    }
                 }
             }
             _events.emit(ChatEvent.NavigateBack)

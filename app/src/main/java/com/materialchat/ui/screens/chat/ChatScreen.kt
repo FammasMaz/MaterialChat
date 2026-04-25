@@ -6,6 +6,7 @@ import android.graphics.BitmapFactory
 import android.net.Uri
 import android.util.Base64
 import android.util.Log
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -271,6 +272,10 @@ fun ChatScreen(
     }
 
     val isEphemeral = (uiState as? ChatUiState.Success)?.isEphemeral == true
+
+    BackHandler {
+        viewModel.navigateBack()
+    }
 
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
 
