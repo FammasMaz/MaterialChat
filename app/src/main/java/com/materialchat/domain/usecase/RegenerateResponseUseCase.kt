@@ -105,6 +105,12 @@ class RegenerateResponseUseCase @Inject constructor(
             modelName = modelToUse
         )
         val assistantMessageId = conversationRepository.addMessage(assistantMessage)
+        webSearchContext.metadata?.let { meta ->
+            conversationRepository.updateMessageWebSearchMetadata(
+                assistantMessageId,
+                Json.encodeToString(meta)
+            )
+        }
 
         // Emit starting state
         emit(StreamingState.Starting)
@@ -166,12 +172,6 @@ class RegenerateResponseUseCase @Inject constructor(
                     } else null
                     conversationRepository.updateMessageDurations(assistantMessageId, thinkingDurationMs, totalDurationMs)
 
-                    webSearchContext.metadata?.let { meta ->
-                        conversationRepository.updateMessageWebSearchMetadata(
-                            assistantMessageId,
-                            Json.encodeToString(meta)
-                        )
-                    }
                 }
                 else -> { /* Ignore other states */ }
             }

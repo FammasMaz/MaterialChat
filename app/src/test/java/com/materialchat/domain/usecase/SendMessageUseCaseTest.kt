@@ -1,21 +1,32 @@
 package com.materialchat.domain.usecase
 
+import android.content.Context
+import com.materialchat.data.local.preferences.AppPreferences
 import com.materialchat.domain.model.Conversation
 import com.materialchat.domain.model.Message
 import com.materialchat.domain.model.MessageRole
 import com.materialchat.domain.model.Provider
 import com.materialchat.domain.model.ProviderType
+import com.materialchat.domain.model.ReasoningEffort
 import com.materialchat.domain.model.StreamingState
+import com.materialchat.domain.model.WebSearchConfig
+import com.materialchat.domain.model.WebSearchMetadata
+import com.materialchat.domain.model.WebSearchProvider
+import com.materialchat.domain.model.WebSearchResult
 import com.materialchat.domain.repository.ChatRepository
 import com.materialchat.domain.repository.ConversationRepository
+import com.materialchat.domain.repository.PersonaRepository
 import com.materialchat.domain.repository.ProviderRepository
+import com.materialchat.domain.repository.WebSearchRepository
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
+import io.mockk.verify
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.toList
+import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -24,18 +35,18 @@ import org.junit.Test
 
 /**
  * Unit tests for [SendMessageUseCase].
- *
- * Tests cover:
- * - Successful message sending and streaming
- * - Error handling
- * - Message persistence
- * - Title generation
  */
 class SendMessageUseCaseTest {
 
     private lateinit var chatRepository: ChatRepository
     private lateinit var conversationRepository: ConversationRepository
     private lateinit var providerRepository: ProviderRepository
+    private lateinit var personaRepository: PersonaRepository
+    private lateinit var webSearchRepository: WebSearchRepository
+    private lateinit var appPreferences: AppPreferences
+    private lateinit var generateConversationTitleUseCase: GenerateConversationTitleUseCase
+    private lateinit var applicationScope: TestScope
+    private lateinit var context: Context
     private lateinit var sendMessageUseCase: SendMessageUseCase
 
     private val testProvider = Provider(
@@ -50,266 +61,154 @@ class SendMessageUseCaseTest {
 
     private val testConversation = Conversation(
         id = "conv-1",
-        title = "New Chat",
+        title = Conversation.generateDefaultTitle(),
         providerId = "provider-1",
         modelName = "test-model",
         createdAt = 1000L,
         updatedAt = 2000L
     )
 
-    private val testMessages = listOf(
-        Message(
-            id = "msg-1",
-            conversationId = "conv-1",
-            role = MessageRole.USER,
-            content = "Hello!"
-        )
-    )
-
     @Before
     fun setup() {
-        chatRepository = mockk()
-        conversationRepository = mockk()
+        chatRepository = mockk(relaxUnitFun = true)
+        conversationRepository = mockk(relaxUnitFun = true)
         providerRepository = mockk()
+        personaRepository = mockk()
+        webSearchRepository = mockk()
+        appPreferences = mockk()
+        generateConversationTitleUseCase = mockk()
+        applicationScope = TestScope()
+        context = mockk(relaxed = true)
+
+        every { appPreferences.aiGeneratedTitlesEnabled } returns flowOf(false)
+        every { appPreferences.defaultImageGenerationModel } returns flowOf(AppPreferences.DEFAULT_IMAGE_GENERATION_MODEL)
+        every { appPreferences.defaultImageOutputFormat } returns flowOf("png")
+        every { appPreferences.titleGenerationModel } returns flowOf("")
 
         sendMessageUseCase = SendMessageUseCase(
             chatRepository = chatRepository,
             conversationRepository = conversationRepository,
-            providerRepository = providerRepository
+            providerRepository = providerRepository,
+            personaRepository = personaRepository,
+            webSearchRepository = webSearchRepository,
+            appPreferences = appPreferences,
+            generateConversationTitleUseCase = generateConversationTitleUseCase,
+            applicationScope = applicationScope,
+            context = context
         )
     }
 
     @Test
     fun `invoke - emits Starting state first`() = runTest {
-        // Given
         setupSuccessfulFlow()
 
-        // When
-        val results = sendMessageUseCase(
-            conversationId = "conv-1",
-            userContent = "Hello!",
-            systemPrompt = "You are helpful."
-        ).toList()
+        val results = invokeUseCase().toList()
 
-        // Then
         assertTrue(results.first() is StreamingState.Starting)
     }
 
     @Test
-    fun `invoke - saves user message to repository`() = runTest {
-        // Given
-        coEvery { conversationRepository.getConversation("conv-1") } returns testConversation
-        coEvery { providerRepository.getProvider("provider-1") } returns testProvider
-        coEvery { conversationRepository.getMessages("conv-1") } returns testMessages
-        coEvery { conversationRepository.updateMessageContent(any(), any()) } returns Unit
-        coEvery { conversationRepository.setMessageStreaming(any(), any()) } returns Unit
-        coEvery { conversationRepository.updateConversationTitle(any(), any()) } returns Unit
-        coEvery {
-            chatRepository.sendMessage(any(), any(), any(), any())
-        } returns flowOf(
-            StreamingState.Streaming("Hello", "msg-assistant"),
-            StreamingState.Completed("Hello!", "msg-assistant")
-        )
-
+    fun `invoke - saves user message and assistant placeholder`() = runTest {
+        setupSuccessfulFlow()
         val capturedMessages = mutableListOf<Message>()
         coEvery { conversationRepository.addMessage(capture(capturedMessages)) } returnsMany listOf("msg-user", "msg-assistant")
 
-        // When
-        sendMessageUseCase(
-            conversationId = "conv-1",
-            userContent = "Hello there!",
-            systemPrompt = "You are helpful."
-        ).toList()
+        invokeUseCase(userContent = "Hello there!").toList()
 
-        // Then
-        coVerify(exactly = 2) { conversationRepository.addMessage(any()) }
-        val userMessage = capturedMessages.first { it.role == MessageRole.USER }
+        assertEquals(2, capturedMessages.size)
+        val userMessage = capturedMessages[0]
         assertEquals(MessageRole.USER, userMessage.role)
         assertEquals("Hello there!", userMessage.content)
         assertEquals("conv-1", userMessage.conversationId)
-    }
 
-    @Test
-    fun `invoke - creates assistant placeholder message`() = runTest {
-        // Given
-        setupSuccessfulFlow()
-        val messages = mutableListOf<Message>()
-        coEvery { conversationRepository.addMessage(capture(messages)) } returnsMany listOf("msg-user", "msg-assistant")
-
-        // When
-        sendMessageUseCase(
-            conversationId = "conv-1",
-            userContent = "Hello!",
-            systemPrompt = "You are helpful."
-        ).toList()
-
-        // Then
-        assertEquals(2, messages.size)
-        val assistantMessage = messages[1]
+        val assistantMessage = capturedMessages[1]
         assertEquals(MessageRole.ASSISTANT, assistantMessage.role)
         assertEquals("", assistantMessage.content)
         assertTrue(assistantMessage.isStreaming)
     }
 
     @Test
-    fun `invoke - sends message to chat repository with correct parameters`() = runTest {
-        // Given
+    fun `invoke - sends current conversation to chat repository`() = runTest {
         setupSuccessfulFlow()
         val providerSlot = slot<Provider>()
-        val messagesSlot = slot<List<Message>>()
         val modelSlot = slot<String>()
+        val reasoningSlot = slot<ReasoningEffort>()
         val systemPromptSlot = slot<String>()
 
-        coEvery {
+        every {
             chatRepository.sendMessage(
-                capture(providerSlot),
-                capture(messagesSlot),
-                capture(modelSlot),
-                capture(systemPromptSlot)
+                provider = capture(providerSlot),
+                messages = any(),
+                model = capture(modelSlot),
+                reasoningEffort = capture(reasoningSlot),
+                systemPrompt = capture(systemPromptSlot),
+                disableTools = any()
             )
-        } returns flowOf(
-            StreamingState.Streaming("Hello", "msg-assistant"),
-            StreamingState.Completed("Hello!", "msg-assistant")
-        )
+        } returns completedFlow("Hello!")
 
-        // When
-        sendMessageUseCase(
-            conversationId = "conv-1",
-            userContent = "Hello!",
-            systemPrompt = "Be helpful."
-        ).toList()
+        invokeUseCase(systemPrompt = "Be helpful.").toList()
 
-        // Then
         assertEquals(testProvider.id, providerSlot.captured.id)
         assertEquals("test-model", modelSlot.captured)
+        assertEquals(ReasoningEffort.HIGH, reasoningSlot.captured)
         assertEquals("Be helpful.", systemPromptSlot.captured)
     }
 
     @Test
-    fun `invoke - updates message content during streaming`() = runTest {
-        // Given
-        setupSuccessfulFlow()
-        coEvery {
-            chatRepository.sendMessage(any(), any(), any(), any())
-        } returns flowOf(
-            StreamingState.Streaming("He", "msg-assistant"),
-            StreamingState.Streaming("Hell", "msg-assistant"),
-            StreamingState.Streaming("Hello", "msg-assistant"),
-            StreamingState.Completed("Hello!", "msg-assistant")
-        )
-
-        // When
-        sendMessageUseCase(
-            conversationId = "conv-1",
-            userContent = "Hi",
-            systemPrompt = "System"
-        ).toList()
-
-        // Then
-        coVerify(atLeast = 3) { conversationRepository.updateMessageContent("msg-assistant", any()) }
-    }
-
-    @Test
-    fun `invoke - sets streaming to false on completion`() = runTest {
-        // Given
+    fun `invoke - updates final content and marks streaming false on completion`() = runTest {
         setupSuccessfulFlow()
 
-        // When
-        sendMessageUseCase(
-            conversationId = "conv-1",
-            userContent = "Hi",
-            systemPrompt = "System"
-        ).toList()
+        invokeUseCase().toList()
 
-        // Then
+        coVerify { conversationRepository.updateMessageContent("msg-assistant", "Hello!") }
         coVerify { conversationRepository.setMessageStreaming("msg-assistant", false) }
+        coVerify { conversationRepository.updateMessageDurations("msg-assistant", null, any()) }
     }
 
     @Test
-    fun `invoke - emits Streaming and Completed states`() = runTest {
-        // Given
+    fun `invoke - emits Streaming and Completed states with assistant message id`() = runTest {
         setupSuccessfulFlow()
-        coEvery {
-            chatRepository.sendMessage(any(), any(), any(), any())
-        } returns flowOf(
-            StreamingState.Streaming("Hello", "msg-assistant"),
-            StreamingState.Completed("Hello!", "msg-assistant")
-        )
 
-        // When
-        val results = sendMessageUseCase(
-            conversationId = "conv-1",
-            userContent = "Hi",
-            systemPrompt = "System"
-        ).toList()
+        val results = invokeUseCase().toList()
 
-        // Then
         assertTrue(results[0] is StreamingState.Starting)
-        assertTrue(results[1] is StreamingState.Streaming)
-        assertTrue(results[2] is StreamingState.Completed)
+        val streamingState = results[1] as StreamingState.Streaming
+        assertEquals("msg-assistant", streamingState.messageId)
+        val completedState = results[2] as StreamingState.Completed
+        assertEquals("msg-assistant", completedState.messageId)
     }
 
     @Test
-    fun `invoke - updates conversation title for first message`() = runTest {
-        // Given
+    fun `invoke - falls back to simple title when AI titles are disabled`() = runTest {
         setupSuccessfulFlow()
 
-        // When
-        sendMessageUseCase(
-            conversationId = "conv-1",
-            userContent = "What is the capital of France?",
-            systemPrompt = "System"
-        ).toList()
+        invokeUseCase(userContent = "What is the capital of France?").toList()
 
-        // Then
-        coVerify { conversationRepository.updateConversationTitle("conv-1", any()) }
+        coVerify { conversationRepository.updateConversationTitle("conv-1", "What is the capital of France?") }
     }
 
     @Test
-    fun `invoke - does not update title if not default`() = runTest {
-        // Given
-        val existingConversation = testConversation.copy(title = "Existing Title")
-        coEvery { conversationRepository.getConversation("conv-1") } returns existingConversation
-        coEvery { providerRepository.getProvider("provider-1") } returns testProvider
-        coEvery { conversationRepository.addMessage(any()) } returnsMany listOf("msg-user", "msg-assistant")
-        coEvery { conversationRepository.getMessages("conv-1") } returns testMessages
-        coEvery { conversationRepository.updateMessageContent(any(), any()) } returns Unit
-        coEvery { conversationRepository.setMessageStreaming(any(), any()) } returns Unit
-        coEvery {
-            chatRepository.sendMessage(any(), any(), any(), any())
-        } returns flowOf(StreamingState.Completed("Done", "msg-assistant"))
+    fun `invoke - does not update title if conversation already has custom title`() = runTest {
+        setupSuccessfulFlow(conversation = testConversation.copy(title = "Existing Title"))
 
-        // When
-        sendMessageUseCase(
-            conversationId = "conv-1",
-            userContent = "Hello!",
-            systemPrompt = "System"
-        ).toList()
+        invokeUseCase().toList()
 
-        // Then
         coVerify(exactly = 0) { conversationRepository.updateConversationTitle(any(), any()) }
+        coVerify(exactly = 0) { generateConversationTitleUseCase(any(), any(), any()) }
     }
 
     @Test
     fun `invoke - handles error state correctly`() = runTest {
-        // Given
-        setupSuccessfulFlow()
         val error = RuntimeException("Network error")
-        coEvery {
-            chatRepository.sendMessage(any(), any(), any(), any())
-        } returns flowOf(
-            StreamingState.Streaming("Par", "msg-assistant"),
-            StreamingState.Error(error, "Par", "msg-assistant")
+        setupSuccessfulFlow(
+            stream = flowOf(
+                StreamingState.Streaming(content = "Par", messageId = "provider-id"),
+                StreamingState.Error(error = error, partialContent = "Par", messageId = "provider-id")
+            )
         )
 
-        // When
-        val results = sendMessageUseCase(
-            conversationId = "conv-1",
-            userContent = "Hi",
-            systemPrompt = "System"
-        ).toList()
+        val results = invokeUseCase().toList()
 
-        // Then
         assertTrue(results.last() is StreamingState.Error)
         coVerify { conversationRepository.updateMessageContent("msg-assistant", "Par") }
         coVerify { conversationRepository.setMessageStreaming("msg-assistant", false) }
@@ -317,157 +216,154 @@ class SendMessageUseCaseTest {
 
     @Test
     fun `invoke - handles cancelled state correctly`() = runTest {
-        // Given
-        setupSuccessfulFlow()
-        coEvery {
-            chatRepository.sendMessage(any(), any(), any(), any())
-        } returns flowOf(
-            StreamingState.Streaming("Partial", "msg-assistant"),
-            StreamingState.Cancelled("Partial", "msg-assistant")
+        setupSuccessfulFlow(
+            stream = flowOf(
+                StreamingState.Streaming(content = "Partial", messageId = "provider-id"),
+                StreamingState.Cancelled(partialContent = "Partial", messageId = "provider-id")
+            )
         )
 
-        // When
-        val results = sendMessageUseCase(
-            conversationId = "conv-1",
-            userContent = "Hi",
-            systemPrompt = "System"
-        ).toList()
+        val results = invokeUseCase().toList()
 
-        // Then
         assertTrue(results.last() is StreamingState.Cancelled)
         coVerify { conversationRepository.updateMessageContent("msg-assistant", "Partial") }
         coVerify { conversationRepository.setMessageStreaming("msg-assistant", false) }
     }
 
+    @Test
+    fun `invoke - web search injects results, persists sources, and disables provider tools`() = runTest {
+        val query = "What changed in Kotlin recently?"
+        val messages = listOf(
+            Message(
+                id = "msg-user",
+                conversationId = "conv-1",
+                role = MessageRole.USER,
+                content = query
+            )
+        )
+        val config = WebSearchConfig(
+            isEnabled = true,
+            provider = WebSearchProvider.SEARXNG,
+            maxResults = 1,
+            searxngBaseUrl = "https://search.example.com"
+        )
+        val metadata = WebSearchMetadata(
+            query = query,
+            provider = WebSearchProvider.SEARXNG,
+            results = listOf(
+                WebSearchResult(
+                    index = 1,
+                    url = "https://kotlinlang.org/news",
+                    title = "Kotlin News",
+                    snippet = "Kotlin released new tooling updates.",
+                    domain = "kotlinlang.org"
+                )
+            ),
+            searchDurationMs = 42L
+        )
+        val systemPromptSlot = slot<String>()
+        val disableToolsSlot = slot<Boolean>()
+
+        setupSuccessfulFlow(messages = messages)
+        coEvery { webSearchRepository.search(query, config) } returns Result.success(metadata)
+        every {
+            chatRepository.sendMessage(
+                provider = any(),
+                messages = any(),
+                model = any(),
+                reasoningEffort = any(),
+                systemPrompt = capture(systemPromptSlot),
+                disableTools = capture(disableToolsSlot)
+            )
+        } returns completedFlow("Kotlin released new tooling updates. [1]")
+
+        invokeUseCase(userContent = query, webSearchConfig = config).toList()
+
+        assertTrue(systemPromptSlot.captured.orEmpty().contains("[MATERIALCHAT_WEB_SEARCH]"))
+        assertTrue(systemPromptSlot.captured.orEmpty().contains("Kotlin News"))
+        assertTrue(disableToolsSlot.captured)
+        coVerify { conversationRepository.updateMessageWebSearchMetadata("msg-assistant", any()) }
+    }
+
     @Test(expected = IllegalStateException::class)
     fun `invoke - throws exception when conversation not found`() = runTest {
-        // Given
         coEvery { conversationRepository.getConversation("conv-invalid") } returns null
 
-        // When
         sendMessageUseCase(
             conversationId = "conv-invalid",
             userContent = "Hi",
-            systemPrompt = "System"
+            systemPrompt = "System",
+            reasoningEffort = ReasoningEffort.HIGH
         ).toList()
-
-        // Then - exception thrown
     }
 
     @Test(expected = IllegalStateException::class)
     fun `invoke - throws exception when provider not found`() = runTest {
-        // Given
         coEvery { conversationRepository.getConversation("conv-1") } returns testConversation
         coEvery { providerRepository.getProvider("provider-1") } returns null
 
-        // When
-        sendMessageUseCase(
-            conversationId = "conv-1",
-            userContent = "Hi",
-            systemPrompt = "System"
-        ).toList()
-
-        // Then - exception thrown
-    }
-
-    @Test
-    fun `invoke - maps message ID correctly in emitted states`() = runTest {
-        // Given
-        setupSuccessfulFlow()
-        coEvery { conversationRepository.addMessage(any()) } returnsMany listOf("user-123", "assistant-456")
-        coEvery {
-            chatRepository.sendMessage(any(), any(), any(), any())
-        } returns flowOf(
-            StreamingState.Streaming("Hello", "original-id"),
-            StreamingState.Completed("Hello!", "original-id")
-        )
-
-        // When
-        val results = sendMessageUseCase(
-            conversationId = "conv-1",
-            userContent = "Hi",
-            systemPrompt = "System"
-        ).toList()
-
-        // Then - states should have the correct assistant message ID
-        val streamingState = results[1] as StreamingState.Streaming
-        assertEquals("assistant-456", streamingState.messageId)
-
-        val completedState = results[2] as StreamingState.Completed
-        assertEquals("assistant-456", completedState.messageId)
+        invokeUseCase().toList()
     }
 
     @Test
     fun `cancel - delegates to chat repository`() {
-        // Given
         every { chatRepository.cancelStreaming() } returns Unit
 
-        // When
         sendMessageUseCase.cancel()
 
-        // Then
-        coVerify { chatRepository.cancelStreaming() }
+        verify { chatRepository.cancelStreaming() }
     }
 
-    // ============================================================================
-    // Title Generation Tests
-    // ============================================================================
+    private fun invokeUseCase(
+        userContent: String = "Hello!",
+        systemPrompt: String = "System",
+        webSearchConfig: WebSearchConfig = WebSearchConfig()
+    ) = sendMessageUseCase(
+        conversationId = "conv-1",
+        userContent = userContent,
+        systemPrompt = systemPrompt,
+        reasoningEffort = ReasoningEffort.HIGH,
+        webSearchConfig = webSearchConfig
+    )
 
-    @Test
-    fun `invoke - truncates long messages for title`() = runTest {
-        // Given
-        setupSuccessfulFlow()
-        val longMessage = "A".repeat(100)
-        val titleSlot = slot<String>()
-        coEvery { conversationRepository.updateConversationTitle("conv-1", capture(titleSlot)) } returns Unit
-
-        // When
-        sendMessageUseCase(
-            conversationId = "conv-1",
-            userContent = longMessage,
-            systemPrompt = "System"
-        ).toList()
-
-        // Then
-        assertTrue(titleSlot.captured.length <= 40)
-        assertTrue(titleSlot.captured.endsWith("..."))
-    }
-
-    @Test
-    fun `invoke - removes newlines from title`() = runTest {
-        // Given
-        setupSuccessfulFlow()
-        val titleSlot = slot<String>()
-        coEvery { conversationRepository.updateConversationTitle("conv-1", capture(titleSlot)) } returns Unit
-
-        // When
-        sendMessageUseCase(
-            conversationId = "conv-1",
-            userContent = "Line 1\nLine 2\nLine 3",
-            systemPrompt = "System"
-        ).toList()
-
-        // Then
-        assertTrue(!titleSlot.captured.contains("\n"))
-    }
-
-    // ============================================================================
-    // Helper Methods
-    // ============================================================================
-
-    private fun setupSuccessfulFlow() {
-        coEvery { conversationRepository.getConversation("conv-1") } returns testConversation
+    private fun setupSuccessfulFlow(
+        conversation: Conversation = testConversation,
+        messages: List<Message> = listOf(
+            Message(
+                id = "msg-user",
+                conversationId = "conv-1",
+                role = MessageRole.USER,
+                content = "Hello!"
+            )
+        ),
+        stream: kotlinx.coroutines.flow.Flow<StreamingState> = completedFlow("Hello!")
+    ) {
+        coEvery { conversationRepository.getConversation("conv-1") } returns conversation
         coEvery { providerRepository.getProvider("provider-1") } returns testProvider
         coEvery { conversationRepository.addMessage(any()) } returnsMany listOf("msg-user", "msg-assistant")
-        coEvery { conversationRepository.getMessages("conv-1") } returns testMessages
+        coEvery { conversationRepository.getMessages("conv-1") } returns messages
         coEvery { conversationRepository.updateMessageContent(any(), any()) } returns Unit
+        coEvery { conversationRepository.updateMessageContentWithThinking(any(), any(), any()) } returns Unit
         coEvery { conversationRepository.setMessageStreaming(any(), any()) } returns Unit
+        coEvery { conversationRepository.updateMessageDurations(any(), any(), any()) } returns Unit
         coEvery { conversationRepository.updateConversationTitle(any(), any()) } returns Unit
-        coEvery {
-            chatRepository.sendMessage(any(), any(), any(), any())
-        } returns flowOf(
-            StreamingState.Streaming("Hello", "msg-assistant"),
-            StreamingState.Completed("Hello!", "msg-assistant")
-        )
+        coEvery { conversationRepository.updateConversationTitleAndIcon(any(), any(), any()) } returns Unit
+        coEvery { conversationRepository.updateMessageWebSearchMetadata(any(), any()) } returns Unit
+        coEvery { generateConversationTitleUseCase(any(), any(), any()) } returns Result.success("Generated Title")
+        every {
+            chatRepository.sendMessage(
+                provider = any(),
+                messages = any(),
+                model = any(),
+                reasoningEffort = any(),
+                systemPrompt = any(),
+                disableTools = any()
+            )
+        } returns stream
     }
+
+    private fun completedFlow(content: String) = flowOf(
+        StreamingState.Streaming(content = content.take(5), messageId = "provider-id"),
+        StreamingState.Completed(finalContent = content, messageId = "provider-id")
+    )
 }

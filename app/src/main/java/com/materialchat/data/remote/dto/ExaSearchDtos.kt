@@ -1,12 +1,11 @@
 package com.materialchat.data.remote.dto
 
-import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 @Serializable
 data class ExaSearchRequest(
     val query: String,
-    @SerialName("num_results") val numResults: Int = 5,
+    val numResults: Int = 5,
     val type: String = "auto",
     val contents: ExaContentsRequest = ExaContentsRequest()
 )
@@ -18,7 +17,7 @@ data class ExaContentsRequest(
 
 @Serializable
 data class ExaHighlightsRequest(
-    @SerialName("num_sentences") val numSentences: Int = 3
+    val maxCharacters: Int = 1200
 )
 
 @Serializable
@@ -34,5 +33,6 @@ data class ExaResultDto(
     val highlights: List<String>? = null,
     val publishedDate: String? = null,
     val score: Double? = null,
-    val image: String? = null
+    val image: String? = null,
+    val favicon: String? = null
 )

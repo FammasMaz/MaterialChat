@@ -371,6 +371,22 @@ fun MessageBubble(
                         }
                     }
 
+                    val webSearchMeta = remember(message.webSearchMetadata, isAssistant, message.isStreaming) {
+                        if (!isAssistant || message.isStreaming) {
+                            null
+                        } else {
+                            message.webSearchMetadata?.let { json ->
+                                try {
+                                    kotlinx.serialization.json.Json {
+                                        ignoreUnknownKeys = true
+                                    }.decodeFromString<com.materialchat.domain.model.WebSearchMetadata>(json)
+                                } catch (_: Exception) {
+                                    null
+                                }
+                            }
+                        }
+                    }
+
                     // Message content or inline editing / error state
                     if (isUser && isEditing) {
                         EditingContent(
@@ -410,24 +426,17 @@ fun MessageBubble(
                             hapticsEnabled = hapticsEnabled
                         )
 
-                        // Web search sources carousel (for messages with search metadata)
-                        if (isAssistant && !message.isStreaming) {
-                            val webSearchMeta = remember(message.webSearchMetadata) {
-                                message.webSearchMetadata?.let { json ->
-                                    try {
-                                        kotlinx.serialization.json.Json {
-                                            ignoreUnknownKeys = true
-                                        }.decodeFromString<com.materialchat.domain.model.WebSearchMetadata>(json)
-                                    } catch (_: Exception) {
-                                        null
-                                    }
-                                }
-                            }
-                            if (webSearchMeta != null && webSearchMeta.results.isNotEmpty()) {
-                                WebSearchSourcesCarousel(metadata = webSearchMeta)
-                            }
-                        }
+                    }
 
+                    // Web search sources carousel (for messages with search metadata)
+                    // Kept outside the content branch so errored/cancelled web-search-backed
+                    // replies still show their retrievable sources once streaming stops.
+                    if (webSearchMeta != null && webSearchMeta.results.isNotEmpty()) {
+                        WebSearchSourcesCarousel(
+                            metadata = webSearchMeta,
+                            messageId = message.id,
+                            initiallyExpanded = false
+                        )
                     }
 
                 }

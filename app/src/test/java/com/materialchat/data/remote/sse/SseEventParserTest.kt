@@ -79,14 +79,14 @@ class SseEventParserTest {
     }
 
     @Test
-    fun `parseOpenAiEvent - finish reason returns Done with reason`() {
+    fun `parseOpenAiEvent - finish reason only chunk returns KeepAlive`() {
         val line = """data: {"id":"chatcmpl-123","choices":[{"delta":{},"finish_reason":"stop"}],"model":"gpt-4o"}"""
 
         val result = parser.parseOpenAiEvent(line)
 
-        assertTrue(result is StreamingEvent.Done)
-        assertEquals("stop", (result as StreamingEvent.Done).finishReason)
-        assertEquals("gpt-4o", result.model)
+        // Some providers send finish_reason on normal chunks. The parser waits for
+        // the explicit [DONE] marker so it does not end streams prematurely.
+        assertEquals(StreamingEvent.KeepAlive, result)
     }
 
     @Test

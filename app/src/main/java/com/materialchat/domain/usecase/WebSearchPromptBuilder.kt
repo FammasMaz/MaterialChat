@@ -35,6 +35,10 @@ internal suspend fun resolveWebSearchPromptContext(
     val metadata = searchResult.getOrNull()
         ?: return WebSearchPromptContext(systemPrompt = basePrompt)
 
+    if (metadata.results.isEmpty()) {
+        return WebSearchPromptContext(systemPrompt = basePrompt)
+    }
+
     return WebSearchPromptContext(
         systemPrompt = buildWebSearchAugmentedPrompt(basePrompt, metadata),
         metadata = metadata
@@ -46,24 +50,25 @@ internal fun buildWebSearchAugmentedPrompt(
     metadata: WebSearchMetadata
 ): String {
     val resultsBlock = metadata.results.joinToString("\n\n") { result ->
-        "[${result.index}] Title: ${result.title}\n    URL: ${result.url}\n    ${result.snippet}"
+        val snippet = result.snippet.trim().ifBlank { "No excerpt returned; use only the title and URL for this source." }
+        "[${result.index}] ${result.title}\nURL: ${result.url}\nExcerpt: $snippet"
     }
 
     val webSearchBlock = """
 [MATERIALCHAT_WEB_SEARCH]
-Web search results are provided below for your reference. Use them to give accurate, current answers.
-TOOLING RULES:
-- MaterialChat already performed the web search for this turn
-- Treat the MATERIALCHAT_WEB_SEARCH block as the browsing source of truth for this request
-- Answer directly from the supplied results instead of asking to browse or search again
-- Do not mention tool availability or browsing limitations in the answer
-- If the provided search results are insufficient, say what is missing instead of claiming you browsed elsewhere
+MaterialChat has already fetched current web results for this turn. These results are not a callable tool; they are retrieved evidence that you can read now.
+
+HOW TO ANSWER:
+- Use the numbered results below as the browsing/search evidence for this request.
+- Answer directly from these results instead of saying you cannot browse, cannot search, or need a web-search tool.
+- If the results are insufficient, explain what is missing and answer only what the evidence supports.
+- Do not claim you searched beyond the results shown here.
 
 CITATION RULES:
-- Cite sources inline as [1], [2], etc. at the end of the sentence using that information
-- Multiple sources for one claim: [1][3]
-- You MUST cite at least one source for any factual claim from the search results
-- Do NOT add a references/sources list at the end
+- Cite sources inline as [1], [2], etc. at the end of the sentence using that information.
+- Multiple sources for one claim: [1][3].
+- Cite at least one result for factual/current claims that come from the search evidence.
+- Do not add a separate references list; MaterialChat shows sources in the UI.
 
 SEARCH RESULTS:
 $resultsBlock

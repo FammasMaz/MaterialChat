@@ -71,9 +71,11 @@ class WebSearchApiClient(
                         index = index + 1,
                         url = dto.url,
                         title = dto.title ?: dto.url,
-                        snippet = dto.highlights?.joinToString(" ") ?: dto.text?.take(300) ?: "",
+                        snippet = dto.highlights?.joinToString("\n")?.trim()
+                            ?: dto.text?.take(600)?.trim()
+                            ?: "",
                         imageUrl = dto.image,
-                        faviconUrl = buildFaviconUrl(host),
+                        faviconUrl = dto.favicon ?: buildFaviconUrl(host),
                         publishedDate = dto.publishedDate,
                         domain = host
                     )

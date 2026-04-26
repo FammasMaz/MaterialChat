@@ -196,6 +196,13 @@ class SendMessageUseCase @Inject constructor(
             modelName = conversation.modelName
         )
         val assistantMessageId = conversationRepository.addMessage(assistantMessage)
+        val webSearchMetadataJson = webSearchContext.metadata?.let { Json.encodeToString(it) }
+        webSearchMetadataJson?.let { metadataJson ->
+            conversationRepository.updateMessageWebSearchMetadata(
+                assistantMessageId,
+                metadataJson
+            )
+        }
 
         // Emit starting state
         emit(StreamingState.Starting)
@@ -283,7 +290,8 @@ class SendMessageUseCase @Inject constructor(
                                     attachments = listOf(attachment),
                                     isStreaming = false,
                                     totalDurationMs = totalDurationMs,
-                                    modelName = imageModel
+                                    modelName = imageModel,
+                                    webSearchMetadata = webSearchMetadataJson
                                 )
                             )
                         }.onFailure { error ->
@@ -293,7 +301,8 @@ class SendMessageUseCase @Inject constructor(
                                     content = "Image generation failed: ${error.message ?: "Unknown error"}",
                                     isStreaming = false,
                                     totalDurationMs = totalDurationMs,
-                                    modelName = imageModel
+                                    modelName = imageModel,
+                                    webSearchMetadata = webSearchMetadataJson
                                 )
                             )
                         }
@@ -313,13 +322,6 @@ class SendMessageUseCase @Inject constructor(
                         conversationRepository.updateMessageDurations(assistantMessageId, thinkingDurationMs, totalDurationMs)
                     }
 
-                    // Save web search metadata on the assistant message
-                    webSearchContext.metadata?.let { meta ->
-                        conversationRepository.updateMessageWebSearchMetadata(
-                            assistantMessageId,
-                            Json.encodeToString(meta)
-                        )
-                    }
                 }
                 else -> { /* Ignore other states */ }
             }

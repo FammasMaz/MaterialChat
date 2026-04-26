@@ -483,6 +483,26 @@ class ChatViewModel @Inject constructor(
         }
     }
 
+    private suspend fun buildCurrentWebSearchConfig(): WebSearchConfig {
+        if (!currentWebSearchEnabled) {
+            return WebSearchConfig()
+        }
+
+        val apiKey = if (currentWebSearchProvider == WebSearchProvider.EXA) {
+            encryptedPreferences.getApiKey("web_search_exa") ?: ""
+        } else {
+            ""
+        }
+
+        return WebSearchConfig(
+            isEnabled = true,
+            provider = currentWebSearchProvider,
+            apiKey = apiKey,
+            maxResults = currentWebSearchMaxResults,
+            searxngBaseUrl = currentSearxngBaseUrl
+        )
+    }
+
     /**
      * Updates the input text.
      */
@@ -658,21 +678,7 @@ class ChatViewModel @Inject constructor(
         // The DB is updated by the use case; we only update UI state here.
         streamingJob = applicationScope.launch(ioDispatcher) {
             try {
-                // Build web search config from current preferences
-                val webSearchConfig = if (currentWebSearchEnabled) {
-                    val apiKey = if (currentWebSearchProvider == WebSearchProvider.EXA) {
-                        encryptedPreferences.getApiKey("web_search_exa") ?: ""
-                    } else ""
-                    WebSearchConfig(
-                        isEnabled = true,
-                        provider = currentWebSearchProvider,
-                        apiKey = apiKey,
-                        maxResults = currentWebSearchMaxResults,
-                        searxngBaseUrl = currentSearxngBaseUrl
-                    )
-                } else {
-                    WebSearchConfig()
-                }
+                val webSearchConfig = buildCurrentWebSearchConfig()
 
                 sendMessageUseCase(
                     conversationId = activeConversationId.value,
@@ -1001,7 +1007,8 @@ class ChatViewModel @Inject constructor(
                     conversationId = activeConversationId.value,
                     systemPrompt = currentSystemPrompt,
                     reasoningEffort = currentReasoningEffort,
-                    overrideModelName = overrideModelName
+                    overrideModelName = overrideModelName,
+                    webSearchConfig = buildCurrentWebSearchConfig()
                 ).collect { state ->
                     updateStreamingState(state)
                     // Notify when completed and app is in background
