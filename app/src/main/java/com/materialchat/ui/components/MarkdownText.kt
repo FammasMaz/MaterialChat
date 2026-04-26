@@ -32,6 +32,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.rememberTextMeasurer
@@ -535,6 +536,7 @@ private fun MathBlockView(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 4.dp)
+            .clipToBounds()
             .clip(RoundedCornerShape(8.dp))
             .background(backgroundColor.copy(alpha = 0.5f))
     ) {
@@ -569,6 +571,7 @@ private fun MathBlockView(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(with(density) { webViewHeight.toDp() })
+                .clipToBounds()
         )
     }
 }
@@ -633,11 +636,34 @@ private fun createMathWebView(
         }
         setBackgroundColor(android.graphics.Color.TRANSPARENT)
         isVerticalScrollBarEnabled = false
-        isHorizontalScrollBarEnabled = false
-        // Pass all touches through — math views are display-only.
-        // Prevents WebView from stealing swipe-to-quote gestures.
+        isHorizontalScrollBarEnabled = true
+        overScrollMode = android.view.View.OVER_SCROLL_IF_CONTENT_SCROLLS
+
+        var downX = 0f
+        var downY = 0f
         @Suppress("ClickableViewAccessibility")
-        setOnTouchListener { _, _ -> false }
+        setOnTouchListener { view, event ->
+            when (event.actionMasked) {
+                android.view.MotionEvent.ACTION_DOWN -> {
+                    downX = event.x
+                    downY = event.y
+                }
+                android.view.MotionEvent.ACTION_MOVE -> {
+                    val dx = kotlin.math.abs(event.x - downX)
+                    val dy = kotlin.math.abs(event.y - downY)
+                    if (dx > dy) {
+                        // Let the WebView claim horizontal drags for wide equations instead
+                        // of the LazyColumn or bubble swipe gesture taking the gesture stream.
+                        view.parent?.requestDisallowInterceptTouchEvent(true)
+                    }
+                }
+                android.view.MotionEvent.ACTION_UP,
+                android.view.MotionEvent.ACTION_CANCEL -> {
+                    view.parent?.requestDisallowInterceptTouchEvent(false)
+                }
+            }
+            false
+        }
         isFocusable = false
         isFocusableInTouchMode = false
     }
@@ -702,14 +728,22 @@ private fun buildMathHtml(
                 background: transparent;
                 color: $fgColor;
                 padding: ${verticalPaddingPx}px ${horizontalPaddingPx}px;
-                overflow: hidden;
+                overflow-x: ${if (isDisplay) "auto" else "hidden"};
+                overflow-y: hidden;
+                -webkit-overflow-scrolling: touch;
                 ${if (isDisplay) "text-align: center;" else "display: flex; align-items: flex-end;"}
             }
             .katex { color: $fgColor; font-size: ${fontScale}em; }
-            .katex-display { margin: 0; overflow-x: auto; overflow-y: hidden; }
+            .katex-display {
+                margin: 0;
+                overflow: visible;
+                white-space: nowrap;
+                ${if (isDisplay) "width: max-content; min-width: 100%;" else ""}
+            }
             #math {
                 display: ${if (isDisplay) "block" else "inline-block"};
-                width: ${if (isDisplay) "100%" else "auto"};
+                width: ${if (isDisplay) "max-content" else "auto"};
+                min-width: ${if (isDisplay) "100%" else "0"};
                 ${if (isDisplay) "text-align: center;" else "align-self: flex-end;"}
             }
         </style>

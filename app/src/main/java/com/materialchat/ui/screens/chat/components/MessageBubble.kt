@@ -203,6 +203,22 @@ fun MessageBubble(
         isErrored = messageItem.isErrored
     )
 
+    val webSearchMeta = remember(message.webSearchMetadata, isAssistant, message.isStreaming) {
+        if (!isAssistant || message.isStreaming) {
+            null
+        } else {
+            message.webSearchMetadata?.let { json ->
+                try {
+                    kotlinx.serialization.json.Json {
+                        ignoreUnknownKeys = true
+                    }.decodeFromString<com.materialchat.domain.model.WebSearchMetadata>(json)
+                } catch (_: Exception) {
+                    null
+                }
+            }
+        }
+    }
+
     val alignment = when {
         isUser -> Alignment.CenterEnd
         isAssistant -> Alignment.CenterStart
@@ -371,22 +387,6 @@ fun MessageBubble(
                         }
                     }
 
-                    val webSearchMeta = remember(message.webSearchMetadata, isAssistant, message.isStreaming) {
-                        if (!isAssistant || message.isStreaming) {
-                            null
-                        } else {
-                            message.webSearchMetadata?.let { json ->
-                                try {
-                                    kotlinx.serialization.json.Json {
-                                        ignoreUnknownKeys = true
-                                    }.decodeFromString<com.materialchat.domain.model.WebSearchMetadata>(json)
-                                } catch (_: Exception) {
-                                    null
-                                }
-                            }
-                        }
-                    }
-
                     // Message content or inline editing / error state
                     if (isUser && isEditing) {
                         EditingContent(
@@ -426,17 +426,6 @@ fun MessageBubble(
                             hapticsEnabled = hapticsEnabled
                         )
 
-                    }
-
-                    // Web search sources carousel (for messages with search metadata)
-                    // Kept outside the content branch so errored/cancelled web-search-backed
-                    // replies still show their retrievable sources once streaming stops.
-                    if (webSearchMeta != null && webSearchMeta.results.isNotEmpty()) {
-                        WebSearchSourcesCarousel(
-                            metadata = webSearchMeta,
-                            messageId = message.id,
-                            initiallyExpanded = false
-                        )
                     }
 
                 }
@@ -499,6 +488,17 @@ fun MessageBubble(
                         }
                     }
                 }
+            }
+
+            // Web search sources live outside the message Surface. Native AndroidViews used by
+            // LaTeX rendering can otherwise steal taps when the reply ends with a wide equation.
+            if (webSearchMeta != null && webSearchMeta.results.isNotEmpty()) {
+                WebSearchSourcesCarousel(
+                    metadata = webSearchMeta,
+                    messageId = message.id,
+                    initiallyExpanded = false,
+                    modifier = Modifier.widthIn(min = 40.dp, max = bubbleStyle.maxWidth)
+                )
             }
 
             // Action buttons, model label, and sibling navigation (below the bubble)
