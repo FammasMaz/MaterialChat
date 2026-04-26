@@ -30,4 +30,4 @@ data class WebSearchResult(
 )
 
 @Serializable
-enum class WebSearchProvider { EXA, SEARXNG }
+enum class WebSearchProvider { EXA, SEARXNG, NATIVE }

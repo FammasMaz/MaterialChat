@@ -196,7 +196,7 @@ class SendMessageUseCase @Inject constructor(
             modelName = conversation.modelName
         )
         val assistantMessageId = conversationRepository.addMessage(assistantMessage)
-        val webSearchMetadataJson = webSearchContext.metadata?.let { Json.encodeToString(it) }
+        var webSearchMetadataJson = webSearchContext.metadata?.let { Json.encodeToString(it) }
         webSearchMetadataJson?.let { metadataJson ->
             conversationRepository.updateMessageWebSearchMetadata(
                 assistantMessageId,
@@ -227,7 +227,8 @@ class SendMessageUseCase @Inject constructor(
             model = conversation.modelName,
             reasoningEffort = reasoningEffort,
             systemPrompt = requestSystemPrompt,
-            disableTools = webSearchContext.metadata != null
+            disableTools = webSearchContext.metadata != null,
+            nativeWebSearch = webSearchContext.nativeWebSearchEnabled
         ).onEach { state ->
             when (state) {
                 is StreamingState.Streaming -> {
@@ -262,8 +263,26 @@ class SendMessageUseCase @Inject constructor(
                     conversationRepository.setMessageStreaming(assistantMessageId, false)
                 }
                 is StreamingState.Completed -> {
+                    val completedContent = if (webSearchContext.nativeWebSearchEnabled) {
+                        val parsed = extractNativeWebSearchSources(
+                            content = state.finalContent,
+                            query = userContent
+                        )
+                        parsed.metadata?.let { metadata ->
+                            val metadataJson = Json.encodeToString(metadata)
+                            webSearchMetadataJson = metadataJson
+                            conversationRepository.updateMessageWebSearchMetadata(
+                                assistantMessageId,
+                                metadataJson
+                            )
+                        }
+                        parsed.content
+                    } else {
+                        state.finalContent
+                    }
+
                     // Capture final content for title generation
-                    val imageToolPrompt = extractImageToolPrompt(state.finalContent)
+                    val imageToolPrompt = extractImageToolPrompt(completedContent)
                     val totalDurationMs = System.currentTimeMillis() - streamStartTime
                     val thinkingDurationMs = if (!state.finalThinkingContent.isNullOrEmpty()) {
                         (thinkingEndTime ?: System.currentTimeMillis()) - streamStartTime
@@ -308,10 +327,10 @@ class SendMessageUseCase @Inject constructor(
                         }
                         conversationRepository.updateMessageDurations(assistantMessageId, thinkingDurationMs, totalDurationMs)
                     } else {
-                        accumulatedContent = state.finalContent
-                        contentUpdater.persistFinal(state.finalContent, state.finalThinkingContent)
+                        accumulatedContent = completedContent
+                        contentUpdater.persistFinal(completedContent, state.finalThinkingContent)
                         val revealHoldMs = calculatePostCompletionRevealHoldMs(
-                            content = state.finalContent,
+                            content = completedContent,
                             revealStartedAtMs = firstContentAtMs,
                             completedAtMs = System.currentTimeMillis()
                         )

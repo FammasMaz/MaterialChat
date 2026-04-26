@@ -105,10 +105,11 @@ class RegenerateResponseUseCase @Inject constructor(
             modelName = modelToUse
         )
         val assistantMessageId = conversationRepository.addMessage(assistantMessage)
-        webSearchContext.metadata?.let { meta ->
+        var webSearchMetadataJson = webSearchContext.metadata?.let { Json.encodeToString(it) }
+        webSearchMetadataJson?.let { metadataJson ->
             conversationRepository.updateMessageWebSearchMetadata(
                 assistantMessageId,
-                Json.encodeToString(meta)
+                metadataJson
             )
         }
 
@@ -132,7 +133,8 @@ class RegenerateResponseUseCase @Inject constructor(
             model = modelToUse,
             reasoningEffort = reasoningEffort,
             systemPrompt = webSearchContext.systemPrompt,
-            disableTools = webSearchContext.metadata != null
+            disableTools = webSearchContext.metadata != null,
+            nativeWebSearch = webSearchContext.nativeWebSearchEnabled
         ).onEach { state ->
             when (state) {
                 is StreamingState.Streaming -> {
@@ -162,7 +164,28 @@ class RegenerateResponseUseCase @Inject constructor(
                     conversationRepository.setMessageStreaming(assistantMessageId, false)
                 }
                 is StreamingState.Completed -> {
-                    contentUpdater.persistFinal(state.finalContent, state.finalThinkingContent)
+                    val completedContent = if (webSearchContext.nativeWebSearchEnabled) {
+                        val query = updatedMessages
+                            .lastOrNull { it.role == MessageRole.USER }
+                            ?.content
+                            .orEmpty()
+                        val parsed = extractNativeWebSearchSources(
+                            content = state.finalContent,
+                            query = query
+                        )
+                        parsed.metadata?.let { metadata ->
+                            val metadataJson = Json.encodeToString(metadata)
+                            webSearchMetadataJson = metadataJson
+                            conversationRepository.updateMessageWebSearchMetadata(
+                                assistantMessageId,
+                                metadataJson
+                            )
+                        }
+                        parsed.content
+                    } else {
+                        state.finalContent
+                    }
+                    contentUpdater.persistFinal(completedContent, state.finalThinkingContent)
                     conversationRepository.setMessageStreaming(assistantMessageId, false)
 
                     // Save duration data

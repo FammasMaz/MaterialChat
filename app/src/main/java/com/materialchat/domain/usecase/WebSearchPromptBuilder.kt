@@ -4,11 +4,13 @@ import com.materialchat.domain.model.Message
 import com.materialchat.domain.model.MessageRole
 import com.materialchat.domain.model.WebSearchConfig
 import com.materialchat.domain.model.WebSearchMetadata
+import com.materialchat.domain.model.WebSearchProvider
 import com.materialchat.domain.repository.WebSearchRepository
 
 internal data class WebSearchPromptContext(
     val systemPrompt: String,
-    val metadata: WebSearchMetadata? = null
+    val metadata: WebSearchMetadata? = null,
+    val nativeWebSearchEnabled: Boolean = false
 )
 
 internal suspend fun resolveWebSearchPromptContext(
@@ -31,6 +33,13 @@ internal suspend fun resolveWebSearchPromptContext(
         return WebSearchPromptContext(systemPrompt = basePrompt)
     }
 
+    if (webSearchConfig.provider == WebSearchProvider.NATIVE) {
+        return WebSearchPromptContext(
+            systemPrompt = buildNativeWebSearchPrompt(basePrompt),
+            nativeWebSearchEnabled = true
+        )
+    }
+
     val searchResult = webSearchRepository.search(searchQuery, webSearchConfig)
     val metadata = searchResult.getOrNull()
         ?: return WebSearchPromptContext(systemPrompt = basePrompt)
@@ -43,6 +52,26 @@ internal suspend fun resolveWebSearchPromptContext(
         systemPrompt = buildWebSearchAugmentedPrompt(basePrompt, metadata),
         metadata = metadata
     )
+}
+
+internal fun buildNativeWebSearchPrompt(basePrompt: String): String {
+    val nativeSearchBlock = """
+[MATERIALCHAT_NATIVE_WEB_SEARCH]
+Native web search is enabled for this turn.
+- Use the available web_search/search tool when current or external information would improve the answer.
+- Do not say you cannot browse if the search tool is available; search first when needed.
+- In the final answer, cite web-backed claims inline with [1], [2], etc.
+- End the answer with a compact Sources section in this exact shape when search results were used:
+Sources:
+1. Source title — https://example.com/page
+2. Another source — https://example.com/other
+- Only include URLs that came from search results.
+[/MATERIALCHAT_NATIVE_WEB_SEARCH]
+""".trimIndent()
+
+    return listOf(basePrompt.trim(), nativeSearchBlock)
+        .filter { it.isNotBlank() }
+        .joinToString("\n\n")
 }
 
 internal fun buildWebSearchAugmentedPrompt(

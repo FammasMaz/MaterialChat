@@ -78,7 +78,8 @@ class ChatApiClient(
         systemPrompt: String? = null,
         temperature: Double = 0.7,
         reasoningEffort: ReasoningEffort = ReasoningEffort.HIGH,
-        disableTools: Boolean = false
+        disableTools: Boolean = false,
+        nativeWebSearch: Boolean = false
     ): Flow<StreamingEvent> {
         return when (provider.type) {
             ProviderType.OPENAI_COMPATIBLE -> streamOpenAiChat(
@@ -89,7 +90,8 @@ class ChatApiClient(
                 systemPrompt = systemPrompt,
                 temperature = temperature,
                 reasoningEffort = reasoningEffort,
-                disableTools = disableTools
+                disableTools = disableTools,
+                nativeWebSearch = nativeWebSearch
             )
             ProviderType.OLLAMA_NATIVE -> streamOllamaChat(
                 baseUrl = provider.baseUrl,
@@ -123,7 +125,8 @@ class ChatApiClient(
         systemPrompt: String? = null,
         temperature: Double = 0.7,
         reasoningEffort: ReasoningEffort = ReasoningEffort.HIGH,
-        disableTools: Boolean = false
+        disableTools: Boolean = false,
+        nativeWebSearch: Boolean = false
     ): Flow<StreamingEvent> = callbackFlow {
         // Per-flow cancel flag so parallel streams don't interfere
         val cancelled = AtomicBoolean(false)
@@ -145,7 +148,10 @@ class ChatApiClient(
             .toRequestBody(JSON_MEDIA_TYPE)
 
         // Build HTTP request
-        val url = buildChatCompletionsUrl(baseUrl)
+        val url = buildChatCompletionsUrl(
+            baseUrl = baseUrl,
+            forcedVersion = if (nativeWebSearch) "v2" else null
+        )
         android.util.Log.d("ChatApiClient", "OpenAI streaming URL: $url")
         android.util.Log.d("ChatApiClient", "OpenAI request body: ${json.encodeToString(request)}")
         val httpRequest = Request.Builder()
@@ -941,10 +947,10 @@ class ChatApiClient(
          * - "https://api.openai.com/v1"     -> "https://api.openai.com/v1/chat/completions"
          * - "https://api.example.com/v2"    -> "https://api.example.com/v2/chat/completions"
          */
-        fun buildChatCompletionsUrl(baseUrl: String): String {
+        fun buildChatCompletionsUrl(baseUrl: String, forcedVersion: String? = null): String {
             val trimmed = baseUrl.trimEnd('/')
             val match = VERSION_SUFFIX_REGEX.find(trimmed)
-            val version = match?.value?.removePrefix("/") ?: "v1"
+            val version = forcedVersion ?: match?.value?.removePrefix("/") ?: "v1"
             return "${normalizeBaseUrl(trimmed)}/$version/chat/completions"
         }
 

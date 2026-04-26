@@ -30,7 +30,8 @@ interface ChatRepository {
         model: String,
         reasoningEffort: ReasoningEffort,
         systemPrompt: String? = null,
-        disableTools: Boolean = false
+        disableTools: Boolean = false,
+        nativeWebSearch: Boolean = false
     ): Flow<StreamingState>
 
     /**

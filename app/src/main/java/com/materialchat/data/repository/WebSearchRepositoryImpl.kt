@@ -40,6 +40,9 @@ class WebSearchRepositoryImpl @Inject constructor(
                     maxResults = resolvedConfig.maxResults
                 )
             }
+            WebSearchProvider.NATIVE -> {
+                Result.failure(IllegalArgumentException("Native web search is handled by the chat provider"))
+            }
         }
 
         val durationMs = System.currentTimeMillis() - startTime

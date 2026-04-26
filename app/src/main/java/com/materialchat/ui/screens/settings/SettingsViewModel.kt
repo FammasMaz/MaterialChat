@@ -903,7 +903,7 @@ class SettingsViewModel @Inject constructor(
     }
 
     /**
-     * Updates the web search provider (EXA or SEARXNG).
+     * Updates the web search provider (EXA, SEARXNG, or NATIVE).
      */
     fun updateWebSearchProvider(provider: String) {
         viewModelScope.launch {

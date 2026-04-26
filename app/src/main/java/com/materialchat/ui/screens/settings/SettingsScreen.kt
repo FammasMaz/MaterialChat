@@ -2675,74 +2675,103 @@ private fun WebSearchSection(
                             selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
                         )
                     )
+                    FilterChip(
+                        selected = webSearchProvider == "NATIVE",
+                        onClick = { onWebSearchProviderChange("NATIVE") },
+                        label = { Text("Native") },
+                        modifier = Modifier.weight(1f),
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
+                            selectedLabelColor = MaterialTheme.colorScheme.onSecondaryContainer
+                        )
+                    )
                 }
 
                 Spacer(modifier = Modifier.height(12.dp))
 
                 // Provider-specific fields
-                if (webSearchProvider == "EXA") {
-                    var apiKeyText by remember { mutableStateOf("") }
-                    OutlinedTextField(
-                        value = apiKeyText,
-                        onValueChange = { apiKeyText = it },
-                        label = {
-                            Text(
-                                if (exaApiKeyConfigured) "Exa API Key (configured)"
-                                else "Exa API Key"
-                            )
-                        },
-                        placeholder = { Text("Enter your Exa API key") },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true,
-                        shape = RoundedCornerShape(12.dp)
-                    )
-                    if (apiKeyText.isNotBlank()) {
-                        Spacer(modifier = Modifier.height(8.dp))
-                        ExpressiveButton(
-                            onClick = {
-                                onExaApiKeyChange(apiKeyText)
-                                apiKeyText = ""
+                when (webSearchProvider) {
+                    "EXA" -> {
+                        var apiKeyText by remember { mutableStateOf("") }
+                        OutlinedTextField(
+                            value = apiKeyText,
+                            onValueChange = { apiKeyText = it },
+                            label = {
+                                Text(
+                                    if (exaApiKeyConfigured) "Exa API Key (configured)"
+                                    else "Exa API Key"
+                                )
                             },
-                            text = "Save API Key",
-                            style = ExpressiveButtonStyle.FilledTonal
+                            placeholder = { Text("Enter your Exa API key") },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true,
+                            shape = RoundedCornerShape(12.dp)
+                        )
+                        if (apiKeyText.isNotBlank()) {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            ExpressiveButton(
+                                onClick = {
+                                    onExaApiKeyChange(apiKeyText)
+                                    apiKeyText = ""
+                                },
+                                text = "Save API Key",
+                                style = ExpressiveButtonStyle.FilledTonal
+                            )
+                        }
+                    }
+                    "SEARXNG" -> {
+                        var urlText by remember(searxngBaseUrl) { mutableStateOf(searxngBaseUrl) }
+                        OutlinedTextField(
+                            value = urlText,
+                            onValueChange = {
+                                urlText = it
+                                onSearxngBaseUrlChange(it)
+                            },
+                            label = { Text("SearXNG Base URL") },
+                            placeholder = { Text("https://searx.be") },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true,
+                            shape = RoundedCornerShape(12.dp)
                         )
                     }
-                } else {
-                    var urlText by remember(searxngBaseUrl) { mutableStateOf(searxngBaseUrl) }
-                    OutlinedTextField(
-                        value = urlText,
-                        onValueChange = {
-                            urlText = it
-                            onSearxngBaseUrlChange(it)
-                        },
-                        label = { Text("SearXNG Base URL") },
-                        placeholder = { Text("https://searx.be") },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true,
-                        shape = RoundedCornerShape(12.dp)
-                    )
+                    "NATIVE" -> {
+                        Surface(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(18.dp),
+                            color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.58f),
+                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                        ) {
+                            Text(
+                                text = "Uses the selected chat provider's backend search through the proxy /v2 chat endpoint. Configure search providers in the proxy; MaterialChat will ask for citations and turn a final Sources section into the collapsible sources carousel.",
+                                style = MaterialTheme.typography.bodySmall,
+                                modifier = Modifier.padding(14.dp)
+                            )
+                        }
+                    }
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
+                if (webSearchProvider != "NATIVE") {
+                    Spacer(modifier = Modifier.height(16.dp))
 
-                // Max results slider
-                Text(
-                    text = "Max Results: $webSearchMaxResults",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Slider(
-                    value = webSearchMaxResults.toFloat(),
-                    onValueChange = { onWebSearchMaxResultsChange(it.toInt()) },
-                    valueRange = 3f..10f,
-                    steps = 6,
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = SliderDefaults.colors(
-                        thumbColor = MaterialTheme.colorScheme.primary,
-                        activeTrackColor = MaterialTheme.colorScheme.primary,
-                        inactiveTrackColor = MaterialTheme.colorScheme.surfaceContainerHighest
+                    // Max results slider
+                    Text(
+                        text = "Max Results: $webSearchMaxResults",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                )
+                    Slider(
+                        value = webSearchMaxResults.toFloat(),
+                        onValueChange = { onWebSearchMaxResultsChange(it.toInt()) },
+                        valueRange = 3f..10f,
+                        steps = 6,
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = SliderDefaults.colors(
+                            thumbColor = MaterialTheme.colorScheme.primary,
+                            activeTrackColor = MaterialTheme.colorScheme.primary,
+                            inactiveTrackColor = MaterialTheme.colorScheme.surfaceContainerHighest
+                        )
+                    )
+                }
             }
         }
     }
