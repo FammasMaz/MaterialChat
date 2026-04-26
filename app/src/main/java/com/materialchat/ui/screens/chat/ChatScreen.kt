@@ -962,6 +962,16 @@ private fun MessageList(
                             dampingRatio = Spring.DampingRatioNoBouncy,
                             stiffness = Spring.StiffnessMediumLow
                         ),
+                        // The actively streaming bubble changes height constantly; placement
+                        // animation fights the resize/auto-scroll and reads as vertical jitter.
+                        placementSpec = if (messageItem.message.isStreaming) {
+                            null
+                        } else {
+                            spring(
+                                dampingRatio = Spring.DampingRatioNoBouncy,
+                                stiffness = Spring.StiffnessMediumLow
+                            )
+                        },
                         fadeOutSpec = null // Instant removal to prevent ghost overlap during regeneration
                     )
                     .padding(top = topSpacing)

@@ -15,7 +15,6 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -311,15 +310,14 @@ fun MessageBubble(
                     modifier = Modifier
                         .widthIn(min = 40.dp, max = bubbleStyle.maxWidth)
                         .animateContentSize(
-                            animationSpec = if (message.isStreaming) {
-                                tween(durationMillis = 140)
-                            } else {
-                                spring(
-                                    dampingRatio = 0.6f,
-                                    stiffness = 380f
-                                )
-                            },
-                            alignment = if (isUser) Alignment.CenterEnd else Alignment.CenterStart
+                            // Streaming responses retarget this animation many times per second.
+                            // Use a critically-damped spring and top alignment so the bubble can
+                            // keep morphing without vertically bobbing around its center.
+                            animationSpec = spring(
+                                dampingRatio = Spring.DampingRatioNoBouncy,
+                                stiffness = 520f
+                            ),
+                            alignment = if (isUser) Alignment.TopEnd else Alignment.TopStart
                         )
                         .then(
                             if (isUser && !isEditing && !message.isStreaming && message.content.isNotEmpty()) {
