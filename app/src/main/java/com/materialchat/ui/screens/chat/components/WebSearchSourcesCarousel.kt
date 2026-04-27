@@ -34,8 +34,10 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.carousel.HorizontalMultiBrowseCarousel
 import androidx.compose.material3.carousel.rememberCarouselState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -210,7 +212,9 @@ fun WebSearchSourcesCarousel(
                         index = result.index,
                         title = result.title,
                         domain = result.domain ?: result.url,
-                        imageUrl = result.imageUrl ?: result.faviconUrl,
+                        pageUrl = result.url,
+                        imageUrl = result.imageUrl,
+                        faviconUrl = result.faviconUrl,
                         onClick = {
                             val intent = Intent(Intent.ACTION_VIEW, Uri.parse(result.url))
                             context.startActivity(intent)
@@ -231,10 +235,24 @@ private fun WebSearchSourceCard(
     index: Int,
     title: String,
     domain: String,
+    pageUrl: String,
     imageUrl: String?,
+    faviconUrl: String?,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    var resolvedImageUrl by remember(pageUrl, imageUrl, faviconUrl) {
+        mutableStateOf(imageUrl ?: faviconUrl)
+    }
+
+    LaunchedEffect(pageUrl, imageUrl) {
+        if (imageUrl.isNullOrBlank()) {
+            resolvedImageUrl = WebPreviewImageResolver.resolve(pageUrl) ?: faviconUrl
+        } else {
+            resolvedImageUrl = imageUrl
+        }
+    }
+
     Surface(
         modifier = modifier
             .fillMaxWidth()
@@ -246,9 +264,9 @@ private fun WebSearchSourceCard(
         contentColor = MaterialTheme.colorScheme.onSurface
     ) {
         Column {
-            if (imageUrl != null) {
+            if (resolvedImageUrl != null) {
                 AsyncImage(
-                    model = imageUrl,
+                    model = resolvedImageUrl,
                     contentDescription = null,
                     contentScale = ContentScale.Crop,
                     modifier = Modifier
@@ -293,7 +311,7 @@ private fun WebSearchSourceCard(
                     text = title,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = if (imageUrl != null) 2 else 4,
+                    maxLines = if (resolvedImageUrl != null) 2 else 4,
                     overflow = TextOverflow.Ellipsis
                 )
             }

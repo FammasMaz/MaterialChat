@@ -29,7 +29,7 @@ internal suspend fun resolveWebSearchPromptContext(
         ?.trim()
         .orEmpty()
 
-    if (searchQuery.isBlank()) {
+    if (searchQuery.isBlank() || !shouldUseWebSearchForQuery(searchQuery)) {
         return WebSearchPromptContext(systemPrompt = basePrompt)
     }
 
@@ -54,14 +54,37 @@ internal suspend fun resolveWebSearchPromptContext(
     )
 }
 
+internal fun shouldUseWebSearchForQuery(query: String): Boolean {
+    val normalized = query.trim()
+    if (normalized.isBlank()) return false
+
+    val lower = normalized.lowercase()
+    if (ACKNOWLEDGEMENT_QUERY.matches(lower)) return false
+
+    return WEB_SEARCH_TRIGGER_PATTERNS.any { it.containsMatchIn(lower) }
+}
+
+private val ACKNOWLEDGEMENT_QUERY = Regex(
+    pattern = "^(thanks?|thank you|thx|ty|ok(?:ay)?|cool|great|nice|awesome|perfect|got it|yes|yeah|yep|no|nope|lol|haha)[.!?\\s]*$"
+)
+
+private val WEB_SEARCH_TRIGGER_PATTERNS = listOf(
+    Regex("\\b(search|browse|look\\s*up|google|web|online|source|sources|cite|citation)\\b"),
+    Regex("\\b(today|today's|tonight|right\\s+now|currently|current|latest|recent|recently|live|breaking|news)\\b"),
+    Regex("\\b(score|scores|standings|table|fixture|fixtures|playoff|playoffs|qualification|qualified|weather|stock|price|prices)\\b"),
+    Regex("\\b(released?|announced|launched|updated?|changelog|version|deadline|schedule)\\b"),
+    Regex("\\b20(2[5-9]|3[0-9])\\b")
+)
+
 internal fun buildNativeWebSearchPrompt(basePrompt: String): String {
     val nativeSearchBlock = """
 [MATERIALCHAT_NATIVE_WEB_SEARCH]
-Native web search is enabled for this turn.
-- Use the available web_search/search tool when current or external information would improve the answer.
-- Do not say you cannot browse if the search tool is available; search first when needed.
-- In the final answer, cite web-backed claims inline with [1], [2], etc.
-- End the answer with a compact Sources section in this exact shape when search results were used:
+This turn appears to need current or external web information, and the proxy may expose a web_search tool.
+- Use web_search for the current facts, then answer directly from the returned results.
+- Avoid repeated searches unless the first result set is clearly missing the key fact.
+- If the search results are insufficient, say what is missing instead of continuing to speculate.
+- Cite web-backed claims inline as [1], [2], etc.
+- If web_search was used, end with this compact machine-readable list so MaterialChat can render source cards:
 Sources:
 1. Source title — https://example.com/page
 2. Another source — https://example.com/other
