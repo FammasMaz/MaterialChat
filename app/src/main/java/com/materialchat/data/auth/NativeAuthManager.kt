@@ -19,20 +19,26 @@ import kotlinx.serialization.json.doubleOrNull
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
+import okhttp3.Dns
 import okhttp3.FormBody
+import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.Response
 import okhttp3.RequestBody.Companion.toRequestBody
+import okhttp3.dnsoverhttps.DnsOverHttps
 import java.io.BufferedReader
 import java.io.IOException
 import java.io.PrintWriter
+import java.net.InetAddress
 import java.net.ServerSocket
 import java.net.Socket
 import java.net.UnknownHostException
 import java.net.URLEncoder
 import java.security.MessageDigest
 import java.security.SecureRandom
+import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.math.roundToLong
@@ -47,6 +53,12 @@ class NativeAuthManager @Inject constructor(
         ignoreUnknownKeys = true
         isLenient = true
         encodeDefaults = false
+    }
+
+    private val authFallbackClient: OkHttpClient by lazy {
+        okHttpClient.newBuilder()
+            .dns(cascadingDohDns())
+            .build()
     }
 
     suspend fun authenticate(
@@ -604,10 +616,7 @@ class NativeAuthManager @Inject constructor(
         val response = try {
             okHttpClient.newCall(request).execute()
         } catch (e: UnknownHostException) {
-            throw IOException(
-                "Cannot reach ${request.url.host}. Check your internet connection, DNS, VPN, or private DNS settings.",
-                e
-            )
+            executeWithAuthDnsFallback(request, e)
         } catch (e: IOException) {
             throw IOException("Network request to ${request.url.host} failed: ${e.message}", e)
         }
@@ -619,6 +628,58 @@ class NativeAuthManager @Inject constructor(
             }
             return json.parseToJsonElement(body).jsonObject
         }
+    }
+
+    private fun executeWithAuthDnsFallback(request: Request, systemDnsError: UnknownHostException): Response {
+        return try {
+            authFallbackClient.newCall(request).execute()
+        } catch (fallbackDnsError: UnknownHostException) {
+            systemDnsError.addSuppressed(fallbackDnsError)
+            throw IOException(
+                "MaterialChat could not resolve ${request.url.host} from inside the app. " +
+                    "Chrome may still work because it uses separate DNS. Try disabling Android Private DNS/VPN, " +
+                    "or retry on another network.",
+                systemDnsError
+            )
+        } catch (e: IOException) {
+            throw IOException("Network request to ${request.url.host} failed after DNS fallback: ${e.message}", e)
+        }
+    }
+
+    private fun cascadingDohDns(): Dns {
+        val resolvers = listOf(
+            dnsOverHttps("https://dns.google/dns-query", "8.8.8.8", "8.8.4.4"),
+            dnsOverHttps("https://cloudflare-dns.com/dns-query", "1.1.1.1", "1.0.0.1"),
+            dnsOverHttps("https://dns.quad9.net/dns-query", "9.9.9.9", "149.112.112.112")
+        )
+        return object : Dns {
+            override fun lookup(hostname: String): List<InetAddress> {
+                var firstError: UnknownHostException? = null
+                for (resolver in resolvers) {
+                    try {
+                        val addresses = resolver.lookup(hostname)
+                        if (addresses.isNotEmpty()) return addresses
+                    } catch (e: UnknownHostException) {
+                        firstError?.addSuppressed(e) ?: run { firstError = e }
+                    }
+                }
+                throw firstError ?: UnknownHostException(hostname)
+            }
+        }
+    }
+
+    private fun dnsOverHttps(url: String, vararg bootstrapHosts: String): DnsOverHttps {
+        val client = OkHttpClient.Builder()
+            .connectTimeout(10, TimeUnit.SECONDS)
+            .readTimeout(10, TimeUnit.SECONDS)
+            .writeTimeout(10, TimeUnit.SECONDS)
+            .build()
+        val addresses = bootstrapHosts.map { InetAddress.getByName(it) }.toTypedArray()
+        return DnsOverHttps.Builder()
+            .client(client)
+            .url(url.toHttpUrl())
+            .bootstrapDnsHosts(*addresses)
+            .build()
     }
 
     private fun parseJwtPayload(jwt: String?): kotlinx.serialization.json.JsonObject? {
