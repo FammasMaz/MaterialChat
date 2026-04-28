@@ -49,7 +49,7 @@ import com.materialchat.data.local.database.entity.WorkflowStepEntity
         WorkflowEntity::class,
         WorkflowStepEntity::class
     ],
-    version = 14,
+    version = 15,
     exportSchema = true
 )
 abstract class MaterialChatDatabase : RoomDatabase() {
@@ -319,6 +319,26 @@ abstract class MaterialChatDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * Migration from version 14 to 15: Clean up any oversized attachment
+         * blobs created by version 14 before attachments were moved to files.
+         */
+        private val MIGRATION_14_15 = object : Migration(14, 15) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("""
+                    UPDATE messages
+                    SET image_attachments = NULL,
+                        content = CASE
+                            WHEN content = '' THEN 'Image attachment could not be restored. Please resend it.'
+                            ELSE content
+                        END,
+                        is_streaming = 0
+                    WHERE image_attachments IS NOT NULL
+                      AND length(image_attachments) > 750000
+                """)
+            }
+        }
+
         internal val MIGRATIONS = arrayOf(
             MIGRATION_2_3,
             MIGRATION_3_4,
@@ -331,7 +351,8 @@ abstract class MaterialChatDatabase : RoomDatabase() {
             MIGRATION_10_11,
             MIGRATION_11_12,
             MIGRATION_12_13,
-            MIGRATION_13_14
+            MIGRATION_13_14,
+            MIGRATION_14_15
         )
 
         /**

@@ -105,6 +105,11 @@ class SendMessageUseCase @Inject constructor(
             attachments = attachments
         )
         if (imagePrompt != null) {
+            val imageMessages = conversationRepository.getMessages(conversationId)
+            val contextualImagePrompt = buildContextualImagePrompt(
+                imagePrompt = imagePrompt,
+                messages = imageMessages
+            )
             val imageModel = imageModelOverride?.takeIf { it.isNotBlank() }
                 ?: appPreferences.defaultImageGenerationModel.first()
                     .ifBlank { AppPreferences.DEFAULT_IMAGE_GENERATION_MODEL }
@@ -125,7 +130,7 @@ class SendMessageUseCase @Inject constructor(
                 ImageGenerationForegroundService.startImage(context, imageModel)
                 val result = chatRepository.generateImage(
                     provider = provider,
-                    prompt = imagePrompt,
+                    prompt = contextualImagePrompt,
                     model = imageModel,
                     outputFormat = outputFormat
                 )
@@ -295,9 +300,13 @@ class SendMessageUseCase @Inject constructor(
                             .ifBlank { AppPreferences.DEFAULT_IMAGE_GENERATION_MODEL }
                         val outputFormat = appPreferences.defaultImageOutputFormat.first()
                         ImageGenerationForegroundService.startImage(context, imageModel)
+                        val contextualImagePrompt = buildContextualImagePrompt(
+                            imagePrompt = imageToolPrompt,
+                            messages = messages
+                        )
                         val imageResult = chatRepository.generateImage(
                             provider = provider,
-                            prompt = imageToolPrompt,
+                            prompt = contextualImagePrompt,
                             model = imageModel,
                             outputFormat = outputFormat
                         )
@@ -600,6 +609,90 @@ class SendMessageUseCase @Inject constructor(
         return if (IMAGE_REQUEST_REGEX.containsMatchIn(prompt)) prompt else null
     }
 
+    private fun buildContextualImagePrompt(
+        imagePrompt: String,
+        messages: List<Message>
+    ): String {
+        val prompt = imagePrompt.trim()
+        if (prompt.isBlank()) return imagePrompt
+
+        val relevantMessages = messages
+            .filter { it.role != MessageRole.SYSTEM }
+            .takeLast(MAX_IMAGE_PROMPT_HISTORY_MESSAGES)
+        val priorMessages = relevantMessages.dropLastWhile { message ->
+            val content = message.content.trim()
+            message.role == MessageRole.USER && (content == prompt || content.endsWith(prompt))
+        }
+        val hasPriorContext = priorMessages.any { message ->
+            message.content.isNotBlank() || message.attachments.isNotEmpty()
+        }
+        if (!hasPriorContext) return prompt
+
+        val history = relevantMessages
+            .joinToString(separator = "\n") { message -> formatMessageForImagePrompt(message) }
+            .trim()
+        if (history.isBlank()) return prompt
+
+        val prefix = buildString {
+            appendLine("Use this chat history to resolve references, style, subjects, constraints, and requested edits for the image generation request.")
+            appendLine("If the latest request refers to a prior generated or attached image, preserve the referenced subject/composition and apply the requested changes.")
+            appendLine()
+            appendLine("Chat history:")
+        }
+        val suffix = buildString {
+            appendLine()
+            appendLine()
+            appendLine("Latest image request:")
+            append(prompt)
+        }
+        val maxHistoryChars = (MAX_CONTEXTUAL_IMAGE_PROMPT_CHARS - prefix.length - suffix.length)
+            .coerceAtLeast(0)
+        val trimmedHistory = if (history.length > maxHistoryChars && maxHistoryChars > 1) {
+            "…" + history.takeLast(maxHistoryChars - 1)
+        } else {
+            history.take(maxHistoryChars)
+        }
+
+        return prefix + trimmedHistory + suffix
+    }
+
+    private fun formatMessageForImagePrompt(message: Message): String {
+        val role = when (message.role) {
+            MessageRole.USER -> "User"
+            MessageRole.ASSISTANT -> "Assistant"
+            MessageRole.SYSTEM -> "System"
+        }
+        val text = sanitizeForImagePrompt(message.content)
+        val attachmentSummary = if (message.attachments.isNotEmpty()) {
+            val imageKind = if (message.role == MessageRole.ASSISTANT && isImageGenerationModelName(message.modelName)) {
+                "generated image"
+            } else {
+                "attached image"
+            }
+            " [${message.attachments.size} $imageKind${if (message.attachments.size == 1) "" else "s"}]"
+        } else {
+            ""
+        }
+        return buildString {
+            append(role)
+            append(attachmentSummary)
+            append(": ")
+            append(text.ifBlank { "(no text)" })
+        }
+    }
+
+    private fun sanitizeForImagePrompt(text: String): String {
+        return text
+            .replace(IMAGE_TOOL_DIRECTIVE_REGEX, "")
+            .replace(Regex("\\s+"), " ")
+            .trim()
+            .take(MAX_IMAGE_PROMPT_MESSAGE_CHARS)
+    }
+
+    private fun isImageGenerationModelName(modelName: String?): Boolean {
+        return modelName?.contains("image", ignoreCase = true) == true
+    }
+
     private data class BranchTitleResult(val title: String, val icon: String?)
 
     /** System instruction for branch title generation. */
@@ -630,6 +723,10 @@ MaterialChat image generation tool:
                 "\\b(image|picture|photo|illustration|artwork|poster|logo|wallpaper|avatar|icon|sticker)\\b[\\s\\S]{0,80}\\b(of|showing|depicting|for)\\b",
             RegexOption.IGNORE_CASE
         )
+
+        private const val MAX_IMAGE_PROMPT_HISTORY_MESSAGES = 12
+        private const val MAX_IMAGE_PROMPT_MESSAGE_CHARS = 700
+        private const val MAX_CONTEXTUAL_IMAGE_PROMPT_CHARS = 6000
 
         val GARBAGE_PATTERNS = listOf(
             "i don't", "i can't", "i notice", "i apologize", "i'm sorry",

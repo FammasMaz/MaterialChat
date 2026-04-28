@@ -11,5 +11,7 @@ data class AttachmentData(
     val id: String,
     val uri: String,
     val mimeType: String,
-    val base64Data: String
+    // Kept only for backward compatibility with older rows. New messages store
+    // image bytes on disk and leave this empty to avoid CursorWindow/row limits.
+    val base64Data: String = ""
 )

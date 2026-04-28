@@ -94,10 +94,12 @@ object NetworkModule {
     fun provideChatApiClient(
         @StreamingClient okHttpClient: OkHttpClient,
         json: Json,
-        sseEventParser: SseEventParser
+        sseEventParser: SseEventParser,
+        @ApplicationContext context: Context
     ): ChatApiClient {
         return ChatApiClient(
             okHttpClient = okHttpClient,
+            appContext = context.applicationContext,
             json = json,
             sseEventParser = sseEventParser
         )

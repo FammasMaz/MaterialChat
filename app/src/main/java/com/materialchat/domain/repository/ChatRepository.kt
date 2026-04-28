@@ -73,7 +73,7 @@ interface ChatRepository {
      * @param provider The provider to use
      * @param prompt The image prompt to send
      * @param model The configured default image generation model
-     * @return An attachment containing base64 image data, or an error
+     * @return An attachment pointing to the persisted image file, or an error
      */
     suspend fun generateImage(
         provider: Provider,

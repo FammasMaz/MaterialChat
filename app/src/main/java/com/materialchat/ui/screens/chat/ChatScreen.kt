@@ -4,7 +4,6 @@ import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
-import android.util.Base64
 import android.util.Log
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -98,6 +97,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.ByteArrayOutputStream
 import java.io.File
+import java.util.UUID
 import androidx.compose.ui.layout.onSizeChanged
 
 private const val TAG = "ChatScreen"
@@ -1022,18 +1022,37 @@ private suspend fun uriToAttachment(
         val compressedBytes = compressImage(originalBytes, mimeType)
         Log.d(TAG, "Image compressed: ${originalBytes.size} -> ${compressedBytes.size} bytes")
 
-        // Encode to base64
-        val base64Data = Base64.encodeToString(compressedBytes, Base64.NO_WRAP)
+        val persistedMimeType = if (mimeType == "image/png") "image/png" else "image/jpeg"
+        val localUri = persistAttachmentImage(context, compressedBytes, persistedMimeType)
 
         Attachment(
-            uri = uri.toString(),
-            mimeType = if (mimeType == "image/png" || mimeType == "image/gif") mimeType else "image/jpeg",
-            base64Data = base64Data
+            uri = localUri.toString(),
+            mimeType = persistedMimeType
         )
     } catch (e: Exception) {
         Log.e(TAG, "Failed to convert URI to attachment", e)
         null
     }
+}
+
+/**
+ * Saves compressed attachment bytes in app-private storage so the message can be
+ * restored and resent without keeping a huge base64 blob in Room.
+ */
+private fun persistAttachmentImage(
+    context: android.content.Context,
+    imageBytes: ByteArray,
+    mimeType: String
+): Uri {
+    val extension = when (mimeType.lowercase()) {
+        "image/png" -> "png"
+        "image/webp" -> "webp"
+        else -> "jpg"
+    }
+    val directory = File(context.filesDir, "chat_attachments").apply { mkdirs() }
+    val file = File(directory, "attachment_${System.currentTimeMillis()}_${UUID.randomUUID()}.$extension")
+    file.outputStream().use { it.write(imageBytes) }
+    return Uri.fromFile(file)
 }
 
 /**

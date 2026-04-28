@@ -1,5 +1,8 @@
 package com.materialchat.data.remote.api
 
+import android.content.Context
+import android.net.Uri
+import android.util.Base64
 import com.materialchat.data.remote.dto.OllamaChatRequest
 import com.materialchat.data.remote.dto.OllamaChatResponse
 import com.materialchat.data.remote.dto.OllamaMessage
@@ -12,6 +15,7 @@ import com.materialchat.data.remote.dto.OpenAiImageGenerationResponse
 import com.materialchat.data.remote.dto.OpenAiMessage
 import com.materialchat.data.remote.dto.ImageUrl
 import com.materialchat.data.remote.sse.SseEventParser
+import com.materialchat.domain.model.Attachment
 import com.materialchat.domain.model.Message
 import com.materialchat.domain.model.MessageRole
 import com.materialchat.domain.model.Provider
@@ -33,6 +37,7 @@ import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Response
 import java.io.BufferedReader
+import java.io.File
 import java.io.IOException
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
@@ -48,6 +53,7 @@ import java.util.concurrent.atomic.AtomicBoolean
  */
 class ChatApiClient(
     private val okHttpClient: OkHttpClient = defaultClient(),
+    private val appContext: Context? = null,
     private val json: Json = Json {
         ignoreUnknownKeys = true
         encodeDefaults = true
@@ -144,8 +150,8 @@ class ChatApiClient(
             toolChoice = if (disableTools) "none" else null
         )
 
-        val requestBody = json.encodeToString(request)
-            .toRequestBody(JSON_MEDIA_TYPE)
+        val requestJson = json.encodeToString(request)
+        val requestBody = requestJson.toRequestBody(JSON_MEDIA_TYPE)
 
         // Build HTTP request
         val url = buildChatCompletionsUrl(
@@ -153,7 +159,10 @@ class ChatApiClient(
             forcedVersion = if (nativeWebSearch) "v2" else null
         )
         android.util.Log.d("ChatApiClient", "OpenAI streaming URL: $url")
-        android.util.Log.d("ChatApiClient", "OpenAI request body: ${json.encodeToString(request)}")
+        android.util.Log.d(
+            "ChatApiClient",
+            "OpenAI request: model=$model messages=${openAiMessages.size} bytes=${requestJson.length} hasImages=${messages.any { it.attachments.isNotEmpty() }}"
+        )
         val httpRequest = Request.Builder()
             .url(url)
             .addHeader("Authorization", "Bearer $apiKey")
@@ -374,7 +383,7 @@ class ChatApiClient(
 
     /**
      * Generates an image using an OpenAI-compatible /v1/images/generations endpoint.
-     * Returns base64 image data so generated images can be persisted alongside chats.
+     * Returns base64 image data so callers can persist generated images alongside chats.
      */
     suspend fun generateImage(
         provider: Provider,
@@ -757,7 +766,6 @@ class ChatApiClient(
     ): List<OpenAiMessage> {
         val result = mutableListOf<OpenAiMessage>()
 
-        // Add system prompt if provided
         if (!systemPrompt.isNullOrBlank()) {
             result.add(OpenAiMessage(
                 role = "system",
@@ -765,28 +773,25 @@ class ChatApiClient(
             ))
         }
 
-        // Add conversation messages
         messages.forEach { message ->
-            val content = if (message.attachments.isNotEmpty()) {
-                // Build multimodal content with text and images
+            if (message.role == MessageRole.ASSISTANT && message.attachments.isNotEmpty()) {
+                addGeneratedImageReferenceForOpenAi(result, message)
+                return@forEach
+            }
+
+            val imageParts = if (message.role == MessageRole.USER) {
+                buildOpenAiImageParts(message.attachments)
+            } else {
+                emptyList()
+            }
+            val content = if (imageParts.isNotEmpty()) {
                 val parts = mutableListOf<OpenAiContentPart>()
-
-                // Add text content first
-                if (message.content.isNotBlank()) {
-                    parts.add(OpenAiContentPart.TextPart(text = message.content))
-                }
-
-                // Add image attachments
-                message.attachments.forEach { attachment ->
-                    val dataUrl = "data:${attachment.mimeType};base64,${attachment.base64Data}"
-                    parts.add(OpenAiContentPart.ImageUrlPart(
-                        imageUrl = ImageUrl(url = dataUrl)
-                    ))
-                }
-
+                parts.add(OpenAiContentPart.TextPart(
+                    text = message.content.ifBlank { "Please consider the attached image." }
+                ))
+                parts.addAll(imageParts)
                 OpenAiContent.Parts(parts)
             } else {
-                // Simple text content
                 OpenAiContent.Text(message.content)
             }
 
@@ -799,6 +804,42 @@ class ChatApiClient(
         return result
     }
 
+    private fun addGeneratedImageReferenceForOpenAi(
+        result: MutableList<OpenAiMessage>,
+        message: Message
+    ) {
+        result.add(OpenAiMessage(
+            role = "assistant",
+            content = OpenAiContent.Text(message.content.ifBlank { "Generated image." })
+        ))
+
+        val imageParts = buildOpenAiImageParts(message.attachments)
+        if (imageParts.isEmpty()) return
+
+        val parts = mutableListOf<OpenAiContentPart>()
+        parts.add(OpenAiContentPart.TextPart(
+            text = "Reference image generated by the assistant earlier in this conversation. Use it as visual context for the user's next request."
+        ))
+        parts.addAll(imageParts)
+        result.add(OpenAiMessage(
+            role = "user",
+            content = OpenAiContent.Parts(parts)
+        ))
+    }
+
+    private fun buildOpenAiImageParts(attachments: List<Attachment>): List<OpenAiContentPart> {
+        return attachments.mapNotNull { attachment ->
+            val base64 = attachment.resolveBase64Data()
+            if (base64.isNullOrBlank()) {
+                android.util.Log.w("ChatApiClient", "Skipping image attachment with unavailable bytes: ${attachment.uri}")
+                null
+            } else {
+                val dataUrl = "data:${attachment.mimeType};base64,$base64"
+                OpenAiContentPart.ImageUrlPart(imageUrl = ImageUrl(url = dataUrl))
+            }
+        }
+    }
+
     /**
      * Converts domain Messages to Ollama format with optional system prompt.
      * Handles multimodal messages with image attachments.
@@ -809,28 +850,80 @@ class ChatApiClient(
     ): List<OllamaMessage> {
         val result = mutableListOf<OllamaMessage>()
 
-        // Add system prompt if provided
         if (!systemPrompt.isNullOrBlank()) {
             result.add(OllamaMessage(role = "system", content = systemPrompt))
         }
 
-        // Add conversation messages
         messages.forEach { message ->
-            val images = if (message.attachments.isNotEmpty()) {
-                // Ollama expects raw base64 strings (without data URL prefix)
-                message.attachments.map { it.base64Data }
+            if (message.role == MessageRole.ASSISTANT && message.attachments.isNotEmpty()) {
+                result.add(OllamaMessage(
+                    role = "assistant",
+                    content = message.content.ifBlank { "Generated image." }
+                ))
+                val generatedImages = buildOllamaImages(message.attachments)
+                if (generatedImages.isNotEmpty()) {
+                    result.add(OllamaMessage(
+                        role = "user",
+                        content = "Reference image generated by the assistant earlier in this conversation. Use it as visual context for the user's next request.",
+                        images = generatedImages
+                    ))
+                }
+                return@forEach
+            }
+
+            val images = if (message.role == MessageRole.USER) {
+                buildOllamaImages(message.attachments).takeIf { it.isNotEmpty() }
             } else {
                 null
             }
 
             result.add(OllamaMessage(
                 role = message.role.toApiRole(),
-                content = message.content,
+                content = if (message.content.isBlank() && images != null) {
+                    "Please consider the attached image."
+                } else {
+                    message.content
+                },
                 images = images
             ))
         }
 
         return result
+    }
+
+    private fun buildOllamaImages(attachments: List<Attachment>): List<String> {
+        return attachments.mapNotNull { attachment ->
+            attachment.resolveBase64Data().also { base64 ->
+                if (base64.isNullOrBlank()) {
+                    android.util.Log.w("ChatApiClient", "Skipping image attachment with unavailable bytes: ${attachment.uri}")
+                }
+            }?.takeIf { it.isNotBlank() }
+        }
+    }
+
+    private fun Attachment.resolveBase64Data(): String? {
+        if (base64Data.isNotBlank()) return base64Data
+        val bytes = readAttachmentBytes(uri) ?: return null
+        return Base64.encodeToString(bytes, Base64.NO_WRAP)
+    }
+
+    private fun readAttachmentBytes(uriString: String): ByteArray? {
+        if (uriString.isBlank()) return null
+        return runCatching {
+            val parsed = Uri.parse(uriString)
+            when (parsed.scheme?.lowercase()) {
+                "file" -> parsed.path?.let { path ->
+                    File(path).takeIf { it.exists() }?.readBytes()
+                }
+                "content" -> appContext?.contentResolver
+                    ?.openInputStream(parsed)
+                    ?.use { it.readBytes() }
+                null, "" -> File(uriString).takeIf { it.exists() }?.readBytes()
+                else -> null
+            }
+        }.onFailure { error ->
+            android.util.Log.w("ChatApiClient", "Failed to read attachment bytes from $uriString", error)
+        }.getOrNull()
     }
 
     /**

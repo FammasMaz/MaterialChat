@@ -14,7 +14,7 @@ import kotlinx.serialization.json.Json
 
 private val json = Json {
     ignoreUnknownKeys = true
-    encodeDefaults = true
+    encodeDefaults = false
 }
 
 // ============================================================================
@@ -163,6 +163,11 @@ fun MessageEntity.toDomain(): Message = Message(
 
 /**
  * Serializes a list of [Attachment] domain models to a JSON string for database storage.
+ *
+ * Large base64 image payloads are intentionally not persisted here. Attachments
+ * keep a stable local URI, and API clients read bytes from that URI when image
+ * context is needed. This keeps Room rows small and avoids CursorWindow "row too
+ * big" crashes when users attach or generate images.
  */
 private fun serializeAttachments(attachments: List<Attachment>): String? {
     if (attachments.isEmpty()) return null
@@ -172,7 +177,7 @@ private fun serializeAttachments(attachments: List<Attachment>): String? {
                 id = attachment.id,
                 uri = attachment.uri,
                 mimeType = attachment.mimeType,
-                base64Data = attachment.base64Data
+                base64Data = ""
             )
         }
         json.encodeToString(attachmentDataList)

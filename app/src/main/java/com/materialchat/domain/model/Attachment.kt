@@ -8,13 +8,14 @@ import java.util.UUID
  * @property id Unique identifier for the attachment
  * @property uri The content URI of the image (for local display)
  * @property mimeType The MIME type of the image (e.g., "image/jpeg", "image/png")
- * @property base64Data The base64-encoded image data for API transmission
+ * @property base64Data Optional transient base64-encoded image data for API transmission.
+ * New persisted messages store image bytes at [uri] and may leave this empty.
  */
 data class Attachment(
     val id: String = UUID.randomUUID().toString(),
     val uri: String,
     val mimeType: String,
-    val base64Data: String
+    val base64Data: String = ""
 ) {
     companion object {
         /**
