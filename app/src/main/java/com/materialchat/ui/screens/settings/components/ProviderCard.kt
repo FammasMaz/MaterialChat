@@ -181,8 +181,8 @@ fun ProviderCard(
                 overflow = TextOverflow.Ellipsis
             )
 
-            // API Key / Gateway Token status
-            if (provider.type == ProviderType.OPENAI_COMPATIBLE) {
+            // API key / native OAuth credential status
+            if (provider.type.requiresStoredCredential) {
                 Spacer(modifier = Modifier.height(4.dp))
                 ApiKeyStatusIndicator(hasApiKey = providerItem.hasApiKey)
             }
@@ -225,11 +225,11 @@ private fun ProviderTypeIcon(
             imageVector = when (type) {
                 ProviderType.OPENAI_COMPATIBLE -> Icons.Outlined.Cloud
                 ProviderType.OLLAMA_NATIVE -> Icons.Outlined.Computer
+                ProviderType.CODEX_NATIVE,
+                ProviderType.GITHUB_COPILOT_NATIVE,
+                ProviderType.ANTIGRAVITY_NATIVE -> Icons.Outlined.SmartToy
             },
-            contentDescription = when (type) {
-                ProviderType.OPENAI_COMPATIBLE -> "OpenAI-compatible provider"
-                ProviderType.OLLAMA_NATIVE -> "Ollama local provider"
-            },
+            contentDescription = "${type.displayName} provider",
             tint = MaterialTheme.colorScheme.onPrimaryContainer,
             modifier = Modifier.size(24.dp)
         )
@@ -260,7 +260,7 @@ private fun ActiveIndicator(
 }
 
 /**
- * Indicator showing whether an API key is configured.
+ * Indicator showing whether a provider credential is configured.
  */
 @Composable
 private fun ApiKeyStatusIndicator(
@@ -283,7 +283,7 @@ private fun ApiKeyStatusIndicator(
             modifier = Modifier.size(14.dp)
         )
         Text(
-            text = if (hasApiKey) "API key configured" else "No API key",
+            text = if (hasApiKey) "Credential configured" else "No credential",
             style = MaterialTheme.typography.labelSmall,
             color = if (hasApiKey) {
                 MaterialTheme.colorScheme.onSurfaceVariant

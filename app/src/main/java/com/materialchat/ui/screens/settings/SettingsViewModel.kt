@@ -3,6 +3,8 @@ package com.materialchat.ui.screens.settings
 import android.os.Build
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.materialchat.data.auth.NativeAuthCredential
+import com.materialchat.data.auth.NativeAuthManager
 import com.materialchat.data.local.preferences.AppPreferences
 import com.materialchat.data.local.preferences.EncryptedPreferences
 import com.materialchat.data.repository.UpdateManager
@@ -32,7 +34,8 @@ class SettingsViewModel @Inject constructor(
     private val manageProvidersUseCase: ManageProvidersUseCase,
     private val appPreferences: AppPreferences,
     private val encryptedPreferences: EncryptedPreferences,
-    private val updateManager: UpdateManager
+    private val updateManager: UpdateManager,
+    private val nativeAuthManager: NativeAuthManager
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<SettingsUiState>(SettingsUiState.Loading)
@@ -309,17 +312,19 @@ class SettingsViewModel @Inject constructor(
         apiKey: String? = null
     ) {
         val current = _formState.value
+        val selectedType = type ?: current.type
         val shouldResetModels = type != null || baseUrl != null || apiKey != null
         val availableModels = if (shouldResetModels) emptyList() else current.availableModels
         val isFetchingModels = if (shouldResetModels) false else current.isFetchingModels
         val modelsError = if (shouldResetModels) null else current.modelsError
+        val defaultConfig = defaultConfigFor(selectedType)
 
         _formState.value = current.copy(
             name = name ?: current.name,
-            type = type ?: current.type,
-            baseUrl = baseUrl ?: current.baseUrl,
-            defaultModel = defaultModel ?: current.defaultModel,
-            apiKey = apiKey ?: current.apiKey,
+            type = selectedType,
+            baseUrl = baseUrl ?: if (type != null) defaultConfig.first else current.baseUrl,
+            defaultModel = defaultModel ?: if (type != null) defaultConfig.second else current.defaultModel,
+            apiKey = apiKey ?: if (type != null) "" else current.apiKey,
             // Clear errors when user edits fields
             nameError = if (name != null) null else current.nameError,
             baseUrlError = if (baseUrl != null) null else current.baseUrlError,
@@ -327,8 +332,42 @@ class SettingsViewModel @Inject constructor(
             apiKeyError = if (apiKey != null) null else current.apiKeyError,
             availableModels = availableModels,
             isFetchingModels = isFetchingModels,
-            modelsError = modelsError
+            modelsError = modelsError,
+            authStatus = if (type != null || apiKey != null) null else current.authStatus
         )
+    }
+
+    fun authenticateNativeProvider() {
+        val current = _formState.value
+        if (!current.type.isNativeAuth || current.isAuthenticating) return
+
+        _formState.value = current.copy(
+            isAuthenticating = true,
+            authStatus = "Starting ${current.type.displayName} sign-in...",
+            apiKeyError = null
+        )
+
+        viewModelScope.launch {
+            try {
+                val credential = nativeAuthManager.authenticate(current.type) { status ->
+                    _formState.value = _formState.value.copy(authStatus = status)
+                }
+                _formState.value = _formState.value.copy(
+                    apiKey = NativeAuthCredential.encode(credential),
+                    hasExistingKey = true,
+                    isAuthenticating = false,
+                    authStatus = "Signed in${credential.email?.let { " as $it" } ?: ""}"
+                )
+                _events.emit(SettingsEvent.ShowSnackbar("${current.type.displayName} sign-in complete"))
+            } catch (e: Exception) {
+                _formState.value = _formState.value.copy(
+                    isAuthenticating = false,
+                    authStatus = e.message ?: "Authentication failed",
+                    apiKeyError = e.message ?: "Authentication failed"
+                )
+                _events.emit(SettingsEvent.ShowSnackbar(e.message ?: "Authentication failed"))
+            }
+        }
     }
 
     fun fetchProviderModels() {
@@ -343,14 +382,17 @@ class SettingsViewModel @Inject constructor(
             return
         }
 
-        if (currentFormState.type == ProviderType.OPENAI_COMPATIBLE) {
+        if (currentFormState.type.requiresStoredCredential) {
             val hasExistingKey = currentState.editingProvider?.let { provider ->
                 currentState.providers.find { it.provider.id == provider.id }?.hasApiKey
             } ?: false
-            val hasApiKey = currentFormState.apiKey.isNotBlank() || hasExistingKey
-            if (!hasApiKey) {
+            val hasCredential = currentFormState.apiKey.isNotBlank() ||
+                hasExistingKey ||
+                currentFormState.type == ProviderType.CODEX_NATIVE ||
+                currentFormState.type == ProviderType.ANTIGRAVITY_NATIVE
+            if (!hasCredential) {
                 viewModelScope.launch {
-                    _events.emit(SettingsEvent.ShowSnackbar("API key is required to fetch models."))
+                    _events.emit(SettingsEvent.ShowSnackbar("API key or sign-in is required to fetch models."))
                 }
                 return
             }
@@ -428,14 +470,18 @@ class SettingsViewModel @Inject constructor(
             hasErrors = true
         }
 
-        if (form.type == ProviderType.OPENAI_COMPATIBLE) {
+        if (form.type.requiresStoredCredential) {
             val editingProvider = currentState.editingProvider
             val hasExistingKey = editingProvider?.let { provider ->
                 currentState.providers.find { it.provider.id == provider.id }?.hasApiKey
             } ?: false
 
             if (form.apiKey.isBlank() && !hasExistingKey) {
-                apiKeyError = "API key is required for OpenAI-compatible providers"
+                apiKeyError = if (form.type.isNativeAuth) {
+                    "Sign in is required for ${form.type.displayName}"
+                } else {
+                    "API key is required for OpenAI-compatible providers"
+                }
                 hasErrors = true
             }
         }
@@ -1039,6 +1085,14 @@ class SettingsViewModel @Inject constructor(
     }
 
     // ========== Utilities ==========
+
+    private fun defaultConfigFor(type: ProviderType): Pair<String, String> = when (type) {
+        ProviderType.OPENAI_COMPATIBLE -> "https://api.openai.com" to "gpt-4o"
+        ProviderType.OLLAMA_NATIVE -> "http://localhost:11434" to "llama3.2"
+        ProviderType.CODEX_NATIVE -> "https://chatgpt.com/backend-api/codex" to "gpt-5-codex"
+        ProviderType.GITHUB_COPILOT_NATIVE -> "https://api.githubcopilot.com" to "gpt-4.1"
+        ProviderType.ANTIGRAVITY_NATIVE -> "https://daily-cloudcode-pa.sandbox.googleapis.com/v1internal" to "gemini-3-flash"
+    }
 
     /**
      * Validates a URL format.

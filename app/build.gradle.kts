@@ -11,6 +11,17 @@ if (file("google-services.json").exists()) {
     apply(plugin = "com.google.gms.google-services")
 }
 
+fun quotedBuildConfig(value: String): String {
+    val escaped = value.replace("\\", "\\\\").replace("\"", "\\\"")
+    return "\"$escaped\""
+}
+
+fun optionalSecret(name: String): String {
+    return providers.gradleProperty(name).orNull
+        ?: providers.environmentVariable(name).orNull
+        ?: ""
+}
+
 android {
     namespace = "com.materialchat"
     compileSdk = 36
@@ -23,6 +34,17 @@ android {
         versionName = "2.16.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        buildConfigField(
+            "String",
+            "ANTIGRAVITY_CLIENT_ID",
+            quotedBuildConfig(optionalSecret("ANTIGRAVITY_CLIENT_ID"))
+        )
+        buildConfigField(
+            "String",
+            "ANTIGRAVITY_CLIENT_SECRET",
+            quotedBuildConfig(optionalSecret("ANTIGRAVITY_CLIENT_SECRET"))
+        )
 
         vectorDrawables {
             useSupportLibrary = true

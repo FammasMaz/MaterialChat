@@ -1,5 +1,6 @@
 package com.materialchat.data.remote.api
 
+import com.materialchat.data.auth.NativeAuthCredential
 import com.materialchat.data.remote.dto.OllamaModelsResponse
 import com.materialchat.data.remote.dto.OpenAiModelsResponse
 import com.materialchat.domain.model.AiModel
@@ -50,6 +51,17 @@ class ModelListApiClient(
                 baseUrl = provider.baseUrl,
                 providerId = provider.id
             )
+            ProviderType.GITHUB_COPILOT_NATIVE -> fetchGitHubCopilotModels(
+                baseUrl = provider.baseUrl,
+                providerId = provider.id,
+                credentialJson = apiKey
+            )
+            ProviderType.CODEX_NATIVE -> Result.success(CODEX_MODELS.map { model ->
+                AiModel(id = model, name = model, providerId = provider.id)
+            })
+            ProviderType.ANTIGRAVITY_NATIVE -> Result.success(ANTIGRAVITY_MODELS.map { model ->
+                AiModel(id = model, name = model, providerId = provider.id)
+            })
         }
     }
 
@@ -162,6 +174,48 @@ class ModelListApiClient(
         }
     }
 
+    private suspend fun fetchGitHubCopilotModels(
+        baseUrl: String,
+        providerId: String,
+        credentialJson: String?
+    ): Result<List<AiModel>> = withContext(Dispatchers.IO) {
+        val credential = NativeAuthCredential.decodeOrNull(credentialJson)
+        val token = credential?.accessToken
+        if (token.isNullOrBlank()) {
+            return@withContext Result.failure(ApiException(code = 401, message = "GitHub Copilot is not authenticated"))
+        }
+
+        try {
+            val request = Request.Builder()
+                .url("${baseUrl.trimEnd('/')}/models")
+                .addHeader("Authorization", "Bearer $token")
+                .addHeader("User-Agent", "opencode/1.1.36")
+                .addHeader("Accept", "application/json")
+                .get()
+                .build()
+            okHttpClient.newCall(request).execute().use { resp ->
+                if (!resp.isSuccessful) {
+                    return@withContext Result.failure(
+                        ApiException(code = resp.code, message = "Failed to fetch Copilot models: HTTP ${resp.code}")
+                    )
+                }
+                val body = resp.body?.string().orEmpty()
+                val modelsResponse = json.decodeFromString<OpenAiModelsResponse>(body)
+                val models = modelsResponse.data
+                    .mapNotNull { modelData -> modelData.id.takeIf { !it.contains("embedding", ignoreCase = true) } }
+                    .map { id -> AiModel(id = id, name = id, providerId = providerId) }
+                    .sortedBy { it.id }
+                Result.success(models.ifEmpty {
+                    GITHUB_COPILOT_MODELS.map { model -> AiModel(id = model, name = model, providerId = providerId) }
+                })
+            }
+        } catch (e: Exception) {
+            Result.success(GITHUB_COPILOT_MODELS.map { model ->
+                AiModel(id = model, name = model, providerId = providerId)
+            })
+        }
+    }
+
     /**
      * Fetches models from an Ollama server.
      *
@@ -264,6 +318,59 @@ class ModelListApiClient(
          * Default timeout for model list requests.
          */
         private const val REQUEST_TIMEOUT_SECONDS = 30L
+
+        private val CODEX_MODELS = listOf(
+            "gpt-5",
+            "gpt-5.1",
+            "gpt-5.2",
+            "gpt-5-codex",
+            "gpt-5-codex-mini",
+            "gpt-5.1-codex",
+            "gpt-5.1-codex-max",
+            "gpt-5.1-codex-mini",
+            "gpt-5.2-codex",
+            "gpt-5.3-codex",
+            "gpt-5.4",
+            "gpt-5.5"
+        )
+
+        private val GITHUB_COPILOT_MODELS = listOf(
+            "gpt-5",
+            "gpt-5.1",
+            "gpt-5.1-codex",
+            "gpt-5.1-codex-mini",
+            "gpt-5.1-codex-max",
+            "gpt-5.2",
+            "gpt-4o",
+            "gpt-4.1",
+            "o3",
+            "o4-mini",
+            "claude-sonnet-4",
+            "claude-sonnet-4.5",
+            "claude-sonnet-4.6",
+            "claude-opus-4",
+            "claude-opus-4.5",
+            "claude-opus-4.6",
+            "claude-haiku-4.5",
+            "gemini-2.5-pro",
+            "gemini-3-flash-preview",
+            "gemini-3-pro-preview",
+            "grok-code-fast-1"
+        )
+
+        private val ANTIGRAVITY_MODELS = listOf(
+            "gemini-2.5-flash",
+            "gemini-2.5-flash-lite",
+            "gemini-3-pro-preview",
+            "gemini-3-flash",
+            "gemini-3-flash-agent",
+            "gemini-3.1-pro",
+            "claude-sonnet-4.5",
+            "claude-sonnet-4.6",
+            "claude-opus-4.5",
+            "claude-opus-4.6",
+            "gpt-oss-120b-medium"
+        )
 
         /**
          * Creates a default OkHttpClient for model fetching.

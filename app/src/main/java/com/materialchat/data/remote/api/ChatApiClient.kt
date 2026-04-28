@@ -3,6 +3,7 @@ package com.materialchat.data.remote.api
 import android.content.Context
 import android.net.Uri
 import android.util.Base64
+import com.materialchat.data.auth.NativeAuthCredential
 import com.materialchat.data.remote.dto.OllamaChatRequest
 import com.materialchat.data.remote.dto.OllamaChatResponse
 import com.materialchat.data.remote.dto.OllamaMessage
@@ -25,10 +26,21 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.buildJsonArray
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.put
 import okhttp3.Call
 import okhttp3.Callback
 import okhttp3.MediaType.Companion.toMediaType
@@ -39,6 +51,7 @@ import okhttp3.Response
 import java.io.BufferedReader
 import java.io.File
 import java.io.IOException
+import java.util.UUID
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 
@@ -106,6 +119,31 @@ class ChatApiClient(
                 systemPrompt = systemPrompt,
                 temperature = temperature,
                 reasoningEffort = reasoningEffort
+            )
+            ProviderType.GITHUB_COPILOT_NATIVE -> streamGitHubCopilotChat(
+                baseUrl = provider.baseUrl,
+                model = model,
+                messages = messages,
+                credentialJson = apiKey,
+                systemPrompt = systemPrompt,
+                reasoningEffort = reasoningEffort
+            )
+            ProviderType.CODEX_NATIVE -> streamCodexChat(
+                baseUrl = provider.baseUrl,
+                model = model,
+                messages = messages,
+                credentialJson = apiKey,
+                systemPrompt = systemPrompt,
+                reasoningEffort = reasoningEffort
+            )
+            ProviderType.ANTIGRAVITY_NATIVE -> streamAntigravityChat(
+                baseUrl = provider.baseUrl,
+                model = model,
+                messages = messages,
+                credentialJson = apiKey,
+                systemPrompt = systemPrompt,
+                reasoningEffort = reasoningEffort,
+                temperature = temperature
             )
         }
     }
@@ -335,6 +373,196 @@ class ChatApiClient(
         }
     }
 
+    private fun streamGitHubCopilotChat(
+        baseUrl: String,
+        model: String,
+        messages: List<Message>,
+        credentialJson: String?,
+        systemPrompt: String?,
+        reasoningEffort: ReasoningEffort
+    ): Flow<StreamingEvent> = callbackFlow {
+        val credential = NativeAuthCredential.decodeOrNull(credentialJson)
+        val token = credential?.accessToken
+        if (token.isNullOrBlank()) {
+            trySend(StreamingEvent.Error("GitHub Copilot is not authenticated. Sign in from provider settings."))
+            close()
+            return@callbackFlow
+        }
+
+        val cancelled = AtomicBoolean(false)
+        val cleanModel = stripProviderPrefix(model)
+        val requestBuilder = Request.Builder()
+            .addHeader("x-initiator", "user")
+            .addHeader("User-Agent", COPILOT_USER_AGENT)
+            .addHeader("Authorization", "Bearer $token")
+            .addHeader("Openai-Intent", "conversation-edits")
+            .addHeader("Content-Type", "application/json")
+            .addHeader("Accept", "text/event-stream")
+
+        val httpRequest = if (isCopilotResponsesModel(cleanModel)) {
+            val payload = buildCodexResponsesPayload(cleanModel, messages, systemPrompt, reasoningEffort)
+            requestBuilder
+                .url("${baseUrl.trimEnd('/')}/responses")
+                .addHeader("OpenAI-Beta", "responses=experimental")
+                .post(payload.toString().toRequestBody(JSON_MEDIA_TYPE))
+                .build()
+        } else {
+            val request = OpenAiChatRequest(
+                model = cleanModel,
+                messages = buildOpenAiMessages(messages, systemPrompt),
+                stream = true,
+                reasoningEffort = reasoningEffort.apiValue
+            )
+            requestBuilder
+                .url("${baseUrl.trimEnd('/')}/chat/completions")
+                .post(json.encodeToString(request).toRequestBody(JSON_MEDIA_TYPE))
+                .build()
+        }
+
+        val call = enqueueStreamingCall(httpRequest, cancelled) { reader ->
+            if (isCopilotResponsesModel(cleanModel)) {
+                processCodexResponsesStream(reader, cancelled) { event ->
+                    if (!cancelled.get() && isActive) trySend(event)
+                }
+            } else {
+                processOpenAiStream(reader, cancelled) { event ->
+                    if (!cancelled.get() && isActive) trySend(event)
+                }
+            }
+        }
+
+        awaitClose {
+            cancelled.set(true)
+            activeCalls.remove(call)
+            call.cancel()
+        }
+    }
+
+    private fun streamCodexChat(
+        baseUrl: String,
+        model: String,
+        messages: List<Message>,
+        credentialJson: String?,
+        systemPrompt: String?,
+        reasoningEffort: ReasoningEffort
+    ): Flow<StreamingEvent> = callbackFlow {
+        val credential = NativeAuthCredential.decodeOrNull(credentialJson)
+        val token = credential?.bearerToken
+        if (token.isNullOrBlank()) {
+            trySend(StreamingEvent.Error("Codex is not authenticated. Sign in from provider settings."))
+            close()
+            return@callbackFlow
+        }
+
+        val cancelled = AtomicBoolean(false)
+        val payload = buildCodexResponsesPayload(model, messages, systemPrompt, reasoningEffort)
+        val requestBuilder = Request.Builder()
+            .url("${baseUrl.trimEnd('/')}/responses")
+            .addHeader("Authorization", "Bearer $token")
+            .addHeader("Content-Type", "application/json")
+            .addHeader("Accept", "text/event-stream")
+            .addHeader("OpenAI-Beta", "responses=experimental")
+            .post(payload.toString().toRequestBody(JSON_MEDIA_TYPE))
+        credential.accountId?.takeIf { it.isNotBlank() }?.let {
+            requestBuilder.addHeader("ChatGPT-Account-Id", it)
+        }
+
+        val call = enqueueStreamingCall(requestBuilder.build(), cancelled) { reader ->
+            processCodexResponsesStream(reader, cancelled) { event ->
+                if (!cancelled.get() && isActive) trySend(event)
+            }
+        }
+
+        awaitClose {
+            cancelled.set(true)
+            activeCalls.remove(call)
+            call.cancel()
+        }
+    }
+
+    private fun streamAntigravityChat(
+        baseUrl: String,
+        model: String,
+        messages: List<Message>,
+        credentialJson: String?,
+        systemPrompt: String?,
+        reasoningEffort: ReasoningEffort,
+        temperature: Double
+    ): Flow<StreamingEvent> = callbackFlow {
+        val credential = NativeAuthCredential.decodeOrNull(credentialJson)
+        val token = credential?.accessToken
+        if (token.isNullOrBlank()) {
+            trySend(StreamingEvent.Error("Antigravity is not authenticated. Sign in from provider settings."))
+            close()
+            return@callbackFlow
+        }
+
+        val cancelled = AtomicBoolean(false)
+        val payload = buildAntigravityPayload(model, messages, systemPrompt, credential, reasoningEffort, temperature)
+        val httpRequest = Request.Builder()
+            .url("${baseUrl.trimEnd('/')}:streamGenerateContent?alt=sse")
+            .addHeader("Authorization", "Bearer $token")
+            .addHeader("Content-Type", "application/json")
+            .addHeader("Accept", "text/event-stream")
+            .addHeader("User-Agent", ANTIGRAVITY_USER_AGENT)
+            .post(payload.toString().toRequestBody(JSON_MEDIA_TYPE))
+            .build()
+
+        val call = enqueueStreamingCall(httpRequest, cancelled) { reader ->
+            processAntigravityStream(reader, cancelled) { event ->
+                if (!cancelled.get() && isActive) trySend(event)
+            }
+        }
+
+        awaitClose {
+            cancelled.set(true)
+            activeCalls.remove(call)
+            call.cancel()
+        }
+    }
+
+    private fun kotlinx.coroutines.channels.ProducerScope<StreamingEvent>.enqueueStreamingCall(
+        request: Request,
+        cancelled: AtomicBoolean,
+        processBody: (BufferedReader) -> Unit
+    ): Call {
+        val call = okHttpClient.newCall(request)
+        activeCalls.add(call)
+        call.enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                if (!cancelled.get()) trySend(StreamingEvent.fromException(e))
+                close()
+            }
+
+            override fun onResponse(call: Call, response: Response) {
+                response.use { resp ->
+                    if (!resp.isSuccessful) {
+                        val errorBody = resp.body?.string().orEmpty()
+                        trySend(StreamingEvent.fromHttpError(resp.code, parseErrorMessage(errorBody, resp.code)))
+                        close()
+                        return
+                    }
+                    trySend(StreamingEvent.Connected)
+                    val body = resp.body
+                    if (body == null) {
+                        trySend(StreamingEvent.Error("Empty response body"))
+                        close()
+                        return
+                    }
+                    try {
+                        body.source().inputStream().bufferedReader().use(processBody)
+                    } catch (e: IOException) {
+                        if (!cancelled.get()) trySend(StreamingEvent.fromException(e))
+                    } finally {
+                        activeCalls.remove(call)
+                        close()
+                    }
+                }
+            }
+        })
+        return call
+    }
+
     /**
      * Cancels any active streaming request.
      */
@@ -375,6 +603,15 @@ class ChatApiClient(
                     prompt = prompt,
                     systemPrompt = systemPrompt
                 )
+                ProviderType.CODEX_NATIVE,
+                ProviderType.GITHUB_COPILOT_NATIVE,
+                ProviderType.ANTIGRAVITY_NATIVE -> generateStreamingBackedCompletion(
+                    provider = provider,
+                    prompt = prompt,
+                    model = model,
+                    apiKey = apiKey,
+                    systemPrompt = systemPrompt
+                )
             }
         } catch (e: Exception) {
             Result.failure(e)
@@ -408,10 +645,48 @@ class ChatApiClient(
                 ProviderType.OLLAMA_NATIVE -> Result.failure(
                     IOException("Image generation requires an OpenAI-compatible provider")
                 )
+                ProviderType.CODEX_NATIVE,
+                ProviderType.GITHUB_COPILOT_NATIVE,
+                ProviderType.ANTIGRAVITY_NATIVE -> Result.failure(
+                    IOException("Image generation is not supported by ${provider.type.displayName} providers")
+                )
             }
         } catch (e: Exception) {
             Result.failure(e)
         }
+    }
+
+    private suspend fun generateStreamingBackedCompletion(
+        provider: Provider,
+        prompt: String,
+        model: String,
+        apiKey: String?,
+        systemPrompt: String?
+    ): Result<String> {
+        val content = StringBuilder()
+        var error: StreamingEvent.Error? = null
+        val messages = listOf(
+            Message(
+                conversationId = "simple-completion",
+                role = MessageRole.USER,
+                content = prompt
+            )
+        )
+        streamChat(
+            provider = provider,
+            messages = messages,
+            model = model,
+            apiKey = apiKey,
+            systemPrompt = systemPrompt
+        ).collect { event ->
+            when (event) {
+                is StreamingEvent.Content -> content.append(event.content)
+                is StreamingEvent.Error -> error = event
+                else -> Unit
+            }
+        }
+        error?.let { return Result.failure(IOException(it.message)) }
+        return Result.success(content.toString())
     }
 
     /**
@@ -636,9 +911,21 @@ class ChatApiClient(
         apiKey: String?
     ): Result<Boolean> = withContext(Dispatchers.IO) {
         try {
+            if (provider.type == ProviderType.CODEX_NATIVE || provider.type == ProviderType.ANTIGRAVITY_NATIVE) {
+                val credential = NativeAuthCredential.decodeOrNull(apiKey)
+                return@withContext if (!credential?.bearerToken.isNullOrBlank()) {
+                    Result.success(true)
+                } else {
+                    Result.failure(IOException("${provider.type.displayName} is not authenticated"))
+                }
+            }
+
             val urls = when (provider.type) {
                 ProviderType.OPENAI_COMPATIBLE -> buildModelsUrlsWithFallback(provider.baseUrl)
                 ProviderType.OLLAMA_NATIVE -> listOf("${provider.baseUrl.trimEnd('/')}/api/tags")
+                ProviderType.GITHUB_COPILOT_NATIVE -> listOf("${provider.baseUrl.trimEnd('/')}/models")
+                ProviderType.CODEX_NATIVE,
+                ProviderType.ANTIGRAVITY_NATIVE -> emptyList()
             }
 
             var lastError: Exception? = null
@@ -647,8 +934,18 @@ class ChatApiClient(
                     .url(url)
                     .get()
 
-                if (provider.type == ProviderType.OPENAI_COMPATIBLE && !apiKey.isNullOrBlank()) {
-                    requestBuilder.addHeader("Authorization", "Bearer $apiKey")
+                when (provider.type) {
+                    ProviderType.OPENAI_COMPATIBLE -> if (!apiKey.isNullOrBlank()) {
+                        requestBuilder.addHeader("Authorization", "Bearer $apiKey")
+                    }
+                    ProviderType.GITHUB_COPILOT_NATIVE -> {
+                        val token = NativeAuthCredential.decodeOrNull(apiKey)?.accessToken
+                        if (!token.isNullOrBlank()) {
+                            requestBuilder.addHeader("Authorization", "Bearer $token")
+                        }
+                        requestBuilder.addHeader("User-Agent", COPILOT_USER_AGENT)
+                    }
+                    else -> Unit
                 }
 
                 val response = okHttpClient.newCall(requestBuilder.build()).execute()
@@ -926,6 +1223,251 @@ class ChatApiClient(
         }.getOrNull()
     }
 
+    private fun buildCodexResponsesPayload(
+        model: String,
+        messages: List<Message>,
+        systemPrompt: String?,
+        reasoningEffort: ReasoningEffort
+    ): JsonObject = buildJsonObject {
+        put("model", stripProviderPrefix(model))
+        put("stream", true)
+        put("store", false)
+        put("instructions", systemPrompt.orEmpty())
+        put("text", buildJsonObject { put("verbosity", "medium") })
+        put("reasoning", buildJsonObject {
+            put("effort", reasoningEffort.apiValue)
+            put("summary", "auto")
+        })
+        put("include", buildJsonArray { add(kotlinx.serialization.json.JsonPrimitive("reasoning.encrypted_content")) })
+        put("input", buildJsonArray {
+            messages.filter { it.role != MessageRole.SYSTEM }.forEach { message ->
+                val role = when (message.role) {
+                    MessageRole.USER -> "user"
+                    MessageRole.ASSISTANT -> "assistant"
+                    MessageRole.SYSTEM -> "user"
+                }
+                val textType = if (role == "assistant") "output_text" else "input_text"
+                add(buildJsonObject {
+                    put("type", "message")
+                    put("role", role)
+                    put("content", buildJsonArray {
+                        if (message.content.isNotBlank()) {
+                            add(buildJsonObject {
+                                put("type", textType)
+                                put("text", message.content)
+                            })
+                        }
+                        if (role == "user") {
+                            message.attachments.forEach { attachment ->
+                                attachment.resolveBase64Data()?.takeIf { it.isNotBlank() }?.let { base64 ->
+                                    add(buildJsonObject {
+                                        put("type", "input_image")
+                                        put("image_url", "data:${attachment.mimeType};base64,$base64")
+                                    })
+                                }
+                            }
+                        }
+                    })
+                })
+            }
+        })
+    }
+
+    private fun buildAntigravityPayload(
+        model: String,
+        messages: List<Message>,
+        systemPrompt: String?,
+        credential: NativeAuthCredential,
+        reasoningEffort: ReasoningEffort,
+        temperature: Double
+    ): JsonObject {
+        val geminiRequest = buildJsonObject {
+            if (!systemPrompt.isNullOrBlank()) {
+                put("systemInstruction", buildJsonObject {
+                    put("role", "user")
+                    put("parts", buildJsonArray {
+                        add(buildJsonObject { put("text", systemPrompt) })
+                    })
+                })
+            }
+            put("contents", buildJsonArray {
+                messages.filter { it.role != MessageRole.SYSTEM }.forEach { message ->
+                    add(buildJsonObject {
+                        put("role", if (message.role == MessageRole.ASSISTANT) "model" else "user")
+                        put("parts", buildJsonArray {
+                            if (message.content.isNotBlank()) {
+                                add(buildJsonObject { put("text", message.content) })
+                            }
+                            if (message.role == MessageRole.USER) {
+                                message.attachments.forEach { attachment ->
+                                    attachment.resolveBase64Data()?.takeIf { it.isNotBlank() }?.let { base64 ->
+                                        add(buildJsonObject {
+                                            put("inlineData", buildJsonObject {
+                                                put("mimeType", attachment.mimeType)
+                                                put("data", base64)
+                                            })
+                                        })
+                                    }
+                                }
+                            }
+                        })
+                    })
+                }
+            })
+            put("generationConfig", buildJsonObject {
+                put("temperature", temperature)
+                put("thinkingConfig", buildJsonObject {
+                    when (reasoningEffort) {
+                        ReasoningEffort.NONE -> put("thinkingBudget", 0)
+                        ReasoningEffort.LOW -> put("thinkingBudget", 1024)
+                        ReasoningEffort.MEDIUM -> put("thinkingBudget", 8192)
+                        ReasoningEffort.HIGH -> put("thinkingBudget", 24576)
+                        ReasoningEffort.XHIGH -> put("thinkingBudget", 32768)
+                    }
+                })
+            })
+        }
+
+        return buildJsonObject {
+            put("project", credential.projectId?.takeIf { it.isNotBlank() } ?: ANTIGRAVITY_FALLBACK_PROJECT_ID)
+            put("requestType", "agent")
+            put("userAgent", "antigravity")
+            put("requestId", UUID.randomUUID().toString())
+            put("model", normalizeAntigravityModel(model, reasoningEffort))
+            put("request", geminiRequest)
+        }
+    }
+
+    private fun processCodexResponsesStream(
+        reader: BufferedReader,
+        cancelled: AtomicBoolean,
+        onEvent: (StreamingEvent) -> Unit
+    ) {
+        var currentEvent: String? = null
+        reader.lineSequence().forEach { rawLine ->
+            if (cancelled.get()) return
+            val line = rawLine.trim()
+            when {
+                line.startsWith("event:") -> currentEvent = line.removePrefix("event:").trim()
+                line.startsWith("data:") -> {
+                    val data = line.removePrefix("data:").trim()
+                    if (data == "[DONE]") {
+                        onEvent(StreamingEvent.Done())
+                        return
+                    }
+                    parseCodexData(data, currentEvent)?.let(onEvent)
+                }
+            }
+        }
+        if (!cancelled.get()) onEvent(StreamingEvent.Done())
+    }
+
+    private fun parseCodexData(data: String, eventName: String?): StreamingEvent? {
+        return runCatching {
+            val obj = json.parseToJsonElement(data).jsonObject
+            val type = obj.string("type") ?: eventName
+            when (type) {
+                "response.output_text.delta" -> obj.string("delta")?.takeIf { it.isNotEmpty() }
+                    ?.let { StreamingEvent.Content(content = it) }
+                "response.content_part.delta" -> obj["part"]?.jsonObject
+                    ?.takeIf { it.string("type") == "output_text" }
+                    ?.string("text")?.takeIf { it.isNotEmpty() }
+                    ?.let { StreamingEvent.Content(content = it) }
+                "response.reasoning_summary_text.delta",
+                "response.reasoning_text.delta" -> obj.string("delta")?.takeIf { it.isNotEmpty() }
+                    ?.let { StreamingEvent.Content(content = "", thinking = it) }
+                "response.completed" -> StreamingEvent.Done()
+                "error" -> StreamingEvent.Error(obj.string("message") ?: data)
+                else -> null
+            }
+        }.getOrNull()
+    }
+
+    private fun processAntigravityStream(
+        reader: BufferedReader,
+        cancelled: AtomicBoolean,
+        onEvent: (StreamingEvent) -> Unit
+    ) {
+        reader.lineSequence().forEach { rawLine ->
+            if (cancelled.get()) return
+            val line = rawLine.trim()
+            if (!line.startsWith("data:")) return@forEach
+            val data = line.removePrefix("data:").trim()
+            if (data == "[DONE]") {
+                onEvent(StreamingEvent.Done())
+                return
+            }
+            parseAntigravityData(data)?.let(onEvent)
+        }
+        if (!cancelled.get()) onEvent(StreamingEvent.Done())
+    }
+
+    private fun parseAntigravityData(data: String): StreamingEvent? {
+        return runCatching {
+            val root = json.parseToJsonElement(data)
+            val chunk = findObjectWithKey(root, "candidates") ?: root.jsonObject
+            val candidates = chunk["candidates"]?.jsonArray ?: return@runCatching null
+            val candidate = candidates.firstOrNull()?.jsonObject ?: return@runCatching null
+            val parts = candidate["content"]?.jsonObject?.get("parts")?.jsonArray ?: return@runCatching null
+            val content = StringBuilder()
+            val thinking = StringBuilder()
+            parts.forEach { partElement ->
+                val part = partElement.jsonObject
+                val text = part.string("text").orEmpty()
+                if (text.isBlank()) return@forEach
+                val isThought = part["thought"]?.jsonPrimitive?.contentOrNull == "true"
+                if (isThought) thinking.append(text) else content.append(text)
+            }
+            if (content.isNotEmpty() || thinking.isNotEmpty()) {
+                StreamingEvent.Content(
+                    content = content.toString(),
+                    thinking = thinking.toString().takeIf { it.isNotEmpty() }
+                )
+            } else {
+                null
+            }
+        }.getOrNull()
+    }
+
+    private fun findObjectWithKey(element: JsonElement, key: String): JsonObject? {
+        if (element is JsonObject) {
+            if (element.containsKey(key)) return element
+            element.values.forEach { nested -> findObjectWithKey(nested, key)?.let { return it } }
+        } else if (element is JsonArray) {
+            element.forEach { nested -> findObjectWithKey(nested, key)?.let { return it } }
+        }
+        return null
+    }
+
+    private fun stripProviderPrefix(model: String): String {
+        return model.substringAfter('/', model).trim()
+    }
+
+    private fun isCopilotResponsesModel(model: String): Boolean {
+        val clean = stripProviderPrefix(model).lowercase()
+        if (clean.startsWith("o3") || clean.startsWith("o4")) return true
+        val gptVersion = Regex("^gpt-(\\d+)").find(clean)?.groupValues?.getOrNull(1)?.toIntOrNull()
+        return gptVersion != null && gptVersion >= 5 && !clean.startsWith("gpt-5-mini")
+    }
+
+    private fun normalizeAntigravityModel(model: String, reasoningEffort: ReasoningEffort): String {
+        val clean = stripProviderPrefix(model)
+        return when (clean) {
+            "gemini-3-pro-preview" -> if (reasoningEffort == ReasoningEffort.LOW) "gemini-3-pro-low" else "gemini-3-pro-high"
+            "gemini-3.1-pro" -> if (reasoningEffort == ReasoningEffort.LOW) "gemini-3.1-pro-low" else "gemini-3.1-pro-high"
+            "gemini-2.5-flash" -> if (reasoningEffort == ReasoningEffort.LOW) clean else "gemini-2.5-flash-thinking"
+            "claude-opus-4.5" -> "claude-opus-4-5-thinking"
+            "claude-opus-4.6" -> "claude-opus-4-6-thinking"
+            "claude-sonnet-4.5" -> if (reasoningEffort == ReasoningEffort.LOW) "claude-sonnet-4-5" else "claude-sonnet-4-5-thinking"
+            "claude-sonnet-4.6" -> if (reasoningEffort == ReasoningEffort.LOW) "claude-sonnet-4-6" else "claude-sonnet-4-6-thinking"
+            else -> clean
+        }
+    }
+
+    private fun JsonObject.string(key: String): String? {
+        return this[key]?.jsonPrimitive?.contentOrNull
+    }
+
     /**
      * Parses an error message from API response body.
      */
@@ -1076,6 +1618,10 @@ class ChatApiClient(
                 listOf(primary)
             }
         }
+
+        private const val COPILOT_USER_AGENT = "opencode/1.1.36"
+        private const val ANTIGRAVITY_USER_AGENT = "antigravity/1.23.2 darwin/arm64"
+        private const val ANTIGRAVITY_FALLBACK_PROJECT_ID = "rising-fact-p41fc"
 
         /**
          * Creates a default OkHttpClient configured for streaming.

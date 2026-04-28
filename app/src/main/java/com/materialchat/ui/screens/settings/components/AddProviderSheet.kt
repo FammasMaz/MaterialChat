@@ -111,6 +111,7 @@ fun AddProviderSheet(
         apiKey: String?
     ) -> Unit,
     onFetchModels: () -> Unit,
+    onAuthenticate: () -> Unit,
     onSave: () -> Unit
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -131,6 +132,7 @@ fun AddProviderSheet(
                 onDismiss = onDismiss,
                 onFieldChange = onFieldChange,
                 onFetchModels = onFetchModels,
+                onAuthenticate = onAuthenticate,
                 onSave = onSave
             )
         }
@@ -152,6 +154,7 @@ private fun AddProviderSheetContent(
         apiKey: String?
     ) -> Unit,
     onFetchModels: () -> Unit,
+    onAuthenticate: () -> Unit,
     onSave: () -> Unit
 ) {
     val scrollState = rememberScrollState()
@@ -225,6 +228,9 @@ private fun AddProviderSheetContent(
             placeholder = when (formState.type) {
                 ProviderType.OPENAI_COMPATIBLE -> "https://api.openai.com"
                 ProviderType.OLLAMA_NATIVE -> "http://localhost:11434"
+                ProviderType.CODEX_NATIVE -> "https://chatgpt.com/backend-api/codex"
+                ProviderType.GITHUB_COPILOT_NATIVE -> "https://api.githubcopilot.com"
+                ProviderType.ANTIGRAVITY_NATIVE -> "https://daily-cloudcode-pa.sandbox.googleapis.com/v1internal"
             },
             leadingIcon = Icons.Outlined.Link,
             error = formState.baseUrlError,
@@ -245,6 +251,9 @@ private fun AddProviderSheetContent(
             placeholder = when (formState.type) {
                 ProviderType.OPENAI_COMPATIBLE -> "gpt-4o"
                 ProviderType.OLLAMA_NATIVE -> "llama3.2"
+                ProviderType.CODEX_NATIVE -> "gpt-5-codex"
+                ProviderType.GITHUB_COPILOT_NATIVE -> "gpt-4.1"
+                ProviderType.ANTIGRAVITY_NATIVE -> "gemini-3-flash"
             },
             leadingIcon = Icons.Outlined.Memory,
             error = formState.defaultModelError,
@@ -346,6 +355,48 @@ private fun AddProviderSheetContent(
             }
         }
 
+        AnimatedVisibility(
+            visible = formState.type.isNativeAuth,
+            enter = fadeIn() + expandVertically(
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                    stiffness = Spring.StiffnessMediumLow
+                )
+            ),
+            exit = fadeOut() + shrinkVertically(
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioNoBouncy,
+                    stiffness = Spring.StiffnessMedium
+                )
+            )
+        ) {
+            Column {
+                Spacer(modifier = Modifier.height(16.dp))
+                ExpressiveButton(
+                    onClick = onAuthenticate,
+                    text = when {
+                        formState.isAuthenticating -> "Waiting for sign-in..."
+                        formState.hasExistingKey || formState.apiKey.isNotBlank() -> "Re-authenticate ${formState.type.displayName}"
+                        else -> "Sign in to ${formState.type.displayName}"
+                    },
+                    style = ExpressiveButtonStyle.Filled,
+                    enabled = !isSaving && !formState.isAuthenticating
+                )
+                formState.authStatus?.let { status ->
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = status,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = if (formState.apiKeyError != null) {
+                            MaterialTheme.colorScheme.error
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        }
+                    )
+                }
+            }
+        }
+
         Spacer(modifier = Modifier.height(24.dp))
 
         // Save button
@@ -407,35 +458,31 @@ private fun ProviderTypeSelector(
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Spacer(modifier = Modifier.height(8.dp))
-        Row(
+        Column(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             ProviderType.entries.forEach { type ->
                 FilterChip(
                     selected = selectedType == type,
                     onClick = { if (enabled) onTypeSelected(type) },
                     enabled = enabled,
-                    label = {
-                        Text(
-                            text = when (type) {
-                                ProviderType.OPENAI_COMPATIBLE -> "OpenAI-compatible"
-                                ProviderType.OLLAMA_NATIVE -> "Ollama"
-                            }
-                        )
-                    },
+                    label = { Text(text = type.displayName) },
                     leadingIcon = {
                         Icon(
                             imageVector = when (type) {
                                 ProviderType.OPENAI_COMPATIBLE -> Icons.Outlined.Cloud
                                 ProviderType.OLLAMA_NATIVE -> Icons.Outlined.Computer
+                                ProviderType.CODEX_NATIVE,
+                                ProviderType.GITHUB_COPILOT_NATIVE,
+                                ProviderType.ANTIGRAVITY_NATIVE -> Icons.Outlined.SmartToy
                             },
                             contentDescription = null,
                             modifier = Modifier.size(18.dp)
                         )
                     },
                     modifier = Modifier
-                        .weight(1f)
+                        .fillMaxWidth()
                         .defaultMinSize(minHeight = 48.dp),
                     colors = FilterChipDefaults.filterChipColors(
                         selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,

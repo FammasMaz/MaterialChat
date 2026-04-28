@@ -91,7 +91,7 @@ class ManageProvidersUseCase @Inject constructor(
             type = type,
             baseUrl = baseUrl.trimEnd('/'),
             defaultModel = defaultModel.trim(),
-            requiresApiKey = type == ProviderType.OPENAI_COMPATIBLE,
+            requiresApiKey = type.requiresStoredCredential,
             isActive = setAsActive
         )
 
@@ -178,7 +178,7 @@ class ManageProvidersUseCase @Inject constructor(
         baseUrl: String,
         apiKey: String?
     ): Result<List<AiModel>> {
-        val resolvedApiKey = if (type == ProviderType.OPENAI_COMPATIBLE) {
+        val resolvedApiKey = if (type.requiresStoredCredential) {
             if (!apiKey.isNullOrBlank()) {
                 apiKey
             } else {
@@ -194,7 +194,7 @@ class ManageProvidersUseCase @Inject constructor(
             type = type,
             baseUrl = baseUrl.trimEnd('/'),
             defaultModel = "",
-            requiresApiKey = type == ProviderType.OPENAI_COMPATIBLE
+            requiresApiKey = type.requiresStoredCredential
         )
 
         return chatRepository.fetchModels(tempProvider, resolvedApiKey)
@@ -233,7 +233,7 @@ class ManageProvidersUseCase @Inject constructor(
             type = type,
             baseUrl = baseUrl.trimEnd('/'),
             defaultModel = "",
-            requiresApiKey = type == ProviderType.OPENAI_COMPATIBLE
+            requiresApiKey = type.requiresStoredCredential
         )
 
         return chatRepository.testConnection(tempProvider)

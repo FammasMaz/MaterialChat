@@ -3,6 +3,8 @@ package com.materialchat.data.repository
 import android.content.Context
 import android.net.Uri
 import android.util.Base64
+import com.materialchat.data.auth.NativeAuthCredential
+import com.materialchat.data.auth.NativeAuthManager
 import com.materialchat.data.local.preferences.EncryptedPreferences
 import com.materialchat.data.remote.api.ChatApiClient
 import com.materialchat.data.remote.api.ModelListApiClient
@@ -35,6 +37,7 @@ class ChatRepositoryImpl @Inject constructor(
     private val chatApiClient: ChatApiClient,
     private val modelListApiClient: ModelListApiClient,
     private val encryptedPreferences: EncryptedPreferences,
+    private val nativeAuthManager: NativeAuthManager,
     @ApplicationContext private val context: Context
 ) : ChatRepository {
 
@@ -51,12 +54,7 @@ class ChatRepositoryImpl @Inject constructor(
         val accumulatedContent = StringBuilder()
         val accumulatedThinking = StringBuilder()
 
-        // Get API key if required
-        val apiKey = if (provider.requiresApiKey) {
-            encryptedPreferences.getApiKey(provider.id)
-        } else {
-            null
-        }
+        val apiKey = getProviderCredential(provider)
 
         // Create a placeholder message ID for tracking
         val messageId = java.util.UUID.randomUUID().toString()
@@ -132,11 +130,10 @@ class ChatRepositoryImpl @Inject constructor(
         provider: Provider,
         apiKeyOverride: String?
     ): Result<List<AiModel>> {
-        // Get API key if required
-        val apiKey = if (provider.requiresApiKey) {
-            apiKeyOverride ?: encryptedPreferences.getApiKey(provider.id)
+        val apiKey = if (!apiKeyOverride.isNullOrBlank()) {
+            apiKeyOverride
         } else {
-            null
+            getProviderCredential(provider)
         }
 
         return modelListApiClient.fetchModels(provider, apiKey)
@@ -147,12 +144,7 @@ class ChatRepositoryImpl @Inject constructor(
     }
 
     override suspend fun testConnection(provider: Provider): Result<Boolean> {
-        // Get API key if required
-        val apiKey = if (provider.requiresApiKey) {
-            encryptedPreferences.getApiKey(provider.id)
-        } else {
-            null
-        }
+        val apiKey = getProviderCredential(provider)
 
         return chatApiClient.testConnection(provider, apiKey)
     }
@@ -163,12 +155,7 @@ class ChatRepositoryImpl @Inject constructor(
         model: String,
         systemPrompt: String?
     ): Result<String> {
-        // Get API key if required
-        val apiKey = if (provider.requiresApiKey) {
-            encryptedPreferences.getApiKey(provider.id)
-        } else {
-            null
-        }
+        val apiKey = getProviderCredential(provider)
 
         return chatApiClient.generateSimpleCompletion(provider, prompt, model, apiKey, systemPrompt)
     }
@@ -179,14 +166,19 @@ class ChatRepositoryImpl @Inject constructor(
         model: String,
         outputFormat: String
     ): Result<Attachment> {
-        val apiKey = if (provider.requiresApiKey) {
-            encryptedPreferences.getApiKey(provider.id)
-        } else {
-            null
-        }
+        val apiKey = getProviderCredential(provider)
 
         return chatApiClient.generateImage(provider, prompt, model, apiKey, outputFormat = outputFormat)
             .map { image -> persistGeneratedImage(image.base64Data, image.mimeType) }
+    }
+
+    private suspend fun getProviderCredential(provider: Provider): String? {
+        if (!provider.requiresApiKey) return null
+        if (provider.type.isNativeAuth) {
+            return nativeAuthManager.getFreshCredential(provider.id, provider.type)
+                ?.let { NativeAuthCredential.encode(it) }
+        }
+        return encryptedPreferences.getApiKey(provider.id)
     }
 
     private fun persistGeneratedImage(base64Data: String, mimeType: String): Attachment {

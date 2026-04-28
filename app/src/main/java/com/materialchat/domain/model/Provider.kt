@@ -7,7 +7,7 @@ import java.util.UUID
  *
  * @property id Unique identifier for the provider
  * @property name Display name for the provider
- * @property type The type of provider (OpenAI-compatible or Ollama)
+ * @property type The type of provider (OpenAI-compatible, Ollama, or native OAuth-backed provider)
  * @property baseUrl The base URL for API requests
  * @property defaultModel The default model to use for new conversations
  * @property requiresApiKey Whether this provider requires an API key
@@ -62,5 +62,34 @@ data class Provider(
             isActive = false
         )
 
+        fun codexTemplate(): Provider = Provider(
+            id = "codex-native-default",
+            name = "Codex",
+            type = ProviderType.CODEX_NATIVE,
+            baseUrl = "https://chatgpt.com/backend-api/codex",
+            defaultModel = "gpt-5-codex",
+            requiresApiKey = true,
+            isActive = false
+        )
+
+        fun githubCopilotTemplate(): Provider = Provider(
+            id = "github-copilot-native-default",
+            name = "GitHub Copilot",
+            type = ProviderType.GITHUB_COPILOT_NATIVE,
+            baseUrl = "https://api.githubcopilot.com",
+            defaultModel = "gpt-4.1",
+            requiresApiKey = true,
+            isActive = false
+        )
+
+        fun antigravityTemplate(): Provider = Provider(
+            id = "antigravity-native-default",
+            name = "Antigravity",
+            type = ProviderType.ANTIGRAVITY_NATIVE,
+            baseUrl = "https://daily-cloudcode-pa.sandbox.googleapis.com/v1internal",
+            defaultModel = "gemini-3-flash",
+            requiresApiKey = true,
+            isActive = false
+        )
     }
 }

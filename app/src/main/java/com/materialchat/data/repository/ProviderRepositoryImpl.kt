@@ -118,11 +118,17 @@ class ProviderRepositoryImpl @Inject constructor(
         val openAiProvider = Provider.openAiTemplate()
         val ollamaProvider = Provider.ollamaLocalTemplate()
         val openRouterProvider = Provider.openRouterTemplate()
+        val codexProvider = Provider.codexTemplate()
+        val githubCopilotProvider = Provider.githubCopilotTemplate()
+        val antigravityProvider = Provider.antigravityTemplate()
         // Insert default providers
         providerDao.insertAll(listOf(
             openAiProvider.toEntity(),
             ollamaProvider.toEntity(),
-            openRouterProvider.toEntity()
+            openRouterProvider.toEntity(),
+            codexProvider.toEntity(),
+            githubCopilotProvider.toEntity(),
+            antigravityProvider.toEntity()
         ))
     }
 

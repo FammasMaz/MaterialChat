@@ -332,6 +332,7 @@ fun SettingsScreen(
                 )
             },
             onFetchModels = { viewModel.fetchProviderModels() },
+            onAuthenticate = { viewModel.authenticateNativeProvider() },
             onSave = { viewModel.saveProvider() }
         )
 

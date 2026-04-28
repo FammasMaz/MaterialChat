@@ -201,7 +201,9 @@ data class ProviderFormState(
     val apiKeyError: String? = null,
     val availableModels: List<com.materialchat.domain.model.AiModel> = emptyList(),
     val isFetchingModels: Boolean = false,
-    val modelsError: String? = null
+    val modelsError: String? = null,
+    val isAuthenticating: Boolean = false,
+    val authStatus: String? = null
 ) {
     /**
      * Whether the form has validation errors.
@@ -216,5 +218,5 @@ data class ProviderFormState(
     val canSubmit: Boolean
         get() = name.isNotBlank() && baseUrl.isNotBlank() &&
                 defaultModel.isNotBlank() && !hasErrors &&
-                (type != com.materialchat.domain.model.ProviderType.OPENAI_COMPATIBLE || apiKey.isNotBlank() || hasExistingKey)
+                (!type.requiresStoredCredential || apiKey.isNotBlank() || hasExistingKey)
 }
