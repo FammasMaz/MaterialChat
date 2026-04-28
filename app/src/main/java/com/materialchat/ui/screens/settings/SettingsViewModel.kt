@@ -356,7 +356,7 @@ class SettingsViewModel @Inject constructor(
                     apiKey = NativeAuthCredential.encode(credential),
                     hasExistingKey = true,
                     isAuthenticating = false,
-                    authStatus = "Signed in${credential.email?.let { " as $it" } ?: ""}"
+                    authStatus = "Signed in${credential.email?.let { " as $it" } ?: ""}. Tap Save to finish."
                 )
                 _events.emit(SettingsEvent.ShowSnackbar("${current.type.displayName} sign-in complete"))
             } catch (e: Exception) {
@@ -1089,7 +1089,7 @@ class SettingsViewModel @Inject constructor(
     private fun defaultConfigFor(type: ProviderType): Pair<String, String> = when (type) {
         ProviderType.OPENAI_COMPATIBLE -> "https://api.openai.com" to "gpt-4o"
         ProviderType.OLLAMA_NATIVE -> "http://localhost:11434" to "llama3.2"
-        ProviderType.CODEX_NATIVE -> "https://chatgpt.com/backend-api/codex" to "gpt-5-codex"
+        ProviderType.CODEX_NATIVE -> "https://chatgpt.com/backend-api/codex" to "gpt-5.5"
         ProviderType.GITHUB_COPILOT_NATIVE -> "https://api.githubcopilot.com" to "gpt-4.1"
         ProviderType.ANTIGRAVITY_NATIVE -> "https://daily-cloudcode-pa.sandbox.googleapis.com/v1internal" to "gemini-3-flash"
     }

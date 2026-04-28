@@ -49,7 +49,7 @@ import com.materialchat.data.local.database.entity.WorkflowStepEntity
         WorkflowEntity::class,
         WorkflowStepEntity::class
     ],
-    version = 15,
+    version = 16,
     exportSchema = true
 )
 abstract class MaterialChatDatabase : RoomDatabase() {
@@ -339,6 +339,21 @@ abstract class MaterialChatDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * Migration from version 15 to 16: Update the built-in Codex default model.
+         */
+        private val MIGRATION_15_16 = object : Migration(15, 16) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("""
+                    UPDATE providers
+                    SET default_model = 'gpt-5.5'
+                    WHERE id = 'codex-native-default'
+                      AND type = 'CODEX_NATIVE'
+                      AND default_model = 'gpt-5-codex'
+                """)
+            }
+        }
+
         internal val MIGRATIONS = arrayOf(
             MIGRATION_2_3,
             MIGRATION_3_4,
@@ -352,7 +367,8 @@ abstract class MaterialChatDatabase : RoomDatabase() {
             MIGRATION_11_12,
             MIGRATION_12_13,
             MIGRATION_13_14,
-            MIGRATION_14_15
+            MIGRATION_14_15,
+            MIGRATION_15_16
         )
 
         /**

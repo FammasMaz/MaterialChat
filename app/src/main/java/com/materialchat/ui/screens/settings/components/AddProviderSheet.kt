@@ -251,7 +251,7 @@ private fun AddProviderSheetContent(
             placeholder = when (formState.type) {
                 ProviderType.OPENAI_COMPATIBLE -> "gpt-4o"
                 ProviderType.OLLAMA_NATIVE -> "llama3.2"
-                ProviderType.CODEX_NATIVE -> "gpt-5-codex"
+                ProviderType.CODEX_NATIVE -> "gpt-5.5"
                 ProviderType.GITHUB_COPILOT_NATIVE -> "gpt-4.1"
                 ProviderType.ANTIGRAVITY_NATIVE -> "gemini-3-flash"
             },

@@ -145,6 +145,7 @@ dependencies {
 
     // OkHttp
     implementation(libs.okhttp)
+    implementation(libs.okhttp.dnsoverhttps)
     implementation(libs.okhttp.logging.interceptor)
     implementation(libs.okhttp.sse)
 

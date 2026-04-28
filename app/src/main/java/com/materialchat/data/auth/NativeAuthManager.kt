@@ -29,6 +29,7 @@ import java.io.IOException
 import java.io.PrintWriter
 import java.net.ServerSocket
 import java.net.Socket
+import java.net.UnknownHostException
 import java.net.URLEncoder
 import java.security.MessageDigest
 import java.security.SecureRandom
@@ -161,48 +162,20 @@ class NativeAuthManager @Inject constructor(
             "code_challenge_method" to "S256",
             "state" to state,
             "id_token_add_organizations" to "true",
-            "codex_cli_simplified_flow" to "true"
+            "codex_cli_simplified_flow" to "true",
+            "originator" to OPENAI_ORIGINATOR
         ))
 
-        onStatus("Complete OpenAI Codex sign-in in your browser")
-        val code = waitForLoopbackCode(OPENAI_CALLBACK_PORT, OPENAI_CALLBACK_PATH, state) {
+        onStatus("Complete OpenAI Codex sign-in in Chrome")
+        val credential = waitForOpenAiCredential(OPENAI_CALLBACK_PORT, OPENAI_CALLBACK_PATH, state, {
             openBrowser(authUrl)
+        }) { code ->
+            onStatus("Authorization received. Exchanging OpenAI tokens...")
+            exchangeOpenAiAuthorizationCode(code, codeVerifier, redirectUri)
         }
 
-        val formBody = FormBody.Builder()
-            .add("grant_type", "authorization_code")
-            .add("code", code)
-            .add("client_id", OPENAI_CLIENT_ID)
-            .add("code_verifier", codeVerifier)
-            .add("redirect_uri", redirectUri)
-            .build()
-        val request = Request.Builder()
-            .url("https://auth.openai.com/oauth/token")
-            .addHeader("Content-Type", "application/x-www-form-urlencoded")
-            .post(formBody)
-            .build()
-        val tokenData = executeJson(request)
-        val idToken = tokenData.string("id_token")
-        val accessToken = tokenData.string("access_token")
-        val refreshToken = tokenData.string("refresh_token")
-        val expiresIn = tokenData.double("expires_in") ?: 3600.0
-        val idClaims = parseJwtPayload(idToken)
-        val authClaims = idClaims?.get("https://api.openai.com/auth")?.jsonObject
-        val accountId = authClaims?.get("chatgpt_account_id")?.jsonPrimitive?.contentOrNull
-        val email = idClaims?.get("email")?.jsonPrimitive?.contentOrNull
-        val apiKey = runCatching { exchangeOpenAiApiKey(idToken) }.getOrNull()
-
         onStatus("OpenAI Codex authentication complete")
-        NativeAuthCredential(
-            providerType = ProviderType.CODEX_NATIVE.name,
-            accessToken = accessToken,
-            refreshToken = refreshToken,
-            idToken = idToken,
-            apiKey = apiKey,
-            accountId = accountId,
-            email = email,
-            expiryDate = System.currentTimeMillis() + (expiresIn * 1000).toLong()
-        )
+        credential
     }
 
     private suspend fun authenticateAntigravity(
@@ -322,7 +295,49 @@ class NativeAuthManager @Inject constructor(
         }
     }
 
-    private suspend fun exchangeOpenAiApiKey(idToken: String?): String? {
+    private fun exchangeOpenAiAuthorizationCode(
+        code: String,
+        codeVerifier: String,
+        redirectUri: String
+    ): NativeAuthCredential {
+        val formBody = FormBody.Builder()
+            .add("grant_type", "authorization_code")
+            .add("code", code)
+            .add("client_id", OPENAI_CLIENT_ID)
+            .add("code_verifier", codeVerifier)
+            .add("redirect_uri", redirectUri)
+            .build()
+        val request = Request.Builder()
+            .url("https://auth.openai.com/oauth/token")
+            .addHeader("Content-Type", "application/x-www-form-urlencoded")
+            .post(formBody)
+            .build()
+        val tokenData = executeJson(request)
+        val idToken = tokenData.string("id_token")
+            ?: throw IOException("OpenAI token response did not include an ID token")
+        val accessToken = tokenData.string("access_token")
+            ?: throw IOException("OpenAI token response did not include an access token")
+        val refreshToken = tokenData.string("refresh_token")
+        val expiresIn = tokenData.double("expires_in") ?: 3600.0
+        val idClaims = parseJwtPayload(idToken)
+        val authClaims = idClaims?.get("https://api.openai.com/auth")?.jsonObject
+        val accountId = authClaims?.get("chatgpt_account_id")?.jsonPrimitive?.contentOrNull
+        val email = idClaims?.get("email")?.jsonPrimitive?.contentOrNull
+        val apiKey = runCatching { exchangeOpenAiApiKey(idToken) }.getOrNull()
+
+        return NativeAuthCredential(
+            providerType = ProviderType.CODEX_NATIVE.name,
+            accessToken = accessToken,
+            refreshToken = refreshToken,
+            idToken = idToken,
+            apiKey = apiKey,
+            accountId = accountId,
+            email = email,
+            expiryDate = System.currentTimeMillis() + (expiresIn * 1000).toLong()
+        )
+    }
+
+    private fun exchangeOpenAiApiKey(idToken: String?): String? {
         if (idToken.isNullOrBlank()) return null
         val formBody = FormBody.Builder()
             .add("grant_type", "urn:ietf:params:oauth:grant-type:token-exchange")
@@ -398,6 +413,78 @@ class NativeAuthManager @Inject constructor(
         return executeJsonBlocking(request).string("email")
     }
 
+    private fun waitForOpenAiCredential(
+        port: Int,
+        expectedPath: String,
+        expectedState: String,
+        openBrowser: () -> Unit,
+        exchangeCode: (String) -> NativeAuthCredential
+    ): NativeAuthCredential {
+        ServerSocket(port, 1, java.net.InetAddress.getByName("127.0.0.1")).use { server ->
+            server.soTimeout = LOOPBACK_TIMEOUT_MS
+            openBrowser()
+            while (true) {
+                server.accept().use { socket ->
+                    val result = handleOpenAiLoopbackSocket(socket, expectedPath, expectedState, exchangeCode)
+                    if (result != null) return result
+                }
+            }
+        }
+    }
+
+    private fun handleOpenAiLoopbackSocket(
+        socket: Socket,
+        expectedPath: String,
+        expectedState: String,
+        exchangeCode: (String) -> NativeAuthCredential
+    ): NativeAuthCredential? {
+        val reader = BufferedReader(socket.getInputStream().reader())
+        val writer = PrintWriter(socket.getOutputStream())
+        val requestLine = reader.readLine().orEmpty()
+        while (reader.readLine()?.isNotEmpty() == true) {
+            // Drain headers
+        }
+        val pathWithQuery = requestLine.split(" ").getOrNull(1).orEmpty()
+        val uri = Uri.parse("http://localhost$pathWithQuery")
+        val code = uri.getQueryParameter("code")
+        val state = uri.getQueryParameter("state")
+        val error = uri.getQueryParameter("error")
+        val result = when {
+            error != null -> LoopbackResult.Failure("Authentication failed", "OAuth failed: $error")
+            uri.path != expectedPath -> LoopbackResult.Ignore("Unexpected callback")
+            state != expectedState -> LoopbackResult.Failure("Authentication failed", "State mismatch. Please retry sign-in.")
+            code.isNullOrBlank() -> LoopbackResult.Failure("Authentication failed", "No authorization code received.")
+            else -> runCatching { exchangeCode(code) }.fold(
+                onSuccess = { credential ->
+                    writeLoopbackHtml(
+                        writer = writer,
+                        title = "Authentication successful",
+                        message = "MaterialChat has received your OpenAI Codex credentials. Return to the app and tap Save to finish.",
+                        autoReturnToApp = true
+                    )
+                    return credential
+                },
+                onFailure = { throwable ->
+                    LoopbackResult.Failure(
+                        title = "Authentication failed",
+                        message = throwable.message ?: "Token exchange failed. Return to MaterialChat and try again."
+                    )
+                }
+            )
+        }
+
+        when (result) {
+            is LoopbackResult.Failure -> {
+                writeLoopbackHtml(writer, result.title, result.message, isError = true)
+                throw IOException(result.message)
+            }
+            is LoopbackResult.Ignore -> {
+                writeLoopbackHtml(writer, result.title, "Return to MaterialChat and retry sign-in.", isError = true)
+                return null
+            }
+        }
+    }
+
     private fun waitForLoopbackCode(
         port: Int,
         expectedPath: String,
@@ -446,6 +533,62 @@ class NativeAuthManager @Inject constructor(
         return null
     }
 
+    private fun writeLoopbackHtml(
+        writer: PrintWriter,
+        title: String,
+        message: String,
+        isError: Boolean = false,
+        autoReturnToApp: Boolean = false
+    ) {
+        val safeTitle = escapeHtml(title)
+        val safeMessage = escapeHtml(message)
+        val color = if (isError) "#b3261e" else "#0f5132"
+        val appUrl = "materialchat://oauth/codex-complete"
+        val autoReturn = if (autoReturnToApp) {
+            """
+            <meta http-equiv="refresh" content="1;url=$appUrl">
+            <script>setTimeout(function(){ window.location.href = '$appUrl'; }, 700);</script>
+            """.trimIndent()
+        } else {
+            ""
+        }
+        val returnLink = if (autoReturnToApp) {
+            """
+            <p>If you are not returned automatically, <a href="$appUrl">tap here to return to MaterialChat</a>.</p>
+            <p>You can also close this tab and switch back manually.</p>
+            """.trimIndent()
+        } else {
+            "<p>Close this tab and return to MaterialChat.</p>"
+        }
+        val html = """
+            <!doctype html>
+            <html>
+            <head>
+                <meta name="viewport" content="width=device-width, initial-scale=1">
+                $autoReturn
+                <title>$safeTitle</title>
+                <style>
+                    body { font-family: sans-serif; padding: 32px; line-height: 1.45; color: #1b1b1f; }
+                    h1 { color: $color; }
+                    a { color: #0057d9; }
+                </style>
+            </head>
+            <body>
+                <h1>$safeTitle</h1>
+                <p>$safeMessage</p>
+                $returnLink
+            </body>
+            </html>
+        """.trimIndent()
+        writer.print("HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nConnection: close\r\n\r\n$html")
+        writer.flush()
+    }
+
+    private sealed class LoopbackResult {
+        data class Failure(val title: String, val message: String) : LoopbackResult()
+        data class Ignore(val title: String) : LoopbackResult()
+    }
+
     private fun openBrowser(url: String) {
         val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url)).apply {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
@@ -458,10 +601,21 @@ class NativeAuthManager @Inject constructor(
     }
 
     private fun executeJsonBlocking(request: Request): kotlinx.serialization.json.JsonObject {
-        okHttpClient.newCall(request).execute().use { response ->
-            val body = response.body?.string().orEmpty()
-            if (!response.isSuccessful) {
-                throw IOException("HTTP ${response.code}: ${body.take(500)}")
+        val response = try {
+            okHttpClient.newCall(request).execute()
+        } catch (e: UnknownHostException) {
+            throw IOException(
+                "Cannot reach ${request.url.host}. Check your internet connection, DNS, VPN, or private DNS settings.",
+                e
+            )
+        } catch (e: IOException) {
+            throw IOException("Network request to ${request.url.host} failed: ${e.message}", e)
+        }
+
+        response.use {
+            val body = it.body?.string().orEmpty()
+            if (!it.isSuccessful) {
+                throw IOException("HTTP ${it.code}: ${body.take(500)}")
             }
             return json.parseToJsonElement(body).jsonObject
         }
@@ -520,7 +674,15 @@ class NativeAuthManager @Inject constructor(
         const val GITHUB_POLLING_SAFETY_SECONDS = 3L
 
         const val OPENAI_CLIENT_ID = "app_EMoamEEZ73f0CkXaXp7hrann"
-        val OPENAI_SCOPES = listOf("openid", "profile", "email", "offline_access")
+        const val OPENAI_ORIGINATOR = "codex_cli_rs"
+        val OPENAI_SCOPES = listOf(
+            "openid",
+            "profile",
+            "email",
+            "offline_access",
+            "api.connectors.read",
+            "api.connectors.invoke"
+        )
         const val OPENAI_CALLBACK_PORT = 1455
         const val OPENAI_CALLBACK_PATH = "/auth/callback"
 

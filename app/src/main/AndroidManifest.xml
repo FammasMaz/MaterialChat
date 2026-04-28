@@ -50,6 +50,7 @@
         <activity
             android:name=".MainActivity"
             android:exported="true"
+            android:launchMode="singleTop"
             android:theme="@style/Theme.MaterialChat.Splash"
             android:windowSoftInputMode="adjustNothing">
             <intent-filter>
@@ -61,6 +62,16 @@
             <intent-filter>
                 <action android:name="com.materialchat.OPEN_CHAT" />
                 <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+
+            <!-- Deep link used by OAuth success pages to bring the user back from Chrome. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data
+                    android:scheme="materialchat"
+                    android:host="oauth" />
             </intent-filter>
         </activity>
 

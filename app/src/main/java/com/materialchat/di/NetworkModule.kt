@@ -14,7 +14,12 @@ import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import kotlinx.serialization.json.Json
+import okhttp3.Dns
+import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.OkHttpClient
+import okhttp3.dnsoverhttps.DnsOverHttps
+import java.net.InetAddress
+import java.net.UnknownHostException
 import java.util.concurrent.TimeUnit
 import javax.inject.Qualifier
 import javax.inject.Singleton
@@ -47,11 +52,7 @@ object NetworkModule {
     @Singleton
     @StandardClient
     fun provideStandardOkHttpClient(): OkHttpClient {
-        return OkHttpClient.Builder()
-            .connectTimeout(CONNECT_TIMEOUT_SECONDS, TimeUnit.SECONDS)
-            .readTimeout(READ_TIMEOUT_SECONDS, TimeUnit.SECONDS)
-            .writeTimeout(WRITE_TIMEOUT_SECONDS, TimeUnit.SECONDS)
-            .retryOnConnectionFailure(true)
+        return baseClientBuilder(READ_TIMEOUT_SECONDS)
             .build()
     }
 
@@ -67,11 +68,7 @@ object NetworkModule {
     @Singleton
     @StreamingClient
     fun provideStreamingOkHttpClient(): OkHttpClient {
-        return OkHttpClient.Builder()
-            .connectTimeout(CONNECT_TIMEOUT_SECONDS, TimeUnit.SECONDS)
-            .readTimeout(STREAMING_READ_TIMEOUT_SECONDS, TimeUnit.SECONDS)
-            .writeTimeout(WRITE_TIMEOUT_SECONDS, TimeUnit.SECONDS)
-            .retryOnConnectionFailure(true)
+        return baseClientBuilder(STREAMING_READ_TIMEOUT_SECONDS)
             .build()
     }
 
@@ -173,6 +170,48 @@ object NetworkModule {
             okHttpClient = okHttpClient,
             context = context
         )
+    }
+
+    private fun baseClientBuilder(readTimeoutSeconds: Long): OkHttpClient.Builder {
+        return OkHttpClient.Builder()
+            .dns(systemDnsWithHttpsFallback())
+            .connectTimeout(CONNECT_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+            .readTimeout(readTimeoutSeconds, TimeUnit.SECONDS)
+            .writeTimeout(WRITE_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+            .retryOnConnectionFailure(true)
+    }
+
+    private fun systemDnsWithHttpsFallback(): Dns {
+        val dohClient = OkHttpClient.Builder()
+            .connectTimeout(10, TimeUnit.SECONDS)
+            .readTimeout(10, TimeUnit.SECONDS)
+            .writeTimeout(10, TimeUnit.SECONDS)
+            .build()
+        val cloudflareDns = DnsOverHttps.Builder()
+            .client(dohClient)
+            .url("https://cloudflare-dns.com/dns-query".toHttpUrl())
+            .bootstrapDnsHosts(
+                InetAddress.getByName("1.1.1.1"),
+                InetAddress.getByName("1.0.0.1"),
+                InetAddress.getByName("2606:4700:4700::1111"),
+                InetAddress.getByName("2606:4700:4700::1001")
+            )
+            .build()
+
+        return object : Dns {
+            override fun lookup(hostname: String): List<InetAddress> {
+                return try {
+                    Dns.SYSTEM.lookup(hostname)
+                } catch (systemError: UnknownHostException) {
+                    try {
+                        cloudflareDns.lookup(hostname)
+                    } catch (fallbackError: UnknownHostException) {
+                        systemError.addSuppressed(fallbackError)
+                        throw systemError
+                    }
+                }
+            }
+        }
     }
 }
 
