@@ -51,6 +51,7 @@ class AppPreferences(private val context: Context) {
         val NOTIFICATIONS_ENABLED = booleanPreferencesKey("notifications_enabled")
         val REASONING_EFFORT = stringPreferencesKey("reasoning_effort")
         val FIRST_LAUNCH_COMPLETE = booleanPreferencesKey("first_launch_complete")
+        val ONBOARDING_COMPLETE = booleanPreferencesKey("onboarding_complete")
         val AI_GENERATED_TITLES_ENABLED = booleanPreferencesKey("ai_generated_titles_enabled")
         val TITLE_GENERATION_MODEL = stringPreferencesKey("title_generation_model")
         val DEFAULT_IMAGE_GENERATION_MODEL = stringPreferencesKey("default_image_generation_model")
@@ -415,6 +416,29 @@ class AppPreferences(private val context: Context) {
     suspend fun setFirstLaunchComplete() {
         dataStore.edit { preferences ->
             preferences[Keys.FIRST_LAUNCH_COMPLETE] = true
+        }
+    }
+
+    /**
+     * Whether first-run onboarding has been completed.
+     */
+    val onboardingComplete: Flow<Boolean> = dataStore.data.map { preferences ->
+        preferences[Keys.ONBOARDING_COMPLETE] ?: false
+    }
+
+    /**
+     * Whether the onboarding flag exists. Used to avoid showing onboarding to existing installs.
+     */
+    val onboardingPreferenceSet: Flow<Boolean> = dataStore.data.map { preferences ->
+        preferences.contains(Keys.ONBOARDING_COMPLETE)
+    }
+
+    /**
+     * Mark first-run onboarding as complete or pending.
+     */
+    suspend fun setOnboardingComplete(complete: Boolean = true) {
+        dataStore.edit { preferences ->
+            preferences[Keys.ONBOARDING_COMPLETE] = complete
         }
     }
 

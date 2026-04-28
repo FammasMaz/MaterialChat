@@ -28,6 +28,7 @@ import com.materialchat.ui.screens.explore.ExploreScreen
 import com.materialchat.ui.screens.generatedimages.GeneratedImagesScreen
 import com.materialchat.ui.screens.insights.InsightsScreen
 import com.materialchat.ui.screens.mindmap.MindMapScreen
+import com.materialchat.ui.screens.onboarding.OnboardingScreen
 import com.materialchat.ui.screens.personas.PersonaStudioScreen
 import com.materialchat.ui.screens.settings.InteractionSettingsScreen
 import com.materialchat.ui.screens.settings.SettingsScreen
@@ -133,6 +134,23 @@ fun MaterialChatNavHost(
                 )
             }
         ) {
+            composable(route = Screen.Onboarding.route) {
+                OnboardingScreen(
+                    onComplete = {
+                        navController.navigate(Screen.Conversations.route) {
+                            popUpTo(Screen.Onboarding.route) { inclusive = true }
+                            launchSingleTop = true
+                        }
+                    },
+                    onOpenProviderSettings = {
+                        navController.navigate(Screen.Settings.route) {
+                            popUpTo(Screen.Onboarding.route) { inclusive = true }
+                            launchSingleTop = true
+                        }
+                    }
+                )
+            }
+
             // Conversations list screen (home)
             composable(route = Screen.Conversations.route) {
                 CompositionLocalProvider(

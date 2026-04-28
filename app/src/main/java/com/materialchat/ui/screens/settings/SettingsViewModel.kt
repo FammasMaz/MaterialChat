@@ -318,15 +318,24 @@ class SettingsViewModel @Inject constructor(
         val isFetchingModels = if (shouldResetModels) false else current.isFetchingModels
         val modelsError = if (shouldResetModels) null else current.modelsError
         val defaultConfig = defaultConfigFor(selectedType)
+        val previousDefaultName = defaultNameFor(current.type)
+        val selectedDefaultName = defaultNameFor(selectedType)
+        val resolvedName = name ?: if (type != null &&
+            (current.name.isBlank() || current.name == previousDefaultName)
+        ) {
+            selectedDefaultName
+        } else {
+            current.name
+        }
 
         _formState.value = current.copy(
-            name = name ?: current.name,
+            name = resolvedName,
             type = selectedType,
             baseUrl = baseUrl ?: if (type != null) defaultConfig.first else current.baseUrl,
             defaultModel = defaultModel ?: if (type != null) defaultConfig.second else current.defaultModel,
             apiKey = apiKey ?: if (type != null) "" else current.apiKey,
             // Clear errors when user edits fields
-            nameError = if (name != null) null else current.nameError,
+            nameError = if (name != null || type != null) null else current.nameError,
             baseUrlError = if (baseUrl != null) null else current.baseUrlError,
             defaultModelError = if (defaultModel != null) null else current.defaultModelError,
             apiKeyError = if (apiKey != null) null else current.apiKeyError,
@@ -352,12 +361,20 @@ class SettingsViewModel @Inject constructor(
                 val credential = nativeAuthManager.authenticate(current.type) { status ->
                     _formState.value = _formState.value.copy(authStatus = status)
                 }
-                _formState.value = _formState.value.copy(
-                    apiKey = NativeAuthCredential.encode(credential),
-                    hasExistingKey = true,
-                    isAuthenticating = false,
-                    authStatus = "Signed in${credential.email?.let { " as $it" } ?: ""}. Tap Save to finish."
+                val encodedCredential = NativeAuthCredential.encode(credential)
+                val autoSaved = saveAuthenticatedNativeProvider(
+                    form = current,
+                    credentialJson = encodedCredential
                 )
+                if (!autoSaved) {
+                    _formState.value = _formState.value.copy(
+                        name = _formState.value.name.ifBlank { defaultNameFor(current.type) },
+                        apiKey = encodedCredential,
+                        hasExistingKey = true,
+                        isAuthenticating = false,
+                        authStatus = "Signed in${credential.email?.let { " as $it" } ?: ""}. Tap Save to finish."
+                    )
+                }
                 _events.emit(SettingsEvent.ShowSnackbar("${current.type.displayName} sign-in complete"))
             } catch (e: Exception) {
                 _formState.value = _formState.value.copy(
@@ -367,6 +384,54 @@ class SettingsViewModel @Inject constructor(
                 )
                 _events.emit(SettingsEvent.ShowSnackbar(e.message ?: "Authentication failed"))
             }
+        }
+    }
+
+    private suspend fun saveAuthenticatedNativeProvider(
+        form: ProviderFormState,
+        credentialJson: String
+    ): Boolean {
+        val currentState = _uiState.value as? SettingsUiState.Success ?: return false
+        val defaults = defaultConfigFor(form.type)
+        val providerName = form.name.ifBlank { defaultNameFor(form.type) }
+        val baseUrl = form.baseUrl.ifBlank { defaults.first }
+        val defaultModel = form.defaultModel.ifBlank { defaults.second }
+
+        return try {
+            val editingProvider = currentState.editingProvider
+            if (editingProvider != null) {
+                manageProvidersUseCase.updateProvider(
+                    providerId = editingProvider.id,
+                    name = providerName,
+                    baseUrl = baseUrl,
+                    defaultModel = defaultModel,
+                    apiKey = credentialJson
+                )
+                manageProvidersUseCase.setActiveProvider(editingProvider.id)
+            } else {
+                manageProvidersUseCase.addOrUpdateNativeProvider(
+                    type = form.type,
+                    name = providerName,
+                    baseUrl = baseUrl,
+                    defaultModel = defaultModel,
+                    credentialJson = credentialJson,
+                    setAsActive = true
+                )
+            }
+            hideProviderSheet()
+            _events.emit(SettingsEvent.ProviderSaved(providerName, editingProvider == null))
+            true
+        } catch (e: Exception) {
+            _formState.value = _formState.value.copy(
+                name = providerName,
+                baseUrl = baseUrl,
+                defaultModel = defaultModel,
+                apiKey = credentialJson,
+                hasExistingKey = true,
+                isAuthenticating = false,
+                authStatus = e.message ?: "Sign-in complete. Tap Save to finish."
+            )
+            false
         }
     }
 
@@ -512,7 +577,7 @@ class SettingsViewModel @Inject constructor(
                         baseUrl = form.baseUrl,
                         defaultModel = form.defaultModel,
                         apiKey = if (form.apiKey.isNotBlank()) form.apiKey else null,
-                        setAsActive = false
+                        setAsActive = form.type.isNativeAuth
                     )
                 } else {
                     // Update existing provider
@@ -1089,9 +1154,17 @@ class SettingsViewModel @Inject constructor(
     private fun defaultConfigFor(type: ProviderType): Pair<String, String> = when (type) {
         ProviderType.OPENAI_COMPATIBLE -> "https://api.openai.com" to "gpt-4o"
         ProviderType.OLLAMA_NATIVE -> "http://localhost:11434" to "llama3.2"
-        ProviderType.CODEX_NATIVE -> "https://chatgpt.com/backend-api/codex" to "gpt-5.5"
+        ProviderType.CODEX_NATIVE -> "https://chatgpt.com/backend-api/codex" to "gpt-5.4"
         ProviderType.GITHUB_COPILOT_NATIVE -> "https://api.githubcopilot.com" to "gpt-4.1"
         ProviderType.ANTIGRAVITY_NATIVE -> "https://daily-cloudcode-pa.sandbox.googleapis.com/v1internal" to "gemini-3-flash"
+    }
+
+    private fun defaultNameFor(type: ProviderType): String = when (type) {
+        ProviderType.OPENAI_COMPATIBLE -> "OpenAI"
+        ProviderType.OLLAMA_NATIVE -> "Local Ollama"
+        ProviderType.CODEX_NATIVE -> "Codex"
+        ProviderType.GITHUB_COPILOT_NATIVE -> "GitHub Copilot"
+        ProviderType.ANTIGRAVITY_NATIVE -> "Antigravity"
     }
 
     /**

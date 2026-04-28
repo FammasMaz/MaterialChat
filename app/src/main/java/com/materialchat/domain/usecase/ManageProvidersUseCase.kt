@@ -105,6 +105,47 @@ class ManageProvidersUseCase @Inject constructor(
     }
 
     /**
+     * Adds a native provider or updates the existing built-in/native entry.
+     * Native providers are single-account integrations, so reusing an existing
+     * provider keeps onboarding/settings flows from creating duplicate Codex rows.
+     */
+    suspend fun addOrUpdateNativeProvider(
+        type: ProviderType,
+        name: String,
+        baseUrl: String,
+        defaultModel: String,
+        credentialJson: String,
+        setAsActive: Boolean = true
+    ): String {
+        val existingProvider = providerRepository.getProviders().firstOrNull { it.type == type }
+        val providerId = if (existingProvider != null) {
+            updateProvider(
+                providerId = existingProvider.id,
+                name = name,
+                baseUrl = baseUrl,
+                defaultModel = defaultModel,
+                apiKey = credentialJson
+            )
+            existingProvider.id
+        } else {
+            addProvider(
+                name = name,
+                type = type,
+                baseUrl = baseUrl,
+                defaultModel = defaultModel,
+                apiKey = credentialJson,
+                setAsActive = false
+            )
+        }
+
+        if (setAsActive) {
+            providerRepository.setActiveProvider(providerId)
+        }
+
+        return providerId
+    }
+
+    /**
      * Updates an existing provider.
      *
      * @param providerId The ID of the provider to update

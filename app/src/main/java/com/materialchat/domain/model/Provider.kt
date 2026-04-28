@@ -67,7 +67,7 @@ data class Provider(
             name = "Codex",
             type = ProviderType.CODEX_NATIVE,
             baseUrl = "https://chatgpt.com/backend-api/codex",
-            defaultModel = "gpt-5.5",
+            defaultModel = "gpt-5.4",
             requiresApiKey = true,
             isActive = false
         )

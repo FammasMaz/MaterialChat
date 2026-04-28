@@ -482,7 +482,7 @@ class NativeAuthManager @Inject constructor(
                     writeLoopbackHtml(
                         writer = writer,
                         title = "Authentication successful",
-                        message = "MaterialChat has received your OpenAI Codex credentials. Return to the app and tap Save to finish.",
+                        message = "MaterialChat has received your OpenAI Codex credentials. Returning you to the app...",
                         autoReturnToApp = true
                     )
                     return credential
@@ -567,17 +567,21 @@ class NativeAuthManager @Inject constructor(
         val safeMessage = escapeHtml(message)
         val color = if (isError) "#b3261e" else "#0f5132"
         val appUrl = "materialchat://oauth/codex-complete"
+        val chromeIntentUrl = "intent://oauth/codex-complete#Intent;scheme=materialchat;package=com.materialchat;end"
         val autoReturn = if (autoReturnToApp) {
             """
-            <meta http-equiv="refresh" content="1;url=$appUrl">
-            <script>setTimeout(function(){ window.location.href = '$appUrl'; }, 700);</script>
+            <meta http-equiv="refresh" content="2;url=$appUrl">
+            <script>
+                setTimeout(function(){ window.location.href = '$chromeIntentUrl'; }, 250);
+                setTimeout(function(){ window.location.href = '$appUrl'; }, 1200);
+            </script>
             """.trimIndent()
         } else {
             ""
         }
         val returnLink = if (autoReturnToApp) {
             """
-            <p>If you are not returned automatically, <a href="$appUrl">tap here to return to MaterialChat</a>.</p>
+            <p>If you are not returned automatically, <a href="$chromeIntentUrl">tap here to return to MaterialChat</a>.</p>
             <p>You can also close this tab and switch back manually.</p>
             """.trimIndent()
         } else {

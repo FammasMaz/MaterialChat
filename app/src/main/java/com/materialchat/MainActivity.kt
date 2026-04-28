@@ -59,6 +59,7 @@ import com.materialchat.ui.theme.MaterialChatTheme
 import com.materialchat.ui.theme.LocalChatFontSizeScale
 import com.materialchat.ui.theme.isDynamicColorSupported
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -100,10 +101,17 @@ class MainActivity : ComponentActivity() {
         setContent {
             // Track initialization state
             var initComplete by remember { mutableStateOf(false) }
+            var startDestination by remember { mutableStateOf<String?>(null) }
 
             // Perform first-launch initialization and check for updates
             LaunchedEffect(Unit) {
                 appInitializer.initializeIfNeeded()
+                val onboardingComplete = appPreferences.onboardingComplete.first()
+                startDestination = if (onboardingComplete) {
+                    Screen.Conversations.route
+                } else {
+                    Screen.Onboarding.route
+                }
                 initComplete = true
                 isInitialized = true
 
@@ -161,10 +169,11 @@ class MainActivity : ComponentActivity() {
                     LocalChatFontSizeScale provides chatFontSizeScale
                 ) {
                     // Only show the app after initialization is complete
-                    if (initComplete) {
+                    if (initComplete && startDestination != null) {
                         MaterialChatApp(
                             updateManager = updateManager,
-                            initialConversationId = pendingConversationId
+                            initialConversationId = pendingConversationId,
+                            startDestination = startDestination ?: Screen.Conversations.route
                         )
                     }
                 }
@@ -216,7 +225,8 @@ private val topLevelRoutes = setOf(
 @Composable
 fun MaterialChatApp(
     updateManager: UpdateManager? = null,
-    initialConversationId: String? = null
+    initialConversationId: String? = null,
+    startDestination: String = Screen.startDestination
 ) {
     val navController = rememberNavController()
     val scope = rememberCoroutineScope()
@@ -282,6 +292,7 @@ fun MaterialChatApp(
         // Main content - each screen handles its own Scaffold and insets
         MaterialChatNavHost(
             navController = navController,
+            startDestination = startDestination,
             modifier = Modifier
                 .fillMaxSize()
                 .nestedScroll(toolbarNestedScrollConnection)

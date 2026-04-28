@@ -36,6 +36,10 @@ class AppInitializer @Inject constructor(
 
         if (!isFirstLaunchComplete) {
             performFirstLaunchSetup()
+            appPreferences.setOnboardingComplete(false)
+        } else if (!appPreferences.onboardingPreferenceSet.first()) {
+            // Existing installs should not be interrupted by first-run onboarding after an upgrade.
+            appPreferences.setOnboardingComplete(true)
         }
 
         conversationRepository.deleteEphemeralConversations()

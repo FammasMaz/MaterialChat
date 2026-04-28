@@ -463,6 +463,7 @@ class ChatApiClient(
             .addHeader("Accept", "text/event-stream")
             .addHeader("OpenAI-Beta", "responses=experimental")
             .addHeader("originator", "pi")
+            .addHeader("User-Agent", CODEX_USER_AGENT)
             .post(payload.toString().toRequestBody(JSON_MEDIA_TYPE))
         credential.accountId?.takeIf { it.isNotBlank() }?.let {
             requestBuilder.addHeader("ChatGPT-Account-Id", it)
@@ -1234,12 +1235,16 @@ class ChatApiClient(
         put("stream", true)
         put("store", false)
         put("instructions", systemPrompt.orEmpty())
-        put("text", buildJsonObject { put("verbosity", "medium") })
-        put("reasoning", buildJsonObject {
-            put("effort", reasoningEffort.apiValue)
-            put("summary", "auto")
-        })
+        put("text", buildJsonObject { put("verbosity", "low") })
+        if (reasoningEffort != ReasoningEffort.NONE) {
+            put("reasoning", buildJsonObject {
+                put("effort", reasoningEffort.apiValue)
+                put("summary", "auto")
+            })
+        }
         put("include", buildJsonArray { add(kotlinx.serialization.json.JsonPrimitive("reasoning.encrypted_content")) })
+        put("tool_choice", "auto")
+        put("parallel_tool_calls", true)
         put("input", buildJsonArray {
             messages.filter { it.role != MessageRole.SYSTEM }.forEach { message ->
                 val role = when (message.role) {
@@ -1621,6 +1626,7 @@ class ChatApiClient(
         }
 
         private const val COPILOT_USER_AGENT = "opencode/1.1.36"
+        private const val CODEX_USER_AGENT = "pi (android)"
         private const val ANTIGRAVITY_USER_AGENT = "antigravity/1.23.2 darwin/arm64"
         private const val ANTIGRAVITY_FALLBACK_PROJECT_ID = "rising-fact-p41fc"
 

@@ -7,6 +7,11 @@ package com.materialchat.ui.navigation
 sealed class Screen(val route: String) {
 
     /**
+     * First-run provider onboarding screen.
+     */
+    data object Onboarding : Screen("onboarding")
+
+    /**
      * Conversations list screen - the main/home screen.
      * Displays all past conversations sorted by last updated.
      */
@@ -112,7 +117,7 @@ sealed class Screen(val route: String) {
         val startDestination: String = "conversations"
         val allScreens: List<Screen>
             get() = listOf(
-                Conversations, Chat, Settings,
+                Onboarding, Conversations, Chat, Settings,
                 Arena, ArenaLeaderboard, Insights, PersonaStudio, Bookmarks,
                 GeneratedImages, Canvas, MindMap, Workflows, WorkflowBuilder, WorkflowExecution,
                 Explore, InteractionSettings
