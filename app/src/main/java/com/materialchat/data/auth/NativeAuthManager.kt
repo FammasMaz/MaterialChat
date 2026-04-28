@@ -265,10 +265,20 @@ class NativeAuthManager @Inject constructor(
             .build()
         val tokenData = executeJson(request)
         val expiresIn = tokenData.double("expires_in") ?: 3600.0
+        val accessToken = tokenData.string("access_token") ?: credential.accessToken
+        val idToken = tokenData.string("id_token") ?: credential.idToken
+        val accessClaims = parseJwtPayload(accessToken)
+        val idClaims = parseJwtPayload(idToken)
+        val accountId = accessClaims?.get("https://api.openai.com/auth")?.jsonObject
+            ?.get("chatgpt_account_id")?.jsonPrimitive?.contentOrNull
+            ?: idClaims?.get("https://api.openai.com/auth")?.jsonObject
+                ?.get("chatgpt_account_id")?.jsonPrimitive?.contentOrNull
+            ?: credential.accountId
         return credential.copy(
-            accessToken = tokenData.string("access_token") ?: credential.accessToken,
+            accessToken = accessToken,
             refreshToken = tokenData.string("refresh_token") ?: credential.refreshToken,
-            idToken = tokenData.string("id_token") ?: credential.idToken,
+            idToken = idToken,
+            accountId = accountId,
             expiryDate = System.currentTimeMillis() + (expiresIn * 1000).toLong()
         )
     }
@@ -325,24 +335,25 @@ class NativeAuthManager @Inject constructor(
             .post(formBody)
             .build()
         val tokenData = executeJson(request)
-        val idToken = tokenData.string("id_token")
-            ?: throw IOException("OpenAI token response did not include an ID token")
         val accessToken = tokenData.string("access_token")
             ?: throw IOException("OpenAI token response did not include an access token")
         val refreshToken = tokenData.string("refresh_token")
+            ?: throw IOException("OpenAI token response did not include a refresh token")
+        val idToken = tokenData.string("id_token")
         val expiresIn = tokenData.double("expires_in") ?: 3600.0
+        val accessClaims = parseJwtPayload(accessToken)
         val idClaims = parseJwtPayload(idToken)
-        val authClaims = idClaims?.get("https://api.openai.com/auth")?.jsonObject
-        val accountId = authClaims?.get("chatgpt_account_id")?.jsonPrimitive?.contentOrNull
+        val accountId = accessClaims?.get("https://api.openai.com/auth")?.jsonObject
+            ?.get("chatgpt_account_id")?.jsonPrimitive?.contentOrNull
+            ?: idClaims?.get("https://api.openai.com/auth")?.jsonObject
+                ?.get("chatgpt_account_id")?.jsonPrimitive?.contentOrNull
         val email = idClaims?.get("email")?.jsonPrimitive?.contentOrNull
-        val apiKey = runCatching { exchangeOpenAiApiKey(idToken) }.getOrNull()
 
         return NativeAuthCredential(
             providerType = ProviderType.CODEX_NATIVE.name,
             accessToken = accessToken,
             refreshToken = refreshToken,
             idToken = idToken,
-            apiKey = apiKey,
             accountId = accountId,
             email = email,
             expiryDate = System.currentTimeMillis() + (expiresIn * 1000).toLong()
@@ -735,15 +746,8 @@ class NativeAuthManager @Inject constructor(
         const val GITHUB_POLLING_SAFETY_SECONDS = 3L
 
         const val OPENAI_CLIENT_ID = "app_EMoamEEZ73f0CkXaXp7hrann"
-        const val OPENAI_ORIGINATOR = "codex_cli_rs"
-        val OPENAI_SCOPES = listOf(
-            "openid",
-            "profile",
-            "email",
-            "offline_access",
-            "api.connectors.read",
-            "api.connectors.invoke"
-        )
+        const val OPENAI_ORIGINATOR = "pi"
+        val OPENAI_SCOPES = listOf("openid", "profile", "email", "offline_access")
         const val OPENAI_CALLBACK_PORT = 1455
         const val OPENAI_CALLBACK_PATH = "/auth/callback"
 

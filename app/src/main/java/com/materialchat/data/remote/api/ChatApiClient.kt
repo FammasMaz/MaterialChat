@@ -462,6 +462,7 @@ class ChatApiClient(
             .addHeader("Content-Type", "application/json")
             .addHeader("Accept", "text/event-stream")
             .addHeader("OpenAI-Beta", "responses=experimental")
+            .addHeader("originator", "pi")
             .post(payload.toString().toRequestBody(JSON_MEDIA_TYPE))
         credential.accountId?.takeIf { it.isNotBlank() }?.let {
             requestBuilder.addHeader("ChatGPT-Account-Id", it)
