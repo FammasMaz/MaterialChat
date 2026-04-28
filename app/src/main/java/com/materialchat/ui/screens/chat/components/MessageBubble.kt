@@ -655,7 +655,8 @@ private fun MessageContent(
     val chatFontSizeScale = com.materialchat.ui.theme.LocalChatFontSizeScale.current
     val chatStyle = MaterialTheme.typography.bodyLarge.copy(
         fontSize = MaterialTheme.typography.bodyLarge.fontSize * chatFontSizeScale,
-        lineHeight = MaterialTheme.typography.bodyLarge.lineHeight * chatFontSizeScale
+        lineHeight = MaterialTheme.typography.bodyLarge.lineHeight * chatFontSizeScale,
+        textAlign = TextAlign.Start
     )
 
     if (isAssistant && displayContent.isNotEmpty()) {

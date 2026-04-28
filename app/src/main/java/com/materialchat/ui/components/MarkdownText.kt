@@ -4,7 +4,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.text.InlineTextContent
-import androidx.compose.foundation.text.appendInlineContent
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -1313,7 +1312,6 @@ private fun AnnotatedString.Builder.parseInlineFormatting(
     inlineMath: MutableList<InlineMathContent>
 ) {
     var currentIndex = 0
-    var inlineMathCounter = inlineMath.size
 
     // Combined pattern for all inline elements
     // Order matters: ** before *, __ before _, math before other $
@@ -1388,39 +1386,17 @@ private fun AnnotatedString.Builder.parseInlineFormatting(
             // Inline math \(...\) - group 8
             match.groupValues.getOrNull(8)?.isNotEmpty() == true -> {
                 val content = match.groupValues[8]
-                if (needsKatexRendering(content)) {
-                    val id = "inline-math-${inlineMathCounter++}"
-                    inlineMath.add(InlineMathContent(id = id, expression = content))
-                    appendInlineContent(id, fullMatch)
-                } else {
-                    withStyle(SpanStyle(
-                        fontFamily = FontFamily.Monospace,
-                        fontStyle = FontStyle.Italic,
-                        background = linkColor.copy(alpha = 0.10f),
-                        color = baseColor
-                    )) {
-                        append(renderInlineMathText(content))
-                    }
-                }
+                // Keep inline math in the Text layout instead of replacing it with
+                // InlineTextContent + WebView. Embedded AndroidViews can reserve
+                // space but fail to paint while streaming/recomposing, which looks
+                // like words vanished in the middle of a sentence.
+                appendInlineMathFallback(content, baseColor, linkColor)
             }
             // Inline math $...$ - group 9
             match.groupValues.getOrNull(9)?.isNotEmpty() == true -> {
                 val content = match.groupValues[9]
                 if (looksLikeInlineMath(content)) {
-                    if (needsKatexRendering(content)) {
-                        val id = "inline-math-${inlineMathCounter++}"
-                        inlineMath.add(InlineMathContent(id = id, expression = content))
-                        appendInlineContent(id, fullMatch)
-                    } else {
-                        withStyle(SpanStyle(
-                            fontFamily = FontFamily.Monospace,
-                            fontStyle = FontStyle.Italic,
-                            background = linkColor.copy(alpha = 0.10f),
-                            color = baseColor
-                        )) {
-                            append(renderInlineMathText(content))
-                        }
-                    }
+                    appendInlineMathFallback(content, baseColor, linkColor)
                 } else {
                     // Not math, render as literal $content$
                     withStyle(SpanStyle(color = baseColor)) {
@@ -1459,13 +1435,34 @@ private fun AnnotatedString.Builder.parseInlineFormatting(
     }
 }
 
+private fun AnnotatedString.Builder.appendInlineMathFallback(
+    content: String,
+    baseColor: Color,
+    linkColor: Color
+) {
+    withStyle(SpanStyle(
+        fontFamily = FontFamily.Monospace,
+        fontStyle = FontStyle.Italic,
+        background = linkColor.copy(alpha = 0.10f),
+        color = baseColor
+    )) {
+        append(renderInlineMathText(content))
+    }
+}
+
 private fun looksLikeInlineMath(content: String): Boolean {
     val trimmed = content.trim()
     if (trimmed.isEmpty()) return false
     if (trimmed.all { it.isDigit() || it == '.' || it == ',' }) return false
 
-    return trimmed.any { it.isLetter() } ||
-        trimmed.any { it in "\\^_{}=+-*/<>[]()" }
+    val hasMathSyntax = trimmed.any { it in "\\^_{}=+-*/<>[]()" }
+    val hasLatexCommand = Regex("""\\[a-zA-Z]+""").containsMatchIn(trimmed)
+    val hasMathSymbol = trimmed.any { it in "≤≥≠≈∞∑∏√∫π÷×±" }
+    val compactVariable = !trimmed.any { it.isWhitespace() } &&
+        trimmed.length <= 3 &&
+        trimmed.any { it.isLetter() }
+
+    return hasMathSyntax || hasLatexCommand || hasMathSymbol || compactVariable
 }
 
 /**
