@@ -14,23 +14,32 @@ import javax.inject.Inject
 class InteractionSettingsViewModel @Inject constructor(
     private val appPreferences: AppPreferences
 ) : ViewModel() {
-    val uiState = combine(
+    private val hapticsState = combine(
         appPreferences.hapticsEnabled,
         appPreferences.chatHapticsEnabled,
         appPreferences.navigationHapticsEnabled,
         appPreferences.listHapticsEnabled,
-        appPreferences.gestureHapticsEnabled,
+        appPreferences.gestureHapticsEnabled
+    ) { global, chat, navigation, list, gesture ->
+        HapticsState(global, chat, navigation, list, gesture)
+    }
+
+    private val buttonShapeState = combine(
         appPreferences.mainButtonShape,
         appPreferences.chatButtonShape
-    ) { values ->
+    ) { mainButtonShape, chatButtonShape ->
+        ButtonShapeState(mainButtonShape, chatButtonShape)
+    }
+
+    val uiState = combine(hapticsState, buttonShapeState) { haptics, buttonShapes ->
         InteractionSettingsUiState(
-            globalHaptics = values[0] as Boolean,
-            chatHaptics = values[1] as Boolean,
-            navigationHaptics = values[2] as Boolean,
-            listHaptics = values[3] as Boolean,
-            gestureHaptics = values[4] as Boolean,
-            mainButtonShape = values[5] as AppPreferences.ComponentButtonShape,
-            chatButtonShape = values[6] as AppPreferences.ComponentButtonShape
+            globalHaptics = haptics.global,
+            chatHaptics = haptics.chat,
+            navigationHaptics = haptics.navigation,
+            listHaptics = haptics.list,
+            gestureHaptics = haptics.gesture,
+            mainButtonShape = buttonShapes.main,
+            chatButtonShape = buttonShapes.chat
         )
     }.stateIn(
         scope = viewModelScope,
@@ -66,6 +75,19 @@ class InteractionSettingsViewModel @Inject constructor(
         appPreferences.setChatButtonShape(shape)
     }
 }
+
+private data class HapticsState(
+    val global: Boolean,
+    val chat: Boolean,
+    val navigation: Boolean,
+    val list: Boolean,
+    val gesture: Boolean
+)
+
+private data class ButtonShapeState(
+    val main: AppPreferences.ComponentButtonShape,
+    val chat: AppPreferences.ComponentButtonShape
+)
 
 data class InteractionSettingsUiState(
     val globalHaptics: Boolean = AppPreferences.DEFAULT_HAPTICS_ENABLED,

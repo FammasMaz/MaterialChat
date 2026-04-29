@@ -27,6 +27,7 @@ import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.encodeToString
@@ -145,7 +146,13 @@ class ChatApiClient(
                 reasoningEffort = reasoningEffort,
                 temperature = temperature
             )
+            ProviderType.LITERT_LM_LOCAL,
+            ProviderType.AICORE_GEMINI_NANO -> flowUnsupportedProvider(provider.type)
         }
+    }
+
+    private fun flowUnsupportedProvider(type: ProviderType): Flow<StreamingEvent> = flow {
+        emit(StreamingEvent.Error("${type.displayName} is handled by the local model repository"))
     }
 
     /**
@@ -614,6 +621,10 @@ class ChatApiClient(
                     apiKey = apiKey,
                     systemPrompt = systemPrompt
                 )
+                ProviderType.LITERT_LM_LOCAL,
+                ProviderType.AICORE_GEMINI_NANO -> Result.failure(
+                    IOException("${provider.type.displayName} completions are handled by the local model repository")
+                )
             }
         } catch (e: Exception) {
             Result.failure(e)
@@ -657,7 +668,9 @@ class ChatApiClient(
                     outputFormat = outputFormat
                 )
                 ProviderType.GITHUB_COPILOT_NATIVE,
-                ProviderType.ANTIGRAVITY_NATIVE -> Result.failure(
+                ProviderType.ANTIGRAVITY_NATIVE,
+                ProviderType.LITERT_LM_LOCAL,
+                ProviderType.AICORE_GEMINI_NANO -> Result.failure(
                     IOException("Image generation is currently supported for Codex and OpenAI-compatible providers only")
                 )
             }
@@ -1122,7 +1135,9 @@ class ChatApiClient(
                 ProviderType.OLLAMA_NATIVE -> listOf("${provider.baseUrl.trimEnd('/')}/api/tags")
                 ProviderType.GITHUB_COPILOT_NATIVE -> listOf("${provider.baseUrl.trimEnd('/')}/models")
                 ProviderType.CODEX_NATIVE,
-                ProviderType.ANTIGRAVITY_NATIVE -> emptyList()
+                ProviderType.ANTIGRAVITY_NATIVE,
+                ProviderType.LITERT_LM_LOCAL,
+                ProviderType.AICORE_GEMINI_NANO -> emptyList()
             }
 
             var lastError: Exception? = null

@@ -147,12 +147,14 @@ class SettingsViewModel @Inject constructor(
                 },
                 appPreferences.fontSizeScale,
                 appPreferences.defaultImageGenerationModel,
-                appPreferences.defaultImageOutputFormat
-            ) { data, fontSizeScale, imageModel, imageFormat ->
+                appPreferences.defaultImageOutputFormat,
+                appPreferences.preferOnDeviceTitleModel
+            ) { data, fontSizeScale, imageModel, imageFormat, preferOnDeviceTitleModel ->
                 data.copy(
                     fontSizeScale = fontSizeScale,
                     defaultImageGenerationModel = imageModel,
-                    defaultImageOutputFormat = imageFormat
+                    defaultImageOutputFormat = imageFormat,
+                    preferOnDeviceTitleModel = preferOnDeviceTitleModel
                 )
             },
                 combine(
@@ -202,6 +204,7 @@ class SettingsViewModel @Inject constructor(
                         hapticsEnabled = data.hapticsEnabled,
                         notificationsEnabled = data.notificationsEnabled,
                         aiGeneratedTitlesEnabled = data.aiGeneratedTitlesEnabled,
+                        preferOnDeviceTitleModel = data.preferOnDeviceTitleModel,
                         titleGenerationModel = data.titleGenerationModel,
                         defaultImageGenerationModel = data.defaultImageGenerationModel,
                         defaultImageOutputFormat = data.defaultImageOutputFormat,
@@ -828,6 +831,21 @@ class SettingsViewModel @Inject constructor(
     }
 
     /**
+     * Updates whether small on-device models should be preferred for title generation.
+     */
+    fun updatePreferOnDeviceTitleModel(enabled: Boolean) {
+        viewModelScope.launch {
+            try {
+                appPreferences.setPreferOnDeviceTitleModel(enabled)
+            } catch (e: Exception) {
+                _events.emit(SettingsEvent.ShowSnackbar(
+                    message = "Failed to save native title setting"
+                ))
+            }
+        }
+    }
+
+    /**
      * Updates the custom title generation model.
      */
     fun updateTitleGenerationModel(model: String) {
@@ -1157,6 +1175,8 @@ class SettingsViewModel @Inject constructor(
         ProviderType.CODEX_NATIVE -> "https://chatgpt.com/backend-api/codex" to "gpt-5.4"
         ProviderType.GITHUB_COPILOT_NATIVE -> "https://api.githubcopilot.com" to "gpt-4.1"
         ProviderType.ANTIGRAVITY_NATIVE -> "https://daily-cloudcode-pa.sandbox.googleapis.com/v1internal" to "gemini-3-flash"
+        ProviderType.LITERT_LM_LOCAL -> "local://litert-lm" to com.materialchat.domain.model.LocalModelIds.GEMMA3_1B_IT_INT4
+        ProviderType.AICORE_GEMINI_NANO -> "local://aicore" to com.materialchat.domain.model.LocalModelIds.GEMINI_NANO
     }
 
     private fun defaultNameFor(type: ProviderType): String = when (type) {
@@ -1165,6 +1185,8 @@ class SettingsViewModel @Inject constructor(
         ProviderType.CODEX_NATIVE -> "Codex"
         ProviderType.GITHUB_COPILOT_NATIVE -> "GitHub Copilot"
         ProviderType.ANTIGRAVITY_NATIVE -> "Antigravity"
+        ProviderType.LITERT_LM_LOCAL -> "On-device LiteRT-LM"
+        ProviderType.AICORE_GEMINI_NANO -> "Gemini Nano"
     }
 
     /**
@@ -1194,6 +1216,7 @@ class SettingsViewModel @Inject constructor(
         val hapticsEnabled: Boolean,
         val notificationsEnabled: Boolean,
         val aiGeneratedTitlesEnabled: Boolean,
+        val preferOnDeviceTitleModel: Boolean = AppPreferences.DEFAULT_PREFER_ON_DEVICE_TITLE_MODEL,
         val titleGenerationModel: String,
         val defaultImageGenerationModel: String = AppPreferences.DEFAULT_IMAGE_GENERATION_MODEL,
         val defaultImageOutputFormat: String = AppPreferences.DEFAULT_IMAGE_OUTPUT_FORMAT,

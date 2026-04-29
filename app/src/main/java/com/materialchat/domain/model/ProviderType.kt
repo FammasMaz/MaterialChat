@@ -29,10 +29,23 @@ enum class ProviderType {
     /**
      * Google Antigravity via Google OAuth and Antigravity streamGenerateContent.
      */
-    ANTIGRAVITY_NATIVE;
+    ANTIGRAVITY_NATIVE,
+
+    /**
+     * In-app downloaded LiteRT-LM model files running fully on-device.
+     */
+    LITERT_LM_LOCAL,
+
+    /**
+     * Gemini Nano through Android AICore / ML Kit Prompt API.
+     */
+    AICORE_GEMINI_NANO;
 
     val isNativeAuth: Boolean
         get() = this == CODEX_NATIVE || this == GITHUB_COPILOT_NATIVE || this == ANTIGRAVITY_NATIVE
+
+    val isOnDevice: Boolean
+        get() = this == LITERT_LM_LOCAL || this == AICORE_GEMINI_NANO
 
     val requiresStoredCredential: Boolean
         get() = this == OPENAI_COMPATIBLE || isNativeAuth
@@ -44,5 +57,7 @@ enum class ProviderType {
             CODEX_NATIVE -> "Codex"
             GITHUB_COPILOT_NATIVE -> "GitHub Copilot"
             ANTIGRAVITY_NATIVE -> "Antigravity"
+            LITERT_LM_LOCAL -> "On-device LiteRT-LM"
+            AICORE_GEMINI_NANO -> "Gemini Nano"
         }
 }

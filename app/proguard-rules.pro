@@ -54,6 +54,13 @@
 -keep class com.google.crypto.tink.** { *; }
 -dontwarn com.google.crypto.tink.**
 
+# MediaPipe GenAI bundles lite protobuf annotations that are optional at runtime.
+-dontwarn com.google.protobuf.Internal$ProtoMethodMayReturnNull
+-dontwarn com.google.protobuf.Internal$ProtoNonnullApi
+-dontwarn com.google.protobuf.ProtoField
+-dontwarn com.google.protobuf.ProtoPresenceBits
+-dontwarn com.google.protobuf.ProtoPresenceCheckedField
+
 # Strip debug and verbose logging in release builds
 -assumenosideeffects class android.util.Log {
     public static int d(...);

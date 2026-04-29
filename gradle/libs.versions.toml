@@ -1,8 +1,8 @@
 [versions]
 # Kotlin & Core
-kotlin = "2.1.0"
+kotlin = "2.3.0"
 agp = "8.7.3"
-ksp = "2.1.0-1.0.29"
+ksp = "2.3.7"
 
 # Android
 coreKtx = "1.15.0"
@@ -20,11 +20,11 @@ googleFonts = "1.7.5"
 material3 = "1.5.0-alpha15"
 
 # Hilt
-hilt = "2.54"
+hilt = "2.58"
 hiltNavigationCompose = "1.2.0"
 
 # Room
-room = "2.6.1"
+room = "2.8.4"
 
 # DataStore
 datastore = "1.1.1"
@@ -56,6 +56,9 @@ coil = "2.5.0"
 
 # Ackpine (APK installer)
 ackpine = "0.9.4"
+litertlm = "0.10.0"
+mediapipeTasksGenai = "0.10.27"
+mlkitGenaiPrompt = "1.0.0-beta2"
 
 # Testing
 junit = "4.13.2"
@@ -137,6 +140,11 @@ coil-compose = { group = "io.coil-kt", name = "coil-compose", version.ref = "coi
 # Ackpine (APK installer with Kotlin coroutines support)
 ackpine-core = { group = "ru.solrudev.ackpine", name = "ackpine-core", version.ref = "ackpine" }
 ackpine-ktx = { group = "ru.solrudev.ackpine", name = "ackpine-ktx", version.ref = "ackpine" }
+
+# On-device AI
+litert-lm-android = { group = "com.google.ai.edge.litertlm", name = "litertlm-android", version.ref = "litertlm" }
+mediapipe-tasks-genai = { group = "com.google.mediapipe", name = "tasks-genai", version.ref = "mediapipeTasksGenai" }
+mlkit-genai-prompt = { group = "com.google.mlkit", name = "genai-prompt", version.ref = "mlkitGenaiPrompt" }
 
 # Testing
 junit = { group = "junit", name = "junit", version.ref = "junit" }

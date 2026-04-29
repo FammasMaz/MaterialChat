@@ -11,6 +11,8 @@ import com.materialchat.domain.repository.ArenaRepository
 import com.materialchat.domain.repository.BookmarkRepository
 import com.materialchat.domain.repository.ChatRepository
 import com.materialchat.domain.repository.ConversationRepository
+import com.materialchat.data.localmodel.LocalModelRepositoryImpl
+import com.materialchat.domain.repository.LocalModelRepository
 import com.materialchat.domain.repository.PersonaRepository
 import com.materialchat.domain.repository.ProviderRepository
 import com.materialchat.data.repository.WebSearchRepositoryImpl
@@ -77,4 +79,10 @@ abstract class RepositoryModule {
     abstract fun bindWebSearchRepository(
         impl: WebSearchRepositoryImpl
     ): WebSearchRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindLocalModelRepository(
+        impl: LocalModelRepositoryImpl
+    ): LocalModelRepository
 }

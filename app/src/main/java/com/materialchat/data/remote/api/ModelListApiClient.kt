@@ -62,6 +62,8 @@ class ModelListApiClient(
             ProviderType.ANTIGRAVITY_NATIVE -> Result.success(ANTIGRAVITY_MODELS.map { model ->
                 AiModel(id = model, name = model, providerId = provider.id)
             })
+            ProviderType.LITERT_LM_LOCAL,
+            ProviderType.AICORE_GEMINI_NANO -> Result.success(emptyList())
         }
     }
 

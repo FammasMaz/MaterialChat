@@ -12,10 +12,13 @@ import com.materialchat.data.remote.api.StreamingEvent
 import com.materialchat.domain.model.AiModel
 import com.materialchat.domain.model.Attachment
 import com.materialchat.domain.model.Message
+import com.materialchat.domain.model.LocalModelBackend
 import com.materialchat.domain.model.Provider
+import com.materialchat.domain.model.ProviderType
 import com.materialchat.domain.model.ReasoningEffort
 import com.materialchat.domain.model.StreamingState
 import com.materialchat.domain.repository.ChatRepository
+import com.materialchat.domain.repository.LocalModelRepository
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
@@ -38,6 +41,7 @@ class ChatRepositoryImpl @Inject constructor(
     private val modelListApiClient: ModelListApiClient,
     private val encryptedPreferences: EncryptedPreferences,
     private val nativeAuthManager: NativeAuthManager,
+    private val localModelRepository: LocalModelRepository,
     @ApplicationContext private val context: Context
 ) : ChatRepository {
 
@@ -49,7 +53,16 @@ class ChatRepositoryImpl @Inject constructor(
         systemPrompt: String?,
         disableTools: Boolean,
         nativeWebSearch: Boolean
-    ): Flow<StreamingState> = flow {
+    ): Flow<StreamingState> {
+        if (provider.type.isOnDevice) {
+            return localModelRepository.streamChat(
+                modelId = model,
+                messages = messages,
+                systemPrompt = systemPrompt
+            )
+        }
+
+        return flow {
         // Use local state so parallel calls (e.g. arena) don't interfere
         val accumulatedContent = StringBuilder()
         val accumulatedThinking = StringBuilder()
@@ -125,11 +138,21 @@ class ChatRepositoryImpl @Inject constructor(
             }
         }
     }
+    }
 
     override suspend fun fetchModels(
         provider: Provider,
         apiKeyOverride: String?
     ): Result<List<AiModel>> {
+        if (provider.type.isOnDevice) {
+            val backend = when (provider.type) {
+                ProviderType.LITERT_LM_LOCAL -> LocalModelBackend.LITERT_LM
+                ProviderType.AICORE_GEMINI_NANO -> LocalModelBackend.AICORE_GEMINI_NANO
+                else -> LocalModelBackend.LITERT_LM
+            }
+            return Result.success(localModelRepository.fetchAvailableAiModels(provider.id, backend))
+        }
+
         val apiKey = if (!apiKeyOverride.isNullOrBlank()) {
             apiKeyOverride
         } else {
@@ -141,9 +164,26 @@ class ChatRepositoryImpl @Inject constructor(
 
     override fun cancelStreaming() {
         chatApiClient.cancelStreaming()
+        localModelRepository.cancelActiveGeneration()
     }
 
     override suspend fun testConnection(provider: Provider): Result<Boolean> {
+        if (provider.type.isOnDevice) {
+            val backend = when (provider.type) {
+                ProviderType.LITERT_LM_LOCAL -> LocalModelBackend.LITERT_LM
+                ProviderType.AICORE_GEMINI_NANO -> LocalModelBackend.AICORE_GEMINI_NANO
+                else -> LocalModelBackend.LITERT_LM
+            }
+            val hasUsableModel = localModelRepository
+                .fetchAvailableAiModels(provider.id, backend)
+                .any { localModelRepository.isModelUsable(it.id) }
+            return if (hasUsableModel) {
+                Result.success(true)
+            } else {
+                Result.failure(IllegalStateException("No ${provider.type.displayName} model is downloaded or available yet"))
+            }
+        }
+
         val apiKey = getProviderCredential(provider)
 
         return chatApiClient.testConnection(provider, apiKey)
@@ -155,6 +195,10 @@ class ChatRepositoryImpl @Inject constructor(
         model: String,
         systemPrompt: String?
     ): Result<String> {
+        if (provider.type.isOnDevice) {
+            return localModelRepository.generateSimpleCompletion(model, prompt, systemPrompt)
+        }
+
         val apiKey = getProviderCredential(provider)
 
         return chatApiClient.generateSimpleCompletion(provider, prompt, model, apiKey, systemPrompt)
@@ -166,6 +210,10 @@ class ChatRepositoryImpl @Inject constructor(
         model: String,
         outputFormat: String
     ): Result<Attachment> {
+        if (provider.type.isOnDevice) {
+            return Result.failure(IllegalStateException("On-device text models do not support image generation"))
+        }
+
         val apiKey = getProviderCredential(provider)
 
         return chatApiClient.generateImage(provider, prompt, model, apiKey, outputFormat = outputFormat)

@@ -1,6 +1,7 @@
 package com.materialchat.di
 
 import com.materialchat.data.local.preferences.AppPreferences
+import com.materialchat.domain.model.Provider
 import com.materialchat.domain.repository.ConversationRepository
 import com.materialchat.domain.repository.PersonaRepository
 import com.materialchat.domain.repository.ProviderRepository
@@ -44,8 +45,9 @@ class AppInitializer @Inject constructor(
 
         conversationRepository.deleteEphemeralConversations()
 
-        // Seed built-in personas if missing (covers fresh installs AND upgrades)
+        // Seed built-in personas/providers if missing (covers fresh installs AND upgrades)
         seedBuiltinPersonasIfNeeded()
+        seedOnDeviceProvidersIfNeeded()
     }
 
     /**
@@ -72,6 +74,16 @@ class AppInitializer @Inject constructor(
         if (builtinCount == 0) {
             val builtins = getBuiltinPersonasUseCase()
             personaRepository.seedBuiltinPersonas(builtins)
+        }
+    }
+
+    private suspend fun seedOnDeviceProvidersIfNeeded() {
+        val providers = providerRepository.getProviders()
+        if (providers.none { it.id == "local-litert-lm" }) {
+            providerRepository.addProvider(Provider.liteRtLocalTemplate())
+        }
+        if (providers.none { it.id == "local-gemini-nano" }) {
+            providerRepository.addProvider(Provider.geminiNanoTemplate())
         }
     }
 

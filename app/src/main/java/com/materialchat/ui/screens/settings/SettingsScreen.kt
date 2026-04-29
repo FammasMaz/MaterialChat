@@ -41,6 +41,7 @@ import androidx.compose.material.icons.outlined.FormatSize
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material.icons.outlined.LightMode
+import androidx.compose.material.icons.outlined.Memory
 import androidx.compose.material.icons.outlined.Mic
 import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.Psychology
@@ -134,6 +135,7 @@ import com.materialchat.ui.theme.MaterialChatThemePalettes
 @Composable
 fun SettingsScreen(
     onNavigateToInteractionSettings: () -> Unit = {},
+    onNavigateToOnDeviceModels: () -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -287,6 +289,7 @@ fun SettingsScreen(
             },
             onBeautifulModelNamesChange = { viewModel.updateBeautifulModelNamesEnabled(it) },
             onAiGeneratedTitlesChange = { viewModel.updateAiGeneratedTitlesEnabled(it) },
+            onPreferOnDeviceTitleModelChange = { viewModel.updatePreferOnDeviceTitleModel(it) },
             onTitleGenerationModelChange = { viewModel.updateTitleGenerationModel(it) },
             onDefaultImageGenerationModelChange = { viewModel.updateDefaultImageGenerationModel(it) },
             onDefaultImageOutputFormatChange = { viewModel.updateDefaultImageOutputFormat(it) },
@@ -308,7 +311,8 @@ fun SettingsScreen(
             onExaApiKeyChange = { viewModel.updateExaApiKey(it) },
             onSearxngBaseUrlChange = { viewModel.updateSearxngBaseUrl(it) },
             onWebSearchMaxResultsChange = { viewModel.updateWebSearchMaxResults(it) },
-            onNavigateToInteractionSettings = onNavigateToInteractionSettings
+            onNavigateToInteractionSettings = onNavigateToInteractionSettings,
+            onNavigateToOnDeviceModels = onNavigateToOnDeviceModels
         )
     }
 
@@ -367,6 +371,7 @@ private fun SettingsContent(
     onNotificationsChange: (Boolean) -> Unit,
     onBeautifulModelNamesChange: (Boolean) -> Unit,
     onAiGeneratedTitlesChange: (Boolean) -> Unit,
+    onPreferOnDeviceTitleModelChange: (Boolean) -> Unit,
     onTitleGenerationModelChange: (String) -> Unit,
     onDefaultImageGenerationModelChange: (String) -> Unit,
     onDefaultImageOutputFormatChange: (String) -> Unit,
@@ -388,7 +393,8 @@ private fun SettingsContent(
     onExaApiKeyChange: (String) -> Unit,
     onSearxngBaseUrlChange: (String) -> Unit,
     onWebSearchMaxResultsChange: (Int) -> Unit,
-    onNavigateToInteractionSettings: () -> Unit
+    onNavigateToInteractionSettings: () -> Unit,
+    onNavigateToOnDeviceModels: () -> Unit
 ) {
     Box(
         modifier = Modifier
@@ -428,6 +434,7 @@ private fun SettingsContent(
                     onNotificationsChange = onNotificationsChange,
                     onBeautifulModelNamesChange = onBeautifulModelNamesChange,
                     onAiGeneratedTitlesChange = onAiGeneratedTitlesChange,
+                    onPreferOnDeviceTitleModelChange = onPreferOnDeviceTitleModelChange,
                     onTitleGenerationModelChange = onTitleGenerationModelChange,
                     onDefaultImageGenerationModelChange = onDefaultImageGenerationModelChange,
                     onDefaultImageOutputFormatChange = onDefaultImageOutputFormatChange,
@@ -448,7 +455,8 @@ private fun SettingsContent(
                     onExaApiKeyChange = onExaApiKeyChange,
                     onSearxngBaseUrlChange = onSearxngBaseUrlChange,
                     onWebSearchMaxResultsChange = onWebSearchMaxResultsChange,
-                    onNavigateToInteractionSettings = onNavigateToInteractionSettings
+                    onNavigateToInteractionSettings = onNavigateToInteractionSettings,
+                    onNavigateToOnDeviceModels = onNavigateToOnDeviceModels
                 )
             }
             is SettingsUiState.Error -> {
@@ -495,6 +503,7 @@ private fun SuccessContent(
     onNotificationsChange: (Boolean) -> Unit,
     onBeautifulModelNamesChange: (Boolean) -> Unit,
     onAiGeneratedTitlesChange: (Boolean) -> Unit,
+    onPreferOnDeviceTitleModelChange: (Boolean) -> Unit,
     onTitleGenerationModelChange: (String) -> Unit,
     onDefaultImageGenerationModelChange: (String) -> Unit,
     onDefaultImageOutputFormatChange: (String) -> Unit,
@@ -515,7 +524,8 @@ private fun SuccessContent(
     onExaApiKeyChange: (String) -> Unit,
     onSearxngBaseUrlChange: (String) -> Unit,
     onWebSearchMaxResultsChange: (Int) -> Unit,
-    onNavigateToInteractionSettings: () -> Unit
+    onNavigateToInteractionSettings: () -> Unit,
+    onNavigateToOnDeviceModels: () -> Unit
 ) {
     LazyColumn(
         modifier = Modifier
@@ -560,6 +570,10 @@ private fun SuccessContent(
 
         item {
             AddProviderButton(onClick = onAddProvider)
+        }
+
+        item {
+            OnDeviceModelsSettingsCard(onClick = onNavigateToOnDeviceModels)
         }
 
         item {
@@ -672,6 +686,12 @@ private fun SuccessContent(
 
         // Show title generation model field only when AI titles are enabled
         if (uiState.aiGeneratedTitlesEnabled) {
+            item {
+                PreferOnDeviceTitleModelToggle(
+                    enabled = uiState.preferOnDeviceTitleModel,
+                    onToggle = onPreferOnDeviceTitleModelChange
+                )
+            }
             item {
                 TitleGenerationModelField(
                     currentModel = uiState.titleGenerationModel,
@@ -817,6 +837,47 @@ private fun AddProviderButton(onClick: () -> Unit) {
         leadingIcon = Icons.Default.Add,
         style = ExpressiveButtonStyle.Outlined
     )
+}
+
+@Composable
+private fun OnDeviceModelsSettingsCard(onClick: () -> Unit) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
+        shape = CustomShapes.ProviderCard,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.primaryContainer,
+            contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+        )
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .defaultMinSize(minHeight = 72.dp)
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Outlined.Memory,
+                contentDescription = null,
+                modifier = Modifier.size(28.dp)
+            )
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "On-device models",
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+                Text(
+                    text = "Download, refresh, and delete local Gemma/Qwen models and Gemini Nano",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.78f)
+                )
+            }
+        }
+    }
 }
 
 @Composable
@@ -1706,6 +1767,58 @@ private fun AiGeneratedTitlesToggle(
                     )
                     Text(
                         text = "Use AI to create meaningful conversation titles",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            ExpressiveSwitch(
+                checked = enabled,
+                onCheckedChange = onToggle
+            )
+        }
+    }
+}
+
+@Composable
+private fun PreferOnDeviceTitleModelToggle(
+    enabled: Boolean,
+    onToggle: (Boolean) -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+        ),
+        shape = RoundedCornerShape(20.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.weight(1f)
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.Memory,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(24.dp)
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                Column {
+                    Text(
+                        text = "Native Title Generation",
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = "Use the smallest downloaded on-device model before cloud title generation",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

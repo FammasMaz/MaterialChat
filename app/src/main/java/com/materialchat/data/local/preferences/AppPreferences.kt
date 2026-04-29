@@ -53,6 +53,7 @@ class AppPreferences(private val context: Context) {
         val FIRST_LAUNCH_COMPLETE = booleanPreferencesKey("first_launch_complete")
         val ONBOARDING_COMPLETE = booleanPreferencesKey("onboarding_complete")
         val AI_GENERATED_TITLES_ENABLED = booleanPreferencesKey("ai_generated_titles_enabled")
+        val PREFER_ON_DEVICE_TITLE_MODEL = booleanPreferencesKey("prefer_on_device_title_model")
         val TITLE_GENERATION_MODEL = stringPreferencesKey("title_generation_model")
         val DEFAULT_IMAGE_GENERATION_MODEL = stringPreferencesKey("default_image_generation_model")
         val DEFAULT_IMAGE_OUTPUT_FORMAT = stringPreferencesKey("default_image_output_format")
@@ -146,6 +147,7 @@ class AppPreferences(private val context: Context) {
         const val DEFAULT_HAPTICS_ENABLED = true
         const val DEFAULT_NOTIFICATIONS_ENABLED = false
         const val DEFAULT_AI_GENERATED_TITLES_ENABLED = true
+        const val DEFAULT_PREFER_ON_DEVICE_TITLE_MODEL = true
         val DEFAULT_REASONING_EFFORT = ReasoningEffort.HIGH
         const val DEFAULT_REMEMBER_LAST_MODEL = true
         const val DEFAULT_IMAGE_GENERATION_MODEL = "codex/gpt-image-2-medium"
@@ -463,6 +465,19 @@ class AppPreferences(private val context: Context) {
     suspend fun setAiGeneratedTitlesEnabled(enabled: Boolean) {
         dataStore.edit { preferences ->
             preferences[Keys.AI_GENERATED_TITLES_ENABLED] = enabled
+        }
+    }
+
+    /**
+     * Prefer the smallest available on-device model for title generation.
+     */
+    val preferOnDeviceTitleModel: Flow<Boolean> = dataStore.data.map { preferences ->
+        preferences[Keys.PREFER_ON_DEVICE_TITLE_MODEL] ?: DEFAULT_PREFER_ON_DEVICE_TITLE_MODEL
+    }
+
+    suspend fun setPreferOnDeviceTitleModel(enabled: Boolean) {
+        dataStore.edit { preferences ->
+            preferences[Keys.PREFER_ON_DEVICE_TITLE_MODEL] = enabled
         }
     }
 

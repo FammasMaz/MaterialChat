@@ -50,6 +50,7 @@ sealed interface SettingsUiState {
         val hapticsEnabled: Boolean = true,
         val notificationsEnabled: Boolean = false,
         val aiGeneratedTitlesEnabled: Boolean = true,
+        val preferOnDeviceTitleModel: Boolean = AppPreferences.DEFAULT_PREFER_ON_DEVICE_TITLE_MODEL,
         val titleGenerationModel: String = "",
         val defaultImageGenerationModel: String = AppPreferences.DEFAULT_IMAGE_GENERATION_MODEL,
         val defaultImageOutputFormat: String = AppPreferences.DEFAULT_IMAGE_OUTPUT_FORMAT,

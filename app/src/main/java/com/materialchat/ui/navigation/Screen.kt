@@ -51,6 +51,7 @@ sealed class Screen(val route: String) {
      */
     data object Settings : Screen("settings")
     data object InteractionSettings : Screen("settings/interactions")
+    data object OnDeviceModels : Screen("settings/on-device-models")
 
     /**
      * Insights screen for viewing conversation intelligence dashboard.
@@ -120,7 +121,7 @@ sealed class Screen(val route: String) {
                 Onboarding, Conversations, Chat, Settings,
                 Arena, ArenaLeaderboard, Insights, PersonaStudio, Bookmarks,
                 GeneratedImages, Canvas, MindMap, Workflows, WorkflowBuilder, WorkflowExecution,
-                Explore, InteractionSettings
+                Explore, InteractionSettings, OnDeviceModels
             )
     }
 }

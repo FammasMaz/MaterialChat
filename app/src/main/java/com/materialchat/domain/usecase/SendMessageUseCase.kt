@@ -13,6 +13,7 @@ import com.materialchat.domain.model.StreamingState
 import com.materialchat.domain.model.WebSearchConfig
 import com.materialchat.domain.repository.ChatRepository
 import com.materialchat.domain.repository.ConversationRepository
+import com.materialchat.domain.repository.LocalModelRepository
 import com.materialchat.domain.repository.PersonaRepository
 import com.materialchat.domain.repository.ProviderRepository
 import com.materialchat.domain.repository.WebSearchRepository
@@ -49,6 +50,7 @@ class SendMessageUseCase @Inject constructor(
     private val providerRepository: ProviderRepository,
     private val personaRepository: PersonaRepository,
     private val webSearchRepository: WebSearchRepository,
+    private val localModelRepository: LocalModelRepository,
     private val appPreferences: AppPreferences,
     private val generateConversationTitleUseCase: GenerateConversationTitleUseCase,
     @ApplicationScope private val applicationScope: CoroutineScope,
@@ -460,12 +462,14 @@ class SendMessageUseCase @Inject constructor(
 
             val prompt = buildBranchTitlePrompt(userMessage, assistantResponse)
 
-            val result = chatRepository.generateSimpleCompletion(
-                provider = provider,
-                prompt = prompt,
-                model = modelToUse,
-                systemPrompt = BRANCH_TITLE_SYSTEM_PROMPT
-            )
+            val localResult = generateBranchTitleWithPreferredLocalModel(prompt)
+            val result = localResult.getOrNull()?.let { Result.success(it) }
+                ?: chatRepository.generateSimpleCompletion(
+                    provider = provider,
+                    prompt = prompt,
+                    model = modelToUse,
+                    systemPrompt = BRANCH_TITLE_SYSTEM_PROMPT
+                )
 
             result.onSuccess { generatedResponse ->
                 if (isGarbageTitleResponse(generatedResponse)) {
@@ -490,6 +494,19 @@ class SendMessageUseCase @Inject constructor(
                 conversationRepository.updateConversationTitle(conversationId, fallbackTitle)
             } catch (_: Exception) { }
         }
+    }
+
+    private suspend fun generateBranchTitleWithPreferredLocalModel(prompt: String): Result<String> {
+        if (!appPreferences.preferOnDeviceTitleModel.first()) {
+            return Result.failure(IllegalStateException("On-device title generation is disabled"))
+        }
+        val localModelId = localModelRepository.preferredTitleModelIdOrNull()
+            ?: return Result.failure(IllegalStateException("No on-device title model is available"))
+        return localModelRepository.generateSimpleCompletion(
+            modelId = localModelId,
+            prompt = prompt,
+            systemPrompt = BRANCH_TITLE_SYSTEM_PROMPT
+        )
     }
 
     /**

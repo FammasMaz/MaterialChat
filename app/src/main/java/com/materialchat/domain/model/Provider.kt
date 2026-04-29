@@ -91,5 +91,25 @@ data class Provider(
             requiresApiKey = true,
             isActive = false
         )
+
+        fun liteRtLocalTemplate(): Provider = Provider(
+            id = "local-litert-lm",
+            name = "On-device LiteRT-LM",
+            type = ProviderType.LITERT_LM_LOCAL,
+            baseUrl = "local://litert-lm",
+            defaultModel = LocalModelIds.GEMMA3_1B_IT_INT4,
+            requiresApiKey = false,
+            isActive = false
+        )
+
+        fun geminiNanoTemplate(): Provider = Provider(
+            id = "local-gemini-nano",
+            name = "Gemini Nano",
+            type = ProviderType.AICORE_GEMINI_NANO,
+            baseUrl = "local://aicore",
+            defaultModel = LocalModelIds.GEMINI_NANO,
+            requiresApiKey = false,
+            isActive = false
+        )
     }
 }

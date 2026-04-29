@@ -4,6 +4,7 @@ import android.util.Log
 import com.materialchat.data.local.preferences.AppPreferences
 import com.materialchat.domain.repository.ChatRepository
 import com.materialchat.domain.repository.ConversationRepository
+import com.materialchat.domain.repository.LocalModelRepository
 import com.materialchat.domain.repository.ProviderRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
@@ -29,6 +30,7 @@ class GenerateConversationTitleUseCase @Inject constructor(
     private val chatRepository: ChatRepository,
     private val conversationRepository: ConversationRepository,
     private val providerRepository: ProviderRepository,
+    private val localModelRepository: LocalModelRepository,
     private val appPreferences: AppPreferences
 ) {
     companion object {
@@ -97,12 +99,14 @@ class GenerateConversationTitleUseCase @Inject constructor(
             val prompt = buildTitlePrompt(userMessage, assistantResponse)
             Log.d(TAG, "Prompt length: ${prompt.length}")
 
-            val result = chatRepository.generateSimpleCompletion(
-                provider = provider,
-                prompt = prompt,
-                model = modelToUse,
-                systemPrompt = TITLE_SYSTEM_PROMPT
-            )
+            val localResult = generateWithPreferredLocalModel(prompt)
+            val result = localResult.getOrNull()?.let { Result.success(it) }
+                ?: chatRepository.generateSimpleCompletion(
+                    provider = provider,
+                    prompt = prompt,
+                    model = modelToUse,
+                    systemPrompt = TITLE_SYSTEM_PROMPT
+                )
 
             result.fold(
                 onSuccess = { generatedResponse ->
@@ -139,6 +143,20 @@ class GenerateConversationTitleUseCase @Inject constructor(
             } catch (_: Exception) { }
             Result.success(fallbackTitle)
         }
+    }
+
+    private suspend fun generateWithPreferredLocalModel(prompt: String): Result<String> {
+        if (!appPreferences.preferOnDeviceTitleModel.first()) {
+            return Result.failure(IllegalStateException("On-device title generation is disabled"))
+        }
+        val localModelId = localModelRepository.preferredTitleModelIdOrNull()
+            ?: return Result.failure(IllegalStateException("No on-device title model is available"))
+        Log.d(TAG, "Using on-device title model: $localModelId")
+        return localModelRepository.generateSimpleCompletion(
+            modelId = localModelId,
+            prompt = prompt,
+            systemPrompt = TITLE_SYSTEM_PROMPT
+        )
     }
 
     private fun buildTitlePrompt(userMessage: String, assistantResponse: String): String {

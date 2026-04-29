@@ -1,3 +1,5 @@
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -77,10 +79,6 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
-    kotlinOptions {
-        jvmTarget = "17"
-    }
-
     buildFeatures {
         compose = true
         buildConfig = true
@@ -90,6 +88,12 @@ android {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
+    }
+}
+
+kotlin {
+    compilerOptions {
+        jvmTarget.set(JvmTarget.JVM_17)
     }
 }
 
@@ -166,6 +170,11 @@ dependencies {
     // Ackpine (APK installer)
     implementation(libs.ackpine.core)
     implementation(libs.ackpine.ktx)
+
+    // On-device AI
+    implementation(libs.litert.lm.android)
+    implementation(libs.mediapipe.tasks.genai)
+    implementation(libs.mlkit.genai.prompt)
 
     // Testing
     testImplementation(libs.junit)

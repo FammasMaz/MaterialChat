@@ -2,8 +2,11 @@ package com.materialchat.domain.usecase
 
 import com.materialchat.data.local.preferences.AppPreferences
 import com.materialchat.domain.model.Conversation
+import com.materialchat.domain.model.LocalModelBackend
 import com.materialchat.domain.model.Provider
+import com.materialchat.domain.model.ProviderType
 import com.materialchat.domain.repository.ConversationRepository
+import com.materialchat.domain.repository.LocalModelRepository
 import com.materialchat.domain.repository.ProviderRepository
 import kotlinx.coroutines.flow.first
 import javax.inject.Inject
@@ -20,6 +23,7 @@ import javax.inject.Inject
 class CreateConversationUseCase @Inject constructor(
     private val conversationRepository: ConversationRepository,
     private val providerRepository: ProviderRepository,
+    private val localModelRepository: LocalModelRepository,
     private val appPreferences: AppPreferences
 ) {
     /**
@@ -93,7 +97,7 @@ class CreateConversationUseCase @Inject constructor(
         // Determine which model to use
         val modelToUse = if (appPreferences.rememberLastModel.first()) {
             val lastModel = appPreferences.lastUsedModel.first()
-            if (lastModel.isNotBlank()) lastModel else provider.defaultModel
+            resolveRememberedModel(provider, lastModel)
         } else {
             provider.defaultModel
         }
@@ -107,6 +111,18 @@ class CreateConversationUseCase @Inject constructor(
         )
 
         return conversationRepository.createConversation(conversation)
+    }
+
+    private suspend fun resolveRememberedModel(provider: Provider, lastModel: String): String {
+        if (!provider.type.isOnDevice) return lastModel.ifBlank { provider.defaultModel }
+        if (lastModel.isNotBlank() && localModelRepository.isModelUsable(lastModel)) return lastModel
+
+        val backend = when (provider.type) {
+            ProviderType.LITERT_LM_LOCAL -> LocalModelBackend.LITERT_LM
+            ProviderType.AICORE_GEMINI_NANO -> LocalModelBackend.AICORE_GEMINI_NANO
+            else -> LocalModelBackend.LITERT_LM
+        }
+        return localModelRepository.firstUsableModelId(backend) ?: provider.defaultModel
     }
 
     /**

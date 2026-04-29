@@ -231,6 +231,8 @@ private fun AddProviderSheetContent(
                 ProviderType.CODEX_NATIVE -> "https://chatgpt.com/backend-api/codex"
                 ProviderType.GITHUB_COPILOT_NATIVE -> "https://api.githubcopilot.com"
                 ProviderType.ANTIGRAVITY_NATIVE -> "https://daily-cloudcode-pa.sandbox.googleapis.com/v1internal"
+                ProviderType.LITERT_LM_LOCAL -> "local://litert-lm"
+                ProviderType.AICORE_GEMINI_NANO -> "local://aicore"
             },
             leadingIcon = Icons.Outlined.Link,
             error = formState.baseUrlError,
@@ -254,6 +256,8 @@ private fun AddProviderSheetContent(
                 ProviderType.CODEX_NATIVE -> "gpt-5.4"
                 ProviderType.GITHUB_COPILOT_NATIVE -> "gpt-4.1"
                 ProviderType.ANTIGRAVITY_NATIVE -> "gemini-3-flash"
+                ProviderType.LITERT_LM_LOCAL -> "gemma3-1b-it-int4"
+                ProviderType.AICORE_GEMINI_NANO -> "gemini-nano"
             },
             leadingIcon = Icons.Outlined.Memory,
             error = formState.defaultModelError,
@@ -462,7 +466,7 @@ private fun ProviderTypeSelector(
             modifier = Modifier.fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            ProviderType.entries.forEach { type ->
+            ProviderType.entries.filterNot { it.isOnDevice }.forEach { type ->
                 FilterChip(
                     selected = selectedType == type,
                     onClick = { if (enabled) onTypeSelected(type) },
@@ -476,6 +480,8 @@ private fun ProviderTypeSelector(
                                 ProviderType.CODEX_NATIVE,
                                 ProviderType.GITHUB_COPILOT_NATIVE,
                                 ProviderType.ANTIGRAVITY_NATIVE -> Icons.Outlined.SmartToy
+                                ProviderType.LITERT_LM_LOCAL,
+                                ProviderType.AICORE_GEMINI_NANO -> Icons.Outlined.Memory
                             },
                             contentDescription = null,
                             modifier = Modifier.size(18.dp)

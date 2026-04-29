@@ -15,6 +15,7 @@ import com.materialchat.domain.model.WebSearchProvider
 import com.materialchat.domain.model.WebSearchResult
 import com.materialchat.domain.repository.ChatRepository
 import com.materialchat.domain.repository.ConversationRepository
+import com.materialchat.domain.repository.LocalModelRepository
 import com.materialchat.domain.repository.PersonaRepository
 import com.materialchat.domain.repository.ProviderRepository
 import com.materialchat.domain.repository.WebSearchRepository
@@ -43,6 +44,7 @@ class SendMessageUseCaseTest {
     private lateinit var providerRepository: ProviderRepository
     private lateinit var personaRepository: PersonaRepository
     private lateinit var webSearchRepository: WebSearchRepository
+    private lateinit var localModelRepository: LocalModelRepository
     private lateinit var appPreferences: AppPreferences
     private lateinit var generateConversationTitleUseCase: GenerateConversationTitleUseCase
     private lateinit var applicationScope: TestScope
@@ -75,6 +77,7 @@ class SendMessageUseCaseTest {
         providerRepository = mockk()
         personaRepository = mockk()
         webSearchRepository = mockk()
+        localModelRepository = mockk()
         appPreferences = mockk()
         generateConversationTitleUseCase = mockk()
         applicationScope = TestScope()
@@ -84,6 +87,7 @@ class SendMessageUseCaseTest {
         every { appPreferences.defaultImageGenerationModel } returns flowOf(AppPreferences.DEFAULT_IMAGE_GENERATION_MODEL)
         every { appPreferences.defaultImageOutputFormat } returns flowOf("png")
         every { appPreferences.titleGenerationModel } returns flowOf("")
+        every { appPreferences.preferOnDeviceTitleModel } returns flowOf(true)
 
         sendMessageUseCase = SendMessageUseCase(
             chatRepository = chatRepository,
@@ -91,6 +95,7 @@ class SendMessageUseCaseTest {
             providerRepository = providerRepository,
             personaRepository = personaRepository,
             webSearchRepository = webSearchRepository,
+            localModelRepository = localModelRepository,
             appPreferences = appPreferences,
             generateConversationTitleUseCase = generateConversationTitleUseCase,
             applicationScope = applicationScope,
