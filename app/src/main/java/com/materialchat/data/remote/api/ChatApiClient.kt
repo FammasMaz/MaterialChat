@@ -645,12 +645,20 @@ class ChatApiClient(
                     outputFormat = outputFormat
                 )
                 ProviderType.OLLAMA_NATIVE -> Result.failure(
-                    IOException("Image generation requires an OpenAI-compatible provider")
+                    IOException("Image generation requires a Codex or OpenAI-compatible provider")
                 )
-                ProviderType.CODEX_NATIVE,
+                ProviderType.CODEX_NATIVE -> generateCodexNativeImage(
+                    baseUrl = provider.baseUrl,
+                    prompt = prompt,
+                    model = model,
+                    credentialJson = apiKey,
+                    size = size,
+                    qualityOverride = quality,
+                    outputFormat = outputFormat
+                )
                 ProviderType.GITHUB_COPILOT_NATIVE,
                 ProviderType.ANTIGRAVITY_NATIVE -> Result.failure(
-                    IOException("Image generation is not supported by ${provider.type.displayName} providers")
+                    IOException("Image generation is currently supported for Codex and OpenAI-compatible providers only")
                 )
             }
         } catch (e: Exception) {
@@ -824,6 +832,193 @@ class ChatApiClient(
         }
 
         return Result.failure(lastError ?: IOException("Image API request failed"))
+    }
+
+    private fun generateCodexNativeImage(
+        baseUrl: String,
+        prompt: String,
+        model: String,
+        credentialJson: String?,
+        size: String,
+        qualityOverride: String?,
+        outputFormat: String
+    ): Result<GeneratedImageData> {
+        val credential = NativeAuthCredential.decodeOrNull(credentialJson)
+        val token = credential?.bearerToken
+            ?: return Result.failure(IOException("Codex is not authenticated. Sign in from provider settings."))
+        val options = resolveCodexImageOptions(model, size, qualityOverride, outputFormat)
+        val payload = buildCodexImagePayload(
+            prompt = prompt,
+            size = options.size,
+            quality = options.quality,
+            outputFormat = options.outputFormat
+        )
+
+        val imageClient = okHttpClient.newBuilder()
+            .connectTimeout(30, TimeUnit.SECONDS)
+            .readTimeout(6, TimeUnit.MINUTES)
+            .writeTimeout(60, TimeUnit.SECONDS)
+            .callTimeout(7, TimeUnit.MINUTES)
+            .build()
+
+        val requestBuilder = Request.Builder()
+            .url("${baseUrl.trimEnd('/')}/responses")
+            .addHeader("Authorization", "Bearer $token")
+            .addHeader("Content-Type", "application/json")
+            .addHeader("Accept", "text/event-stream")
+            .addHeader("OpenAI-Beta", "responses=experimental")
+            .addHeader("originator", "pi")
+            .addHeader("User-Agent", CODEX_USER_AGENT)
+            .post(payload.toString().toRequestBody(JSON_MEDIA_TYPE))
+        credential.accountId?.takeIf { it.isNotBlank() }?.let {
+            requestBuilder.addHeader("ChatGPT-Account-Id", it)
+        }
+
+        val call = imageClient.newCall(requestBuilder.build())
+        activeCalls.add(call)
+        return try {
+            call.execute().use { response ->
+                if (!response.isSuccessful) {
+                    val errorBody = response.body?.string() ?: "Unknown error"
+                    return@use Result.failure(IOException("Codex image API error ${response.code}: $errorBody"))
+                }
+                val body = response.body ?: return@use Result.failure(IOException("Empty Codex image response"))
+                val imageB64 = body.source().inputStream().bufferedReader().use { reader ->
+                    collectCodexImageResult(reader)
+                }
+                if (imageB64.isBlank()) {
+                    Result.failure(IOException("Codex image response contained no image_generation result"))
+                } else {
+                    Result.success(
+                        GeneratedImageData(
+                            base64Data = imageB64,
+                            mimeType = options.outputFormat.toMimeType(),
+                            model = options.requestedModel
+                        )
+                    )
+                }
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        } finally {
+            activeCalls.remove(call)
+        }
+    }
+
+    private fun buildCodexImagePayload(
+        prompt: String,
+        size: String,
+        quality: String,
+        outputFormat: String
+    ): JsonObject = buildJsonObject {
+        put("model", CODEX_IMAGE_HOST_MODEL)
+        put("store", false)
+        put("stream", true)
+        put("instructions", CODEX_IMAGE_INSTRUCTIONS)
+        put("input", buildJsonArray {
+            add(buildJsonObject {
+                put("type", "message")
+                put("role", "user")
+                put("content", buildJsonArray {
+                    add(buildJsonObject {
+                        put("type", "input_text")
+                        put("text", prompt)
+                    })
+                })
+            })
+        })
+        put("tools", buildJsonArray {
+            add(buildJsonObject {
+                put("type", "image_generation")
+                put("model", "gpt-image-2")
+                put("size", size)
+                put("quality", quality)
+                put("output_format", outputFormat)
+                put("background", "opaque")
+                put("partial_images", 1)
+            })
+        })
+        put("tool_choice", buildJsonObject {
+            put("type", "allowed_tools")
+            put("mode", "required")
+            put("tools", buildJsonArray {
+                add(buildJsonObject { put("type", "image_generation") })
+            })
+        })
+    }
+
+    private fun collectCodexImageResult(reader: BufferedReader): String {
+        var imageB64 = ""
+        var currentEvent: String? = null
+        reader.lineSequence().forEach { rawLine ->
+            val line = rawLine.trim()
+            when {
+                line.startsWith("event:") -> currentEvent = line.removePrefix("event:").trim()
+                line.startsWith("data:") -> {
+                    val data = line.removePrefix("data:").trim()
+                    if (data.isBlank() || data == "[DONE]") return@forEach
+                    imageB64 = extractCodexImageFromEvent(data, currentImageB64 = imageB64, eventName = currentEvent)
+                }
+            }
+        }
+        return imageB64
+    }
+
+    private fun extractCodexImageFromEvent(
+        data: String,
+        currentImageB64: String,
+        eventName: String?
+    ): String {
+        return runCatching {
+            val event = json.parseToJsonElement(data).jsonObject
+            when (event.string("type") ?: eventName) {
+                "response.image_generation_call.partial_image" -> {
+                    event.string("partial_image_b64") ?: currentImageB64
+                }
+                "response.output_item.done" -> {
+                    val item = event["item"]?.jsonObject
+                    if (item?.string("type") == "image_generation_call") {
+                        item.string("result") ?: currentImageB64
+                    } else {
+                        currentImageB64
+                    }
+                }
+                "response.completed" -> {
+                    val output = event["response"]?.jsonObject?.get("output")?.jsonArray
+                    output?.firstNotNullOfOrNull { element ->
+                        val item = element.jsonObject
+                        item.string("result")?.takeIf { item.string("type") == "image_generation_call" }
+                    } ?: currentImageB64
+                }
+                "error" -> throw IOException(event.string("message") ?: data)
+                else -> currentImageB64
+            }
+        }.getOrElse { currentImageB64 }
+    }
+
+    private fun resolveCodexImageOptions(
+        model: String,
+        size: String,
+        qualityOverride: String?,
+        outputFormat: String
+    ): CodexImageOptions {
+        val requested = model.ifBlank { DEFAULT_CODEX_IMAGE_MODEL }
+        val normalized = requested.substringAfterLast('/').lowercase()
+        val tierQuality = when (normalized) {
+            "gpt-image-2-low" -> "low"
+            "gpt-image-2-high" -> "high"
+            "gpt-image-2", "gpt-image-2-medium" -> "medium"
+            else -> "medium"
+        }
+        val quality = qualityOverride?.lowercase()?.takeIf { it in CODEX_IMAGE_QUALITIES } ?: tierQuality
+        val safeSize = size.takeIf { it in CODEX_IMAGE_SIZES } ?: "1024x1024"
+        val safeFormat = outputFormat.lowercase().takeIf { it in CODEX_IMAGE_OUTPUT_FORMATS } ?: "png"
+        return CodexImageOptions(
+            requestedModel = requested,
+            quality = quality,
+            size = safeSize,
+            outputFormat = safeFormat
+        )
     }
 
     /**
@@ -1627,6 +1822,13 @@ class ChatApiClient(
 
         private const val COPILOT_USER_AGENT = "opencode/1.1.36"
         private const val CODEX_USER_AGENT = "pi (android)"
+        private const val DEFAULT_CODEX_IMAGE_MODEL = "codex/gpt-image-2-medium"
+        private const val CODEX_IMAGE_HOST_MODEL = "gpt-5.4"
+        private const val CODEX_IMAGE_INSTRUCTIONS =
+            "You are an assistant that must fulfill image generation requests by using the image_generation tool when provided."
+        private val CODEX_IMAGE_QUALITIES = setOf("low", "medium", "high")
+        private val CODEX_IMAGE_SIZES = setOf("1024x1024", "1024x1536", "1536x1024")
+        private val CODEX_IMAGE_OUTPUT_FORMATS = setOf("png", "jpeg", "webp")
         private const val ANTIGRAVITY_USER_AGENT = "antigravity/1.23.2 darwin/arm64"
         private const val ANTIGRAVITY_FALLBACK_PROJECT_ID = "rising-fact-p41fc"
 
@@ -1679,4 +1881,11 @@ data class GeneratedImageData(
     val base64Data: String,
     val mimeType: String,
     val model: String
+)
+
+private data class CodexImageOptions(
+    val requestedModel: String,
+    val quality: String,
+    val size: String,
+    val outputFormat: String
 )

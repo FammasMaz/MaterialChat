@@ -1943,9 +1943,35 @@ private fun DefaultImageGenerationModelField(
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
-                        text = "Any chat can hand image requests to this model",
+                        text = "Codex image quality model. Low, medium, and high are supported.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                AppPreferences.SUPPORTED_IMAGE_GENERATION_MODELS.forEach { model ->
+                    val tier = model.substringAfterLast('-').replaceFirstChar { it.uppercase() }
+                    FilterChip(
+                        selected = currentModel == model,
+                        onClick = {
+                            text = model
+                            onModelChange(model)
+                        },
+                        label = { Text(tier) },
+                        modifier = Modifier
+                            .weight(1f)
+                            .defaultMinSize(minHeight = 48.dp),
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                            selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
                     )
                 }
             }

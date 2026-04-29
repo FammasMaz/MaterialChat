@@ -607,7 +607,15 @@ class NativeAuthManager @Inject constructor(
             </body>
             </html>
         """.trimIndent()
-        writer.print("HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nConnection: close\r\n\r\n$html")
+        val contentLength = html.toByteArray(Charsets.UTF_8).size
+        writer.print(
+            "HTTP/1.1 200 OK\r\n" +
+                "Content-Type: text/html; charset=utf-8\r\n" +
+                "Content-Length: $contentLength\r\n" +
+                "Cache-Control: no-store\r\n" +
+                "Connection: close\r\n\r\n" +
+                html
+        )
         writer.flush()
     }
 

@@ -150,6 +150,11 @@ class AppPreferences(private val context: Context) {
         const val DEFAULT_REMEMBER_LAST_MODEL = true
         const val DEFAULT_IMAGE_GENERATION_MODEL = "codex/gpt-image-2-medium"
         const val DEFAULT_IMAGE_OUTPUT_FORMAT = "png"
+        val SUPPORTED_IMAGE_GENERATION_MODELS = listOf(
+            "codex/gpt-image-2-low",
+            "codex/gpt-image-2-medium",
+            "codex/gpt-image-2-high"
+        )
         val SUPPORTED_IMAGE_OUTPUT_FORMATS = listOf("png", "jpeg", "webp")
         const val DEFAULT_BEAUTIFUL_MODEL_NAMES = true
         const val DEFAULT_FONT_FAMILY = "Roboto Flex"
