@@ -17,20 +17,23 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.OpenInNew
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Memory
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.SmartToy
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.LinearWavyProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.WavyProgressIndicatorDefaults
 import androidx.compose.material3.Snackbar
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
@@ -48,6 +51,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -69,6 +73,7 @@ fun OnDeviceModelsScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
+    val uriHandler = LocalUriHandler.current
     var pendingDelete by remember { mutableStateOf<LocalModelState?>(null) }
 
     LaunchedEffect(Unit) {
@@ -147,10 +152,16 @@ fun OnDeviceModelsScreen(
                     OnDeviceModelsHero()
                 }
                 item {
+                    ModelDownloadGuideCard(
+                        onOpenLink = { url -> uriHandler.openUri(url) }
+                    )
+                }
+                item {
                     HuggingFaceTokenCard(
                         tokenPreview = uiState.huggingFaceTokenPreview,
                         onSave = viewModel::saveHuggingFaceToken,
-                        onClear = viewModel::clearHuggingFaceToken
+                        onClear = viewModel::clearHuggingFaceToken,
+                        onOpenLink = { url -> uriHandler.openUri(url) }
                     )
                 }
                 items(uiState.models, key = { it.descriptor.id }) { state ->
@@ -226,8 +237,61 @@ private fun OnDeviceModelsHero() {
                 )
             }
             Text(
-                text = "Download small models in-app for offline chat and native title generation. Gemma may require accepting its Hugging Face license before the download succeeds.",
+                text = "Download small models in-app for offline chat and native title generation. Start with Qwen for the easiest setup; Gemma needs Hugging Face license access.",
                 style = MaterialTheme.typography.bodyMedium
+            )
+        }
+    }
+}
+
+@Composable
+private fun ModelDownloadGuideCard(onOpenLink: (String) -> Unit) {
+    Card(
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+            contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+        ),
+        shape = CustomShapes.ProviderCard
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Text(
+                text = "How to enable downloads",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold
+            )
+            Text(
+                text = "1. Easiest: tap Download on Qwen2.5 or Qwen3. They are Apache-licensed and should not need an account.\n" +
+                    "2. For Gemma: open the Gemma page, sign in to Hugging Face, accept the license, create a read token, paste it below, then download.\n" +
+                    "3. Gemini Nano is different: Android AICore decides device support. Pixel 8 Pro may be unsupported for third-party Prompt API access even if Google apps use Gemini Nano.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.82f)
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End)
+            ) {
+                ExpressiveButton(
+                    onClick = { onOpenLink(GEMMA_MODEL_URL) },
+                    text = "Gemma page",
+                    leadingIcon = Icons.AutoMirrored.Outlined.OpenInNew,
+                    style = ExpressiveButtonStyle.Text
+                )
+                ExpressiveButton(
+                    onClick = { onOpenLink(HUGGING_FACE_TOKEN_URL) },
+                    text = "Create token",
+                    leadingIcon = Icons.AutoMirrored.Outlined.OpenInNew,
+                    style = ExpressiveButtonStyle.FilledTonal
+                )
+            }
+            ExpressiveButton(
+                onClick = { onOpenLink(GEMINI_NANO_SUPPORTED_DEVICES_URL) },
+                modifier = Modifier.fillMaxWidth(),
+                text = "Check Gemini Nano supported devices",
+                leadingIcon = Icons.AutoMirrored.Outlined.OpenInNew,
+                style = ExpressiveButtonStyle.Outlined
             )
         }
     }
@@ -237,7 +301,8 @@ private fun OnDeviceModelsHero() {
 private fun HuggingFaceTokenCard(
     tokenPreview: String?,
     onSave: (String) -> Unit,
-    onClear: () -> Unit
+    onClear: () -> Unit,
+    onOpenLink: (String) -> Unit
 ) {
     var token by remember { mutableStateOf("") }
 
@@ -258,7 +323,7 @@ private fun HuggingFaceTokenCard(
                 fontWeight = FontWeight.SemiBold
             )
             Text(
-                text = "Optional, but required for gated models like Gemma after you accept the model license on Hugging Face. Stored encrypted on-device.",
+                text = "Required only for gated models like Gemma. Use a Hugging Face read token after accepting the model license. Stored encrypted on-device.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -267,6 +332,23 @@ private fun HuggingFaceTokenCard(
                     text = "Saved token: $tokenPreview",
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.primary
+                )
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End)
+            ) {
+                ExpressiveButton(
+                    onClick = { onOpenLink(GEMMA_MODEL_URL) },
+                    text = "Accept Gemma license",
+                    leadingIcon = Icons.AutoMirrored.Outlined.OpenInNew,
+                    style = ExpressiveButtonStyle.Text
+                )
+                ExpressiveButton(
+                    onClick = { onOpenLink(HUGGING_FACE_TOKEN_URL) },
+                    text = "New token",
+                    leadingIcon = Icons.AutoMirrored.Outlined.OpenInNew,
+                    style = ExpressiveButtonStyle.Text
                 )
             }
             OutlinedTextField(
@@ -312,6 +394,9 @@ private fun OnDeviceModelCard(
     onDelete: () -> Unit
 ) {
     val descriptor = state.descriptor
+    val isAicore = descriptor.backend == LocalModelBackend.AICORE_GEMINI_NANO
+    val aicoreUnsupported = isAicore &&
+        (state.availability == LocalModelAvailability.UNAVAILABLE || state.availability == LocalModelAvailability.ERROR)
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = CustomShapes.ProviderCard,
@@ -330,11 +415,7 @@ private fun OnDeviceModelCard(
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Icon(
-                    imageVector = if (descriptor.backend == LocalModelBackend.AICORE_GEMINI_NANO) {
-                        Icons.Outlined.SmartToy
-                    } else {
-                        Icons.Outlined.Memory
-                    },
+                    imageVector = if (isAicore) Icons.Outlined.SmartToy else Icons.Outlined.Memory,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(28.dp)
@@ -359,13 +440,24 @@ private fun OnDeviceModelCard(
                 color = MaterialTheme.colorScheme.primary
             )
 
-            state.progress?.takeIf { state.availability == LocalModelAvailability.DOWNLOADING }?.let { progress ->
-                LinearProgressIndicator(
-                    progress = { progress },
-                    modifier = Modifier.fillMaxWidth(),
-                    color = MaterialTheme.colorScheme.primary,
-                    trackColor = MaterialTheme.colorScheme.surfaceContainerHighest
-                )
+            if (state.availability == LocalModelAvailability.DOWNLOADING) {
+                val progress = state.progress
+                if (progress != null) {
+                    @OptIn(ExperimentalMaterial3ExpressiveApi::class)
+                    LinearWavyProgressIndicator(
+                        progress = { progress },
+                        modifier = Modifier.fillMaxWidth(),
+                        color = MaterialTheme.colorScheme.primary,
+                        trackColor = MaterialTheme.colorScheme.surfaceContainerHighest
+                    )
+                } else {
+                    @OptIn(ExperimentalMaterial3ExpressiveApi::class)
+                    LinearWavyProgressIndicator(
+                        modifier = Modifier.fillMaxWidth(),
+                        color = MaterialTheme.colorScheme.primary,
+                        trackColor = MaterialTheme.colorScheme.surfaceContainerHighest
+                    )
+                }
             }
 
             state.errorMessage?.let { error ->
@@ -380,21 +472,40 @@ private fun OnDeviceModelCard(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End)
             ) {
-                if (state.isUsable) {
-                    ExpressiveButton(
-                        onClick = onDelete,
-                        text = "Delete",
-                        leadingIcon = Icons.Outlined.Delete,
-                        style = ExpressiveButtonStyle.Text,
-                        enabled = !isBusy
-                    )
-                } else {
-                    ExpressiveButton(
-                        onClick = onDownload,
-                        text = if (descriptor.backend == LocalModelBackend.AICORE_GEMINI_NANO) "Download / Check" else "Download",
-                        style = ExpressiveButtonStyle.FilledTonal,
-                        enabled = !isBusy && state.availability != LocalModelAvailability.DOWNLOADING
-                    )
+                when {
+                    state.isUsable && isAicore -> {
+                        ExpressiveButton(
+                            onClick = {},
+                            text = "Available",
+                            style = ExpressiveButtonStyle.Outlined,
+                            enabled = false
+                        )
+                    }
+                    state.isUsable -> {
+                        ExpressiveButton(
+                            onClick = onDelete,
+                            text = "Delete",
+                            leadingIcon = Icons.Outlined.Delete,
+                            style = ExpressiveButtonStyle.Text,
+                            enabled = !isBusy
+                        )
+                    }
+                    aicoreUnsupported -> {
+                        ExpressiveButton(
+                            onClick = {},
+                            text = "Not supported",
+                            style = ExpressiveButtonStyle.Outlined,
+                            enabled = false
+                        )
+                    }
+                    else -> {
+                        ExpressiveButton(
+                            onClick = onDownload,
+                            text = if (isAicore) "Download / Check" else "Download",
+                            style = ExpressiveButtonStyle.FilledTonal,
+                            enabled = !isBusy && state.availability != LocalModelAvailability.DOWNLOADING
+                        )
+                    }
                 }
             }
         }
@@ -409,8 +520,16 @@ private fun statusText(state: LocalModelState): String {
         LocalModelAvailability.DOWNLOADING -> "Downloading ${formatBytes(state.downloadedBytes)}${state.totalBytes?.let { " / ${formatBytes(it)}" }.orEmpty()}"
         LocalModelAvailability.DOWNLOADED -> "Downloaded${state.downloadedBytes.takeIf { it > 0L }?.let { " • ${formatBytes(it)}" }.orEmpty()}"
         LocalModelAvailability.AVAILABLE -> "Available on this device"
-        LocalModelAvailability.UNAVAILABLE -> "Unavailable on this device"
-        LocalModelAvailability.ERROR -> "Status unavailable"
+        LocalModelAvailability.UNAVAILABLE -> if (state.descriptor.backend == LocalModelBackend.AICORE_GEMINI_NANO) {
+            "Not supported on this device"
+        } else {
+            "Unavailable on this device"
+        }
+        LocalModelAvailability.ERROR -> if (state.descriptor.backend == LocalModelBackend.AICORE_GEMINI_NANO) {
+            "AICore status check failed"
+        } else {
+            "Download failed"
+        }
     }
 }
 
@@ -422,3 +541,7 @@ private fun formatBytes(bytes: Long): String {
         "%.0f MB".format(mb)
     }
 }
+
+private const val GEMMA_MODEL_URL = "https://huggingface.co/litert-community/Gemma3-1B-IT"
+private const val HUGGING_FACE_TOKEN_URL = "https://huggingface.co/settings/tokens"
+private const val GEMINI_NANO_SUPPORTED_DEVICES_URL = "https://developers.google.com/ml-kit/genai#prompt-device"

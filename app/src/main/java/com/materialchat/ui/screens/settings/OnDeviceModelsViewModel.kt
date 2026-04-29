@@ -80,7 +80,11 @@ class OnDeviceModelsViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(activeModelId = modelId)
             localModelRepository.download(modelId)
-                .onSuccess { _events.emit(OnDeviceModelsEvent.ShowSnackbar("Model ready for on-device use")) }
+                .onSuccess {
+                    _events.emit(OnDeviceModelsEvent.ShowSnackbar(
+                        "Download started. You can leave the app; progress continues in notifications."
+                    ))
+                }
                 .onFailure { _events.emit(OnDeviceModelsEvent.ShowSnackbar(it.message ?: "Model download failed")) }
             _uiState.value = _uiState.value.copy(activeModelId = null)
         }

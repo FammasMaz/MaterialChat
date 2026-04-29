@@ -2,8 +2,15 @@ package com.materialchat.data.localmodel
 
 import android.content.Context
 import com.materialchat.data.local.preferences.EncryptedPreferences
+import androidx.work.Constraints
+import androidx.work.ExistingWorkPolicy
+import androidx.work.NetworkType
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.WorkInfo
+import androidx.work.WorkManager
+import androidx.work.WorkManager.getInstance
+import com.materialchat.di.ApplicationScope
 import com.materialchat.di.IoDispatcher
-import com.materialchat.di.StandardClient
 import com.materialchat.domain.model.AiModel
 import com.materialchat.domain.model.LocalModelAvailability
 import com.materialchat.domain.model.LocalModelBackend
@@ -20,13 +27,13 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
-import okhttp3.OkHttpClient
-import okhttp3.Request
-import java.io.File
 import java.io.IOException
 import java.util.UUID
 import javax.inject.Inject
@@ -35,7 +42,7 @@ import javax.inject.Singleton
 @Singleton
 class LocalModelRepositoryImpl @Inject constructor(
     @ApplicationContext private val context: Context,
-    @StandardClient private val okHttpClient: OkHttpClient,
+    @ApplicationScope private val applicationScope: CoroutineScope,
     private val encryptedPreferences: EncryptedPreferences,
     private val liteRtLmEngineManager: LiteRtLmEngineManager,
     private val mediaPipeLlmEngineManager: MediaPipeLlmEngineManager,
@@ -44,7 +51,21 @@ class LocalModelRepositoryImpl @Inject constructor(
 ) : LocalModelRepository {
 
     private val downloadMutex = Mutex()
+    private val workManager: WorkManager = getInstance(context)
     private val _models = MutableStateFlow(initialStates())
+
+    init {
+        applicationScope.launch {
+            while (true) {
+                val workInfos = runCatching {
+                    workManager.getWorkInfosByTag(LocalModelDownloadWorker.WORK_TAG).get()
+                }.getOrDefault(emptyList())
+                applyDownloadWorkStates(workInfos)
+                val hasActiveDownload = workInfos.any { !it.state.isFinished }
+                delay(if (hasActiveDownload) ACTIVE_DOWNLOAD_POLL_MS else IDLE_DOWNLOAD_POLL_MS)
+            }
+        }
+    }
 
     override fun observeModels(): Flow<List<LocalModelState>> = _models.asStateFlow()
 
@@ -66,7 +87,7 @@ class LocalModelRepositoryImpl @Inject constructor(
                 try {
                     when (descriptor.backend) {
                         LocalModelBackend.LITERT_LM,
-                        LocalModelBackend.MEDIAPIPE_LLM -> downloadFileBackedModel(descriptor)
+                        LocalModelBackend.MEDIAPIPE_LLM -> enqueueFileBackedDownload(descriptor)
                         LocalModelBackend.AICORE_GEMINI_NANO -> downloadAicoreModel(descriptor)
                     }
                     refreshStatuses()
@@ -88,6 +109,7 @@ class LocalModelRepositoryImpl @Inject constructor(
             when (descriptor.backend) {
                 LocalModelBackend.LITERT_LM,
                 LocalModelBackend.MEDIAPIPE_LLM -> {
+                    workManager.cancelUniqueWork(LocalModelDownloadWorker.uniqueWorkName(modelId))
                     liteRtLmEngineManager.closeModel(modelId)
                     mediaPipeLlmEngineManager.cancelActiveGeneration()
                     val dir = LocalModelCatalog.modelDir(context, descriptor)
@@ -284,8 +306,7 @@ class LocalModelRepositoryImpl @Inject constructor(
         }
     }
 
-    private suspend fun downloadFileBackedModel(descriptor: LocalModelDescriptor) {
-        val url = descriptor.downloadUrl ?: throw IllegalStateException("No download URL for ${descriptor.displayName}")
+    private fun enqueueFileBackedDownload(descriptor: LocalModelDescriptor) {
         val target = LocalModelCatalog.modelFile(context, descriptor)
         if (target.exists()) return
 
@@ -297,59 +318,22 @@ class LocalModelRepositoryImpl @Inject constructor(
             errorMessage = null
         )
 
-        val tmp = File(target.parentFile, "${target.name}.download")
-        target.parentFile?.mkdirs()
-        if (tmp.exists()) tmp.delete()
+        val request = OneTimeWorkRequestBuilder<LocalModelDownloadWorker>()
+            .setInputData(LocalModelDownloadWorker.inputData(descriptor.id))
+            .setConstraints(
+                Constraints.Builder()
+                    .setRequiredNetworkType(NetworkType.CONNECTED)
+                    .build()
+            )
+            .addTag(LocalModelDownloadWorker.WORK_TAG)
+            .addTag(LocalModelDownloadWorker.uniqueWorkName(descriptor.id))
+            .build()
 
-        val requestBuilder = Request.Builder().url(url).get()
-        encryptedPreferences.getApiKey(HUGGING_FACE_TOKEN_ID)
-            ?.takeIf { url.startsWith("https://huggingface.co") }
-            ?.let { token -> requestBuilder.addHeader("Authorization", "Bearer $token") }
-        val request = requestBuilder.build()
-        okHttpClient.newCall(request).execute().use { response ->
-            if (!response.isSuccessful) {
-                val hint = if (response.code == 401 || response.code == 403) {
-                    " You may need to accept the model license on Hugging Face before downloading."
-                } else ""
-                throw IOException("Download failed for ${descriptor.displayName}: HTTP ${response.code}.$hint")
-            }
-            val body = response.body ?: throw IOException("Empty model download response")
-            val total = body.contentLength().takeIf { it > 0L } ?: descriptor.approximateSizeBytes
-            body.byteStream().use { input ->
-                tmp.outputStream().use { output ->
-                    val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
-                    var downloaded = 0L
-                    var lastEmit = 0L
-                    while (true) {
-                        val read = input.read(buffer)
-                        if (read == -1) break
-                        output.write(buffer, 0, read)
-                        downloaded += read
-                        if (downloaded - lastEmit >= PROGRESS_EMIT_BYTES) {
-                            lastEmit = downloaded
-                            updateState(
-                                descriptor.id,
-                                LocalModelAvailability.DOWNLOADING,
-                                downloadedBytes = downloaded,
-                                totalBytes = total
-                            )
-                        }
-                    }
-                    output.flush()
-                    updateState(
-                        descriptor.id,
-                        LocalModelAvailability.DOWNLOADING,
-                        downloadedBytes = downloaded,
-                        totalBytes = total
-                    )
-                }
-            }
-        }
-
-        if (!tmp.renameTo(target)) {
-            tmp.copyTo(target, overwrite = true)
-            tmp.delete()
-        }
+        workManager.enqueueUniqueWork(
+            LocalModelDownloadWorker.uniqueWorkName(descriptor.id),
+            ExistingWorkPolicy.KEEP,
+            request
+        )
     }
 
     private suspend fun downloadAicoreModel(descriptor: LocalModelDescriptor) {
@@ -364,6 +348,54 @@ class LocalModelRepositoryImpl @Inject constructor(
                 totalBytes = totalBytes
             )
         }
+    }
+
+    private fun applyDownloadWorkStates(workInfos: List<WorkInfo>) {
+        LocalModelCatalog.models
+            .filter { it.backend == LocalModelBackend.LITERT_LM || it.backend == LocalModelBackend.MEDIAPIPE_LLM }
+            .forEach { descriptor ->
+                val work = workInfos.firstOrNull {
+                    it.tags.contains(LocalModelDownloadWorker.uniqueWorkName(descriptor.id))
+                } ?: return@forEach
+                when (work.state) {
+                    WorkInfo.State.ENQUEUED,
+                    WorkInfo.State.BLOCKED -> updateState(
+                        modelId = descriptor.id,
+                        availability = LocalModelAvailability.DOWNLOADING,
+                        totalBytes = descriptor.approximateSizeBytes
+                    )
+                    WorkInfo.State.RUNNING -> updateState(
+                        modelId = descriptor.id,
+                        availability = LocalModelAvailability.DOWNLOADING,
+                        downloadedBytes = work.progress.getLong(LocalModelDownloadWorker.KEY_DOWNLOADED_BYTES, 0L),
+                        totalBytes = work.progress.getLong(
+                            LocalModelDownloadWorker.KEY_TOTAL_BYTES,
+                            descriptor.approximateSizeBytes ?: 0L
+                        ).takeIf { it > 0L }
+                    )
+                    WorkInfo.State.SUCCEEDED -> {
+                        val file = LocalModelCatalog.modelFile(context, descriptor)
+                        updateState(
+                            modelId = descriptor.id,
+                            availability = if (file.exists()) LocalModelAvailability.DOWNLOADED else LocalModelAvailability.NOT_DOWNLOADED,
+                            downloadedBytes = file.takeIf { it.exists() }?.length() ?: 0L,
+                            totalBytes = descriptor.approximateSizeBytes
+                        )
+                    }
+                    WorkInfo.State.FAILED -> updateState(
+                        modelId = descriptor.id,
+                        availability = LocalModelAvailability.ERROR,
+                        totalBytes = descriptor.approximateSizeBytes,
+                        errorMessage = work.outputData.getString(LocalModelDownloadWorker.KEY_ERROR)
+                            ?: "Model download failed"
+                    )
+                    WorkInfo.State.CANCELLED -> updateState(
+                        modelId = descriptor.id,
+                        availability = LocalModelAvailability.NOT_DOWNLOADED,
+                        totalBytes = descriptor.approximateSizeBytes
+                    )
+                }
+            }
     }
 
     private fun requireDescriptor(modelId: String): LocalModelDescriptor {
@@ -417,5 +449,7 @@ class LocalModelRepositoryImpl @Inject constructor(
         const val PROGRESS_EMIT_BYTES = 512L * 1024L
         const val MAX_CONTEXT_MESSAGES = 12
         const val HUGGING_FACE_TOKEN_ID = "huggingface_access_token"
+        const val ACTIVE_DOWNLOAD_POLL_MS = 1_000L
+        const val IDLE_DOWNLOAD_POLL_MS = 5_000L
     }
 }
