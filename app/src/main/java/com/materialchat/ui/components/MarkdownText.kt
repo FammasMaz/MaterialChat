@@ -1,5 +1,6 @@
 package com.materialchat.ui.components
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -11,6 +12,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -25,6 +27,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -206,7 +209,7 @@ private fun MarkdownContent(
     fillWidth: Boolean = true,
     onOpenCanvas: ((CanvasArtifact) -> Unit)? = null
 ) {
-    if (shouldUseBatchedMathDocument(content, isStreaming, onOpenCanvas)) {
+    if (shouldUseBatchedMathDocument(content, isStreaming)) {
         MathDocumentWebView(
             content = content,
             modifier = modifier,
@@ -306,8 +309,7 @@ private fun MarkdownContent(
 
 private fun shouldUseBatchedMathDocument(
     content: List<MarkdownElement>,
-    isStreaming: Boolean,
-    onOpenCanvas: ((CanvasArtifact) -> Unit)?
+    isStreaming: Boolean
 ): Boolean {
     if (isStreaming) return false
     val complexMathBlocks = content.count { element ->
@@ -315,8 +317,8 @@ private fun shouldUseBatchedMathDocument(
     }
     if (complexMathBlocks < BATCHED_MATH_BLOCK_THRESHOLD) return false
 
-    // Keep native code-block actions for messages that can be opened in Canvas.
-    if (onOpenCanvas != null && content.any { it is MarkdownElement.CodeBlock }) return false
+    // Never let the perf path replace M3 Compose components with HTML approximations.
+    if (content.any { it is MarkdownElement.Table || it is MarkdownElement.CodeBlock }) return false
 
     return true
 }
@@ -385,7 +387,8 @@ private fun MathDocumentWebView(
                     measureDocumentHeight(view) { measuredHeight ->
                         if (measuredHeight > 0) {
                             hasMeasuredHeight = true
-                            webViewHeight = maxOf(measuredHeight, fallbackHeightPx)
+                            val heightBufferPx = (12 * view.context.resources.displayMetrics.density).toInt()
+                            webViewHeight = measuredHeight + heightBufferPx
                         }
                     }
                 }
@@ -896,13 +899,13 @@ private fun createMathDocumentWebView(
 private fun measureDocumentHeight(webView: WebView, onMeasured: (Int) -> Unit) {
     webView.evaluateJavascript(
         """(function() {
-            var body = document.body;
-            var html = document.documentElement;
-            if (!body || !html) return 0;
-            return Math.ceil(Math.max(
-                body.scrollHeight, body.offsetHeight,
-                html.clientHeight, html.scrollHeight, html.offsetHeight
-            ));
+            var documentNode = document.querySelector('.markdown-document');
+            if (!documentNode) return 0;
+            var rect = documentNode.getBoundingClientRect();
+            var bodyStyle = window.getComputedStyle(document.body);
+            var padTop = parseFloat(bodyStyle.paddingTop || '0') || 0;
+            var padBottom = parseFloat(bodyStyle.paddingBottom || '0') || 0;
+            return Math.ceil(rect.height + padTop + padBottom);
         })()"""
     ) { heightStr ->
         val h = heightStr
@@ -1469,8 +1472,10 @@ private fun TableView(
     bodyTextStyle: TextStyle = MaterialTheme.typography.bodyMedium
 ) {
     val outlineColor = MaterialTheme.colorScheme.outlineVariant
+    val tableContainer = MaterialTheme.colorScheme.surfaceContainerLow
     val headerBackground = MaterialTheme.colorScheme.surfaceContainerHigh
-    val alternateRowColor = MaterialTheme.colorScheme.surfaceContainerLow
+    val alternateRowColor = MaterialTheme.colorScheme.surfaceContainer
+    val tableShape = MaterialTheme.shapes.large
 
     val numCols = maxOf(
         headers.size,
@@ -1516,62 +1521,30 @@ private fun TableView(
     ) {
         val viewportWidth = minOf(maxWidth, tableWidth)
 
-        Box(
-            modifier = Modifier
-                .width(viewportWidth)
-                .clip(RoundedCornerShape(16.dp))
-                .background(MaterialTheme.colorScheme.surfaceContainer)
-                .horizontalScroll(scrollState)
+        Surface(
+            modifier = Modifier.width(viewportWidth),
+            shape = tableShape,
+            color = tableContainer,
+            tonalElevation = 1.dp,
+            shadowElevation = 0.dp,
+            border = BorderStroke(1.dp, outlineColor.copy(alpha = 0.62f))
         ) {
-            androidx.compose.foundation.layout.Column(
-                modifier = Modifier.width(tableWidth)
-            ) {
-                Row(
-                    modifier = Modifier
-                        .width(tableWidth)
-                        .background(headerBackground)
+            Box(modifier = Modifier.horizontalScroll(scrollState)) {
+                androidx.compose.foundation.layout.Column(
+                    modifier = Modifier.width(tableWidth)
                 ) {
-                    repeat(numCols) { index ->
-                        TableCell(
-                            text = headers.getOrElse(index) { "" },
-                            style = headerStyle.copy(
-                                textAlign = tableTextAlign(alignments.getOrElse(index) { TableAlignment.LEFT })
-                            ),
-                            width = columnWidths.getOrElse(index) { 104.dp },
-                            horizontalPadding = horizontalCellPadding,
-                            verticalPadding = verticalCellPadding,
-                            baseColor = baseColor,
-                            codeColor = codeColor,
-                            linkColor = linkColor
-                        )
-                    }
-                }
-
-                Spacer(
-                    modifier = Modifier
-                        .width(tableWidth)
-                        .height(1.dp)
-                        .background(outlineColor)
-                )
-
-                rows.forEachIndexed { rowIndex, row ->
                     Row(
                         modifier = Modifier
                             .width(tableWidth)
-                            .then(
-                                if (rowIndex % 2 == 0) Modifier.background(alternateRowColor)
-                                else Modifier
-                            )
+                            .background(headerBackground)
                     ) {
-                        repeat(numCols) { colIndex ->
+                        repeat(numCols) { index ->
                             TableCell(
-                                text = row.getOrElse(colIndex) { "" },
-                                style = bodyStyle.copy(
-                                    textAlign = tableTextAlign(
-                                        alignments.getOrElse(colIndex) { TableAlignment.LEFT }
-                                    )
+                                text = headers.getOrElse(index) { "" },
+                                style = headerStyle.copy(
+                                    textAlign = tableTextAlign(alignments.getOrElse(index) { TableAlignment.LEFT })
                                 ),
-                                width = columnWidths.getOrElse(colIndex) { 104.dp },
+                                width = columnWidths.getOrElse(index) { 104.dp },
                                 horizontalPadding = horizontalCellPadding,
                                 verticalPadding = verticalCellPadding,
                                 baseColor = baseColor,
@@ -1580,13 +1553,46 @@ private fun TableView(
                             )
                         }
                     }
-                    if (rowIndex < rows.lastIndex) {
-                        Spacer(
+
+                    Spacer(
+                        modifier = Modifier
+                            .width(tableWidth)
+                            .height(1.dp)
+                            .background(outlineColor.copy(alpha = 0.72f))
+                    )
+
+                    rows.forEachIndexed { rowIndex, row ->
+                        val rowColor = if (rowIndex % 2 == 0) tableContainer else alternateRowColor
+                        Row(
                             modifier = Modifier
                                 .width(tableWidth)
-                                .height(1.dp)
-                                .background(outlineColor.copy(alpha = 0.5f))
-                        )
+                                .background(rowColor)
+                        ) {
+                            repeat(numCols) { colIndex ->
+                                TableCell(
+                                    text = row.getOrElse(colIndex) { "" },
+                                    style = bodyStyle.copy(
+                                        textAlign = tableTextAlign(
+                                            alignments.getOrElse(colIndex) { TableAlignment.LEFT }
+                                        )
+                                    ),
+                                    width = columnWidths.getOrElse(colIndex) { 104.dp },
+                                    horizontalPadding = horizontalCellPadding,
+                                    verticalPadding = verticalCellPadding,
+                                    baseColor = baseColor,
+                                    codeColor = codeColor,
+                                    linkColor = linkColor
+                                )
+                            }
+                        }
+                        if (rowIndex < rows.lastIndex) {
+                            Spacer(
+                                modifier = Modifier
+                                    .width(tableWidth)
+                                    .height(1.dp)
+                                    .background(outlineColor.copy(alpha = 0.44f))
+                            )
+                        }
                     }
                 }
             }
@@ -1610,6 +1616,7 @@ private fun TableCell(
         style = style,
         modifier = Modifier
             .width(width)
+            .heightIn(min = 40.dp)
             .padding(horizontal = horizontalPadding, vertical = verticalPadding),
         softWrap = true
     )
