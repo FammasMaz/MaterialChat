@@ -1,6 +1,7 @@
 package com.materialchat.ui.screens.settings
 
 import com.materialchat.data.local.preferences.AppPreferences
+import com.materialchat.data.monetization.PremiumState
 import com.materialchat.domain.model.Provider
 import com.materialchat.domain.model.UpdateState
 
@@ -73,6 +74,8 @@ sealed interface SettingsUiState {
         val exaApiKeyConfigured: Boolean = false,
         val searxngBaseUrl: String = "",
         val webSearchMaxResults: Int = 5,
+        // Monetization
+        val premiumState: PremiumState = PremiumState(),
         val showAddProviderSheet: Boolean = false,
         val editingProvider: Provider? = null,
         val showDeleteConfirmation: Provider? = null,

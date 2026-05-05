@@ -10,6 +10,7 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.materialchat.domain.model.ReasoningEffort
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 
 /**
@@ -77,6 +78,9 @@ class AppPreferences(private val context: Context) {
         val WEB_SEARCH_PROVIDER = stringPreferencesKey("web_search_provider")
         val SEARXNG_BASE_URL = stringPreferencesKey("searxng_base_url")
         val WEB_SEARCH_MAX_RESULTS = stringPreferencesKey("web_search_max_results")
+        // Monetization settings
+        val LIFETIME_AD_FREE = booleanPreferencesKey("lifetime_ad_free")
+        val REWARDED_PREMIUM_UNTIL = longPreferencesKey("rewarded_premium_until")
     }
 
     /**
@@ -774,6 +778,43 @@ class AppPreferences(private val context: Context) {
         dataStore.edit { preferences ->
             preferences.clear()
         }
+    }
+
+    // ========== Monetization ==========
+
+    /**
+     * Whether the user has permanently removed ads through Google Play Billing.
+     */
+    val lifetimeAdFree: Flow<Boolean> = dataStore.data.map { preferences ->
+        preferences[Keys.LIFETIME_AD_FREE] ?: false
+    }
+
+    suspend fun setLifetimeAdFree(enabled: Boolean) {
+        dataStore.edit { preferences ->
+            preferences[Keys.LIFETIME_AD_FREE] = enabled
+        }
+    }
+
+    /**
+     * Timestamp until which rewarded-ad premium is active. Zero means inactive.
+     */
+    val rewardedPremiumUntilMillis: Flow<Long> = dataStore.data.map { preferences ->
+        preferences[Keys.REWARDED_PREMIUM_UNTIL] ?: 0L
+    }
+
+    suspend fun setRewardedPremiumUntilMillis(untilMillis: Long) {
+        dataStore.edit { preferences ->
+            preferences[Keys.REWARDED_PREMIUM_UNTIL] = untilMillis.coerceAtLeast(0L)
+        }
+    }
+
+    suspend fun extendRewardedPremium(durationMillis: Long): Long {
+        val now = System.currentTimeMillis()
+        val currentUntil = rewardedPremiumUntilMillis.first()
+        val baseTime = maxOf(now, currentUntil)
+        val newUntil = baseTime + durationMillis
+        setRewardedPremiumUntilMillis(newUntil)
+        return newUntil
     }
 
     // ========== Web Search Settings ==========

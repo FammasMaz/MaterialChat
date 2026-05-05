@@ -38,6 +38,8 @@ tink = "1.15.0"
 # Firebase
 firebaseMessaging = "24.0.0"
 googleServices = "4.4.2"
+mobileAds = "25.2.0"
+playBilling = "8.3.0"
 
 # OkHttp
 okhttp = "4.12.0"
@@ -54,8 +56,6 @@ richtext = "1.0.0-alpha01"
 # Image loading
 coil = "2.5.0"
 
-# Ackpine (APK installer)
-ackpine = "0.9.4"
 litertlm = "0.10.0"
 mediapipeTasksGenai = "0.10.27"
 mlkitGenaiPrompt = "1.0.0-beta2"
@@ -116,6 +116,8 @@ tink-android = { group = "com.google.crypto.tink", name = "tink-android", versio
 
 # Firebase
 firebase-messaging = { group = "com.google.firebase", name = "firebase-messaging", version.ref = "firebaseMessaging" }
+play-services-ads = { group = "com.google.android.gms", name = "play-services-ads", version.ref = "mobileAds" }
+play-billing = { group = "com.android.billingclient", name = "billing", version.ref = "playBilling" }
 
 # OkHttp
 okhttp = { group = "com.squareup.okhttp3", name = "okhttp", version.ref = "okhttp" }
@@ -136,10 +138,6 @@ richtext-ui-material3 = { group = "com.halilibo.compose-richtext", name = "richt
 
 # Coil Image Loading
 coil-compose = { group = "io.coil-kt", name = "coil-compose", version.ref = "coil" }
-
-# Ackpine (APK installer with Kotlin coroutines support)
-ackpine-core = { group = "ru.solrudev.ackpine", name = "ackpine-core", version.ref = "ackpine" }
-ackpine-ktx = { group = "ru.solrudev.ackpine", name = "ackpine-ktx", version.ref = "ackpine" }
 
 # On-device AI
 litert-lm-android = { group = "com.google.ai.edge.litertlm", name = "litertlm-android", version.ref = "litertlm" }

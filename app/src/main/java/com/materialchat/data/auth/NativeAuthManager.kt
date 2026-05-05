@@ -218,7 +218,6 @@ class NativeAuthManager @Inject constructor(
         val formBody = FormBody.Builder()
             .add("code", code)
             .add("client_id", ANTIGRAVITY_CLIENT_ID)
-            .add("client_secret", ANTIGRAVITY_CLIENT_SECRET)
             .add("redirect_uri", redirectUri)
             .add("grant_type", "authorization_code")
             .add("code_verifier", codeVerifier)
@@ -243,7 +242,6 @@ class NativeAuthManager @Inject constructor(
             email = email,
             expiryDate = System.currentTimeMillis() + (expiresIn * 1000).toLong(),
             clientId = ANTIGRAVITY_CLIENT_ID,
-            clientSecret = ANTIGRAVITY_CLIENT_SECRET,
             tokenUri = GOOGLE_TOKEN_URL
         )
         val projectId = discoverAntigravityProject(credential) ?: ANTIGRAVITY_FALLBACK_PROJECT_ID
@@ -288,13 +286,11 @@ class NativeAuthManager @Inject constructor(
         antigravity: Boolean
     ): NativeAuthCredential {
         val clientId = credential.clientId ?: if (antigravity) ANTIGRAVITY_CLIENT_ID else ""
-        val clientSecret = credential.clientSecret ?: if (antigravity) ANTIGRAVITY_CLIENT_SECRET else ""
-        if (antigravity && (clientId.isBlank() || clientSecret.isBlank())) {
-            throw IOException("Antigravity OAuth client configuration is missing from this build")
+        if (antigravity && clientId.isBlank()) {
+            throw IOException("Antigravity OAuth client ID is missing from this build")
         }
         val formBody = FormBody.Builder()
             .add("client_id", clientId)
-            .add("client_secret", clientSecret)
             .add("refresh_token", credential.refreshToken.orEmpty())
             .add("grant_type", "refresh_token")
             .build()
@@ -419,10 +415,10 @@ class NativeAuthManager @Inject constructor(
     }
 
     private fun requireAntigravityOauthConfig() {
-        if (ANTIGRAVITY_CLIENT_ID.isBlank() || ANTIGRAVITY_CLIENT_SECRET.isBlank()) {
+        if (ANTIGRAVITY_CLIENT_ID.isBlank()) {
             throw IOException(
-                "Antigravity OAuth client configuration is missing from this build. " +
-                    "Set ANTIGRAVITY_CLIENT_ID and ANTIGRAVITY_CLIENT_SECRET before building."
+                "Antigravity OAuth client ID is missing from this build. " +
+                    "Set ANTIGRAVITY_CLIENT_ID before building."
             )
         }
     }
@@ -766,8 +762,6 @@ class NativeAuthManager @Inject constructor(
         const val GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
         val ANTIGRAVITY_CLIENT_ID: String
             get() = BuildConfig.ANTIGRAVITY_CLIENT_ID
-        val ANTIGRAVITY_CLIENT_SECRET: String
-            get() = BuildConfig.ANTIGRAVITY_CLIENT_SECRET
         val ANTIGRAVITY_SCOPES = listOf(
             "https://www.googleapis.com/auth/cloud-platform",
             "https://www.googleapis.com/auth/userinfo.email",

@@ -13,7 +13,6 @@
 
     <!-- Runtime notification permission (Android 13+) -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-    <uses-permission android:name="android.permission.POST_PROMOTED_NOTIFICATIONS" />
 
     <!-- Image attachment permissions -->
     <!-- For Android 13+ (API 33+): Read images from media store -->
@@ -28,9 +27,6 @@
         android:name="android.permission.WRITE_EXTERNAL_STORAGE"
         android:maxSdkVersion="28" />
 
-    <!-- Permission to install APK updates -->
-    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
-
     <!-- Voice Assistant permissions -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
@@ -39,7 +35,7 @@
 
     <application
         android:name=".MaterialChatApplication"
-        android:allowBackup="true"
+        android:allowBackup="false"
         android:enableOnBackInvokedCallback="true"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
@@ -47,6 +43,10 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.MaterialChat"
         android:networkSecurityConfig="@xml/network_security_config">
+
+        <meta-data
+            android:name="com.google.android.gms.ads.APPLICATION_ID"
+            android:value="${adMobApplicationId}" />
 
         <activity
             android:name=".MainActivity"
@@ -57,22 +57,6 @@
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-
-            <!-- Intent filter for opening chat from assistant overlay -->
-            <intent-filter>
-                <action android:name="com.materialchat.OPEN_CHAT" />
-                <category android:name="android.intent.category.DEFAULT" />
-            </intent-filter>
-
-            <!-- Deep link used by OAuth success pages to bring the user back from Chrome. -->
-            <intent-filter>
-                <action android:name="android.intent.action.VIEW" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-                <data
-                    android:scheme="materialchat"
-                    android:host="oauth" />
             </intent-filter>
         </activity>
 
@@ -86,8 +70,6 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/file_paths" />
         </provider>
-
-        <!-- Note: Ackpine library automatically registers its FileProvider for APK installation -->
 
         <service
             android:name=".notifications.ImageGenerationForegroundService"

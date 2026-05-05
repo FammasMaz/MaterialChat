@@ -1,12 +1,19 @@
 package com.materialchat.ui.screens.settings
 
+import android.app.Activity
 import android.os.Build
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.materialchat.data.auth.NativeAuthCredential
 import com.materialchat.data.auth.NativeAuthManager
+import com.materialchat.data.backup.BackupExport
+import com.materialchat.data.backup.BackupPreview
+import com.materialchat.data.backup.BackupRepository
+import com.materialchat.data.backup.BackupRestoreResult
 import com.materialchat.data.local.preferences.AppPreferences
 import com.materialchat.data.local.preferences.EncryptedPreferences
+import com.materialchat.data.monetization.MonetizationManager
+import com.materialchat.data.monetization.PremiumState
 import com.materialchat.data.repository.UpdateManager
 import com.materialchat.domain.model.AppUpdate
 import com.materialchat.domain.model.Provider
@@ -35,7 +42,9 @@ class SettingsViewModel @Inject constructor(
     private val appPreferences: AppPreferences,
     private val encryptedPreferences: EncryptedPreferences,
     private val updateManager: UpdateManager,
-    private val nativeAuthManager: NativeAuthManager
+    private val nativeAuthManager: NativeAuthManager,
+    private val monetizationManager: MonetizationManager,
+    private val backupRepository: BackupRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<SettingsUiState>(SettingsUiState.Loading)
@@ -49,6 +58,7 @@ class SettingsViewModel @Inject constructor(
 
     init {
         observeSettings()
+        observeMonetizationEvents()
     }
 
     /**
@@ -158,19 +168,25 @@ class SettingsViewModel @Inject constructor(
                 )
             },
                 combine(
-                    appPreferences.webSearchEnabled,
-                    appPreferences.webSearchProvider,
-                    appPreferences.searxngBaseUrl,
-                    appPreferences.webSearchMaxResults
-                ) { enabled, provider, url, maxResults ->
-                    WebSearchPrefs(enabled, provider, url, maxResults)
+                    combine(
+                        appPreferences.webSearchEnabled,
+                        appPreferences.webSearchProvider,
+                        appPreferences.searxngBaseUrl,
+                        appPreferences.webSearchMaxResults
+                    ) { enabled, provider, url, maxResults ->
+                        WebSearchPrefs(enabled, provider, url, maxResults)
+                    },
+                    monetizationManager.premiumState
+                ) { webSearch, premiumState ->
+                    MonetizationPrefs(webSearch, premiumState)
                 }
-            ) { data, webSearch ->
+            ) { data, monetization ->
                 data.copy(
-                    webSearchEnabled = webSearch.enabled,
-                    webSearchProvider = webSearch.provider,
-                    searxngBaseUrl = webSearch.url,
-                    webSearchMaxResults = webSearch.maxResults
+                    webSearchEnabled = monetization.webSearch.enabled,
+                    webSearchProvider = monetization.webSearch.provider,
+                    searxngBaseUrl = monetization.webSearch.url,
+                    webSearchMaxResults = monetization.webSearch.maxResults,
+                    premiumState = monetization.premiumState
                 )
             }
                 .catch { e ->
@@ -224,6 +240,7 @@ class SettingsViewModel @Inject constructor(
                         exaApiKeyConfigured = encryptedPreferences.getApiKey("web_search_exa") != null,
                         searxngBaseUrl = data.searxngBaseUrl,
                         webSearchMaxResults = data.webSearchMaxResults,
+                        premiumState = data.premiumState,
                         showAddProviderSheet = if (currentState is SettingsUiState.Success) {
                             currentState.showAddProviderSheet
                         } else false,
@@ -241,6 +258,14 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
+    private fun observeMonetizationEvents() {
+        viewModelScope.launch {
+            monetizationManager.events.collect { message ->
+                _events.emit(SettingsEvent.ShowSnackbar(message))
+            }
+        }
+    }
+
     /**
      * Navigates back to the previous screen.
      */
@@ -248,6 +273,43 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch {
             _events.emit(SettingsEvent.NavigateBack)
         }
+    }
+
+    // ========== Monetization ==========
+
+    fun purchaseRemoveAds(activity: Activity) {
+        monetizationManager.launchRemoveAdsPurchase(activity)
+    }
+
+    fun watchRewardedAd(activity: Activity) {
+        monetizationManager.showRewardedAd(activity)
+    }
+
+    fun restorePurchases() {
+        monetizationManager.refreshPurchases()
+        viewModelScope.launch {
+            _events.emit(SettingsEvent.ShowSnackbar("Checking purchases..."))
+        }
+    }
+
+    // ========== Encrypted Backup ==========
+
+    suspend fun createEncryptedBackup(passphrase: String): Result<BackupExport> {
+        return runCatching { backupRepository.createEncryptedBackup(passphrase) }
+    }
+
+    suspend fun previewEncryptedBackup(
+        backupBytes: ByteArray,
+        passphrase: String
+    ): Result<BackupPreview> {
+        return runCatching { backupRepository.previewEncryptedBackup(backupBytes, passphrase) }
+    }
+
+    suspend fun restoreEncryptedBackup(
+        backupBytes: ByteArray,
+        passphrase: String
+    ): Result<BackupRestoreResult> {
+        return runCatching { backupRepository.restoreEncryptedBackup(backupBytes, passphrase) }
     }
 
     // ========== Provider Management ==========
@@ -1233,7 +1295,8 @@ class SettingsViewModel @Inject constructor(
         val webSearchEnabled: Boolean = false,
         val webSearchProvider: String = "EXA",
         val searxngBaseUrl: String = "",
-        val webSearchMaxResults: Int = 5
+        val webSearchMaxResults: Int = 5,
+        val premiumState: PremiumState = PremiumState()
     )
 
     /**
@@ -1290,5 +1353,13 @@ class SettingsViewModel @Inject constructor(
         val provider: String,
         val url: String,
         val maxResults: Int
+    )
+
+    /**
+     * Internal data class for combining web search and monetization flows.
+     */
+    private data class MonetizationPrefs(
+        val webSearch: WebSearchPrefs,
+        val premiumState: PremiumState
     )
 }

@@ -23,6 +23,7 @@ app/build/
 
 # Local configuration file (sdk path, etc)
 local.properties
+.rtk/
 
 # Android Studio navigation editor temp files
 .navigation/

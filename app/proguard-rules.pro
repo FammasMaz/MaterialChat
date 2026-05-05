@@ -61,8 +61,12 @@
 -dontwarn com.google.protobuf.ProtoPresenceBits
 -dontwarn com.google.protobuf.ProtoPresenceCheckedField
 
-# Strip debug and verbose logging in release builds
+# Strip Android framework logging in release builds so prompts, model output,
+# provider errors, URLs, and tokens never remain in Play release logcat.
 -assumenosideeffects class android.util.Log {
     public static int d(...);
+    public static int e(...);
+    public static int i(...);
     public static int v(...);
+    public static int w(...);
 }

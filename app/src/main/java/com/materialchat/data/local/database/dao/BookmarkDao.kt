@@ -20,6 +20,9 @@ interface BookmarkDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(bookmark: BookmarkEntity)
 
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAll(bookmarks: List<BookmarkEntity>)
+
     @Update
     suspend fun update(bookmark: BookmarkEntity)
 
@@ -31,6 +34,16 @@ interface BookmarkDao {
 
     @Query("SELECT * FROM bookmarks ORDER BY created_at DESC")
     fun getAllBookmarks(): Flow<List<BookmarkEntity>>
+
+    @Query("SELECT * FROM bookmarks ORDER BY created_at DESC")
+    suspend fun getAllBookmarksOnce(): List<BookmarkEntity>
+
+    @Query("""
+        SELECT * FROM bookmarks
+        WHERE conversation_id IN (:conversationIds)
+        ORDER BY created_at DESC
+    """)
+    suspend fun getBookmarksForConversations(conversationIds: List<String>): List<BookmarkEntity>
 
     @Query("SELECT * FROM bookmarks WHERE id = :bookmarkId")
     suspend fun getBookmarkById(bookmarkId: String): BookmarkEntity?

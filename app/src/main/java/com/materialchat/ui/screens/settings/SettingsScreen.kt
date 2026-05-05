@@ -1,8 +1,12 @@
 package com.materialchat.ui.screens.settings
 
 import android.Manifest
+import android.app.Activity
+import android.content.Context
+import android.content.ContextWrapper
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -87,6 +91,7 @@ import com.materialchat.ui.components.ExpressiveSwitch
 import androidx.compose.material3.Text
 import com.materialchat.ui.components.ExpressiveButtonStyle
 import androidx.compose.material3.TopAppBarDefaults
+import kotlinx.coroutines.Dispatchers
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -95,21 +100,29 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.core.content.ContextCompat
+import com.materialchat.BuildConfig
+import com.materialchat.data.backup.BackupExport
+import com.materialchat.data.backup.BackupPreview
 import com.materialchat.data.local.preferences.AppPreferences
+import com.materialchat.data.monetization.PremiumState
 import com.materialchat.domain.model.AppUpdate
 import com.materialchat.domain.model.Provider
 import com.materialchat.domain.model.UpdateState
+import java.io.ByteArrayOutputStream
+import java.io.IOException
 
 import com.materialchat.ui.screens.settings.components.AddProviderSheet
 import com.materialchat.ui.screens.settings.components.ProviderCard
@@ -144,6 +157,15 @@ fun SettingsScreen(
     val coroutineScope = rememberCoroutineScope()
     val context = LocalContext.current
 
+    var showCreateBackupDialog by remember { mutableStateOf(false) }
+    var showRestorePasswordDialog by remember { mutableStateOf(false) }
+    var restorePreview by remember { mutableStateOf<BackupPreview?>(null) }
+    var pendingBackupExport by remember { mutableStateOf<BackupExport?>(null) }
+    var backupPassphrase by remember { mutableStateOf("") }
+    var restorePassphrase by remember { mutableStateOf("") }
+    var pendingRestoreBytes by remember { mutableStateOf<ByteArray?>(null) }
+    var isBackupBusy by remember { mutableStateOf(false) }
+
     val notificationPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
     ) { granted ->
@@ -155,6 +177,57 @@ fun SettingsScreen(
                     duration = SnackbarDuration.Short
                 )
             }
+        }
+    }
+
+    val createBackupLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument("application/octet-stream")
+    ) { uri ->
+        val export = pendingBackupExport
+        if (uri == null || export == null) {
+            pendingBackupExport = null
+            return@rememberLauncherForActivityResult
+        }
+
+        coroutineScope.launch {
+            isBackupBusy = true
+            runCatching { context.writeBytesToUri(uri, export.bytes) }
+                .onSuccess {
+                    snackbarHostState.showSnackbar(
+                        message = "Encrypted backup saved: ${export.summary.label()}",
+                        duration = SnackbarDuration.Short
+                    )
+                }
+                .onFailure { error ->
+                    snackbarHostState.showSnackbar(
+                        message = error.message ?: "Could not save backup",
+                        duration = SnackbarDuration.Short
+                    )
+                }
+            pendingBackupExport = null
+            isBackupBusy = false
+        }
+    }
+
+    val restoreBackupLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+
+        coroutineScope.launch {
+            isBackupBusy = true
+            runCatching { context.readBytesFromUri(uri) }
+                .onSuccess { bytes ->
+                    pendingRestoreBytes = bytes
+                    showRestorePasswordDialog = true
+                }
+                .onFailure { error ->
+                    snackbarHostState.showSnackbar(
+                        message = error.message ?: "Could not read backup",
+                        duration = SnackbarDuration.Short
+                    )
+                }
+            isBackupBusy = false
         }
     }
 
@@ -236,7 +309,7 @@ fun SettingsScreen(
                     )
                 },
                 scrollBehavior = scrollBehavior,
-                colors = TopAppBarDefaults.largeTopAppBarColors(
+                colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surfaceContainer,
                     scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainer,
                     titleContentColor = MaterialTheme.colorScheme.onSurface
@@ -311,8 +384,129 @@ fun SettingsScreen(
             onExaApiKeyChange = { viewModel.updateExaApiKey(it) },
             onSearxngBaseUrlChange = { viewModel.updateSearxngBaseUrl(it) },
             onWebSearchMaxResultsChange = { viewModel.updateWebSearchMaxResults(it) },
+            onPurchaseRemoveAds = {
+                context.findActivity()?.let { activity ->
+                    viewModel.purchaseRemoveAds(activity)
+                } ?: coroutineScope.launch {
+                    snackbarHostState.showSnackbar("Could not open Google Play Billing")
+                }
+            },
+            onWatchRewardedAd = {
+                context.findActivity()?.let { activity ->
+                    viewModel.watchRewardedAd(activity)
+                } ?: coroutineScope.launch {
+                    snackbarHostState.showSnackbar("Could not show rewarded ad")
+                }
+            },
+            onRestorePurchases = { viewModel.restorePurchases() },
+            onCreateBackup = { showCreateBackupDialog = true },
+            onRestoreBackup = { restoreBackupLauncher.launch(arrayOf("application/octet-stream", "*/*")) },
             onNavigateToInteractionSettings = onNavigateToInteractionSettings,
             onNavigateToOnDeviceModels = onNavigateToOnDeviceModels
+        )
+    }
+
+    if (showCreateBackupDialog) {
+        BackupPasswordDialog(
+            title = "Create encrypted backup",
+            description = "Choose a password for this backup. You will need it to restore on any device.",
+            passphrase = backupPassphrase,
+            isBusy = isBackupBusy,
+            confirmText = "Choose location",
+            onPassphraseChange = { backupPassphrase = it },
+            onConfirm = {
+                coroutineScope.launch {
+                    isBackupBusy = true
+                    viewModel.createEncryptedBackup(backupPassphrase)
+                        .onSuccess { export ->
+                            pendingBackupExport = export
+                            backupPassphrase = ""
+                            showCreateBackupDialog = false
+                            createBackupLauncher.launch(export.filename)
+                        }
+                        .onFailure { error ->
+                            snackbarHostState.showSnackbar(
+                                message = error.message ?: "Could not create backup",
+                                duration = SnackbarDuration.Short
+                            )
+                        }
+                    isBackupBusy = false
+                }
+            },
+            onDismiss = {
+                showCreateBackupDialog = false
+                backupPassphrase = ""
+                pendingBackupExport = null
+            }
+        )
+    }
+
+    if (showRestorePasswordDialog) {
+        BackupPasswordDialog(
+            title = "Unlock backup",
+            description = "Enter the password used when this backup was created.",
+            passphrase = restorePassphrase,
+            isBusy = isBackupBusy,
+            confirmText = "Preview",
+            onPassphraseChange = { restorePassphrase = it },
+            onConfirm = {
+                val bytes = pendingRestoreBytes
+                if (bytes != null) coroutineScope.launch {
+                    isBackupBusy = true
+                    viewModel.previewEncryptedBackup(bytes, restorePassphrase)
+                        .onSuccess { preview ->
+                            restorePreview = preview
+                            showRestorePasswordDialog = false
+                        }
+                        .onFailure { error ->
+                            snackbarHostState.showSnackbar(
+                                message = error.message ?: "Could not unlock backup",
+                                duration = SnackbarDuration.Short
+                            )
+                        }
+                    isBackupBusy = false
+                }
+            },
+            onDismiss = {
+                showRestorePasswordDialog = false
+                restorePassphrase = ""
+                pendingRestoreBytes = null
+            }
+        )
+    }
+
+    restorePreview?.let { preview ->
+        RestoreBackupConfirmationDialog(
+            preview = preview,
+            isBusy = isBackupBusy,
+            onConfirm = {
+                val bytes = pendingRestoreBytes
+                if (bytes != null) coroutineScope.launch {
+                    isBackupBusy = true
+                    viewModel.restoreEncryptedBackup(bytes, restorePassphrase)
+                        .onSuccess { result ->
+                            snackbarHostState.showSnackbar(
+                                message = "Backup restored: ${result.summary.label()}",
+                                duration = SnackbarDuration.Short
+                            )
+                            restorePreview = null
+                            restorePassphrase = ""
+                            pendingRestoreBytes = null
+                        }
+                        .onFailure { error ->
+                            snackbarHostState.showSnackbar(
+                                message = error.message ?: "Could not restore backup",
+                                duration = SnackbarDuration.Short
+                            )
+                        }
+                    isBackupBusy = false
+                }
+            },
+            onDismiss = {
+                restorePreview = null
+                restorePassphrase = ""
+                pendingRestoreBytes = null
+            }
         )
     }
 
@@ -393,6 +587,11 @@ private fun SettingsContent(
     onExaApiKeyChange: (String) -> Unit,
     onSearxngBaseUrlChange: (String) -> Unit,
     onWebSearchMaxResultsChange: (Int) -> Unit,
+    onPurchaseRemoveAds: () -> Unit,
+    onWatchRewardedAd: () -> Unit,
+    onRestorePurchases: () -> Unit,
+    onCreateBackup: () -> Unit,
+    onRestoreBackup: () -> Unit,
     onNavigateToInteractionSettings: () -> Unit,
     onNavigateToOnDeviceModels: () -> Unit
 ) {
@@ -455,6 +654,11 @@ private fun SettingsContent(
                     onExaApiKeyChange = onExaApiKeyChange,
                     onSearxngBaseUrlChange = onSearxngBaseUrlChange,
                     onWebSearchMaxResultsChange = onWebSearchMaxResultsChange,
+                    onPurchaseRemoveAds = onPurchaseRemoveAds,
+                    onWatchRewardedAd = onWatchRewardedAd,
+                    onRestorePurchases = onRestorePurchases,
+                    onCreateBackup = onCreateBackup,
+                    onRestoreBackup = onRestoreBackup,
                     onNavigateToInteractionSettings = onNavigateToInteractionSettings,
                     onNavigateToOnDeviceModels = onNavigateToOnDeviceModels
                 )
@@ -524,6 +728,11 @@ private fun SuccessContent(
     onExaApiKeyChange: (String) -> Unit,
     onSearxngBaseUrlChange: (String) -> Unit,
     onWebSearchMaxResultsChange: (Int) -> Unit,
+    onPurchaseRemoveAds: () -> Unit,
+    onWatchRewardedAd: () -> Unit,
+    onRestorePurchases: () -> Unit,
+    onCreateBackup: () -> Unit,
+    onRestoreBackup: () -> Unit,
     onNavigateToInteractionSettings: () -> Unit,
     onNavigateToOnDeviceModels: () -> Unit
 ) {
@@ -574,6 +783,24 @@ private fun SuccessContent(
 
         item {
             OnDeviceModelsSettingsCard(onClick = onNavigateToOnDeviceModels)
+        }
+
+        item {
+            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+        }
+
+        // Premium & Ads Section
+        item {
+            SectionHeader(title = "Premium & Ads")
+        }
+
+        item {
+            MonetizationSection(
+                premiumState = uiState.premiumState,
+                onPurchaseRemoveAds = onPurchaseRemoveAds,
+                onWatchRewardedAd = onWatchRewardedAd,
+                onRestorePurchases = onRestorePurchases
+            )
         }
 
         item {
@@ -732,6 +959,22 @@ private fun SuccessContent(
             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
         }
 
+        // Data Section
+        item {
+            SectionHeader(title = "Data")
+        }
+
+        item {
+            BackupRestoreSection(
+                onCreateBackup = onCreateBackup,
+                onRestoreBackup = onRestoreBackup
+            )
+        }
+
+        item {
+            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+        }
+
         // Web Search Section
         item {
             SectionHeader(title = "Web Search")
@@ -794,7 +1037,13 @@ private fun SuccessContent(
 
         // About & Updates Section
         item {
-            SectionHeader(title = "About & Updates")
+            SectionHeader(
+                title = if (BuildConfig.EXTERNAL_UPDATES_ENABLED) {
+                    "About & Updates"
+                } else {
+                    "About"
+                }
+            )
         }
 
         item {
@@ -840,6 +1089,68 @@ private fun AddProviderButton(onClick: () -> Unit) {
 }
 
 @Composable
+private fun BackupRestoreSection(
+    onCreateBackup: () -> Unit,
+    onRestoreBackup: () -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+        ),
+        shape = RoundedCornerShape(24.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = Icons.Outlined.History,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(24.dp)
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Encrypted Backup & Restore",
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = "Save chats to any folder or Google Drive via the system picker. API keys are not included.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                ExpressiveButton(
+                    onClick = onCreateBackup,
+                    modifier = Modifier.weight(1f),
+                    text = "Back up",
+                    leadingIcon = Icons.Outlined.SystemUpdate,
+                    style = ExpressiveButtonStyle.Filled
+                )
+                ExpressiveButton(
+                    onClick = onRestoreBackup,
+                    modifier = Modifier.weight(1f),
+                    text = "Restore",
+                    leadingIcon = Icons.Outlined.Refresh,
+                    style = ExpressiveButtonStyle.Outlined
+                )
+            }
+        }
+    }
+}
+
+@Composable
 private fun OnDeviceModelsSettingsCard(onClick: () -> Unit) {
     Card(
         modifier = Modifier
@@ -877,6 +1188,246 @@ private fun OnDeviceModelsSettingsCard(onClick: () -> Unit) {
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun MonetizationSection(
+    premiumState: PremiumState,
+    onPurchaseRemoveAds: () -> Unit,
+    onWatchRewardedAd: () -> Unit,
+    onRestorePurchases: () -> Unit
+) {
+    Column(
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        PremiumStatusCard(
+            premiumState = premiumState,
+            onRestorePurchases = onRestorePurchases
+        )
+
+        if (premiumState.adsEnabled && !premiumState.hasLifetimeAdFree) {
+            RemoveAdsCard(
+                premiumState = premiumState,
+                onPurchaseRemoveAds = onPurchaseRemoveAds
+            )
+
+            RewardedPremiumCard(
+                premiumState = premiumState,
+                onWatchRewardedAd = onWatchRewardedAd
+            )
+
+        }
+    }
+}
+
+@Composable
+private fun PremiumStatusCard(
+    premiumState: PremiumState,
+    onRestorePurchases: () -> Unit
+) {
+    val title = when {
+        !premiumState.adsEnabled -> "Ad-free build"
+        premiumState.hasLifetimeAdFree -> "Premium active"
+        premiumState.hasRewardedPremium -> "24-hour premium active"
+        else -> "Free with ads"
+    }
+    val description = when {
+        !premiumState.adsEnabled -> "Ads are disabled in this build."
+        premiumState.hasLifetimeAdFree -> "Lifetime ad-free is enabled for this Google Play account."
+        premiumState.hasRewardedPremium -> "Ads are hidden for ${formatPremiumRemaining(premiumState.rewardedPremiumRemainingMillis)}."
+        else -> "Small banner ads help support ongoing development."
+    }
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = if (premiumState.isAdFree) {
+                MaterialTheme.colorScheme.primaryContainer
+            } else {
+                MaterialTheme.colorScheme.surfaceContainerLow
+            },
+            contentColor = if (premiumState.isAdFree) {
+                MaterialTheme.colorScheme.onPrimaryContainer
+            } else {
+                MaterialTheme.colorScheme.onSurface
+            }
+        ),
+        shape = RoundedCornerShape(24.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = Icons.Outlined.AutoAwesome,
+                contentDescription = null,
+                tint = if (premiumState.isAdFree) {
+                    MaterialTheme.colorScheme.onPrimaryContainer
+                } else {
+                    MaterialTheme.colorScheme.primary
+                },
+                modifier = Modifier.size(28.dp)
+            )
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleSmall,
+                    color = if (premiumState.isAdFree) {
+                        MaterialTheme.colorScheme.onPrimaryContainer
+                    } else {
+                        MaterialTheme.colorScheme.onSurface
+                    }
+                )
+                Text(
+                    text = description,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (premiumState.isAdFree) {
+                        MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.78f)
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    }
+                )
+            }
+
+            if (premiumState.adsEnabled) {
+                ExpressiveButton(
+                    onClick = onRestorePurchases,
+                    text = "Restore",
+                    style = ExpressiveButtonStyle.Text
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun RemoveAdsCard(
+    premiumState: PremiumState,
+    onPurchaseRemoveAds: () -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+            contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+        ),
+        shape = RoundedCornerShape(24.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.AutoAwesome,
+                    contentDescription = null,
+                    modifier = Modifier.size(28.dp)
+                )
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Remove ads forever",
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer
+                    )
+                    Text(
+                        text = "One-time Google Play purchase for this Play Store build.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.78f)
+                    )
+                }
+            }
+
+            ExpressiveButton(
+                onClick = onPurchaseRemoveAds,
+                enabled = premiumState.billingReady && !premiumState.isPurchaseInProgress,
+                text = when {
+                    premiumState.isPurchaseInProgress -> "Opening purchase..."
+                    premiumState.removeAdsPrice != null -> "Remove Ads • ${premiumState.removeAdsPrice}"
+                    premiumState.billingReady -> "Remove Ads"
+                    else -> "Loading price..."
+                },
+                style = ExpressiveButtonStyle.Filled,
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+    }
+}
+
+@Composable
+private fun RewardedPremiumCard(
+    premiumState: PremiumState,
+    onWatchRewardedAd: () -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+            contentColor = MaterialTheme.colorScheme.onTertiaryContainer
+        ),
+        shape = RoundedCornerShape(24.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.Refresh,
+                    contentDescription = null,
+                    modifier = Modifier.size(28.dp)
+                )
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "24-hour premium",
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.onTertiaryContainer
+                    )
+                    Text(
+                        text = "Watch one rewarded video to hide ads for 24 hours.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.78f)
+                    )
+                }
+            }
+
+            ExpressiveButton(
+                onClick = onWatchRewardedAd,
+                enabled = premiumState.rewardedAdReady && !premiumState.isRewardedAdLoading,
+                text = when {
+                    premiumState.isRewardedAdLoading -> "Loading ad..."
+                    premiumState.rewardedAdReady && premiumState.hasRewardedPremium -> "Extend by 24 hours"
+                    premiumState.rewardedAdReady -> "Watch Ad"
+                    else -> "Ad loading..."
+                },
+                style = ExpressiveButtonStyle.FilledTonal,
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+    }
+}
+
+private fun formatPremiumRemaining(remainingMillis: Long): String {
+    val totalMinutes = (remainingMillis / 60_000L).coerceAtLeast(1L)
+    val hours = totalMinutes / 60L
+    val minutes = totalMinutes % 60L
+    return if (hours > 0L) {
+        "${hours}h ${minutes}m"
+    } else {
+        "${minutes}m"
     }
 }
 
@@ -2189,6 +2740,110 @@ private fun DefaultImageOutputFormatField(
 }
 
 @Composable
+private fun BackupPasswordDialog(
+    title: String,
+    description: String,
+    passphrase: String,
+    isBusy: Boolean,
+    confirmText: String,
+    onPassphraseChange: (String) -> Unit,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = { if (!isBusy) onDismiss() },
+        title = { Text(text = title, style = MaterialTheme.typography.headlineSmall) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(
+                    text = description,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                OutlinedTextField(
+                    value = passphrase,
+                    onValueChange = onPassphraseChange,
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = !isBusy,
+                    singleLine = true,
+                    label = { Text("Backup password") },
+                    supportingText = { Text("Minimum 8 characters. This password cannot be recovered.") },
+                    visualTransformation = PasswordVisualTransformation()
+                )
+            }
+        },
+        confirmButton = {
+            ExpressiveButton(
+                onClick = onConfirm,
+                enabled = passphrase.length >= 8 && !isBusy,
+                text = confirmText,
+                style = ExpressiveButtonStyle.Text
+            )
+        },
+        dismissButton = {
+            ExpressiveButton(
+                onClick = onDismiss,
+                enabled = !isBusy,
+                text = "Cancel",
+                style = ExpressiveButtonStyle.Text
+            )
+        },
+        shape = MaterialTheme.shapes.extraLarge,
+        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+    )
+}
+
+@Composable
+private fun RestoreBackupConfirmationDialog(
+    preview: BackupPreview,
+    isBusy: Boolean,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = { if (!isBusy) onDismiss() },
+        title = { Text(text = "Restore backup?", style = MaterialTheme.typography.headlineSmall) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    text = "Backup from ${preview.appVersionName}",
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = preview.summary.label(),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    text = "Restore merges providers, custom personas, conversations, messages, and bookmarks. Matching conversation IDs are replaced. API keys are not restored.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        },
+        confirmButton = {
+            ExpressiveButton(
+                onClick = onConfirm,
+                enabled = !isBusy,
+                text = "Restore",
+                style = ExpressiveButtonStyle.Text
+            )
+        },
+        dismissButton = {
+            ExpressiveButton(
+                onClick = onDismiss,
+                enabled = !isBusy,
+                text = "Cancel",
+                style = ExpressiveButtonStyle.Text
+            )
+        },
+        shape = MaterialTheme.shapes.extraLarge,
+        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+    )
+}
+
+@Composable
 private fun DeleteProviderDialog(
     providerName: String,
     onConfirm: () -> Unit,
@@ -2322,6 +2977,8 @@ private fun AboutSection(
                 }
             }
         }
+
+        if (!BuildConfig.EXTERNAL_UPDATES_ENABLED) return@Column
 
         // Auto-check for updates toggle
         Card(
@@ -2916,3 +3573,45 @@ private fun WebSearchSection(
         }
     }
 }
+
+private tailrec fun Context.findActivity(): Activity? {
+    return when (this) {
+        is Activity -> this
+        is ContextWrapper -> baseContext.findActivity()
+        else -> null
+    }
+}
+
+private suspend fun Context.writeBytesToUri(uri: Uri, bytes: ByteArray) {
+    withContext(Dispatchers.IO) {
+        val output = contentResolver.openOutputStream(uri)
+            ?: throw IOException("Could not open backup destination")
+        output.use { it.write(bytes) }
+    }
+}
+
+private suspend fun Context.readBytesFromUri(uri: Uri): ByteArray {
+    return withContext(Dispatchers.IO) {
+        val input = contentResolver.openInputStream(uri)
+            ?: throw IOException("Could not open backup file")
+        input.use { stream ->
+            val output = ByteArrayOutputStream()
+            val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+            var totalBytes = 0L
+
+            while (true) {
+                val read = stream.read(buffer)
+                if (read == -1) break
+                totalBytes += read
+                if (totalBytes > MAX_BACKUP_FILE_BYTES) {
+                    throw IOException("Backup file is too large")
+                }
+                output.write(buffer, 0, read)
+            }
+
+            output.toByteArray()
+        }
+    }
+}
+
+private const val MAX_BACKUP_FILE_BYTES = 100L * 1024L * 1024L

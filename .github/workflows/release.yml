@@ -91,12 +91,12 @@ jobs:
         run: |
           echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > release.keystore
 
-      - name: Build signed release APK
+      - name: Build signed GitHub release APK
         env:
           ANTIGRAVITY_CLIENT_ID: ${{ secrets.ANTIGRAVITY_CLIENT_ID }}
-          ANTIGRAVITY_CLIENT_SECRET: ${{ secrets.ANTIGRAVITY_CLIENT_SECRET }}
         run: |
-          ./gradlew assembleRelease \
+          ./gradlew assembleGithubRelease \
+            -PADS_ENABLED=false \
             -Pandroid.injected.signing.store.file=${{ github.workspace }}/release.keystore \
             -Pandroid.injected.signing.store.password=${{ secrets.KEYSTORE_PASSWORD }} \
             -Pandroid.injected.signing.key.alias=${{ secrets.KEY_ALIAS }} \
@@ -104,7 +104,7 @@ jobs:
 
       - name: Rename APK
         run: |
-          mv app/build/outputs/apk/release/app-release.apk app/build/outputs/apk/release/MaterialChat-${{ steps.version.outputs.new_version }}.apk
+          mv app/build/outputs/apk/github/release/app-github-release.apk app/build/outputs/apk/github/release/MaterialChat-${{ steps.version.outputs.new_version }}.apk
 
       - name: Commit version update
         run: |
@@ -122,7 +122,7 @@ jobs:
       - name: Generate checksum
         id: checksum
         run: |
-          SHA256=$(sha256sum app/build/outputs/apk/release/MaterialChat-${{ steps.version.outputs.new_version }}.apk | cut -d' ' -f1)
+          SHA256=$(sha256sum app/build/outputs/apk/github/release/MaterialChat-${{ steps.version.outputs.new_version }}.apk | cut -d' ' -f1)
           echo "sha256=$SHA256" >> $GITHUB_OUTPUT
 
       - name: Create GitHub Release
@@ -142,12 +142,14 @@ jobs:
             2. Enable "Install from unknown sources" if prompted
             3. Install and enjoy!
 
+            GitHub release APKs are built with ads disabled.
+
             ### Checksums
             ```
             SHA256: ${{ steps.checksum.outputs.sha256 }}
             ```
           files: |
-            app/build/outputs/apk/release/MaterialChat-${{ steps.version.outputs.new_version }}.apk
+            app/build/outputs/apk/github/release/MaterialChat-${{ steps.version.outputs.new_version }}.apk
           draft: false
           prerelease: false
         env:

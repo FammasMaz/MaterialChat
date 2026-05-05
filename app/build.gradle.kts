@@ -24,6 +24,23 @@ fun optionalSecret(name: String): String {
         ?: ""
 }
 
+fun optionalBoolean(name: String, defaultValue: Boolean): Boolean {
+    return providers.gradleProperty(name).orNull?.toBooleanStrictOrNull()
+        ?: providers.environmentVariable(name).orNull?.toBooleanStrictOrNull()
+        ?: defaultValue
+}
+
+val releaseStoreFilePath = optionalSecret("RELEASE_STORE_FILE")
+val releaseStorePassword = optionalSecret("RELEASE_STORE_PASSWORD")
+val releaseKeyAlias = optionalSecret("RELEASE_KEY_ALIAS")
+val releaseKeyPassword = optionalSecret("RELEASE_KEY_PASSWORD")
+val hasReleaseSigning = listOf(
+    releaseStoreFilePath,
+    releaseStorePassword,
+    releaseKeyAlias,
+    releaseKeyPassword
+).all { it.isNotBlank() }
+
 android {
     namespace = "com.materialchat"
     compileSdk = 36
@@ -44,17 +61,73 @@ android {
         )
         buildConfigField(
             "String",
-            "ANTIGRAVITY_CLIENT_SECRET",
-            quotedBuildConfig(optionalSecret("ANTIGRAVITY_CLIENT_SECRET"))
+            "ADMOB_BANNER_AD_UNIT_ID",
+            quotedBuildConfig(
+                optionalSecret("ADMOB_BANNER_AD_UNIT_ID")
+                    .ifBlank { "ca-app-pub-3940256099942544/6300978111" }
+            )
         )
+        buildConfigField(
+            "String",
+            "ADMOB_REWARDED_AD_UNIT_ID",
+            quotedBuildConfig(
+                optionalSecret("ADMOB_REWARDED_AD_UNIT_ID")
+                    .ifBlank { "ca-app-pub-3940256099942544/5224354917" }
+            )
+        )
+        buildConfigField(
+            "String",
+            "REMOVE_ADS_PRODUCT_ID",
+            quotedBuildConfig(optionalSecret("REMOVE_ADS_PRODUCT_ID").ifBlank { "remove_ads" })
+        )
+        manifestPlaceholders["adMobApplicationId"] = optionalSecret("ADMOB_APP_ID")
+            .ifBlank { "ca-app-pub-3940256099942544~3347511713" }
 
         vectorDrawables {
             useSupportLibrary = true
         }
     }
 
+    flavorDimensions += "distribution"
+
+    productFlavors {
+        create("play") {
+            dimension = "distribution"
+            buildConfigField(
+                "boolean",
+                "ADS_ENABLED",
+                optionalBoolean("ADS_ENABLED", true).toString()
+            )
+            buildConfigField("boolean", "EXTERNAL_UPDATES_ENABLED", "false")
+        }
+
+        create("github") {
+            dimension = "distribution"
+            buildConfigField(
+                "boolean",
+                "ADS_ENABLED",
+                optionalBoolean("ADS_ENABLED", false).toString()
+            )
+            buildConfigField("boolean", "EXTERNAL_UPDATES_ENABLED", "true")
+        }
+    }
+
+    signingConfigs {
+        if (hasReleaseSigning) {
+            create("release") {
+                storeFile = rootProject.file(releaseStoreFilePath)
+                storePassword = releaseStorePassword
+                keyAlias = releaseKeyAlias
+                keyPassword = releaseKeyPassword
+            }
+        }
+    }
+
     buildTypes {
         release {
+            if (hasReleaseSigning) {
+                signingConfig = signingConfigs.getByName("release")
+            }
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(
@@ -89,6 +162,60 @@ android {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
     }
+}
+
+val googleTestAdMobAppId = "ca-app-pub-3940256099942544~3347511713"
+val googleTestBannerAdUnitId = "ca-app-pub-3940256099942544/6300978111"
+val googleTestRewardedAdUnitId = "ca-app-pub-3940256099942544/5224354917"
+val validatePlayAdsEnabled = optionalBoolean("ADS_ENABLED", true)
+val validateAdMobAppId = optionalSecret("ADMOB_APP_ID")
+val validateBannerAdUnitId = optionalSecret("ADMOB_BANNER_AD_UNIT_ID")
+    .ifBlank { googleTestBannerAdUnitId }
+val validateRewardedAdUnitId = optionalSecret("ADMOB_REWARDED_AD_UNIT_ID")
+    .ifBlank { googleTestRewardedAdUnitId }
+val hasInjectedReleaseSigning = listOf(
+    optionalSecret("android.injected.signing.store.file"),
+    optionalSecret("android.injected.signing.store.password"),
+    optionalSecret("android.injected.signing.key.alias"),
+    optionalSecret("android.injected.signing.key.password")
+).all { it.isNotBlank() }
+val hasPlayReleaseSigning = hasReleaseSigning || hasInjectedReleaseSigning
+val hasRealAdMobAppId = validateAdMobAppId.isNotBlank() &&
+    validateAdMobAppId != googleTestAdMobAppId
+val hasRealBannerAdUnitId = validateBannerAdUnitId != googleTestBannerAdUnitId
+val hasRealRewardedAdUnitId = validateRewardedAdUnitId != googleTestRewardedAdUnitId
+
+tasks.register("validatePlayReleaseConfig") {
+    group = "verification"
+    description = "Fails Play release builds that still use AdMob test configuration."
+
+    val adsEnabled = validatePlayAdsEnabled
+    val releaseSigningConfigured = hasPlayReleaseSigning
+    val realAdMobAppIdConfigured = hasRealAdMobAppId
+    val realBannerAdUnitIdConfigured = hasRealBannerAdUnitId
+    val realRewardedAdUnitIdConfigured = hasRealRewardedAdUnitId
+
+    doLast {
+        if (!adsEnabled) return@doLast
+
+        check(releaseSigningConfigured) {
+            "Play release builds require release signing. Set RELEASE_STORE_FILE, " +
+                "RELEASE_STORE_PASSWORD, RELEASE_KEY_ALIAS, and RELEASE_KEY_PASSWORD."
+        }
+        check(realAdMobAppIdConfigured) {
+            "Play release builds with ads enabled require a real ADMOB_APP_ID."
+        }
+        check(realBannerAdUnitIdConfigured) {
+            "Play release builds with ads enabled require a real ADMOB_BANNER_AD_UNIT_ID."
+        }
+        check(realRewardedAdUnitIdConfigured) {
+            "Play release builds with ads enabled require a real ADMOB_REWARDED_AD_UNIT_ID."
+        }
+    }
+}
+
+tasks.matching { it.name == "prePlayReleaseBuild" }.configureEach {
+    dependsOn("validatePlayReleaseConfig")
 }
 
 kotlin {
@@ -144,6 +271,10 @@ dependencies {
     // Firebase
     implementation(libs.firebase.messaging)
 
+    // Monetization
+    implementation(libs.play.services.ads)
+    implementation(libs.play.billing)
+
     // Tink Encryption
     implementation(libs.tink.android)
 
@@ -166,10 +297,6 @@ dependencies {
 
     // Coil Image Loading
     implementation(libs.coil.compose)
-
-    // Ackpine (APK installer)
-    implementation(libs.ackpine.core)
-    implementation(libs.ackpine.ktx)
 
     // On-device AI
     implementation(libs.litert.lm.android)

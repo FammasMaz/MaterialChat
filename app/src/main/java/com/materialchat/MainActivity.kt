@@ -47,6 +47,7 @@ import com.materialchat.data.repository.UpdateManager
 import com.materialchat.di.AppInitializer
 import com.materialchat.domain.model.UpdateState
 import com.materialchat.ui.MainViewModel
+import com.materialchat.ui.components.AdMobBannerAd
 import com.materialchat.ui.components.UpdateBanner
 import com.materialchat.ui.navigation.LocalAnimatedVisibilityScope
 import com.materialchat.ui.navigation.LocalSharedTransitionScope
@@ -115,8 +116,10 @@ class MainActivity : ComponentActivity() {
                 initComplete = true
                 isInitialized = true
 
-                // Check for updates in background (respects auto-check preference)
-                updateManager.checkForUpdates(force = false)
+                // Check for GitHub APK updates only in non-Play distribution builds.
+                if (BuildConfig.EXTERNAL_UPDATES_ENABLED) {
+                    updateManager.checkForUpdates(force = false)
+                }
             }
 
             val themeMode by appPreferences.themeMode.collectAsState(
@@ -285,6 +288,7 @@ fun MaterialChatApp(
     // Collect update state if updateManager is provided
     val updateState by updateManager?.updateState?.collectAsStateWithLifecycle()
         ?: remember { mutableStateOf(UpdateState.Idle) }
+    val premiumState by mainViewModel.premiumState.collectAsStateWithLifecycle()
 
     SharedTransitionLayout {
     CompositionLocalProvider(LocalSharedTransitionScope provides this@SharedTransitionLayout) {
@@ -297,6 +301,35 @@ fun MaterialChatApp(
                 .fillMaxSize()
                 .nestedScroll(toolbarNestedScrollConnection)
         )
+
+        // Ad-supported Play builds show a compact banner above the floating toolbar.
+        AnimatedVisibility(
+            visible = premiumState.shouldShowAds && currentRoute in topLevelRoutes,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp)
+                .padding(bottom = if (showBottomBar) 104.dp else 16.dp),
+            enter = slideInVertically(
+                animationSpec = spring(
+                    stiffness = 500f,
+                    dampingRatio = 0.8f
+                ),
+                initialOffsetY = { it / 2 }
+            ),
+            exit = slideOutVertically(
+                animationSpec = spring(
+                    stiffness = 500f,
+                    dampingRatio = 1.0f
+                ),
+                targetOffsetY = { it / 2 }
+            )
+        ) {
+            AdMobBannerAd(
+                adUnitId = BuildConfig.ADMOB_BANNER_AD_UNIT_ID,
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
 
         // M3 Expressive: Floating toolbar navigation overlay
         AnimatedVisibility(
@@ -369,7 +402,7 @@ fun MaterialChatApp(
         }
 
         // Update banner overlay (top)
-        if (updateManager != null) {
+        if (BuildConfig.EXTERNAL_UPDATES_ENABLED && updateManager != null) {
             UpdateBanner(
                 state = updateState,
                 onDownload = { update ->

@@ -25,6 +25,12 @@ interface ConversationDao {
     suspend fun insert(conversation: ConversationEntity)
 
     /**
+     * Insert multiple conversations. Replaces on conflict.
+     */
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAll(conversations: List<ConversationEntity>)
+
+    /**
      * Update an existing conversation.
      */
     @Update
@@ -85,6 +91,16 @@ interface ConversationDao {
         ORDER BY c.updated_at DESC
     """)
     suspend fun getAllConversationsOnce(): List<ConversationEntity>
+
+    /**
+     * Get all non-ephemeral conversations for encrypted backup, including archived chats.
+     */
+    @Query("""
+        SELECT * FROM conversations
+        WHERE is_ephemeral = 0
+        ORDER BY created_at ASC
+    """)
+    suspend fun getAllConversationsForBackup(): List<ConversationEntity>
 
     /**
      * Updates the archived state for a conversation tree rooted at [rootConversationId].

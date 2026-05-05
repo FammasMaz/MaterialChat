@@ -51,7 +51,7 @@ fun CanvasWebView(
                     loadWithOverviewMode = true
                     useWideViewPort = true
                     @Suppress("DEPRECATION")
-                    mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
+                    mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
                 }
 
                 setBackgroundColor(backgroundColor)

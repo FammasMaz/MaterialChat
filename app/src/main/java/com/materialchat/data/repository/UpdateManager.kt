@@ -29,9 +29,9 @@ import javax.inject.Singleton
  * Manages the complete update lifecycle including:
  * - Checking for updates from GitHub
  * - Downloading APK files
- * - Installing updates via PackageInstaller
+ * - Installing updates through the platform package installer
  *
- * Uses Ackpine for modern PackageInstaller API with coroutine support.
+ * External APK updates are enabled only for non-Play distribution builds.
  */
 @Singleton
 class UpdateManager @Inject constructor(
@@ -58,6 +58,11 @@ class UpdateManager @Inject constructor(
      * @return The resulting UpdateState
      */
     suspend fun checkForUpdates(force: Boolean = false): UpdateState {
+        if (!BuildConfig.EXTERNAL_UPDATES_ENABLED) {
+            _updateState.value = UpdateState.UpToDate
+            return _updateState.value
+        }
+
         // Check if we should skip this check based on timing
         if (!force && !shouldCheckForUpdates()) {
             return _updateState.value
@@ -110,6 +115,8 @@ class UpdateManager @Inject constructor(
      * @param update The update to download
      */
     suspend fun downloadUpdate(update: AppUpdate) {
+        if (!BuildConfig.EXTERNAL_UPDATES_ENABLED) return
+
         _updateState.value = UpdateState.Downloading(progress = 0f, update = update)
 
         try {
@@ -173,9 +180,11 @@ class UpdateManager @Inject constructor(
     }
 
     /**
-     * Installs the downloaded update using Ackpine PackageInstaller.
+     * Installs the downloaded update using the system package installer.
      */
     suspend fun installUpdate() {
+        if (!BuildConfig.EXTERNAL_UPDATES_ENABLED) return
+
         val currentState = _updateState.value
         if (currentState !is UpdateState.ReadyToInstall) {
             return
@@ -248,6 +257,8 @@ class UpdateManager @Inject constructor(
      * Cancels the current download.
      */
     fun cancelDownload() {
+        if (!BuildConfig.EXTERNAL_UPDATES_ENABLED) return
+
         val currentState = _updateState.value
         if (currentState is UpdateState.Downloading) {
             _updateState.value = UpdateState.Available(currentState.update)
@@ -259,6 +270,8 @@ class UpdateManager @Inject constructor(
      * The user won't be notified about this version again.
      */
     suspend fun skipVersion() {
+        if (!BuildConfig.EXTERNAL_UPDATES_ENABLED) return
+
         val currentState = _updateState.value
         if (currentState is UpdateState.Available) {
             appPreferences.setSkippedUpdateVersion(currentState.update.versionName)
@@ -270,6 +283,8 @@ class UpdateManager @Inject constructor(
      * Dismisses the update banner without skipping the version.
      */
     fun dismissBanner() {
+        if (!BuildConfig.EXTERNAL_UPDATES_ENABLED) return
+
         val currentState = _updateState.value
         when (currentState) {
             is UpdateState.Available,

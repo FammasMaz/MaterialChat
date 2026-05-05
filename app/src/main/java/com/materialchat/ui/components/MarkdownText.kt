@@ -5,6 +5,7 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.text.InlineTextContent
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -13,7 +14,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.rememberScrollState
@@ -46,12 +46,14 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.BaselineShift
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import android.annotation.SuppressLint
 import android.webkit.WebChromeClient
@@ -60,6 +62,7 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.viewinterop.AndroidView
 import com.materialchat.ui.theme.CodeBlockBackgroundDark
@@ -122,7 +125,7 @@ fun MarkdownText(
  * Internal representation of parsed markdown content.
  */
 private sealed class MarkdownElement {
-    data class TextBlock(val content: ParsedInlineContent) : MarkdownElement()
+    data class TextBlock(val source: String, val content: ParsedInlineContent) : MarkdownElement()
     data class CodeBlock(val code: String, val language: String?) : MarkdownElement()
     data class Table(
         val headers: List<String>,
@@ -131,7 +134,7 @@ private sealed class MarkdownElement {
     ) : MarkdownElement()
     data object HorizontalRule : MarkdownElement()
     data class MathBlock(val expression: String, val isDisplay: Boolean) : MarkdownElement()
-    data class Blockquote(val content: ParsedInlineContent) : MarkdownElement()
+    data class Blockquote(val source: String, val content: ParsedInlineContent) : MarkdownElement()
 }
 
 private enum class TableAlignment { LEFT, CENTER, RIGHT }
@@ -154,6 +157,7 @@ private data class MarkdownCacheKey(
 )
 
 private const val MARKDOWN_PARSE_CACHE_SIZE = 160
+private const val BATCHED_MATH_BLOCK_THRESHOLD = 2
 
 private val markdownParseCache = object : android.util.LruCache<MarkdownCacheKey, List<MarkdownElement>>(
     MARKDOWN_PARSE_CACHE_SIZE
@@ -202,6 +206,16 @@ private fun MarkdownContent(
     fillWidth: Boolean = true,
     onOpenCanvas: ((CanvasArtifact) -> Unit)? = null
 ) {
+    if (shouldUseBatchedMathDocument(content, isStreaming, onOpenCanvas)) {
+        MathDocumentWebView(
+            content = content,
+            modifier = modifier,
+            style = style,
+            codeBlockBackground = codeBlockBackground
+        )
+        return
+    }
+
     androidx.compose.foundation.layout.Column(modifier = modifier) {
         content.forEach { element ->
             when (element) {
@@ -244,7 +258,8 @@ private fun MarkdownContent(
                         baseColor = style.color.takeIf { it != Color.Unspecified }
                             ?: MaterialTheme.colorScheme.onSurface,
                         codeColor = MaterialTheme.colorScheme.onSurface,
-                        linkColor = MaterialTheme.colorScheme.primary
+                        linkColor = MaterialTheme.colorScheme.primary,
+                        bodyTextStyle = style
                     )
                 }
                 is MarkdownElement.HorizontalRule -> {
@@ -287,6 +302,110 @@ private fun MarkdownContent(
             }
         }
     }
+}
+
+private fun shouldUseBatchedMathDocument(
+    content: List<MarkdownElement>,
+    isStreaming: Boolean,
+    onOpenCanvas: ((CanvasArtifact) -> Unit)?
+): Boolean {
+    if (isStreaming) return false
+    val complexMathBlocks = content.count { element ->
+        element is MarkdownElement.MathBlock && needsKatexRendering(element.expression)
+    }
+    if (complexMathBlocks < BATCHED_MATH_BLOCK_THRESHOLD) return false
+
+    // Keep native code-block actions for messages that can be opened in Canvas.
+    if (onOpenCanvas != null && content.any { it is MarkdownElement.CodeBlock }) return false
+
+    return true
+}
+
+@SuppressLint("SetJavaScriptEnabled")
+@Composable
+private fun MathDocumentWebView(
+    content: List<MarkdownElement>,
+    modifier: Modifier,
+    style: TextStyle,
+    codeBlockBackground: Color
+) {
+    val density = LocalDensity.current
+    val textColor = style.color.takeIf { it != Color.Unspecified }
+        ?: MaterialTheme.colorScheme.onSurface
+    val backgroundColor = "transparent"
+    val surfaceContainer = MaterialTheme.colorScheme.surfaceContainer
+    val headerBackground = MaterialTheme.colorScheme.surfaceContainerHigh
+    val alternateRowColor = MaterialTheme.colorScheme.surfaceContainerLow
+    val outlineColor = MaterialTheme.colorScheme.outlineVariant
+    val linkColor = MaterialTheme.colorScheme.primary
+    val fontSize = style.fontSize.takeIf { it != TextUnit.Unspecified } ?: 16.sp
+    val lineHeight = style.lineHeight.takeIf { it != TextUnit.Unspecified } ?: (fontSize * 1.45f)
+    val fontSizePx = fontSize.value
+    val lineHeightPx = lineHeight.value
+
+    val html = remember(
+        content,
+        textColor,
+        backgroundColor,
+        surfaceContainer,
+        headerBackground,
+        alternateRowColor,
+        outlineColor,
+        linkColor,
+        codeBlockBackground,
+        fontSizePx,
+        lineHeightPx
+    ) {
+        buildMarkdownMathDocumentHtml(
+            content = content,
+            textColor = textColor.toCssColor(),
+            backgroundColor = backgroundColor,
+            mathBackgroundColor = codeBlockBackground.copy(alpha = 0.5f).toCssRgbaColor(),
+            codeBackgroundColor = codeBlockBackground.toCssColor(),
+            tableBackgroundColor = surfaceContainer.toCssColor(),
+            tableHeaderColor = headerBackground.toCssColor(),
+            tableAlternateRowColor = alternateRowColor.toCssColor(),
+            outlineColor = outlineColor.toCssColor(),
+            linkColor = linkColor.toCssColor(),
+            fontSizePx = fontSizePx,
+            lineHeightPx = lineHeightPx
+        )
+    }
+
+    val fallbackHeightPx = remember(content, density) {
+        estimateMarkdownDocumentHeightPx(content, density)
+    }
+    var webViewHeight by remember(html) { mutableIntStateOf(fallbackHeightPx) }
+    var hasMeasuredHeight by remember(html) { mutableStateOf(false) }
+
+    AndroidView(
+        factory = { context ->
+            createMathDocumentWebView(context) { view ->
+                fun updateHeight() {
+                    measureDocumentHeight(view) { measuredHeight ->
+                        if (measuredHeight > 0) {
+                            hasMeasuredHeight = true
+                            webViewHeight = maxOf(measuredHeight, fallbackHeightPx)
+                        }
+                    }
+                }
+                updateHeight()
+                view.postDelayed({ updateHeight() }, 80)
+                view.postDelayed({ updateHeight() }, 220)
+                view.postDelayed({ updateHeight() }, 500)
+            }
+        },
+        update = { webView ->
+            if (!hasMeasuredHeight && webViewHeight < fallbackHeightPx) {
+                webViewHeight = fallbackHeightPx
+            }
+            webView.loadMathHtmlIfNeeded(html)
+        },
+        modifier = modifier
+            .fillMaxWidth()
+            .height(with(density) { webViewHeight.toDp() })
+            .clipToBounds()
+    )
 }
 
 @Composable
@@ -507,6 +626,14 @@ private fun MathBlockView(
     backgroundColor: Color,
     isStreaming: Boolean
 ) {
+    if (isStreaming || !needsKatexRendering(expression)) {
+        NativeMathBlockView(
+            expression = expression,
+            backgroundColor = backgroundColor
+        )
+        return
+    }
+
     val isDarkTheme = isSystemInDarkTheme()
     val fgHex = if (isDarkTheme) "#E6E1E5" else "#1C1B1F"
 
@@ -575,6 +702,46 @@ private fun MathBlockView(
     }
 }
 
+@Composable
+private fun NativeMathBlockView(
+    expression: String,
+    backgroundColor: Color
+) {
+    val textColor = MaterialTheme.colorScheme.onSurface
+    val rendered = remember(expression) {
+        if (needsKatexRendering(expression)) {
+            buildAnnotatedString { append(expression) }
+        } else {
+            renderInlineMathForTesting(expression)
+        }
+    }
+    val scrollState = rememberScrollState()
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp)
+            .clip(RoundedCornerShape(8.dp))
+            .background(backgroundColor.copy(alpha = 0.5f))
+    ) {
+        SelectionContainer(modifier = Modifier.align(Alignment.Center)) {
+            Text(
+                text = rendered,
+                style = MaterialTheme.typography.bodyLarge.copy(
+                    color = textColor,
+                    fontFamily = FontFamily.Monospace,
+                    fontStyle = FontStyle.Italic,
+                    textAlign = TextAlign.Center
+                ),
+                modifier = Modifier
+                    .horizontalScroll(scrollState)
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                softWrap = false
+            )
+        }
+    }
+}
+
 private fun estimateBlockMathFallbackHeightPx(
     expression: String,
     density: androidx.compose.ui.unit.Density,
@@ -631,7 +798,7 @@ private fun createMathWebView(
             allowFileAccess = false
             allowContentAccess = false
             @Suppress("DEPRECATION")
-            mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
+            mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
         }
         setBackgroundColor(android.graphics.Color.TRANSPARENT)
         isVerticalScrollBarEnabled = false
@@ -679,6 +846,15 @@ private fun Color.toCssColor(): String {
     return String.format("#%06X", 0xFFFFFF and toArgb())
 }
 
+private fun Color.toCssRgbaColor(): String {
+    val argb = toArgb()
+    val red = (argb shr 16) and 0xFF
+    val green = (argb shr 8) and 0xFF
+    val blue = argb and 0xFF
+    val alpha = ((argb ushr 24) and 0xFF) / 255f
+    return "rgba($red, $green, $blue, $alpha)"
+}
+
 private fun measureMathHeight(webView: WebView, onMeasured: (Int) -> Unit) {
     webView.evaluateJavascript(
         """(function() {
@@ -698,6 +874,461 @@ private fun measureMathHeight(webView: WebView, onMeasured: (Int) -> Unit) {
         if (h != null && h > 0f) {
             onMeasured((h * webView.context.resources.displayMetrics.density).toInt())
         }
+    }
+}
+
+@SuppressLint("SetJavaScriptEnabled")
+private fun createMathDocumentWebView(
+    context: android.content.Context,
+    onPageFinished: ((WebView) -> Unit)? = null
+): WebView {
+    return createMathWebView(context, onPageFinished).apply {
+        isVerticalScrollBarEnabled = false
+        isHorizontalScrollBarEnabled = false
+        overScrollMode = android.view.View.OVER_SCROLL_NEVER
+        settings.apply {
+            loadWithOverviewMode = false
+            useWideViewPort = false
+        }
+    }
+}
+
+private fun measureDocumentHeight(webView: WebView, onMeasured: (Int) -> Unit) {
+    webView.evaluateJavascript(
+        """(function() {
+            var body = document.body;
+            var html = document.documentElement;
+            if (!body || !html) return 0;
+            return Math.ceil(Math.max(
+                body.scrollHeight, body.offsetHeight,
+                html.clientHeight, html.scrollHeight, html.offsetHeight
+            ));
+        })()"""
+    ) { heightStr ->
+        val h = heightStr
+            ?.removePrefix("\"")
+            ?.removeSuffix("\"")
+            ?.toFloatOrNull()
+        if (h != null && h > 0f) {
+            onMeasured((h * webView.context.resources.displayMetrics.density).toInt())
+        }
+    }
+}
+
+private fun buildMarkdownMathDocumentHtml(
+    content: List<MarkdownElement>,
+    textColor: String,
+    backgroundColor: String,
+    mathBackgroundColor: String,
+    codeBackgroundColor: String,
+    tableBackgroundColor: String,
+    tableHeaderColor: String,
+    tableAlternateRowColor: String,
+    outlineColor: String,
+    linkColor: String,
+    fontSizePx: Float,
+    lineHeightPx: Float
+): String {
+    val bodyHtml = content.joinToString("\n") { element ->
+        when (element) {
+            is MarkdownElement.TextBlock -> markdownTextBlockToHtml(element.source)
+            is MarkdownElement.CodeBlock -> buildString {
+                append("<pre><code")
+                element.language?.takeIf { it.isNotBlank() }?.let { language ->
+                    append(" class=\"language-")
+                    append(escapeHtmlAttribute(language))
+                    append("\"")
+                }
+                append(">")
+                append(escapeHtml(element.code))
+                append("</code></pre>")
+            }
+            is MarkdownElement.Table -> markdownTableToHtml(element)
+            is MarkdownElement.HorizontalRule -> "<hr>"
+            is MarkdownElement.MathBlock -> {
+                "<div class=\"math-display\">${escapeHtml(element.expression)}</div>"
+            }
+            is MarkdownElement.Blockquote -> {
+                "<blockquote>${markdownTextBlockToHtml(element.source)}</blockquote>"
+            }
+        }
+    }
+
+    return """
+        <!DOCTYPE html>
+        <html>
+        <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+        <style>
+            * { box-sizing: border-box; }
+            html, body {
+                margin: 0;
+                padding: 0;
+                width: 100%;
+                background: $backgroundColor;
+                color: $textColor;
+                overflow-x: hidden;
+                overflow-y: hidden;
+                font-family: sans-serif;
+                font-size: ${fontSizePx}px;
+                line-height: ${lineHeightPx / fontSizePx};
+            }
+            body { padding: 0; }
+            .markdown-document { width: 100%; }
+            p { margin: 0 0 10px; }
+            p:last-child { margin-bottom: 0; }
+            h1, h2, h3, h4 {
+                margin: 14px 0 8px;
+                line-height: 1.18;
+                font-weight: 700;
+            }
+            h1 { font-size: 1.55em; }
+            h2 { font-size: 1.35em; }
+            h3 { font-size: 1.16em; }
+            h4 { font-size: 1.02em; }
+            ul, ol { margin: 0 0 10px 1.4em; padding: 0; }
+            li { margin: 2px 0; }
+            a { color: $linkColor; text-decoration: underline; }
+            code {
+                font-family: monospace;
+                background: $codeBackgroundColor;
+                border-radius: 5px;
+                padding: 0.08em 0.35em;
+            }
+            pre {
+                margin: 8px 0;
+                padding: 12px;
+                overflow-x: auto;
+                background: $codeBackgroundColor;
+                border-radius: 16px;
+                white-space: pre;
+            }
+            pre code { background: transparent; padding: 0; }
+            blockquote {
+                margin: 6px 0;
+                padding: 2px 0 2px 10px;
+                border-left: 3px solid $linkColor;
+                font-style: italic;
+            }
+            hr {
+                border: 0;
+                border-top: 1px solid $outlineColor;
+                margin: 12px 0;
+            }
+            .math-display {
+                width: 100%;
+                margin: 8px 0;
+                padding: 8px 12px;
+                border-radius: 8px;
+                background: $mathBackgroundColor;
+                overflow-x: auto;
+                overflow-y: hidden;
+                text-align: center;
+                -webkit-overflow-scrolling: touch;
+            }
+            .math-display .katex-display {
+                margin: 0;
+                width: max-content;
+                min-width: 100%;
+            }
+            .math-inline { white-space: nowrap; }
+            .table-wrap {
+                width: max-content;
+                max-width: 100%;
+                overflow-x: auto;
+                margin: 8px 0;
+                border-radius: 16px;
+                background: $tableBackgroundColor;
+                -webkit-overflow-scrolling: touch;
+            }
+            table {
+                border-collapse: collapse;
+                width: max-content;
+                min-width: 100%;
+                color: $textColor;
+            }
+            th, td {
+                padding: 8px 12px;
+                text-align: left;
+                vertical-align: top;
+                border-bottom: 1px solid $outlineColor;
+                max-width: 360px;
+                overflow-wrap: anywhere;
+            }
+            th { background: $tableHeaderColor; font-weight: 700; }
+            tr:nth-child(even) td { background: $tableAlternateRowColor; }
+            tr:last-child td { border-bottom: 0; }
+        </style>
+        </head>
+        <body>
+        <main class="markdown-document">
+        $bodyHtml
+        </main>
+        <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+        <script>
+            function renderMathNode(node, displayMode) {
+                var tex = node.textContent;
+                try {
+                    katex.render(tex, node, {
+                        displayMode: displayMode,
+                        throwOnError: false,
+                        trust: true,
+                        strict: false
+                    });
+                } catch (e) {
+                    node.textContent = tex;
+                }
+            }
+            document.querySelectorAll('.math-display').forEach(function(node) {
+                renderMathNode(node, true);
+            });
+            document.querySelectorAll('.math-inline').forEach(function(node) {
+                renderMathNode(node, false);
+            });
+        </script>
+        </body>
+        </html>
+    """.trimIndent()
+}
+
+private fun markdownTableToHtml(table: MarkdownElement.Table): String {
+    val numCols = maxOf(
+        table.headers.size,
+        table.alignments.size,
+        table.rows.maxOfOrNull { it.size } ?: 0
+    )
+    if (numCols == 0) return ""
+
+    return buildString {
+        append("<div class=\"table-wrap\"><table><thead><tr>")
+        repeat(numCols) { index ->
+            append("<th style=\"text-align:")
+            append(tableCssTextAlign(table.alignments.getOrElse(index) { TableAlignment.LEFT }))
+            append("\">")
+            append(markdownInlineToHtml(table.headers.getOrElse(index) { "" }))
+            append("</th>")
+        }
+        append("</tr></thead><tbody>")
+        table.rows.forEach { row ->
+            append("<tr>")
+            repeat(numCols) { index ->
+                append("<td style=\"text-align:")
+                append(tableCssTextAlign(table.alignments.getOrElse(index) { TableAlignment.LEFT }))
+                append("\">")
+                append(markdownInlineToHtml(row.getOrElse(index) { "" }.toTableCellText()))
+                append("</td>")
+            }
+            append("</tr>")
+        }
+        append("</tbody></table></div>")
+    }
+}
+
+private fun markdownTextBlockToHtml(source: String): String {
+    val html = StringBuilder()
+    val paragraph = mutableListOf<String>()
+    var listTag: String? = null
+
+    fun flushParagraph() {
+        if (paragraph.isNotEmpty()) {
+            html.append("<p>")
+            html.append(paragraph.joinToString("<br>") { markdownInlineToHtml(it.trim()) })
+            html.append("</p>")
+            paragraph.clear()
+        }
+    }
+
+    fun closeList() {
+        listTag?.let { html.append("</").append(it).append(">") }
+        listTag = null
+    }
+
+    fun ensureList(tag: String) {
+        flushParagraph()
+        if (listTag != tag) {
+            closeList()
+            html.append("<").append(tag).append(">")
+            listTag = tag
+        }
+    }
+
+    source.lines().forEach { line ->
+        val trimmed = line.trim()
+        when {
+            trimmed.isBlank() -> {
+                flushParagraph()
+                closeList()
+            }
+            trimmed.startsWith("#### ") -> {
+                flushParagraph()
+                closeList()
+                html.append("<h4>").append(markdownInlineToHtml(trimmed.removePrefix("#### "))).append("</h4>")
+            }
+            trimmed.startsWith("### ") -> {
+                flushParagraph()
+                closeList()
+                html.append("<h3>").append(markdownInlineToHtml(trimmed.removePrefix("### "))).append("</h3>")
+            }
+            trimmed.startsWith("## ") -> {
+                flushParagraph()
+                closeList()
+                html.append("<h2>").append(markdownInlineToHtml(trimmed.removePrefix("## "))).append("</h2>")
+            }
+            trimmed.startsWith("# ") -> {
+                flushParagraph()
+                closeList()
+                html.append("<h1>").append(markdownInlineToHtml(trimmed.removePrefix("# "))).append("</h1>")
+            }
+            Regex("^[-*]\\s+(.+)").matches(trimmed) -> {
+                ensureList("ul")
+                val item = Regex("^[-*]\\s+(.+)").find(trimmed)?.groupValues?.getOrNull(1).orEmpty()
+                html.append("<li>").append(markdownInlineToHtml(item)).append("</li>")
+            }
+            Regex("^\\d+\\.\\s+(.+)").matches(trimmed) -> {
+                ensureList("ol")
+                val item = Regex("^\\d+\\.\\s+(.+)").find(trimmed)?.groupValues?.getOrNull(1).orEmpty()
+                html.append("<li>").append(markdownInlineToHtml(item)).append("</li>")
+            }
+            else -> {
+                closeList()
+                paragraph.add(line)
+            }
+        }
+    }
+
+    flushParagraph()
+    closeList()
+    return html.toString()
+}
+
+private fun markdownInlineToHtml(text: String): String {
+    val output = StringBuilder()
+    var currentIndex = 0
+    htmlInlineMarkdownPattern.findAll(text).forEach { match ->
+        if (match.range.first > currentIndex) {
+            output.append(escapeHtml(text.substring(currentIndex, match.range.first)))
+        }
+
+        val fullMatch = match.value
+        when {
+            fullMatch.startsWith("**") || fullMatch.startsWith("__") -> {
+                output.append("<strong>")
+                output.append(markdownInlineToHtml(match.groupValues[2]))
+                output.append("</strong>")
+            }
+            match.groupValues.getOrNull(4)?.isNotEmpty() == true -> {
+                output.append("<em>")
+                output.append(markdownInlineToHtml(match.groupValues[4]))
+                output.append("</em>")
+            }
+            match.groupValues.getOrNull(5)?.isNotEmpty() == true -> {
+                output.append("<code>")
+                output.append(escapeHtml(match.groupValues[5]))
+                output.append("</code>")
+            }
+            match.groupValues.getOrNull(6)?.isNotEmpty() == true -> {
+                val href = sanitizeHtmlHref(match.groupValues[7])
+                output.append("<a href=\"")
+                output.append(escapeHtmlAttribute(href))
+                output.append("\">")
+                output.append(escapeHtml(match.groupValues[6]))
+                output.append("</a>")
+            }
+            match.groupValues.getOrNull(8)?.isNotEmpty() == true -> {
+                output.append("<span class=\"math-inline\">")
+                output.append(escapeHtml(match.groupValues[8]))
+                output.append("</span>")
+            }
+            match.groupValues.getOrNull(9)?.isNotEmpty() == true && looksLikeInlineMath(match.groupValues[9]) -> {
+                output.append("<span class=\"math-inline\">")
+                output.append(escapeHtml(match.groupValues[9]))
+                output.append("</span>")
+            }
+            match.groupValues.getOrNull(10)?.isNotEmpty() == true -> {
+                output.append("<span class=\"citation\">")
+                output.append(escapeHtml(match.groupValues[10]))
+                output.append("</span>")
+            }
+            else -> output.append(escapeHtml(fullMatch))
+        }
+        currentIndex = match.range.last + 1
+    }
+
+    if (currentIndex < text.length) {
+        output.append(escapeHtml(text.substring(currentIndex)))
+    }
+    return output.toString()
+}
+
+private val htmlInlineMarkdownPattern = Regex(
+    """(\*\*|__)(.*?)\1""" +
+        """|(\*|_)(?!\s)(.*?)(?!\s)\3""" +
+        """|`([^`]+)`""" +
+        """|\[([^\]]+)]\(([^)]+)\)""" +
+        """|\\\((.+?)\\\)""" +
+        "|(?<!\\$)\\$(?!\\$|\\s)([^\\$\\n]+?)(?<!\\s)\\$(?!\\$|\\d)" +
+        """|(?<!\[)\[(\d{1,2})](?!\()"""
+)
+
+private fun tableCssTextAlign(alignment: TableAlignment): String {
+    return when (alignment) {
+        TableAlignment.LEFT -> "left"
+        TableAlignment.CENTER -> "center"
+        TableAlignment.RIGHT -> "right"
+    }
+}
+
+private fun sanitizeHtmlHref(url: String): String {
+    val trimmed = url.trim()
+    return if (
+        trimmed.startsWith("https://") ||
+        trimmed.startsWith("http://") ||
+        trimmed.startsWith("mailto:")
+    ) {
+        trimmed
+    } else {
+        "#"
+    }
+}
+
+private fun escapeHtml(value: String): String {
+    return value
+        .replace("&", "&amp;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+}
+
+private fun escapeHtmlAttribute(value: String): String {
+    return escapeHtml(value).replace("\"", "&quot;")
+}
+
+private fun estimateMarkdownDocumentHeightPx(
+    content: List<MarkdownElement>,
+    density: androidx.compose.ui.unit.Density
+): Int {
+    val heightDp = content.fold(0.dp) { total, element ->
+        total + when (element) {
+            is MarkdownElement.TextBlock -> maxOf(28.dp, (element.source.lines().size * 24).dp)
+            is MarkdownElement.CodeBlock -> maxOf(56.dp, (element.code.lines().size * 20 + 24).dp)
+            is MarkdownElement.Table -> ((element.rows.size + 1) * 42).dp + 16.dp
+            is MarkdownElement.HorizontalRule -> 25.dp
+            is MarkdownElement.MathBlock -> estimateMathBlockHeightDp(element.expression)
+            is MarkdownElement.Blockquote -> maxOf(32.dp, (element.source.lines().size * 24).dp)
+        }
+    }
+    return with(density) { (heightDp + 24.dp).roundToPx() }
+}
+
+private fun estimateMathBlockHeightDp(expression: String): androidx.compose.ui.unit.Dp {
+    return when {
+        expression.contains("\\begin{align") || expression.contains("\\begin{gather") -> 84.dp
+        expression.contains("\\begin{") -> 96.dp
+        expression.contains("\\frac") || expression.contains("\\dfrac") -> 68.dp
+        expression.contains("\\sum") || expression.contains("\\int") || expression.contains("\\prod") -> 58.dp
+        expression.contains("\\sqrt") || expression.contains("\\binom") -> 52.dp
+        expression.contains('\n') -> 72.dp
+        else -> 44.dp
     }
 }
 
@@ -834,7 +1465,8 @@ private fun TableView(
     alignments: List<TableAlignment>,
     baseColor: Color = Color.Unspecified,
     codeColor: Color = Color.Unspecified,
-    linkColor: Color = Color.Unspecified
+    linkColor: Color = Color.Unspecified,
+    bodyTextStyle: TextStyle = MaterialTheme.typography.bodyMedium
 ) {
     val outlineColor = MaterialTheme.colorScheme.outlineVariant
     val headerBackground = MaterialTheme.colorScheme.surfaceContainerHigh
@@ -845,14 +1477,16 @@ private fun TableView(
         alignments.size,
         rows.maxOfOrNull { it.size } ?: 0
     )
-    val textMeasurer = rememberTextMeasurer()
-    val headerStyle = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold)
-    val bodyStyle = MaterialTheme.typography.bodyMedium
-    val density = LocalDensity.current
-    val cellPaddingH = 12.dp
+    if (numCols == 0) return
 
-    // Compute consistent column widths from measured text
-    val columnWidths = remember(headers, rows) {
+    val textMeasurer = rememberTextMeasurer()
+    val bodyStyle = bodyTextStyle.copy(textAlign = TextAlign.Start)
+    val headerStyle = bodyStyle.copy(fontWeight = FontWeight.Bold)
+    val density = LocalDensity.current
+    val horizontalCellPadding = 12.dp
+    val verticalCellPadding = 8.dp
+
+    val columnWidths = remember(headers, rows, density, headerStyle, bodyStyle) {
         val widths = IntArray(numCols)
         headers.forEachIndexed { index, header ->
             if (index < numCols) {
@@ -868,91 +1502,117 @@ private fun TableView(
         }
         widths.map { width ->
             with(density) {
-                (width.toDp() + cellPaddingH * 2).coerceIn(96.dp, 320.dp)
+                (width.toDp() + horizontalCellPadding * 2).coerceIn(104.dp, 360.dp)
             }
         }
     }
+    val tableWidth = columnWidths.fold(0.dp) { total, width -> total + width }
+    val scrollState = rememberScrollState()
 
-    Box(
+    BoxWithConstraints(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 8.dp)
-            .clip(RoundedCornerShape(16.dp))
-            .background(MaterialTheme.colorScheme.surfaceContainer)
     ) {
-        val scrollState = rememberScrollState()
-        androidx.compose.foundation.layout.Column(
+        val viewportWidth = minOf(maxWidth, tableWidth)
+
+        Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .widthIn(min = columnWidths.fold(0.dp) { total, width -> total + width })
+                .width(viewportWidth)
+                .clip(RoundedCornerShape(16.dp))
+                .background(MaterialTheme.colorScheme.surfaceContainer)
                 .horizontalScroll(scrollState)
         ) {
-            // Header row
-            Row(
-                modifier = Modifier
-                    .background(headerBackground)
-                    .padding(horizontal = 4.dp)
+            androidx.compose.foundation.layout.Column(
+                modifier = Modifier.width(tableWidth)
             ) {
-                repeat(numCols) { index ->
-                    val header = headers.getOrElse(index) { "" }
-                    MarkdownInlineText(
-                        content = parseInlineMarkdown(header, baseColor, codeColor, linkColor),
-                        style = headerStyle.copy(
-                            textAlign = tableTextAlign(alignments.getOrElse(index) { TableAlignment.LEFT })
-                        ),
-                        modifier = Modifier
-                            .width(columnWidths.getOrElse(index) { 96.dp })
-                            .padding(horizontal = cellPaddingH, vertical = 8.dp),
-                        softWrap = false,
-                        maxLines = 1
-                    )
-                }
-            }
-
-            // Header divider
-            Spacer(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(1.dp)
-                    .background(outlineColor)
-            )
-
-            // Data rows
-            rows.forEachIndexed { rowIndex, row ->
                 Row(
                     modifier = Modifier
-                        .then(
-                            if (rowIndex % 2 == 0) Modifier.background(alternateRowColor)
-                            else Modifier
-                        )
-                        .padding(horizontal = 4.dp)
+                        .width(tableWidth)
+                        .background(headerBackground)
                 ) {
-                    repeat(numCols) { colIndex ->
-                        val cell = row.getOrElse(colIndex) { "" }
-                        MarkdownInlineText(
-                            content = parseInlineMarkdown(cell, baseColor, codeColor, linkColor),
-                            style = bodyStyle.copy(
-                                textAlign = tableTextAlign(alignments.getOrElse(colIndex) { TableAlignment.LEFT })
+                    repeat(numCols) { index ->
+                        TableCell(
+                            text = headers.getOrElse(index) { "" },
+                            style = headerStyle.copy(
+                                textAlign = tableTextAlign(alignments.getOrElse(index) { TableAlignment.LEFT })
                             ),
-                            modifier = Modifier
-                                .width(columnWidths.getOrElse(colIndex) { 96.dp })
-                                .padding(horizontal = cellPaddingH, vertical = 8.dp),
-                            softWrap = false,
-                            maxLines = 1
+                            width = columnWidths.getOrElse(index) { 104.dp },
+                            horizontalPadding = horizontalCellPadding,
+                            verticalPadding = verticalCellPadding,
+                            baseColor = baseColor,
+                            codeColor = codeColor,
+                            linkColor = linkColor
                         )
                     }
                 }
-                if (rowIndex < rows.lastIndex) {
-                    Spacer(
+
+                Spacer(
+                    modifier = Modifier
+                        .width(tableWidth)
+                        .height(1.dp)
+                        .background(outlineColor)
+                )
+
+                rows.forEachIndexed { rowIndex, row ->
+                    Row(
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .height(1.dp)
-                            .background(outlineColor.copy(alpha = 0.5f))
-                    )
+                            .width(tableWidth)
+                            .then(
+                                if (rowIndex % 2 == 0) Modifier.background(alternateRowColor)
+                                else Modifier
+                            )
+                    ) {
+                        repeat(numCols) { colIndex ->
+                            TableCell(
+                                text = row.getOrElse(colIndex) { "" },
+                                style = bodyStyle.copy(
+                                    textAlign = tableTextAlign(
+                                        alignments.getOrElse(colIndex) { TableAlignment.LEFT }
+                                    )
+                                ),
+                                width = columnWidths.getOrElse(colIndex) { 104.dp },
+                                horizontalPadding = horizontalCellPadding,
+                                verticalPadding = verticalCellPadding,
+                                baseColor = baseColor,
+                                codeColor = codeColor,
+                                linkColor = linkColor
+                            )
+                        }
+                    }
+                    if (rowIndex < rows.lastIndex) {
+                        Spacer(
+                            modifier = Modifier
+                                .width(tableWidth)
+                                .height(1.dp)
+                                .background(outlineColor.copy(alpha = 0.5f))
+                        )
+                    }
                 }
             }
         }
     }
+}
+
+@Composable
+private fun TableCell(
+    text: String,
+    style: TextStyle,
+    width: androidx.compose.ui.unit.Dp,
+    horizontalPadding: androidx.compose.ui.unit.Dp,
+    verticalPadding: androidx.compose.ui.unit.Dp,
+    baseColor: Color,
+    codeColor: Color,
+    linkColor: Color
+) {
+    MarkdownInlineText(
+        content = parseInlineMarkdown(text.toTableCellText(), baseColor, codeColor, linkColor),
+        style = style,
+        modifier = Modifier
+            .width(width)
+            .padding(horizontal = horizontalPadding, vertical = verticalPadding),
+        softWrap = true
+    )
 }
 
 private fun tableTextAlign(alignment: TableAlignment): androidx.compose.ui.text.style.TextAlign {
@@ -1084,7 +1744,8 @@ private fun parseTextWithTables(
             if (joined.isNotBlank()) {
                 elements.add(
                     MarkdownElement.TextBlock(
-                        parseInlineMarkdown(joined, baseColor, codeColor, linkColor)
+                        source = joined,
+                        content = parseInlineMarkdown(joined, baseColor, codeColor, linkColor)
                     )
                 )
             }
@@ -1120,7 +1781,8 @@ private fun parseTextWithTables(
             if (quoteText.isNotBlank()) {
                 elements.add(
                     MarkdownElement.Blockquote(
-                        parseInlineMarkdown(quoteText, baseColor, codeColor, linkColor)
+                        source = quoteText,
+                        content = parseInlineMarkdown(quoteText, baseColor, codeColor, linkColor)
                     )
                 )
             }
@@ -1164,19 +1826,19 @@ private fun parseTextWithTables(
     return elements
 }
 
-private fun isTableRow(line: String): Boolean {
+internal fun isTableRow(line: String): Boolean {
     val trimmed = line.trim()
     return !trimmed.startsWith(">") && tableCells(trimmed).size >= 2
 }
 
-private fun isTableSeparator(line: String): Boolean {
+internal fun isTableSeparator(line: String): Boolean {
     val cells = tableCells(line)
     return cells.size >= 2 && cells.all { cell ->
         cell.trim().matches(Regex(":?-{1,}:?"))
     }
 }
 
-private fun parseTableRow(line: String): List<String> {
+internal fun parseTableRow(line: String): List<String> {
     return tableCells(line).map { it.trim() }
 }
 
@@ -1191,12 +1853,53 @@ private fun parseTableAlignments(line: String): List<TableAlignment> {
     }
 }
 
-private fun tableCells(line: String): List<String> {
+internal fun tableCells(line: String): List<String> {
     val trimmed = line.trim()
     if ('|' !in trimmed) return emptyList()
-    return trimmed
-        .trim('|')
-        .split('|')
+
+    val cells = mutableListOf<String>()
+    val current = StringBuilder()
+    var inCodeSpan = false
+    var index = 0
+
+    while (index < trimmed.length) {
+        val char = trimmed[index]
+        val next = trimmed.getOrNull(index + 1)
+        when {
+            char == '\\' && next == '|' -> {
+                current.append('|')
+                index += 2
+            }
+            char == '`' -> {
+                inCodeSpan = !inCodeSpan
+                current.append(char)
+                index++
+            }
+            char == '|' && !inCodeSpan -> {
+                cells.add(current.toString())
+                current.clear()
+                index++
+            }
+            else -> {
+                current.append(char)
+                index++
+            }
+        }
+    }
+    cells.add(current.toString())
+
+    if (trimmed.startsWith("|") && cells.firstOrNull()?.isEmpty() == true) {
+        cells.removeAt(0)
+    }
+    if (trimmed.endsWith("|") && cells.lastOrNull()?.isEmpty() == true) {
+        cells.removeAt(cells.lastIndex)
+    }
+
+    return cells
+}
+
+private fun String.toTableCellText(): String {
+    return replace(Regex("<br\\s*/?>", RegexOption.IGNORE_CASE), "\n")
 }
 
 /**
@@ -1446,9 +2149,219 @@ private fun AnnotatedString.Builder.appendInlineMathFallback(
         background = linkColor.copy(alpha = 0.10f),
         color = baseColor
     )) {
-        append(renderInlineMathText(content))
+        appendInlineMathExpression(content.trim())
     }
 }
+
+internal fun renderInlineMathForTesting(expression: String): AnnotatedString {
+    return buildAnnotatedString {
+        appendInlineMathExpression(expression.trim())
+    }
+}
+
+private fun AnnotatedString.Builder.appendInlineMathExpression(expression: String) {
+    var index = 0
+    while (index < expression.length) {
+        when (val char = expression[index]) {
+            '\\' -> {
+                val command = readLatexCommand(expression, index)
+                index = appendLatexCommand(command.value, expression, command.nextIndex)
+            }
+            '^', '_' -> {
+                val script = readMathScriptContent(expression, index + 1)
+                if (script.value.isNotEmpty()) {
+                    appendMathScript(script.value, superscript = char == '^')
+                }
+                index = script.nextIndex
+            }
+            '{', '}' -> index++
+            '~' -> {
+                append(' ')
+                index++
+            }
+            else -> {
+                append(char)
+                index++
+            }
+        }
+    }
+}
+
+private fun AnnotatedString.Builder.appendLatexCommand(
+    command: String,
+    expression: String,
+    afterCommandIndex: Int
+): Int {
+    if (command in latexTextWrapperCommands && expression.getOrNull(afterCommandIndex) == '{') {
+        val group = readBraceGroup(expression, afterCommandIndex)
+        appendInlineMathExpression(group.value)
+        return group.nextIndex
+    }
+
+    val replacement = latexSymbolReplacement(command)
+    if (replacement != null) {
+        append(replacement)
+        return afterCommandIndex
+    }
+
+    append(command.removePrefix("\\"))
+    return afterCommandIndex
+}
+
+private fun AnnotatedString.Builder.appendMathScript(content: String, superscript: Boolean) {
+    withStyle(SpanStyle(
+        baselineShift = if (superscript) BaselineShift.Superscript else BaselineShift.Subscript,
+        fontSize = 0.82.em
+    )) {
+        appendInlineMathExpression(content)
+    }
+}
+
+private data class LatexCommand(
+    val value: String,
+    val nextIndex: Int,
+    val consumedUntil: Int
+)
+
+private data class MathToken(
+    val value: String,
+    val nextIndex: Int
+)
+
+private fun readLatexCommand(expression: String, startIndex: Int): LatexCommand {
+    var index = startIndex + 1
+    while (index < expression.length && expression[index].isLetter()) index++
+    if (index == startIndex + 1 && index < expression.length) index++
+    val command = expression.substring(startIndex, index)
+    return LatexCommand(command, index, index)
+}
+
+private fun readMathScriptContent(expression: String, startIndex: Int): MathToken {
+    if (startIndex >= expression.length) return MathToken("", startIndex)
+    return when (expression[startIndex]) {
+        '{' -> readBraceGroup(expression, startIndex)
+        '\\' -> {
+            val command = readLatexCommand(expression, startIndex)
+            MathToken(command.value, command.consumedUntil)
+        }
+        else -> MathToken(expression[startIndex].toString(), startIndex + 1)
+    }
+}
+
+private fun readBraceGroup(expression: String, openBraceIndex: Int): MathToken {
+    var depth = 0
+    var index = openBraceIndex
+    while (index < expression.length) {
+        when (expression[index]) {
+            '{' -> depth++
+            '}' -> {
+                depth--
+                if (depth == 0) {
+                    return MathToken(
+                        value = expression.substring(openBraceIndex + 1, index),
+                        nextIndex = index + 1
+                    )
+                }
+            }
+        }
+        index++
+    }
+    return MathToken(expression.substring(openBraceIndex + 1), expression.length)
+}
+
+private val latexTextWrapperCommands = setOf(
+    "\\mathbb",
+    "\\mathcal",
+    "\\mathrm",
+    "\\mathbf",
+    "\\text",
+    "\\textrm",
+    "\\operatorname"
+)
+
+private fun latexSymbolReplacement(command: String): String? {
+    return latexSymbolReplacements[command]
+}
+
+private val latexSymbolReplacements = mapOf(
+    "\\rightarrow" to "→",
+    "\\leftarrow" to "←",
+    "\\Rightarrow" to "⇒",
+    "\\Leftarrow" to "⇐",
+    "\\Leftrightarrow" to "⇔",
+    "\\subseteq" to "⊆",
+    "\\supseteq" to "⊇",
+    "\\operatorname" to "",
+    "\\alpha" to "α",
+    "\\beta" to "β",
+    "\\gamma" to "γ",
+    "\\delta" to "δ",
+    "\\epsilon" to "ε",
+    "\\zeta" to "ζ",
+    "\\eta" to "η",
+    "\\theta" to "θ",
+    "\\iota" to "ι",
+    "\\kappa" to "κ",
+    "\\lambda" to "λ",
+    "\\mu" to "μ",
+    "\\nu" to "ν",
+    "\\xi" to "ξ",
+    "\\pi" to "π",
+    "\\rho" to "ρ",
+    "\\sigma" to "σ",
+    "\\tau" to "τ",
+    "\\upsilon" to "υ",
+    "\\phi" to "φ",
+    "\\chi" to "χ",
+    "\\psi" to "ψ",
+    "\\omega" to "ω",
+    "\\Gamma" to "Γ",
+    "\\Delta" to "Δ",
+    "\\Theta" to "Θ",
+    "\\Lambda" to "Λ",
+    "\\Pi" to "Π",
+    "\\Sigma" to "Σ",
+    "\\Phi" to "Φ",
+    "\\Psi" to "Ψ",
+    "\\Omega" to "Ω",
+    "\\times" to "×",
+    "\\cdot" to "·",
+    "\\div" to "÷",
+    "\\pm" to "±",
+    "\\mp" to "∓",
+    "\\leq" to "≤",
+    "\\geq" to "≥",
+    "\\neq" to "≠",
+    "\\le" to "≤",
+    "\\ge" to "≥",
+    "\\ne" to "≠",
+    "\\approx" to "≈",
+    "\\equiv" to "≡",
+    "\\sim" to "∼",
+    "\\propto" to "∝",
+    "\\notin" to "∉",
+    "\\in" to "∈",
+    "\\subset" to "⊂",
+    "\\supset" to "⊃",
+    "\\cup" to "∪",
+    "\\cap" to "∩",
+    "\\forall" to "∀",
+    "\\exists" to "∃",
+    "\\infty" to "∞",
+    "\\nabla" to "∇",
+    "\\partial" to "∂",
+    "\\to" to "→",
+    "\\iff" to "⇔",
+    "\\sqrt" to "√",
+    "\\sum" to "∑",
+    "\\prod" to "∏",
+    "\\int" to "∫",
+    "\\ldots" to "…",
+    "\\cdots" to "⋯",
+    "\\dots" to "…",
+    "\\langle" to "⟨",
+    "\\rangle" to "⟩"
+)
 
 private fun looksLikeInlineMath(content: String): Boolean {
     val trimmed = content.trim()

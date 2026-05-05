@@ -65,6 +65,16 @@ interface MessageDao {
     suspend fun getMessagesForConversationOnce(conversationId: String): List<MessageEntity>
 
     /**
+     * Get all messages for selected conversations for encrypted backup.
+     */
+    @Query("""
+        SELECT * FROM messages
+        WHERE conversation_id IN (:conversationIds)
+        ORDER BY created_at ASC
+    """)
+    suspend fun getMessagesForConversations(conversationIds: List<String>): List<MessageEntity>
+
+    /**
      * Get a message by ID.
      */
     @Query("SELECT * FROM messages WHERE id = :messageId")

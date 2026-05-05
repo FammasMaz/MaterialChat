@@ -18,6 +18,7 @@ A native Android AI chat application built with Jetpack Compose and Material 3 E
 - **Conversation Branching** - Create branches to explore alternative responses
 - **Full-Text Search** - Search across all conversations and messages
 - **Export Options** - Export conversations to JSON or Markdown
+- **Encrypted Backups** - Password-protected backup/restore files via Android's system picker, including Google Drive
 - **Swipe to Delete** - Quick gesture-based conversation removal with undo
 
 ### Rich Text and Code
@@ -89,6 +90,7 @@ MaterialChat uses **Clean Architecture** with **MVVM** pattern:
 com.materialchat/
 ├── data/
 │   ├── local/           # Room database, DataStore, encrypted preferences
+│   ├── backup/          # Manual encrypted chat backup/restore
 │   ├── remote/          # OkHttp clients, SSE parser, DTOs
 │   ├── repository/      # Repository implementations
 │   └── mapper/          # Entity <-> Domain mappers
@@ -122,6 +124,32 @@ com.materialchat/
 | Markdown | RichText Commonmark |
 | Images | Coil |
 
+## Monetization
+
+The Play Store build can show ads to support development:
+
+- Banner ads on top-level screens
+- One-time Google Play Billing purchase to remove ads permanently
+- Rewarded ad option for 24-hour premium/ad-free access
+- GitHub release APKs are built with `ADS_ENABLED=false` and are intended to remain ad-free for users who prefer the open-source build
+
+Play Store release builds use the `play` distribution variant and should provide real AdMob/Billing values, for example:
+
+```bash
+./gradlew bundlePlayRelease \
+  -PADS_ENABLED=true \
+  -PADMOB_APP_ID=ca-app-pub-xxx~yyy \
+  -PADMOB_BANNER_AD_UNIT_ID=ca-app-pub-xxx/banner \
+  -PADMOB_REWARDED_AD_UNIT_ID=ca-app-pub-xxx/rewarded \
+  -PREMOVE_ADS_PRODUCT_ID=remove_ads \
+  -PRELEASE_STORE_FILE=release.keystore \
+  -PRELEASE_STORE_PASSWORD=... \
+  -PRELEASE_KEY_ALIAS=... \
+  -PRELEASE_KEY_PASSWORD=...
+```
+
+See `docs/PLAY_STORE_TESTING_CHECKLIST.md` for the full Play Console/testing checklist.
+
 ## Security
 
 API keys are encrypted at rest using industry-standard practices:
@@ -131,14 +159,16 @@ API keys are encrypted at rest using industry-standard practices:
 - **Network**: TLS 1.2+ for all HTTPS traffic
 - **Local Ollama**: HTTP allowed for localhost and private IP ranges
 
-Chat history is stored locally and never transmitted to external servers beyond your configured AI providers.
+Chat history is stored locally and never transmitted to external servers beyond your configured AI providers. Android backup is disabled so local chat history and provider metadata are not copied to cloud/device backups.
+
+Manual backup files are encrypted with a user-entered password and AES-GCM/PBKDF2 before being written through Android's system file picker. Backups include non-ephemeral conversations, messages, bookmarks, custom personas, and provider metadata, but they intentionally do not include provider API keys.
 
 ## Requirements
 
 | Requirement | Value |
 |-------------|-------|
 | Android Version | 8.0 Oreo (API 26) or higher |
-| Target SDK | 35 (Android 15) |
+| Target SDK | 36 |
 | Dynamic Color | Android 12+ (optional) |
 | Assistant Overlay | Supported on all versions |
 
@@ -148,7 +178,7 @@ Chat history is stored locally and never transmitted to external servers beyond 
 
 - JDK 17 or higher
 - Android Studio Ladybug (2024.2.1) or higher
-- Android SDK with API 35
+- Android SDK with API 36
 
 ### Build Commands
 
@@ -157,20 +187,28 @@ Chat history is stored locally and never transmitted to external servers beyond 
 git clone https://github.com/yourusername/MaterialChat.git
 cd MaterialChat
 
-# Build debug APK
-./gradlew assembleDebug
+# Build Play debug APK
+./gradlew assemblePlayDebug
 
-# Build release APK
-./gradlew assembleRelease
+# Build GitHub debug APK
+./gradlew assembleGithubDebug
 
-# Install on connected device
-./gradlew installDebug
+# Build Play release AAB for Play Console
+./gradlew bundlePlayRelease
+
+# Build GitHub release APK
+./gradlew assembleGithubRelease
+
+# Install Play debug on connected device
+./gradlew installPlayDebug
 ```
 
 ### APK Locations
 
-- Debug: `app/build/outputs/apk/debug/app-debug.apk`
-- Release: `app/build/outputs/apk/release/app-release-unsigned.apk`
+- Play debug: `app/build/outputs/apk/play/debug/app-play-debug.apk`
+- GitHub debug: `app/build/outputs/apk/github/debug/app-github-debug.apk`
+- Play release AAB: `app/build/outputs/bundle/playRelease/app-play-release.aab`
+- GitHub release APK: `app/build/outputs/apk/github/release/app-github-release.apk`
 
 ## Usage Tips
 

@@ -2,6 +2,7 @@ package com.materialchat.ui
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.materialchat.data.monetization.MonetizationManager
 import com.materialchat.domain.model.Persona
 import com.materialchat.domain.usecase.CreateConversationUseCase
 import com.materialchat.domain.usecase.ManagePersonasUseCase
@@ -22,7 +23,8 @@ import javax.inject.Inject
 @HiltViewModel
 class MainViewModel @Inject constructor(
     private val createConversationUseCase: CreateConversationUseCase,
-    private val managePersonasUseCase: ManagePersonasUseCase
+    private val managePersonasUseCase: ManagePersonasUseCase,
+    monetizationManager: MonetizationManager
 ) : ViewModel() {
 
     private val _navigateToChat = MutableSharedFlow<String>()
@@ -37,6 +39,9 @@ class MainViewModel @Inject constructor(
 
     /** Reactive list of all personas for the picker. */
     val personas: Flow<List<Persona>> = managePersonasUseCase.observeAllPersonas()
+
+    /** Premium state used by the app shell to decide whether ads should be shown. */
+    val premiumState = monetizationManager.premiumState
 
     init {
     }
