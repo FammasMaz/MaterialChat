@@ -454,11 +454,21 @@ class SendMessageUseCase @Inject constructor(
         try {
             val conversation = conversationRepository.getConversation(conversationId) ?: return
 
-            val provider = providerRepository.getProvider(conversation.providerId) ?: return
+            // Check if a custom model is configured for title generation.
+            // Format: bare "modelId" (use conversation provider)
+            // or "providerId|modelId" (use that specific provider).
+            val customRaw = appPreferences.titleGenerationModel.first()
+            val (customProviderId, customModelId) = parseTitleModelSetting(customRaw)
 
-            // Check if a custom model is configured for title generation
-            val customModel = appPreferences.titleGenerationModel.first()
-            val modelToUse = if (customModel.isNotBlank()) customModel else conversation.modelName
+            val provider = if (!customProviderId.isNullOrBlank()) {
+                providerRepository.getProvider(customProviderId)
+                    ?: providerRepository.getProvider(conversation.providerId)
+                    ?: return
+            } else {
+                providerRepository.getProvider(conversation.providerId) ?: return
+            }
+
+            val modelToUse = if (customModelId.isNotBlank()) customModelId else conversation.modelName
 
             val prompt = buildBranchTitlePrompt(userMessage, assistantResponse)
 
@@ -468,7 +478,8 @@ class SendMessageUseCase @Inject constructor(
                     provider = provider,
                     prompt = prompt,
                     model = modelToUse,
-                    systemPrompt = BRANCH_TITLE_SYSTEM_PROMPT
+                    systemPrompt = BRANCH_TITLE_SYSTEM_PROMPT,
+                    reasoningEffort = ReasoningEffort.NONE
                 )
 
             result.onSuccess { generatedResponse ->
@@ -494,6 +505,20 @@ class SendMessageUseCase @Inject constructor(
                 conversationRepository.updateConversationTitle(conversationId, fallbackTitle)
             } catch (_: Exception) { }
         }
+    }
+
+    /**
+     * Parses the stored title generation model setting.
+     * Returns (providerId, modelId). providerId is null when the setting
+     * is empty or uses the bare modelId format (legacy).
+     */
+    private fun parseTitleModelSetting(raw: String): Pair<String?, String> {
+        if (raw.isBlank()) return null to ""
+        val pipe = raw.indexOf('|')
+        if (pipe < 0) return null to raw.trim()
+        val providerId = raw.substring(0, pipe).trim()
+        val modelId = raw.substring(pipe + 1).trim()
+        return (providerId.ifBlank { null }) to modelId
     }
 
     private suspend fun generateBranchTitleWithPreferredLocalModel(prompt: String): Result<String> {

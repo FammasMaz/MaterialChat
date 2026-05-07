@@ -2,6 +2,7 @@ package com.materialchat.domain.usecase
 
 import android.util.Log
 import com.materialchat.data.local.preferences.AppPreferences
+import com.materialchat.domain.model.ReasoningEffort
 import com.materialchat.domain.repository.ChatRepository
 import com.materialchat.domain.repository.ConversationRepository
 import com.materialchat.domain.repository.LocalModelRepository
@@ -81,16 +82,28 @@ class GenerateConversationTitleUseCase @Inject constructor(
                     IllegalStateException("Conversation not found: $conversationId")
                 )
 
-            val provider = providerRepository.getProvider(conversation.providerId)
-                ?: return@withContext Result.failure(
-                    IllegalStateException("Provider not found: ${conversation.providerId}")
-                )
+            // Check if a custom model is configured for title generation.
+            // Format: either bare "modelId" (use conversation provider)
+            // or "providerId|modelId" (use that specific provider).
+            val customModelRaw = appPreferences.titleGenerationModel.first()
+            val (customProviderId, customModelId) = parseTitleModelSetting(customModelRaw)
 
-            // Check if a custom model is configured for title generation
-            val customModel = appPreferences.titleGenerationModel.first()
-            val modelToUse = if (customModel.isNotBlank()) {
-                Log.d(TAG, "Using custom title generation model: $customModel")
-                customModel
+            val provider = if (!customProviderId.isNullOrBlank()) {
+                providerRepository.getProvider(customProviderId)
+                    ?: providerRepository.getProvider(conversation.providerId)
+                    ?: return@withContext Result.failure(
+                        IllegalStateException("Provider not found: $customProviderId")
+                    )
+            } else {
+                providerRepository.getProvider(conversation.providerId)
+                    ?: return@withContext Result.failure(
+                        IllegalStateException("Provider not found: ${conversation.providerId}")
+                    )
+            }
+
+            val modelToUse = if (customModelId.isNotBlank()) {
+                Log.d(TAG, "Using custom title generation model: $customModelId (provider=${provider.id})")
+                customModelId
             } else {
                 conversation.modelName
             }
@@ -105,7 +118,8 @@ class GenerateConversationTitleUseCase @Inject constructor(
                     provider = provider,
                     prompt = prompt,
                     model = modelToUse,
-                    systemPrompt = TITLE_SYSTEM_PROMPT
+                    systemPrompt = TITLE_SYSTEM_PROMPT,
+                    reasoningEffort = ReasoningEffort.NONE
                 )
 
             result.fold(
@@ -252,6 +266,20 @@ class GenerateConversationTitleUseCase @Inject constructor(
         }
 
         return cleaned.ifBlank { "New Chat" }
+    }
+
+    /**
+     * Parses the stored title generation model setting.
+     * Returns (providerId, modelId). providerId is null when the setting
+     * is empty or uses the bare modelId format (legacy).
+     */
+    private fun parseTitleModelSetting(raw: String): Pair<String?, String> {
+        if (raw.isBlank()) return null to ""
+        val pipe = raw.indexOf('|')
+        if (pipe < 0) return null to raw.trim()
+        val providerId = raw.substring(0, pipe).trim()
+        val modelId = raw.substring(pipe + 1).trim()
+        return (providerId.ifBlank { null }) to modelId
     }
 
     private fun generateFallbackTitle(content: String): String {
