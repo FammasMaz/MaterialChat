@@ -193,7 +193,8 @@ class ChatRepositoryImpl @Inject constructor(
         provider: Provider,
         prompt: String,
         model: String,
-        systemPrompt: String?
+        systemPrompt: String?,
+        reasoningEffort: com.materialchat.domain.model.ReasoningEffort
     ): Result<String> {
         if (provider.type.isOnDevice) {
             return localModelRepository.generateSimpleCompletion(model, prompt, systemPrompt)
@@ -201,7 +202,7 @@ class ChatRepositoryImpl @Inject constructor(
 
         val apiKey = getProviderCredential(provider)
 
-        return chatApiClient.generateSimpleCompletion(provider, prompt, model, apiKey, systemPrompt)
+        return chatApiClient.generateSimpleCompletion(provider, prompt, model, apiKey, systemPrompt, reasoningEffort)
     }
 
     override suspend fun generateImage(

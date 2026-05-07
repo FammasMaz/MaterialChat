@@ -595,7 +595,8 @@ class ChatApiClient(
         prompt: String,
         model: String,
         apiKey: String?,
-        systemPrompt: String? = null
+        systemPrompt: String? = null,
+        reasoningEffort: ReasoningEffort = ReasoningEffort.NONE
     ): Result<String> = withContext(Dispatchers.IO) {
         try {
             when (provider.type) {
@@ -604,13 +605,15 @@ class ChatApiClient(
                     model = model,
                     prompt = prompt,
                     apiKey = apiKey ?: "",
-                    systemPrompt = systemPrompt
+                    systemPrompt = systemPrompt,
+                    reasoningEffort = reasoningEffort
                 )
                 ProviderType.OLLAMA_NATIVE -> generateOllamaCompletion(
                     baseUrl = provider.baseUrl,
                     model = model,
                     prompt = prompt,
-                    systemPrompt = systemPrompt
+                    systemPrompt = systemPrompt,
+                    reasoningEffort = reasoningEffort
                 )
                 ProviderType.CODEX_NATIVE,
                 ProviderType.GITHUB_COPILOT_NATIVE,
@@ -619,7 +622,8 @@ class ChatApiClient(
                     prompt = prompt,
                     model = model,
                     apiKey = apiKey,
-                    systemPrompt = systemPrompt
+                    systemPrompt = systemPrompt,
+                    reasoningEffort = reasoningEffort
                 )
                 ProviderType.LITERT_LM_LOCAL,
                 ProviderType.AICORE_GEMINI_NANO -> Result.failure(
@@ -684,7 +688,8 @@ class ChatApiClient(
         prompt: String,
         model: String,
         apiKey: String?,
-        systemPrompt: String?
+        systemPrompt: String?,
+        reasoningEffort: ReasoningEffort = ReasoningEffort.NONE
     ): Result<String> {
         val content = StringBuilder()
         var error: StreamingEvent.Error? = null
@@ -700,7 +705,9 @@ class ChatApiClient(
             messages = messages,
             model = model,
             apiKey = apiKey,
-            systemPrompt = systemPrompt
+            systemPrompt = systemPrompt,
+            reasoningEffort = reasoningEffort,
+            disableTools = true
         ).collect { event ->
             when (event) {
                 is StreamingEvent.Content -> content.append(event.content)
@@ -720,7 +727,8 @@ class ChatApiClient(
         model: String,
         prompt: String,
         apiKey: String,
-        systemPrompt: String? = null
+        systemPrompt: String? = null,
+        reasoningEffort: ReasoningEffort = ReasoningEffort.NONE
     ): Result<String> {
         val messages = buildList {
             if (!systemPrompt.isNullOrBlank()) {
@@ -731,7 +739,8 @@ class ChatApiClient(
         val request = OpenAiChatRequest(
             model = model,
             messages = messages,
-            stream = false
+            stream = false,
+            reasoningEffort = reasoningEffort.apiValue
         )
 
         val requestBody = json.encodeToString(request)
@@ -1042,7 +1051,8 @@ class ChatApiClient(
         baseUrl: String,
         model: String,
         prompt: String,
-        systemPrompt: String? = null
+        systemPrompt: String? = null,
+        reasoningEffort: ReasoningEffort = ReasoningEffort.NONE
     ): Result<String> {
         val messages = buildList {
             if (!systemPrompt.isNullOrBlank()) {
@@ -1055,7 +1065,7 @@ class ChatApiClient(
             model = model,
             messages = messages,
             stream = true,
-            think = true,  // Same as regular chat
+            think = reasoningEffort.enablesThinking,
             options = com.materialchat.data.remote.dto.OllamaOptions(temperature = 0.7)
         )
 

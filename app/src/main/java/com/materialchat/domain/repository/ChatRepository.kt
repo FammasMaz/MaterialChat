@@ -58,13 +58,15 @@ interface ChatRepository {
      * @param provider The AI provider to use
      * @param prompt The prompt to send
      * @param model The model to use for generation
+     * @param reasoningEffort Reasoning effort hint (defaults to NONE for short tasks like titles)
      * @return The generated text, or an error
      */
     suspend fun generateSimpleCompletion(
         provider: Provider,
         prompt: String,
         model: String,
-        systemPrompt: String? = null
+        systemPrompt: String? = null,
+        reasoningEffort: ReasoningEffort = ReasoningEffort.NONE
     ): Result<String>
 
     /**
