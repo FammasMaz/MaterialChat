@@ -58,11 +58,15 @@ import androidx.compose.material.icons.outlined.SettingsSystemDaydream
 import androidx.compose.material.icons.outlined.SmartToy
 import androidx.compose.material.icons.outlined.SystemUpdate
 import androidx.compose.material.icons.outlined.Title
+import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Vibration
 import androidx.compose.material.icons.outlined.Language
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ElevatedFilterChip
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -153,6 +157,7 @@ fun SettingsScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val formState by viewModel.formState.collectAsStateWithLifecycle()
+    val titleModelPickerState by viewModel.titleModelPickerState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
     val context = LocalContext.current
@@ -364,6 +369,8 @@ fun SettingsScreen(
             onAiGeneratedTitlesChange = { viewModel.updateAiGeneratedTitlesEnabled(it) },
             onPreferOnDeviceTitleModelChange = { viewModel.updatePreferOnDeviceTitleModel(it) },
             onTitleGenerationModelChange = { viewModel.updateTitleGenerationModel(it) },
+            titleModelPickerState = titleModelPickerState,
+            onLoadTitleGenerationModels = { viewModel.loadTitleGenerationModels(force = true) },
             onDefaultImageGenerationModelChange = { viewModel.updateDefaultImageGenerationModel(it) },
             onDefaultImageOutputFormatChange = { viewModel.updateDefaultImageOutputFormat(it) },
             onRememberLastModelChange = { viewModel.updateRememberLastModelEnabled(it) },
@@ -567,6 +574,8 @@ private fun SettingsContent(
     onAiGeneratedTitlesChange: (Boolean) -> Unit,
     onPreferOnDeviceTitleModelChange: (Boolean) -> Unit,
     onTitleGenerationModelChange: (String) -> Unit,
+    titleModelPickerState: TitleModelPickerState,
+    onLoadTitleGenerationModels: () -> Unit,
     onDefaultImageGenerationModelChange: (String) -> Unit,
     onDefaultImageOutputFormatChange: (String) -> Unit,
     onRememberLastModelChange: (Boolean) -> Unit,
@@ -635,6 +644,8 @@ private fun SettingsContent(
                     onAiGeneratedTitlesChange = onAiGeneratedTitlesChange,
                     onPreferOnDeviceTitleModelChange = onPreferOnDeviceTitleModelChange,
                     onTitleGenerationModelChange = onTitleGenerationModelChange,
+                    titleModelPickerState = titleModelPickerState,
+                    onLoadTitleGenerationModels = onLoadTitleGenerationModels,
                     onDefaultImageGenerationModelChange = onDefaultImageGenerationModelChange,
                     onDefaultImageOutputFormatChange = onDefaultImageOutputFormatChange,
                     onRememberLastModelChange = onRememberLastModelChange,
@@ -709,6 +720,8 @@ private fun SuccessContent(
     onAiGeneratedTitlesChange: (Boolean) -> Unit,
     onPreferOnDeviceTitleModelChange: (Boolean) -> Unit,
     onTitleGenerationModelChange: (String) -> Unit,
+    titleModelPickerState: TitleModelPickerState,
+    onLoadTitleGenerationModels: () -> Unit,
     onDefaultImageGenerationModelChange: (String) -> Unit,
     onDefaultImageOutputFormatChange: (String) -> Unit,
     onRememberLastModelChange: (Boolean) -> Unit,
@@ -922,6 +935,9 @@ private fun SuccessContent(
             item {
                 TitleGenerationModelField(
                     currentModel = uiState.titleGenerationModel,
+                    providers = uiState.providers.map { it.provider },
+                    pickerState = titleModelPickerState,
+                    onLoadModels = onLoadTitleGenerationModels,
                     onModelChange = onTitleGenerationModelChange
                 )
             }
@@ -2488,12 +2504,63 @@ private fun ShowTokenCounterToggle(
     }
 }
 
+/**
+ * Parses the stored title generation model value.
+ * Accepts two formats:
+ *  - "providerId|modelId" (new) — use that provider explicitly
+ *  - "modelId"            (legacy) — reuse the conversation's provider
+ * Returns (providerId-or-null, modelId).
+ */
+private fun parseTitleModelStored(raw: String): Pair<String?, String> {
+    if (raw.isBlank()) return null to ""
+    val pipe = raw.indexOf('|')
+    if (pipe < 0) return null to raw.trim()
+    val p = raw.substring(0, pipe).trim()
+    val m = raw.substring(pipe + 1).trim()
+    return (p.ifBlank { null }) to m
+}
+
 @Composable
 private fun TitleGenerationModelField(
     currentModel: String,
+    providers: List<Provider>,
+    pickerState: TitleModelPickerState,
+    onLoadModels: () -> Unit,
     onModelChange: (String) -> Unit
 ) {
-    var text by remember(currentModel) { mutableStateOf(currentModel) }
+    val (currentProviderId, currentModelId) = remember(currentModel) {
+        parseTitleModelStored(currentModel)
+    }
+
+    var manualMode by remember(currentModel) {
+        // If we already have a stored bare model id (legacy) or the picker has no data yet,
+        // default to dropdown mode. User can switch explicitly.
+        mutableStateOf(false)
+    }
+    var manualText by remember(currentModel) { mutableStateOf(currentModelId) }
+    var dropdownExpanded by remember { mutableStateOf(false) }
+
+    // Kick off a one-shot load when this field first composes so the dropdown is populated.
+    LaunchedEffect(Unit) {
+        if (!pickerState.hasLoaded && !pickerState.isLoading) {
+            onLoadModels()
+        }
+    }
+
+    val allModels = remember(pickerState.modelsByProvider, providers) {
+        providers.flatMap { p ->
+            (pickerState.modelsByProvider[p.id] ?: emptyList()).map { m -> p to m }
+        }
+    }
+
+    val selectedLabel = when {
+        currentModel.isBlank() -> "Use conversation's model"
+        currentProviderId != null -> {
+            val provName = providers.firstOrNull { it.id == currentProviderId }?.name ?: currentProviderId
+            "$provName · $currentModelId"
+        }
+        else -> currentModelId
+    }
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -2507,9 +2574,7 @@ private fun TitleGenerationModelField(
                 .fillMaxWidth()
                 .padding(16.dp)
         ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically
-            ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
                     imageVector = Icons.Outlined.SmartToy,
                     contentDescription = null,
@@ -2517,7 +2582,7 @@ private fun TitleGenerationModelField(
                     modifier = Modifier.size(24.dp)
                 )
                 Spacer(modifier = Modifier.width(12.dp))
-                Column {
+                Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = "Title Generation Model",
                         style = MaterialTheme.typography.titleSmall,
@@ -2529,43 +2594,205 @@ private fun TitleGenerationModelField(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
+                IconButton(
+                    onClick = { onLoadModels() },
+                    enabled = !pickerState.isLoading
+                ) {
+                    if (pickerState.isLoading) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(18.dp),
+                            strokeWidth = 2.dp
+                        )
+                    } else {
+                        Icon(
+                            imageVector = Icons.Outlined.Refresh,
+                            contentDescription = "Refresh models"
+                        )
+                    }
+                }
+                IconButton(onClick = { manualMode = !manualMode }) {
+                    Icon(
+                        imageVector = Icons.Outlined.Edit,
+                        contentDescription = if (manualMode) "Use dropdown" else "Enter manually"
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            androidx.compose.material3.OutlinedTextField(
-                value = text,
-                onValueChange = { newValue ->
-                    text = newValue
-                },
-                placeholder = {
+            if (manualMode) {
+                // Free-text fallback. Saved as bare model id (uses conversation provider).
+                OutlinedTextField(
+                    value = manualText,
+                    onValueChange = { manualText = it },
+                    placeholder = {
+                        Text(
+                            text = "e.g., llama3.2:1b or gpt-4o-mini",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                        unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
+                    )
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "Manual entry uses the current conversation's provider.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    ExpressiveButton(
+                        onClick = { onModelChange(manualText.trim()) },
+                        enabled = manualText.trim() != currentModel,
+                        text = "Save",
+                        style = ExpressiveButtonStyle.FilledTonal
+                    )
+                }
+            } else {
+                // Dropdown mode: pick any model from any configured provider.
+                Box(modifier = Modifier.fillMaxWidth()) {
+                    OutlinedTextField(
+                        value = selectedLabel,
+                        onValueChange = {},
+                        readOnly = true,
+                        singleLine = true,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { dropdownExpanded = true },
+                        shape = RoundedCornerShape(12.dp),
+                        trailingIcon = {
+                            Icon(
+                                imageVector = Icons.Default.ArrowDropDown,
+                                contentDescription = "Expand"
+                            )
+                        },
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = MaterialTheme.colorScheme.primary,
+                            unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
+                            disabledTextColor = MaterialTheme.colorScheme.onSurface,
+                            disabledBorderColor = MaterialTheme.colorScheme.outlineVariant
+                        )
+                    )
+                    DropdownMenu(
+                        expanded = dropdownExpanded,
+                        onDismissRequest = { dropdownExpanded = false },
+                        modifier = Modifier
+                            .fillMaxWidth(0.95f)
+                    ) {
+                        // "Use conversation's model" option.
+                        DropdownMenuItem(
+                            text = { Text("Use conversation's model") },
+                            onClick = {
+                                dropdownExpanded = false
+                                onModelChange("")
+                            }
+                        )
+                        HorizontalDivider()
+
+                        when {
+                            pickerState.isLoading && allModels.isEmpty() -> {
+                                DropdownMenuItem(
+                                    text = {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            CircularProgressIndicator(
+                                                modifier = Modifier.size(16.dp),
+                                                strokeWidth = 2.dp
+                                            )
+                                            Spacer(modifier = Modifier.width(12.dp))
+                                            Text("Loading models…")
+                                        }
+                                    },
+                                    onClick = {}
+                                )
+                            }
+                            allModels.isEmpty() -> {
+                                DropdownMenuItem(
+                                    text = {
+                                        Column {
+                                            Text(
+                                                text = if (pickerState.error != null)
+                                                    "Couldn't fetch models"
+                                                else "No models available",
+                                                style = MaterialTheme.typography.bodyMedium
+                                            )
+                                            if (pickerState.error != null) {
+                                                Text(
+                                                    text = pickerState.error,
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                )
+                                            }
+                                            Spacer(modifier = Modifier.height(4.dp))
+                                            Text(
+                                                text = "Tap the pencil icon to enter manually.",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.primary
+                                            )
+                                        }
+                                    },
+                                    onClick = {
+                                        dropdownExpanded = false
+                                        manualMode = true
+                                    }
+                                )
+                            }
+                            else -> {
+                                providers.forEach { provider ->
+                                    val provModels = pickerState.modelsByProvider[provider.id].orEmpty()
+                                    if (provModels.isEmpty()) return@forEach
+                                    // Section header for provider
+                                    DropdownMenuItem(
+                                        enabled = false,
+                                        text = {
+                                            Text(
+                                                text = provider.name,
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = MaterialTheme.colorScheme.primary
+                                            )
+                                        },
+                                        onClick = {}
+                                    )
+                                    provModels.forEach { model ->
+                                        val isSelected = currentProviderId == provider.id && currentModelId == model.id
+                                        DropdownMenuItem(
+                                            text = {
+                                                Text(
+                                                    text = model.name,
+                                                    style = MaterialTheme.typography.bodyMedium,
+                                                    color = if (isSelected)
+                                                        MaterialTheme.colorScheme.primary
+                                                    else MaterialTheme.colorScheme.onSurface
+                                                )
+                                            },
+                                            onClick = {
+                                                dropdownExpanded = false
+                                                onModelChange("${provider.id}|${model.id}")
+                                            }
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                if (pickerState.error != null && allModels.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(6.dp))
                     Text(
-                        text = "e.g., llama3.2:1b or gpt-4o-mini",
-                        style = MaterialTheme.typography.bodyMedium,
+                        text = "Some providers failed: ${pickerState.error}",
+                        style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp),
-                colors = androidx.compose.material3.OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = MaterialTheme.colorScheme.primary,
-                    unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
-                )
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End
-            ) {
-                ExpressiveButton(
-                    onClick = { onModelChange(text) },
-                    enabled = text != currentModel,
-                    text = "Save",
-                    style = ExpressiveButtonStyle.FilledTonal
-                )
+                }
             }
         }
     }

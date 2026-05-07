@@ -93,6 +93,18 @@ sealed interface SettingsUiState {
 }
 
 /**
+ * State for the title-generation model picker in Settings.
+ * Holds per-provider fetched model lists plus loading/error state so
+ * the user can either pick a known model or fall back to free text.
+ */
+data class TitleModelPickerState(
+    val isLoading: Boolean = false,
+    val hasLoaded: Boolean = false,
+    val modelsByProvider: Map<String, List<com.materialchat.domain.model.AiModel>> = emptyMap(),
+    val error: String? = null
+)
+
+/**
  * UI representation of a provider item in the settings list.
  *
  * @property provider The domain provider model

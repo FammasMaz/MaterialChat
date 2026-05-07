@@ -56,9 +56,56 @@ class SettingsViewModel @Inject constructor(
     private val _formState = MutableStateFlow(ProviderFormState())
     val formState: StateFlow<ProviderFormState> = _formState.asStateFlow()
 
+    private val _titleModelPickerState = MutableStateFlow(TitleModelPickerState())
+    val titleModelPickerState: StateFlow<TitleModelPickerState> = _titleModelPickerState.asStateFlow()
+
     init {
         observeSettings()
         observeMonetizationEvents()
+    }
+
+    /**
+     * Loads available models across all configured providers for the title-gen
+     * model picker in Settings. Fetches each provider in parallel and merges
+     * the results. On error, the picker UI can fall back to a free-text entry.
+     */
+    fun loadTitleGenerationModels(force: Boolean = false) {
+        val current = _titleModelPickerState.value
+        if (current.isLoading) return
+        if (!force && current.hasLoaded && current.modelsByProvider.isNotEmpty()) return
+
+        val state = _uiState.value
+        if (state !is SettingsUiState.Success) return
+        val providers = state.providers.map { it.provider }
+
+        _titleModelPickerState.value = current.copy(
+            isLoading = true,
+            error = null
+        )
+
+        viewModelScope.launch {
+            val results = mutableMapOf<String, List<com.materialchat.domain.model.AiModel>>()
+            val failures = mutableListOf<String>()
+            for (provider in providers) {
+                val res = manageProvidersUseCase.fetchModels(provider.id)
+                res.onSuccess { models ->
+                    if (models.isNotEmpty()) {
+                        results[provider.id] = models.sortedBy { it.name }
+                    }
+                }.onFailure { err ->
+                    failures += "${provider.name}: ${err.message ?: "fetch failed"}"
+                }
+            }
+
+            _titleModelPickerState.value = _titleModelPickerState.value.copy(
+                isLoading = false,
+                hasLoaded = true,
+                modelsByProvider = results,
+                error = if (results.isEmpty() && failures.isNotEmpty()) {
+                    failures.joinToString("; ")
+                } else null
+            )
+        }
     }
 
     /**
