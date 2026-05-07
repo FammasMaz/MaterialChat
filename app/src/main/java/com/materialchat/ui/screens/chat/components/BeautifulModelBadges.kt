@@ -113,6 +113,8 @@ fun BeautifulModelBadges(
 
     // Track selected provider filter - null means show all
     var selectedProviderFilter by remember { mutableStateOf<String?>(null) }
+    // Track whether we've applied the initial auto-filter so user overrides stick.
+    var autoFilterApplied by remember { mutableStateOf(false) }
 
     // Extract unique providers from available models
     val availableProviders = remember(availableModels) {
@@ -123,6 +125,23 @@ fun BeautifulModelBadges(
             }
             .distinct()
             .sorted()
+    }
+
+    // Auto-scope the model dropdown to the current model's provider the first
+    // time we have data. Without this the second button lists every provider's
+    // models in one long mixed list until the user manually picks a provider.
+    LaunchedEffect(availableProviders, parsedModel.provider) {
+        if (!autoFilterApplied &&
+            selectedProviderFilter == null &&
+            availableProviders.isNotEmpty() &&
+            parsedModel.provider != "Provider" &&
+            availableProviders.any { it.equals(parsedModel.provider, ignoreCase = true) }
+        ) {
+            selectedProviderFilter = availableProviders.first {
+                it.equals(parsedModel.provider, ignoreCase = true)
+            }
+            autoFilterApplied = true
+        }
     }
 
     // Filter models based on selected provider
