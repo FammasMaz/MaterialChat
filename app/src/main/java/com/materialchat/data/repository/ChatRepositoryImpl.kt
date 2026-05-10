@@ -19,6 +19,7 @@ import com.materialchat.domain.model.ReasoningEffort
 import com.materialchat.domain.model.StreamingState
 import com.materialchat.domain.repository.ChatRepository
 import com.materialchat.domain.repository.LocalModelRepository
+import com.materialchat.domain.util.normalizeStreamingTextBoundary
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
@@ -67,6 +68,11 @@ class ChatRepositoryImpl @Inject constructor(
         val accumulatedContent = StringBuilder()
         val accumulatedThinking = StringBuilder()
 
+        fun normalizedAccumulation() = normalizeStreamingTextBoundary(
+            content = accumulatedContent.toString(),
+            thinkingContent = accumulatedThinking.toString().takeIf { it.isNotEmpty() }
+        )
+
         val apiKey = getProviderCredential(provider)
 
         // Create a placeholder message ID for tracking
@@ -95,28 +101,31 @@ class ChatRepositoryImpl @Inject constructor(
                 is StreamingEvent.Content -> {
                     accumulatedContent.append(event.content)
                     event.thinking?.let { accumulatedThinking.append(it) }
+                    val normalized = normalizedAccumulation()
                     android.util.Log.d("ChatRepository", "Accumulated content: ${accumulatedContent.length} chars")
                     emit(StreamingState.Streaming(
-                        content = accumulatedContent.toString(),
-                        thinkingContent = accumulatedThinking.toString().takeIf { it.isNotEmpty() },
+                        content = normalized.content,
+                        thinkingContent = normalized.thinkingContent,
                         messageId = messageId
                     ))
                 }
 
                 is StreamingEvent.Done -> {
+                    val normalized = normalizedAccumulation()
                     android.util.Log.d("ChatRepository", "Stream done, final content: ${accumulatedContent.length} chars")
                     emit(StreamingState.Completed(
-                        finalContent = accumulatedContent.toString(),
-                        finalThinkingContent = accumulatedThinking.toString().takeIf { it.isNotEmpty() },
+                        finalContent = normalized.content,
+                        finalThinkingContent = normalized.thinkingContent,
                         messageId = messageId
                     ))
                 }
 
                 is StreamingEvent.Error -> {
+                    val normalized = normalizedAccumulation()
                     android.util.Log.e("ChatRepository", "Stream error: ${event.message}")
                     emit(StreamingState.Error(
                         error = Exception(event.message),
-                        partialContent = accumulatedContent.toString().takeIf { it.isNotEmpty() },
+                        partialContent = normalized.content.takeIf { it.isNotEmpty() },
                         messageId = messageId
                     ))
                 }

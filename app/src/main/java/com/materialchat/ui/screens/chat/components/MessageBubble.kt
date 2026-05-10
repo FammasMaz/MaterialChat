@@ -108,6 +108,7 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.materialchat.domain.model.Attachment
 import com.materialchat.domain.model.MessageRole
+import com.materialchat.domain.util.normalizeStreamingTextBoundary
 import com.materialchat.ui.screens.chat.MessageUiItem
 import com.materialchat.ui.screens.chat.MessageGroupPosition
 import com.materialchat.ui.screens.chat.SiblingInfo
@@ -173,6 +174,11 @@ fun MessageBubble(
     val isAssistant = message.role == MessageRole.ASSISTANT
     val isSystem = message.role == MessageRole.SYSTEM
     val isImageGenerationMessage = isAssistant && isImageGenerationModel(message.modelName)
+    val normalizedText = remember(message.content, message.thinkingContent) {
+        normalizeStreamingTextBoundary(message.content, message.thinkingContent)
+    }
+    val displayContent = normalizedText.content
+    val displayThinkingContent = normalizedText.thinkingContent
 
     // Context menu state for user messages (long-press floating bar)
     var showUserContextMenu by remember { mutableStateOf(false) }
@@ -336,12 +342,12 @@ fun MessageBubble(
                             alignment = if (isUser) Alignment.TopEnd else Alignment.TopStart
                         )
                         .then(
-                            if (isUser && !isEditing && !message.isStreaming && message.content.isNotEmpty()) {
+                            if (isUser && !isEditing && !message.isStreaming && displayContent.isNotEmpty()) {
                                 Modifier.combinedClickable(
                                     onClick = {},
                                     onLongClick = { haptics.perform(HapticPattern.CLICK, hapticsEnabled); showUserContextMenu = true }
                                 )
-                            } else if (isAssistant && !message.isStreaming && message.content.isNotEmpty() && onBookmarkToggle != null) {
+                            } else if (isAssistant && !message.isStreaming && displayContent.isNotEmpty() && onBookmarkToggle != null) {
                                 // Double-tap to bookmark (hero moment)
                                 Modifier.combinedClickable(
                                     onClick = {},
@@ -361,17 +367,17 @@ fun MessageBubble(
                         )
                 ) {
                     // Thinking content (collapsible for assistant messages)
-                    if (isAssistant && !message.thinkingContent.isNullOrEmpty()) {
+                    if (isAssistant && !displayThinkingContent.isNullOrEmpty()) {
                         ThinkingSection(
-                            thinkingContent = message.thinkingContent,
+                            thinkingContent = displayThinkingContent,
                             textColor = bubbleStyle.textColor,
                             isStreaming = message.isStreaming,
-                            hasContent = message.content.isNotEmpty(),
+                            hasContent = displayContent.isNotEmpty(),
                             thinkingDurationMs = message.thinkingDurationMs,
                             alwaysShowThinking = alwaysShowThinking,
                             hapticsEnabled = hapticsEnabled
                         )
-                        if (message.content.isNotEmpty() || message.hasAttachments) {
+                        if (displayContent.isNotEmpty() || message.hasAttachments) {
                             Spacer(modifier = Modifier.height(8.dp))
                         }
                     }
@@ -382,7 +388,7 @@ fun MessageBubble(
                             attachments = message.attachments,
                             isGeneratedImage = isImageGenerationMessage
                         )
-                        if (message.content.isNotEmpty()) {
+                        if (displayContent.isNotEmpty()) {
                             Spacer(modifier = Modifier.height(8.dp))
                         }
                     }
@@ -395,13 +401,13 @@ fun MessageBubble(
                             onSubmitEdit = onSubmitEdit ?: {},
                             onCancelEdit = onCancelEdit ?: {}
                         )
-                    } else if (isAssistant && !message.isStreaming && message.content.isEmpty() && messageItem.isErrored) {
+                    } else if (isAssistant && !message.isStreaming && displayContent.isEmpty() && messageItem.isErrored) {
                         ErrorStateContent()
-                    } else if (message.isStreaming && message.content.isEmpty() &&
-                        message.thinkingContent.isNullOrEmpty() && isImageGenerationMessage
+                    } else if (message.isStreaming && displayContent.isEmpty() &&
+                        displayThinkingContent.isNullOrEmpty() && isImageGenerationMessage
                     ) {
                         ImageGenerationLoadingCard(modelName = message.modelName)
-                    } else if (message.isStreaming && message.content.isEmpty() && message.thinkingContent.isNullOrEmpty()) {
+                    } else if (message.isStreaming && displayContent.isEmpty() && displayThinkingContent.isNullOrEmpty()) {
                         // Initial streaming — compact M3 loading indicators
                         Row(
                             horizontalArrangement = Arrangement.spacedBy(4.dp),
@@ -414,11 +420,11 @@ fun MessageBubble(
                                 )
                             }
                         }
-                    } else if (message.isStreaming && message.content.isEmpty()) {
+                    } else if (message.isStreaming && displayContent.isEmpty()) {
                         // Thinking active, no main content yet — ThinkingSection handles indicator
                     } else {
                         MessageContent(
-                            content = message.content,
+                            content = displayContent,
                             isStreaming = message.isStreaming,
                             textColor = bubbleStyle.textColor,
                             isAssistant = isAssistant,
@@ -499,7 +505,7 @@ fun MessageBubble(
             }
 
             // Action buttons, model label, and sibling navigation (below the bubble)
-            if (isAssistant && !message.isStreaming && (message.content.isNotEmpty() || message.hasAttachments)) {
+            if (isAssistant && !message.isStreaming && (displayContent.isNotEmpty() || message.hasAttachments)) {
                 Spacer(modifier = Modifier.height(4.dp))
 
                 // Sibling navigation row (model label + arrows)
@@ -533,7 +539,7 @@ fun MessageBubble(
                     ) {
                         if (messageItem.showActions) {
                             MessageActions(
-                                showCopy = message.content.isNotEmpty(),
+                                showCopy = displayContent.isNotEmpty(),
                                 showRegenerate = messageItem.isLastAssistantMessage && !isImageGenerationMessage && onRegenerate != null,
                                 showBranch = onBranch != null,
                                 showRedoWithModel = messageItem.isLastAssistantMessage && !isImageGenerationMessage && onRedoWithModel != null,
@@ -625,7 +631,7 @@ fun MessageBubble(
                         )
                     }
                 }
-            } else if (isAssistant && !message.isStreaming && message.content.isEmpty() && messageItem.isErrored && onRetry != null) {
+            } else if (isAssistant && !message.isStreaming && displayContent.isEmpty() && messageItem.isErrored && onRetry != null) {
                 // Error/empty response: show retry button
                 Spacer(modifier = Modifier.height(8.dp))
                 RetryButton(onRetry = onRetry)
