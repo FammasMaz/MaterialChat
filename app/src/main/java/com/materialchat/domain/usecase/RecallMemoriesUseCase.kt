@@ -13,21 +13,16 @@ class RecallMemoriesUseCase @Inject constructor(
         messages: List<Message>,
         limit: Int = 5
     ): List<RecalledMemory> {
-        val context = messages
-            .takeLast(6)
-            .joinToString(separator = "\n") { message ->
-                "${message.role.name.lowercase()}: ${message.content.take(MAX_CONTEXT_MESSAGE_CHARS)}"
-            }
         val recalled = memoryRepository.recall(
             query = userContent,
-            conversationContext = context,
-            limit = limit
+            conversationContext = "",
+            limit = limit.coerceAtMost(MAX_RECALLED_MEMORIES)
         )
         memoryRepository.markRecalled(recalled.map { it.memory.id })
         return recalled
     }
 
     private companion object {
-        const val MAX_CONTEXT_MESSAGE_CHARS = 500
+        const val MAX_RECALLED_MEMORIES = 3
     }
 }

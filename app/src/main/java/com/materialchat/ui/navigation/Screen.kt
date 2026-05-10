@@ -62,6 +62,7 @@ sealed class Screen(val route: String) {
     data object ArenaLeaderboard : Screen("arena/leaderboard")
     data object PersonaStudio : Screen("personas")
     data object Bookmarks : Screen("bookmarks")
+    data object Memories : Screen("memories")
     data object GeneratedImages : Screen("generated-images")
 
     /**
@@ -119,7 +120,7 @@ sealed class Screen(val route: String) {
         val allScreens: List<Screen>
             get() = listOf(
                 Onboarding, Conversations, Chat, Settings,
-                Arena, ArenaLeaderboard, Insights, PersonaStudio, Bookmarks,
+                Arena, ArenaLeaderboard, Insights, PersonaStudio, Bookmarks, Memories,
                 GeneratedImages, Canvas, MindMap, Workflows, WorkflowBuilder, WorkflowExecution,
                 Explore, InteractionSettings, OnDeviceModels
             )

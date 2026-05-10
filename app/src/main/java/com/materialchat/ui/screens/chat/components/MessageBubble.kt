@@ -1135,7 +1135,15 @@ private fun MemoryDisclosure(
     val haptics = rememberHapticFeedback()
 
     Column(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier
+            .fillMaxWidth()
+            .animateContentSize(
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioNoBouncy,
+                    stiffness = 520f
+                ),
+                alignment = Alignment.TopStart
+            ),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         FlowRow(
@@ -1172,10 +1180,16 @@ private fun MemoryDisclosure(
 
         AnimatedVisibility(
             visible = expanded,
-            enter = fadeIn(animationSpec = spring(dampingRatio = 0.75f, stiffness = 520f)) +
-                expandVertically(animationSpec = spring(dampingRatio = 0.75f, stiffness = 520f)),
-            exit = fadeOut(animationSpec = spring(dampingRatio = 0.9f, stiffness = 700f)) +
-                shrinkVertically(animationSpec = spring(dampingRatio = 0.9f, stiffness = 700f))
+            enter = fadeIn(animationSpec = spring(dampingRatio = 0.85f, stiffness = 460f)) +
+                expandVertically(
+                    expandFrom = Alignment.Top,
+                    animationSpec = spring(dampingRatio = 0.85f, stiffness = 460f)
+                ),
+            exit = fadeOut(animationSpec = spring(dampingRatio = 1.0f, stiffness = 520f)) +
+                shrinkVertically(
+                    shrinkTowards = Alignment.Top,
+                    animationSpec = spring(dampingRatio = 1.0f, stiffness = 520f)
+                )
         ) {
             Surface(
                 shape = RoundedCornerShape(20.dp),

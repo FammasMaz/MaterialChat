@@ -23,4 +23,8 @@ interface MemoryRepository {
     suspend fun getMemories(memoryIds: List<String>): List<Memory>
 
     suspend fun archiveMemory(memoryId: String)
+
+    suspend fun deleteMemory(memoryId: String)
+
+    suspend fun deleteAllMemories()
 }

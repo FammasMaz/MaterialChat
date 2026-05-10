@@ -153,6 +153,7 @@ import com.materialchat.ui.theme.MaterialChatThemePalettes
 fun SettingsScreen(
     onNavigateToInteractionSettings: () -> Unit = {},
     onNavigateToOnDeviceModels: () -> Unit = {},
+    onNavigateToMemories: () -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -409,7 +410,8 @@ fun SettingsScreen(
             onCreateBackup = { showCreateBackupDialog = true },
             onRestoreBackup = { restoreBackupLauncher.launch(arrayOf("application/octet-stream", "*/*")) },
             onNavigateToInteractionSettings = onNavigateToInteractionSettings,
-            onNavigateToOnDeviceModels = onNavigateToOnDeviceModels
+            onNavigateToOnDeviceModels = onNavigateToOnDeviceModels,
+            onNavigateToMemories = onNavigateToMemories
         )
     }
 
@@ -602,7 +604,8 @@ private fun SettingsContent(
     onCreateBackup: () -> Unit,
     onRestoreBackup: () -> Unit,
     onNavigateToInteractionSettings: () -> Unit,
-    onNavigateToOnDeviceModels: () -> Unit
+    onNavigateToOnDeviceModels: () -> Unit,
+    onNavigateToMemories: () -> Unit
 ) {
     Box(
         modifier = Modifier
@@ -671,7 +674,8 @@ private fun SettingsContent(
                     onCreateBackup = onCreateBackup,
                     onRestoreBackup = onRestoreBackup,
                     onNavigateToInteractionSettings = onNavigateToInteractionSettings,
-                    onNavigateToOnDeviceModels = onNavigateToOnDeviceModels
+                    onNavigateToOnDeviceModels = onNavigateToOnDeviceModels,
+                    onNavigateToMemories = onNavigateToMemories
                 )
             }
             is SettingsUiState.Error -> {
@@ -747,7 +751,8 @@ private fun SuccessContent(
     onCreateBackup: () -> Unit,
     onRestoreBackup: () -> Unit,
     onNavigateToInteractionSettings: () -> Unit,
-    onNavigateToOnDeviceModels: () -> Unit
+    onNavigateToOnDeviceModels: () -> Unit,
+    onNavigateToMemories: () -> Unit
 ) {
     LazyColumn(
         modifier = Modifier
@@ -981,6 +986,10 @@ private fun SuccessContent(
         }
 
         item {
+            MemoryManagerSettingsCard(onClick = onNavigateToMemories)
+        }
+
+        item {
             BackupRestoreSection(
                 onCreateBackup = onCreateBackup,
                 onRestoreBackup = onRestoreBackup
@@ -1102,6 +1111,60 @@ private fun AddProviderButton(onClick: () -> Unit) {
         leadingIcon = Icons.Default.Add,
         style = ExpressiveButtonStyle.Outlined
     )
+}
+
+@Composable
+private fun MemoryManagerSettingsCard(onClick: () -> Unit) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(24.dp))
+            .clickable(onClick = onClick),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.secondaryContainer
+        ),
+        shape = RoundedCornerShape(24.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Surface(
+                modifier = Modifier.size(52.dp),
+                shape = RoundedCornerShape(18.dp),
+                color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.12f),
+                contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = Icons.Outlined.Memory,
+                        contentDescription = null,
+                        modifier = Modifier.size(26.dp)
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "Memories",
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer
+                )
+                Text(
+                    text = "Review, search, and delete passive memories saved on this device.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.78f)
+                )
+            }
+            Icon(
+                imageVector = Icons.Outlined.Psychology,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.72f)
+            )
+        }
+    }
 }
 
 @Composable

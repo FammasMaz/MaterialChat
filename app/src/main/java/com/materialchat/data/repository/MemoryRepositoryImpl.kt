@@ -33,16 +33,14 @@ class MemoryRepositoryImpl @Inject constructor(
         conversationContext: String,
         limit: Int
     ): List<RecalledMemory> = withContext(ioDispatcher) {
-        val searchText = listOf(query, conversationContext)
-            .filter { it.isNotBlank() }
-            .joinToString(separator = "\n")
-        val queryTokens = tokenize(searchText)
+        val queryTokens = tokenize(query)
         if (queryTokens.isEmpty()) return@withContext emptyList()
+        val explicitRecall = EXPLICIT_RECALL_REGEX.containsMatchIn(query)
 
         memoryDao.getActiveMemories(limit = MAX_RECALL_POOL)
             .mapNotNull { entity ->
                 val memory = entity.toDomain()
-                val score = scoreMemory(memory, queryTokens)
+                val score = scoreMemory(memory, queryTokens, explicitRecall)
                 if (score >= MIN_RECALL_SCORE) RecalledMemory(memory, score) else null
             }
             .sortedWith(
@@ -110,18 +108,29 @@ class MemoryRepositoryImpl @Inject constructor(
         memoryDao.setArchived(memoryId, archived = true, updatedAt = System.currentTimeMillis())
     }
 
-    private fun scoreMemory(memory: Memory, queryTokens: Set<String>): Double {
+    override suspend fun deleteMemory(memoryId: String) = withContext(ioDispatcher) {
+        memoryDao.deleteById(memoryId)
+    }
+
+    override suspend fun deleteAllMemories() = withContext(ioDispatcher) {
+        memoryDao.deleteAll()
+    }
+
+    private fun scoreMemory(memory: Memory, queryTokens: Set<String>, explicitRecall: Boolean): Double {
         val memoryTokens = tokenize(memory.content)
         if (memoryTokens.isEmpty()) return 0.0
 
         val overlap = memoryTokens.intersect(queryTokens)
         if (overlap.isEmpty()) return 0.0
+        val minOverlap = if (explicitRecall) 1 else 2
+        if (overlap.size < minOverlap) return 0.0
 
         val coverage = overlap.size.toDouble() / memoryTokens.size.coerceAtLeast(1)
         val queryCoverage = overlap.size.toDouble() / queryTokens.size.coerceAtLeast(1)
-        val confidenceBoost = 0.25 * memory.confidence.coerceIn(0f, 1f)
-        val recallBoost = ln((memory.recallCount + 1).toDouble()) * 0.03
-        return (coverage * 0.55) + (queryCoverage * 0.30) + confidenceBoost + recallBoost
+        val confidenceBoost = 0.10 * memory.confidence.coerceIn(0f, 1f)
+        val recallBoost = ln((memory.recallCount + 1).toDouble()) * 0.02
+        val explicitBoost = if (explicitRecall) 0.12 else 0.0
+        return (coverage * 0.50) + (queryCoverage * 0.25) + (overlap.size * 0.08) + confidenceBoost + recallBoost + explicitBoost
     }
 
     private fun tokenize(text: String): Set<String> {
@@ -145,17 +154,24 @@ class MemoryRepositoryImpl @Inject constructor(
 
     private companion object {
         const val MAX_RECALL_POOL = 500
-        const val MIN_RECALL_SCORE = 0.28
+        const val MIN_RECALL_SCORE = 0.58
         const val MAX_SAVE_CANDIDATES = 5
         const val MIN_MEMORY_LENGTH = 12
         const val MAX_MEMORY_LENGTH = 280
         const val MIN_NORMALIZED_LENGTH = 10
 
+        val EXPLICIT_RECALL_REGEX = Regex(
+            "\\b(remember|memory|memories|what do you know about me|what have i told you|my preference|my preferences|previously|before)\\b",
+            RegexOption.IGNORE_CASE
+        )
+
         val STOP_WORDS = setOf(
             "the", "and", "for", "that", "this", "with", "you", "your", "are", "was",
             "were", "have", "has", "had", "but", "not", "can", "could", "would", "should",
             "about", "from", "into", "onto", "over", "under", "then", "than", "them", "they",
-            "our", "out", "all", "any", "just", "like", "what", "when", "where", "why", "how"
+            "our", "out", "all", "any", "just", "like", "what", "when", "where", "why", "how",
+            "app", "chat", "model", "models", "make", "made", "using", "use", "need", "needs",
+            "want", "wants", "memory", "memories", "remember", "thing", "stuff", "screen", "system"
         )
     }
 }

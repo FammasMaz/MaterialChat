@@ -58,6 +58,12 @@ interface MemoryDao {
     @Query("UPDATE memories SET is_archived = :archived, updated_at = :updatedAt WHERE id = :id")
     suspend fun setArchived(id: String, archived: Boolean, updatedAt: Long)
 
+    @Query("DELETE FROM memories WHERE id = :id")
+    suspend fun deleteById(id: String)
+
+    @Query("DELETE FROM memories")
+    suspend fun deleteAll()
+
     @Query("SELECT COUNT(*) FROM memories WHERE is_archived = 0")
     suspend fun activeCount(): Int
 }

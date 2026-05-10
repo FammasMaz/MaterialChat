@@ -27,6 +27,7 @@ import com.materialchat.ui.screens.conversations.ConversationsScreen
 import com.materialchat.ui.screens.explore.ExploreScreen
 import com.materialchat.ui.screens.generatedimages.GeneratedImagesScreen
 import com.materialchat.ui.screens.insights.InsightsScreen
+import com.materialchat.ui.screens.memories.MemoriesScreen
 import com.materialchat.ui.screens.mindmap.MindMapScreen
 import com.materialchat.ui.screens.onboarding.OnboardingScreen
 import com.materialchat.ui.screens.personas.PersonaStudioScreen
@@ -217,6 +218,9 @@ fun MaterialChatNavHost(
                     },
                     onNavigateToOnDeviceModels = {
                         navController.navigate(Screen.OnDeviceModels.route)
+                    },
+                    onNavigateToMemories = {
+                        navController.navigate(Screen.Memories.route)
                     }
                 )
             }
@@ -271,6 +275,12 @@ fun MaterialChatNavHost(
                     onNavigateToConversation = { conversationId ->
                         navController.navigate(Screen.Chat.createRoute(conversationId))
                     }
+                )
+            }
+
+            composable(route = Screen.Memories.route) {
+                MemoriesScreen(
+                    onNavigateBack = { navController.popBackStack() }
                 )
             }
 
