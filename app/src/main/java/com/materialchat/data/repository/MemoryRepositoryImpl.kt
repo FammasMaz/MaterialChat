@@ -435,15 +435,15 @@ class MemoryRepositoryImpl @Inject constructor(
         const val DAY_MS = 86_400_000L
 
         val GENERAL_RECALL_REGEX = Regex(
-            "\\b(remember|memory|memories|what do you know about me|what have i told you|what do you know|previously|before)\\b",
+            "\\b(remember|memory|memories|what do you know about me|what have i told you|what do you know|do you know (?:about me|my|what i|what my|who i|where i|which)|previously|before)\\b",
             RegexOption.IGNORE_CASE
         )
         val PREFERENCE_RECALL_REGEX = Regex(
-            "\\b(my preference|my preferences|do i prefer|what do i prefer|what i prefer|what do i like|things i like|my style|my tastes?)\\b",
+            "\\b(my preference|my preferences|do i prefer|what do i prefer|what i prefer|what do i like|things i like|my style|my tastes?|my favou?rite|what(?:'s| is)? my favou?rite)\\b",
             RegexOption.IGNORE_CASE
         )
         val PERSONAL_RECALL_REGEX = Regex(
-            "\\b(about me|who am i|my name|where do i live|where i live|what do i do|my job|my role)\\b",
+            "\\b(about me|who am i|my name|where do i live|where i live|what do i do|my job|my role|my phone|my device|what [a-z0-9 ]{0,40}do i have|which [a-z0-9 ]{0,40}do i have|have i told you)\\b",
             RegexOption.IGNORE_CASE
         )
         val PROJECT_RECALL_REGEX = Regex(
@@ -486,6 +486,13 @@ class MemoryRepositoryImpl @Inject constructor(
             "theme" to setOf("mode", "style", "appearance"),
             "mode" to setOf("theme", "style", "appearance"),
             "style" to setOf("theme", "appearance"),
+            "favorite" to setOf("favourite", "prefer", "prefers", "preference", "like", "likes"),
+            "favourite" to setOf("favorite", "prefer", "prefers", "preference", "like", "likes"),
+            "prefer" to setOf("favorite", "favourite", "prefers", "preference", "like", "likes"),
+            "prefers" to setOf("favorite", "favourite", "prefer", "preference", "like", "likes"),
+            "color" to setOf("colour", "colors", "colours"),
+            "colors" to setOf("color", "colour", "colours"),
+            "colour" to setOf("color", "colors", "colours"),
             "stack" to setOf("tech", "technology", "framework", "language", "kotlin", "android", "compose"),
             "tech" to setOf("stack", "technology", "framework", "language"),
             "technology" to setOf("tech", "stack", "framework", "language"),
@@ -495,6 +502,11 @@ class MemoryRepositoryImpl @Inject constructor(
             "compose" to setOf("android", "kotlin", "jetpack", "ui"),
             "jetpack" to setOf("android", "compose", "kotlin"),
             "kotlin" to setOf("android", "compose", "language", "stack"),
+            "phone" to setOf("device", "mobile", "android", "iphone", "pixel"),
+            "device" to setOf("phone", "mobile", "android", "iphone", "pixel"),
+            "mobile" to setOf("phone", "device", "android", "iphone", "pixel"),
+            "pixel" to setOf("phone", "device", "android", "mobile"),
+            "iphone" to setOf("phone", "device", "mobile"),
             "discuss" to setOf("talked", "conversation", "mentioned"),
             "discussed" to setOf("talked", "conversation", "mentioned"),
             "talked" to setOf("discussed", "conversation", "mentioned"),

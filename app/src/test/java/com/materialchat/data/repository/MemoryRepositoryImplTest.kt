@@ -74,6 +74,38 @@ class MemoryRepositoryImplTest {
     }
 
     @Test
+    fun `recall - personal possession question can recall paraphrased personal memory`() = runTest {
+        repository = MemoryRepositoryImpl(memoryDao, StandardTestDispatcher(testScheduler))
+        coEvery { memoryDao.getActiveMemories(any()) } returns listOf(
+            memory(
+                content = "User owns a Pixel 9 Pro",
+                kind = MemoryKind.PERSONAL_FACT,
+                confidence = 0.82f
+            ).toEntity()
+        )
+
+        val recalled = repository.recall(query = "What phone do I have?", limit = 3)
+
+        assertEquals("User owns a Pixel 9 Pro", recalled.single().memory.content)
+    }
+
+    @Test
+    fun `recall - favorite question can recall paraphrased preference memory`() = runTest {
+        repository = MemoryRepositoryImpl(memoryDao, StandardTestDispatcher(testScheduler))
+        coEvery { memoryDao.getActiveMemories(any()) } returns listOf(
+            memory(
+                content = "User prefers blue accent colors",
+                kind = MemoryKind.USER_PREFERENCE,
+                confidence = 0.82f
+            ).toEntity()
+        )
+
+        val recalled = repository.recall(query = "What is my favorite color?", limit = 3)
+
+        assertEquals("User prefers blue accent colors", recalled.single().memory.content)
+    }
+
+    @Test
     fun `recall - snippet drawer helps explicit discussion recall`() = runTest {
         repository = MemoryRepositoryImpl(memoryDao, StandardTestDispatcher(testScheduler))
         coEvery { memoryDao.getActiveMemories(any()) } returns emptyList()
@@ -85,6 +117,22 @@ class MemoryRepositoryImplTest {
 
         assertEquals(RecalledMemorySource.VERBATIM_SNIPPET, recalled.single().source)
         assertTrue(recalled.single().memory.content.contains("patch releases"))
+    }
+
+    @Test
+    fun `recall - generic do you know query stays quiet`() = runTest {
+        repository = MemoryRepositoryImpl(memoryDao, StandardTestDispatcher(testScheduler))
+        coEvery { memoryDao.getActiveMemories(any()) } returns listOf(
+            memory(
+                content = "User lives in Berlin",
+                kind = MemoryKind.PERSONAL_FACT,
+                confidence = 0.84f
+            ).toEntity()
+        )
+
+        val recalled = repository.recall(query = "Do you know how to fix this crash?", limit = 3)
+
+        assertTrue(recalled.isEmpty())
     }
 
     @Test

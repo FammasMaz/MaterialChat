@@ -462,13 +462,14 @@ class SendMessageUseCase @Inject constructor(
             if (extracted.isNotEmpty()) {
                 append("\n\n")
                 append("Passive memory context from this device. These are local, user-visible memories that may be relevant. ")
-                append("Use them naturally if helpful; do not say you searched memory unless the user asks.\n")
+                append("If the user asks what you remember, what you know about them, or asks about a saved fact/preference, answer from these entries directly. ")
+                append("Do not claim you have no memory when a relevant entry is listed; do not say you searched memory unless the user asks.\n")
                 extracted.forEach { recalled -> append("- ${recalled.memory.content}\n") }
             }
             if (snippets.isNotEmpty()) {
                 append("\n")
                 append("Relevant prior chat snippets from this device. Treat these as source excerpts, not guaranteed facts. ")
-                append("Use only if they directly help the current request.\n")
+                append("If the user asks about an earlier discussion, answer from these snippets when they directly help.\n")
                 snippets.forEach { recalled -> append("- ${recalled.memory.content.take(MAX_SNIPPET_PROMPT_CHARS)}\n") }
             }
         }.trimEnd()
