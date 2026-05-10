@@ -222,6 +222,12 @@ interface MessageDao {
     suspend fun updateWebSearchMetadata(messageId: String, metadata: String?)
 
     /**
+     * Update the passive memory metadata for a message.
+     */
+    @Query("UPDATE messages SET memory_metadata = :metadata WHERE id = :messageId")
+    suspend fun updateMemoryMetadata(messageId: String, metadata: String?)
+
+    /**
      * Search messages by content, excluding system messages.
      * Returns messages grouped by conversation.
      *

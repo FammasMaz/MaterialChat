@@ -451,6 +451,10 @@ class ConversationRepositoryImpl @Inject constructor(
         messageDao.updateWebSearchMetadata(messageId, metadata)
     }
 
+    override suspend fun updateMessageMemoryMetadata(messageId: String, metadata: String?) {
+        messageDao.updateMemoryMetadata(messageId, metadata)
+    }
+
     private suspend fun resolveThreadRootId(conversationId: String): String? {
         val conversation = conversationDao.getConversationById(conversationId) ?: return null
         return conversation.parentId ?: conversation.id

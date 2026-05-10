@@ -4,6 +4,7 @@ import com.materialchat.data.repository.ArenaRepositoryImpl
 import com.materialchat.data.repository.BookmarkRepositoryImpl
 import com.materialchat.data.repository.ChatRepositoryImpl
 import com.materialchat.data.repository.ConversationRepositoryImpl
+import com.materialchat.data.repository.MemoryRepositoryImpl
 import com.materialchat.data.repository.PersonaRepositoryImpl
 import com.materialchat.data.repository.ProviderRepositoryImpl
 import com.materialchat.data.repository.WorkflowRepositoryImpl
@@ -13,6 +14,7 @@ import com.materialchat.domain.repository.ChatRepository
 import com.materialchat.domain.repository.ConversationRepository
 import com.materialchat.data.localmodel.LocalModelRepositoryImpl
 import com.materialchat.domain.repository.LocalModelRepository
+import com.materialchat.domain.repository.MemoryRepository
 import com.materialchat.domain.repository.PersonaRepository
 import com.materialchat.domain.repository.ProviderRepository
 import com.materialchat.data.repository.WebSearchRepositoryImpl
@@ -85,4 +87,10 @@ abstract class RepositoryModule {
     abstract fun bindLocalModelRepository(
         impl: LocalModelRepositoryImpl
     ): LocalModelRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindMemoryRepository(
+        impl: MemoryRepositoryImpl
+    ): MemoryRepository
 }

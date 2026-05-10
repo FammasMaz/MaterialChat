@@ -10,6 +10,7 @@ import com.materialchat.data.local.database.dao.ArenaDao
 import com.materialchat.data.local.database.dao.BookmarkDao
 import com.materialchat.data.local.database.dao.ConversationDao
 import com.materialchat.data.local.database.dao.MessageDao
+import com.materialchat.data.local.database.dao.MemoryDao
 import com.materialchat.data.local.database.dao.PersonaDao
 import com.materialchat.data.local.database.dao.ProviderDao
 import com.materialchat.data.local.database.dao.WorkflowDao
@@ -17,6 +18,7 @@ import com.materialchat.data.local.database.entity.ArenaBattleEntity
 import com.materialchat.data.local.database.entity.BookmarkEntity
 import com.materialchat.data.local.database.entity.ConversationEntity
 import com.materialchat.data.local.database.entity.MessageEntity
+import com.materialchat.data.local.database.entity.MemoryEntity
 import com.materialchat.data.local.database.entity.ModelRatingEntity
 import com.materialchat.data.local.database.entity.PersonaEntity
 import com.materialchat.data.local.database.entity.ProviderEntity
@@ -47,9 +49,10 @@ import com.materialchat.data.local.database.entity.WorkflowStepEntity
         PersonaEntity::class,
         BookmarkEntity::class,
         WorkflowEntity::class,
-        WorkflowStepEntity::class
+        WorkflowStepEntity::class,
+        MemoryEntity::class
     ],
-    version = 17,
+    version = 18,
     exportSchema = true
 )
 abstract class MaterialChatDatabase : RoomDatabase() {
@@ -68,6 +71,11 @@ abstract class MaterialChatDatabase : RoomDatabase() {
      * DAO for message operations.
      */
     abstract fun messageDao(): MessageDao
+
+    /**
+     * DAO for passive memory operations.
+     */
+    abstract fun memoryDao(): MemoryDao
 
     /**
      * DAO for arena battle and model rating operations.
@@ -368,6 +376,39 @@ abstract class MaterialChatDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * Migration from version 17 to 18: Add passive memories and message-level
+         * metadata that discloses when memories were recalled or saved.
+         */
+        private val MIGRATION_17_18 = object : Migration(17, 18) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE messages ADD COLUMN memory_metadata TEXT DEFAULT NULL")
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS memories (
+                        id TEXT NOT NULL PRIMARY KEY,
+                        content TEXT NOT NULL,
+                        normalized_content TEXT NOT NULL,
+                        kind TEXT NOT NULL,
+                        confidence REAL NOT NULL,
+                        source_conversation_id TEXT DEFAULT NULL,
+                        source_message_id TEXT DEFAULT NULL,
+                        created_at INTEGER NOT NULL,
+                        updated_at INTEGER NOT NULL,
+                        last_recalled_at INTEGER DEFAULT NULL,
+                        recall_count INTEGER NOT NULL DEFAULT 0,
+                        is_archived INTEGER NOT NULL DEFAULT 0
+                    )
+                """)
+                db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_memories_normalized_content ON memories(normalized_content)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_memories_kind ON memories(kind)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_memories_updated_at ON memories(updated_at)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_memories_last_recalled_at ON memories(last_recalled_at)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_memories_source_conversation_id ON memories(source_conversation_id)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_memories_source_message_id ON memories(source_message_id)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_memories_is_archived ON memories(is_archived)")
+            }
+        }
+
         internal val MIGRATIONS = arrayOf(
             MIGRATION_2_3,
             MIGRATION_3_4,
@@ -383,7 +424,8 @@ abstract class MaterialChatDatabase : RoomDatabase() {
             MIGRATION_13_14,
             MIGRATION_14_15,
             MIGRATION_15_16,
-            MIGRATION_16_17
+            MIGRATION_16_17,
+            MIGRATION_17_18
         )
 
         /**

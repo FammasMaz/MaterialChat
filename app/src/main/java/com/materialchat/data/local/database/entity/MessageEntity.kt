@@ -65,6 +65,9 @@ data class MessageEntity(
     @ColumnInfo(name = "web_search_metadata")
     val webSearchMetadata: String? = null,
 
+    @ColumnInfo(name = "memory_metadata")
+    val memoryMetadata: String? = null,
+
     @ColumnInfo(name = "created_at")
     val createdAt: Long
 )

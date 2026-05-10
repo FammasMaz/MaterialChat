@@ -27,6 +27,7 @@ data class Message(
     val modelName: String? = null,
     val fusionMetadata: String? = null,
     val webSearchMetadata: String? = null,
+    val memoryMetadata: String? = null,
     val createdAt: Long = System.currentTimeMillis()
 ) {
     /**

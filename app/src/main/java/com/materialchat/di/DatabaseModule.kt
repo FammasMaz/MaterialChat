@@ -7,6 +7,7 @@ import com.materialchat.data.local.database.dao.ArenaDao
 import com.materialchat.data.local.database.dao.BookmarkDao
 import com.materialchat.data.local.database.dao.ConversationDao
 import com.materialchat.data.local.database.dao.MessageDao
+import com.materialchat.data.local.database.dao.MemoryDao
 import com.materialchat.data.local.database.dao.PersonaDao
 import com.materialchat.data.local.database.dao.ProviderDao
 import com.materialchat.data.local.database.dao.WorkflowDao
@@ -83,6 +84,15 @@ object DatabaseModule {
     @Singleton
     fun provideMessageDao(database: MaterialChatDatabase): MessageDao {
         return database.messageDao()
+    }
+
+    /**
+     * Provides the MemoryDao for passive memory operations.
+     */
+    @Provides
+    @Singleton
+    fun provideMemoryDao(database: MaterialChatDatabase): MemoryDao {
+        return database.memoryDao()
     }
 
     /**

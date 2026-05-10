@@ -107,6 +107,8 @@ import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.materialchat.domain.model.Attachment
+import com.materialchat.domain.model.MemoryMessageMetadata
+import com.materialchat.domain.model.MemoryReference
 import com.materialchat.domain.model.MessageRole
 import com.materialchat.domain.util.normalizeStreamingTextBoundary
 import com.materialchat.ui.screens.chat.MessageUiItem
@@ -222,6 +224,22 @@ fun MessageBubble(
                     null
                 }
             }
+        }
+    }
+
+    val memoryMeta = remember(message.memoryMetadata, isAssistant, message.isStreaming) {
+        if (!isAssistant || message.isStreaming) {
+            null
+        } else {
+            message.memoryMetadata?.let { json ->
+                try {
+                    kotlinx.serialization.json.Json {
+                        ignoreUnknownKeys = true
+                    }.decodeFromString<MemoryMessageMetadata>(json)
+                } catch (_: Exception) {
+                    null
+                }
+            }?.takeIf { it.hasAny }
         }
     }
 
@@ -432,6 +450,14 @@ fun MessageBubble(
                             hapticsEnabled = hapticsEnabled
                         )
 
+                    }
+
+                    if (memoryMeta != null) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        MemoryDisclosure(
+                            metadata = memoryMeta,
+                            hapticsEnabled = hapticsEnabled
+                        )
                     }
 
                     if (webSearchMeta != null && webSearchMeta.results.isNotEmpty()) {
@@ -1098,6 +1124,180 @@ private fun ModelSiblingRow(
  * Grid layout for displaying image attachments in a message.
  * Uses FlowRow for responsive layout that wraps images.
  */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun MemoryDisclosure(
+    metadata: MemoryMessageMetadata,
+    hapticsEnabled: Boolean,
+    modifier: Modifier = Modifier
+) {
+    var expanded by remember { mutableStateOf(false) }
+    val haptics = rememberHapticFeedback()
+
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            if (metadata.saved.isNotEmpty()) {
+                MemoryIndicatorChip(
+                    label = if (metadata.saved.size == 1) "Memory saved" else "Memory saved · ${metadata.saved.size}",
+                    icon = Icons.Filled.AutoAwesome,
+                    containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
+                    expanded = expanded,
+                    onClick = {
+                        haptics.perform(HapticPattern.CLICK, hapticsEnabled)
+                        expanded = !expanded
+                    }
+                )
+            }
+            if (metadata.recalled.isNotEmpty()) {
+                MemoryIndicatorChip(
+                    label = if (metadata.recalled.size == 1) "Memory used" else "Memory used · ${metadata.recalled.size}",
+                    icon = Icons.Filled.Bookmark,
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                    expanded = expanded,
+                    onClick = {
+                        haptics.perform(HapticPattern.CLICK, hapticsEnabled)
+                        expanded = !expanded
+                    }
+                )
+            }
+        }
+
+        AnimatedVisibility(
+            visible = expanded,
+            enter = fadeIn(animationSpec = spring(dampingRatio = 0.75f, stiffness = 520f)) +
+                expandVertically(animationSpec = spring(dampingRatio = 0.75f, stiffness = 520f)),
+            exit = fadeOut(animationSpec = spring(dampingRatio = 0.9f, stiffness = 700f)) +
+                shrinkVertically(animationSpec = spring(dampingRatio = 0.9f, stiffness = 700f))
+        ) {
+            Surface(
+                shape = RoundedCornerShape(20.dp),
+                color = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.86f),
+                contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                tonalElevation = 2.dp
+            ) {
+                Column(
+                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    if (metadata.saved.isNotEmpty()) {
+                        MemoryReferenceList(
+                            title = "Saved",
+                            memories = metadata.saved
+                        )
+                    }
+                    if (metadata.recalled.isNotEmpty()) {
+                        MemoryReferenceList(
+                            title = "Used",
+                            memories = metadata.recalled
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun MemoryIndicatorChip(
+    label: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    containerColor: Color,
+    contentColor: Color,
+    expanded: Boolean,
+    onClick: () -> Unit
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val cornerRadius by animateDpAsState(
+        targetValue = when {
+            isPressed -> 14.dp
+            expanded -> 18.dp
+            else -> 24.dp
+        },
+        animationSpec = com.materialchat.ui.theme.ExpressiveMotion.Spatial.shapeMorph(),
+        label = "memoryChipShape"
+    )
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.96f else 1f,
+        animationSpec = com.materialchat.ui.theme.ExpressiveMotion.Spatial.scale(),
+        label = "memoryChipScale"
+    )
+
+    Surface(
+        onClick = onClick,
+        modifier = Modifier
+            .height(48.dp)
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            },
+        shape = RoundedCornerShape(cornerRadius),
+        color = containerColor,
+        contentColor = contentColor,
+        tonalElevation = 2.dp,
+        interactionSource = interactionSource
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 14.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                modifier = Modifier.size(18.dp)
+            )
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelLarge,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Icon(
+                imageVector = if (expanded) Icons.Filled.KeyboardArrowUp else Icons.Filled.KeyboardArrowDown,
+                contentDescription = if (expanded) "Hide memory details" else "Show memory details",
+                modifier = Modifier.size(18.dp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun MemoryReferenceList(
+    title: String,
+    memories: List<MemoryReference>
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.72f)
+        )
+        memories.take(3).forEach { memory ->
+            Text(
+                text = "• ${memory.label}",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        if (memories.size > 3) {
+            Text(
+                text = "+${memories.size - 3} more",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.72f)
+            )
+        }
+    }
+}
+
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun AttachmentImagesGrid(

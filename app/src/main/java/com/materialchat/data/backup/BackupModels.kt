@@ -28,7 +28,8 @@ data class BackupPayload(
     val personas: List<BackupPersona>,
     val conversations: List<BackupConversation>,
     val messages: List<BackupMessage>,
-    val bookmarks: List<BackupBookmark>
+    val bookmarks: List<BackupBookmark>,
+    val memories: List<BackupMemory> = emptyList()
 )
 
 @Serializable
@@ -87,6 +88,7 @@ data class BackupMessage(
     val modelName: String?,
     val fusionMetadata: String?,
     val webSearchMetadata: String?,
+    val memoryMetadata: String? = null,
     val createdAt: Long
 )
 
@@ -101,16 +103,34 @@ data class BackupBookmark(
     val createdAt: Long
 )
 
+@Serializable
+data class BackupMemory(
+    val id: String,
+    val content: String,
+    val normalizedContent: String,
+    val kind: String,
+    val confidence: Float,
+    val sourceConversationId: String?,
+    val sourceMessageId: String?,
+    val createdAt: Long,
+    val updatedAt: Long,
+    val lastRecalledAt: Long?,
+    val recallCount: Int,
+    val isArchived: Boolean
+)
+
 data class BackupSummary(
     val conversations: Int,
     val messages: Int,
     val bookmarks: Int,
     val customPersonas: Int,
-    val providers: Int
+    val providers: Int,
+    val memories: Int = 0
 ) {
     fun label(): String {
-        return "$conversations conversations, $messages messages, " +
+        val base = "$conversations conversations, $messages messages, " +
             "$bookmarks bookmarks, $customPersonas personas, $providers providers"
+        return if (memories > 0) "$base, $memories memories" else base
     }
 }
 

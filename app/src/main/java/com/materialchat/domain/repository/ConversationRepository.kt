@@ -306,4 +306,12 @@ interface ConversationRepository {
      * @param metadata The serialized web search metadata JSON string
      */
     suspend fun updateMessageWebSearchMetadata(messageId: String, metadata: String?)
+
+    /**
+     * Updates passive memory metadata for a specific message.
+     *
+     * @param messageId The ID of the message
+     * @param metadata The serialized memory metadata JSON string
+     */
+    suspend fun updateMessageMemoryMetadata(messageId: String, metadata: String?)
 }

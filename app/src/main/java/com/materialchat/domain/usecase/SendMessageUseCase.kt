@@ -5,11 +5,15 @@ import com.materialchat.data.local.preferences.AppPreferences
 import com.materialchat.di.ApplicationScope
 import com.materialchat.domain.model.Attachment
 import com.materialchat.domain.model.Conversation
+import com.materialchat.domain.model.Memory
+import com.materialchat.domain.model.MemoryMessageMetadata
 import com.materialchat.domain.model.Message
 import com.materialchat.domain.model.MessageRole
-import com.materialchat.domain.model.ReasoningEffort
 import com.materialchat.domain.model.Provider
+import com.materialchat.domain.model.ReasoningEffort
+import com.materialchat.domain.model.RecalledMemory
 import com.materialchat.domain.model.StreamingState
+import com.materialchat.domain.model.toReference
 import com.materialchat.domain.model.WebSearchConfig
 import com.materialchat.domain.repository.ChatRepository
 import com.materialchat.domain.repository.ConversationRepository
@@ -53,6 +57,8 @@ class SendMessageUseCase @Inject constructor(
     private val localModelRepository: LocalModelRepository,
     private val appPreferences: AppPreferences,
     private val generateConversationTitleUseCase: GenerateConversationTitleUseCase,
+    private val recallMemoriesUseCase: RecallMemoriesUseCase,
+    private val extractMemoriesUseCase: ExtractMemoriesUseCase,
     @ApplicationScope private val applicationScope: CoroutineScope,
     @ApplicationContext private val context: Context
 ) {
@@ -183,14 +189,29 @@ class SendMessageUseCase @Inject constructor(
         // IMPORTANT: Get messages BEFORE adding the placeholder to avoid sending empty assistant message
         val messages = conversationRepository.getMessages(conversationId)
 
+        val recalledMemories = if (conversation.isEphemeral) {
+            emptyList()
+        } else {
+            runCatching {
+                recallMemoriesUseCase(
+                    userContent = userContent,
+                    messages = messages
+                )
+            }.getOrDefault(emptyList())
+        }
+
         val webSearchContext = resolveWebSearchPromptContext(
             basePrompt = effectiveSystemPrompt,
             messages = messages,
             webSearchConfig = webSearchConfig,
             webSearchRepository = webSearchRepository
         )
-        val requestSystemPrompt = appendImageToolInstructions(
+        val memoryAwarePrompt = appendRecalledMemories(
             basePrompt = webSearchContext.systemPrompt,
+            recalledMemories = recalledMemories
+        )
+        val requestSystemPrompt = appendImageToolInstructions(
+            basePrompt = memoryAwarePrompt,
             modelName = conversation.modelName
         )
 
@@ -204,8 +225,15 @@ class SendMessageUseCase @Inject constructor(
         )
         val assistantMessageId = conversationRepository.addMessage(assistantMessage)
         var webSearchMetadataJson = webSearchContext.metadata?.let { Json.encodeToString(it) }
+        var memoryMetadataJson = encodeMemoryMetadata(recalledMemories, emptyList())
         webSearchMetadataJson?.let { metadataJson ->
             conversationRepository.updateMessageWebSearchMetadata(
+                assistantMessageId,
+                metadataJson
+            )
+        }
+        memoryMetadataJson?.let { metadataJson ->
+            conversationRepository.updateMessageMemoryMetadata(
                 assistantMessageId,
                 metadataJson
             )
@@ -217,6 +245,7 @@ class SendMessageUseCase @Inject constructor(
         var accumulatedContent = ""
         var accumulatedThinking: String? = null
         var hasError = false
+        var memoryExtractionScheduled = false
         val streamStartTime = System.currentTimeMillis()
         var thinkingEndTime: Long? = null
         var firstContentAtMs: Long? = null
@@ -321,7 +350,8 @@ class SendMessageUseCase @Inject constructor(
                                     isStreaming = false,
                                     totalDurationMs = totalDurationMs,
                                     modelName = imageModel,
-                                    webSearchMetadata = webSearchMetadataJson
+                                    webSearchMetadata = webSearchMetadataJson,
+                                    memoryMetadata = memoryMetadataJson
                                 )
                             )
                         }.onFailure { error ->
@@ -332,7 +362,8 @@ class SendMessageUseCase @Inject constructor(
                                     isStreaming = false,
                                     totalDurationMs = totalDurationMs,
                                     modelName = imageModel,
-                                    webSearchMetadata = webSearchMetadataJson
+                                    webSearchMetadata = webSearchMetadataJson,
+                                    memoryMetadata = memoryMetadataJson
                                 )
                             )
                         }
@@ -350,6 +381,23 @@ class SendMessageUseCase @Inject constructor(
                         }
                         conversationRepository.setMessageStreaming(assistantMessageId, false)
                         conversationRepository.updateMessageDurations(assistantMessageId, thinkingDurationMs, totalDurationMs)
+
+                        if (!conversation.isEphemeral && !memoryExtractionScheduled && completedContent.isNotBlank()) {
+                            memoryExtractionScheduled = true
+                            schedulePassiveMemoryExtraction(
+                                provider = provider,
+                                model = conversation.modelName,
+                                conversationId = conversationId,
+                                sourceMessageId = userMessage.id,
+                                assistantMessageId = assistantMessageId,
+                                userContent = userContent,
+                                assistantResponse = completedContent,
+                                recentMessages = messages,
+                                recalledMemories = recalledMemories
+                            ) { updatedMetadata ->
+                                memoryMetadataJson = updatedMetadata
+                            }
+                        }
                     }
 
                 }
@@ -395,6 +443,68 @@ class SendMessageUseCase @Inject constructor(
 
         // Update conversation title if this is the first message
         updateConversationTitleIfNeeded(conversation, userContent, accumulatedContent)
+    }
+
+    private fun appendRecalledMemories(
+        basePrompt: String,
+        recalledMemories: List<RecalledMemory>
+    ): String {
+        if (recalledMemories.isEmpty()) return basePrompt
+        val memoryBlock = recalledMemories
+            .take(MAX_RECALLED_MEMORIES_IN_PROMPT)
+            .joinToString(separator = "\n") { recalled ->
+                "- ${recalled.memory.content}"
+            }
+        return buildString {
+            append(basePrompt)
+            append("\n\n")
+            append("Passive memory context from this device. These are local, user-visible memories that may be relevant. ")
+            append("Use them naturally if helpful; do not say you searched memory unless the user asks.\n")
+            append(memoryBlock)
+        }
+    }
+
+    private fun encodeMemoryMetadata(
+        recalledMemories: List<RecalledMemory>,
+        savedMemories: List<Memory>
+    ): String? {
+        val metadata = MemoryMessageMetadata(
+            recalled = recalledMemories.map { it.memory.toReference() },
+            saved = savedMemories.map { it.toReference() }
+        )
+        if (!metadata.hasAny) return null
+        return Json.encodeToString(metadata)
+    }
+
+    private fun schedulePassiveMemoryExtraction(
+        provider: Provider,
+        model: String,
+        conversationId: String,
+        sourceMessageId: String,
+        assistantMessageId: String,
+        userContent: String,
+        assistantResponse: String,
+        recentMessages: List<Message>,
+        recalledMemories: List<RecalledMemory>,
+        onMetadataUpdated: (String?) -> Unit
+    ) {
+        applicationScope.launch {
+            runCatching {
+                extractMemoriesUseCase(
+                    provider = provider,
+                    model = model,
+                    conversationId = conversationId,
+                    sourceMessageId = sourceMessageId,
+                    userContent = userContent,
+                    assistantResponse = assistantResponse,
+                    recentMessages = recentMessages
+                )
+            }.onSuccess { savedMemories ->
+                val metadataJson = encodeMemoryMetadata(recalledMemories, savedMemories)
+                onMetadataUpdated(metadataJson)
+                conversationRepository.updateMessageMemoryMetadata(assistantMessageId, metadataJson)
+            }
+        }
     }
 
     /**
@@ -776,6 +886,7 @@ MaterialChat image generation tool:
         private const val MAX_IMAGE_PROMPT_HISTORY_MESSAGES = 12
         private const val MAX_IMAGE_PROMPT_MESSAGE_CHARS = 700
         private const val MAX_CONTEXTUAL_IMAGE_PROMPT_CHARS = 6000
+        private const val MAX_RECALLED_MEMORIES_IN_PROMPT = 5
 
         val GARBAGE_PATTERNS = listOf(
             "i don't", "i can't", "i notice", "i apologize", "i'm sorry",

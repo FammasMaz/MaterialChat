@@ -7,11 +7,13 @@ import com.materialchat.data.local.database.MaterialChatDatabase
 import com.materialchat.data.local.database.dao.BookmarkDao
 import com.materialchat.data.local.database.dao.ConversationDao
 import com.materialchat.data.local.database.dao.MessageDao
+import com.materialchat.data.local.database.dao.MemoryDao
 import com.materialchat.data.local.database.dao.PersonaDao
 import com.materialchat.data.local.database.dao.ProviderDao
 import com.materialchat.data.local.database.entity.BookmarkEntity
 import com.materialchat.data.local.database.entity.ConversationEntity
 import com.materialchat.data.local.database.entity.MessageEntity
+import com.materialchat.data.local.database.entity.MemoryEntity
 import com.materialchat.data.local.database.entity.PersonaEntity
 import com.materialchat.data.local.database.entity.ProviderEntity
 import com.materialchat.di.IoDispatcher
@@ -43,6 +45,7 @@ class BackupRepository @Inject constructor(
     private val conversationDao: ConversationDao,
     private val messageDao: MessageDao,
     private val bookmarkDao: BookmarkDao,
+    private val memoryDao: MemoryDao,
     private val json: Json,
     @param:IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) {
@@ -112,7 +115,8 @@ class BackupRepository @Inject constructor(
                 .map { it.toBackup() },
             conversations = conversations.map { it.toBackup() },
             messages = messages.map { it.toBackup() },
-            bookmarks = bookmarks.map { it.toBackup() }
+            bookmarks = bookmarks.map { it.toBackup() },
+            memories = memoryDao.getAllMemoriesForBackup().map { it.toBackup() }
         )
     }
 
@@ -126,6 +130,7 @@ class BackupRepository @Inject constructor(
         val conversations = restoreReadyConversations(payload.conversations, providers)
         val messages = restoreReadyMessages(payload.messages, conversations)
         val bookmarks = restoreReadyBookmarks(payload.bookmarks, conversations, messages)
+        val memories = restoreReadyMemories(payload.memories)
 
         database.withTransaction {
             if (providers.any { it.isActive }) providerDao.deactivateAllProviders()
@@ -135,6 +140,7 @@ class BackupRepository @Inject constructor(
             conversations.forEach { messageDao.deleteAllMessagesInConversation(it.id) }
             messageDao.insertAll(messages)
             bookmarkDao.insertAll(bookmarks)
+            memoryDao.insertAll(memories)
         }
     }
 
@@ -184,6 +190,12 @@ class BackupRepository @Inject constructor(
         return backups
             .filter { it.id.isNotBlank() }
             .filter { it.conversationId in conversationIds && it.messageId in messageIds }
+            .map { it.toEntity() }
+    }
+
+    private fun restoreReadyMemories(backups: List<BackupMemory>): List<MemoryEntity> {
+        return backups
+            .filter { it.id.isNotBlank() && it.content.isNotBlank() && it.normalizedContent.isNotBlank() }
             .map { it.toEntity() }
     }
 
@@ -295,7 +307,8 @@ class BackupRepository @Inject constructor(
             messages = messages.size,
             bookmarks = bookmarks.size,
             customPersonas = personas.size,
-            providers = providers.size
+            providers = providers.size,
+            memories = memories.size
         )
     }
 
@@ -356,9 +369,19 @@ class BackupRepository @Inject constructor(
     }
 
     private fun MessageEntity.toBackup() = BackupMessage(
-        id, conversationId, role, content, thinkingContent, imageAttachments,
-        thinkingDurationMs, totalDurationMs, modelName, fusionMetadata,
-        webSearchMetadata, createdAt
+        id = id,
+        conversationId = conversationId,
+        role = role,
+        content = content,
+        thinkingContent = thinkingContent,
+        imageAttachments = imageAttachments,
+        thinkingDurationMs = thinkingDurationMs,
+        totalDurationMs = totalDurationMs,
+        modelName = modelName,
+        fusionMetadata = fusionMetadata,
+        webSearchMetadata = webSearchMetadata,
+        memoryMetadata = memoryMetadata,
+        createdAt = createdAt
     )
 
     private fun BackupMessage.toEntity(): MessageEntity {
@@ -375,6 +398,7 @@ class BackupRepository @Inject constructor(
             modelName = modelName,
             fusionMetadata = fusionMetadata,
             webSearchMetadata = webSearchMetadata,
+            memoryMetadata = memoryMetadata,
             createdAt = createdAt
         )
     }
@@ -387,9 +411,39 @@ class BackupRepository @Inject constructor(
         id, messageId, conversationId, tags, note, category, createdAt
     )
 
+    private fun MemoryEntity.toBackup() = BackupMemory(
+        id = id,
+        content = content,
+        normalizedContent = normalizedContent,
+        kind = kind,
+        confidence = confidence,
+        sourceConversationId = sourceConversationId,
+        sourceMessageId = sourceMessageId,
+        createdAt = createdAt,
+        updatedAt = updatedAt,
+        lastRecalledAt = lastRecalledAt,
+        recallCount = recallCount,
+        isArchived = isArchived
+    )
+
+    private fun BackupMemory.toEntity() = MemoryEntity(
+        id = id,
+        content = content,
+        normalizedContent = normalizedContent,
+        kind = kind,
+        confidence = confidence,
+        sourceConversationId = sourceConversationId,
+        sourceMessageId = sourceMessageId,
+        createdAt = createdAt,
+        updatedAt = updatedAt,
+        lastRecalledAt = lastRecalledAt,
+        recallCount = recallCount,
+        isArchived = isArchived
+    )
+
     private companion object {
         const val BACKUP_FORMAT_VERSION = 1
-        const val DATABASE_VERSION = 17
+        const val DATABASE_VERSION = 18
         const val MIN_PASSWORD_LENGTH = 8
         const val KDF = "PBKDF2WithHmacSHA256"
         const val KDF_ITERATIONS = 180_000
