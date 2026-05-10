@@ -2661,28 +2661,34 @@ private fun TitleGenerationModelField(
             } else {
                 // Dropdown mode: pick any model from any configured provider.
                 Box(modifier = Modifier.fillMaxWidth()) {
-                    OutlinedTextField(
-                        value = selectedLabel,
-                        onValueChange = {},
-                        readOnly = true,
-                        singleLine = true,
+                    Surface(
                         modifier = Modifier
                             .fillMaxWidth()
+                            .defaultMinSize(minHeight = 56.dp)
                             .clickable { dropdownExpanded = true },
                         shape = RoundedCornerShape(12.dp),
-                        trailingIcon = {
+                        color = MaterialTheme.colorScheme.surface,
+                        contentColor = MaterialTheme.colorScheme.onSurface,
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 14.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = selectedLabel,
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onSurface,
+                                modifier = Modifier.weight(1f)
+                            )
                             Icon(
                                 imageVector = Icons.Default.ArrowDropDown,
                                 contentDescription = "Expand"
                             )
-                        },
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = MaterialTheme.colorScheme.primary,
-                            unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
-                            disabledTextColor = MaterialTheme.colorScheme.onSurface,
-                            disabledBorderColor = MaterialTheme.colorScheme.outlineVariant
-                        )
-                    )
+                        }
+                    }
                     DropdownMenu(
                         expanded = dropdownExpanded,
                         onDismissRequest = { dropdownExpanded = false },

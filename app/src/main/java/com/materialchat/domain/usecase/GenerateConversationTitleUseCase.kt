@@ -87,21 +87,18 @@ class GenerateConversationTitleUseCase @Inject constructor(
             // or "providerId|modelId" (use that specific provider).
             val customModelRaw = appPreferences.titleGenerationModel.first()
             val (customProviderId, customModelId) = parseTitleModelSetting(customModelRaw)
+            val hasExplicitTitleModel = customModelRaw.isNotBlank()
 
-            val provider = if (!customProviderId.isNullOrBlank()) {
-                providerRepository.getProvider(customProviderId)
-                    ?: providerRepository.getProvider(conversation.providerId)
-                    ?: return@withContext Result.failure(
-                        IllegalStateException("Provider not found: $customProviderId")
-                    )
-            } else {
-                providerRepository.getProvider(conversation.providerId)
-                    ?: return@withContext Result.failure(
-                        IllegalStateException("Provider not found: ${conversation.providerId}")
-                    )
-            }
+            val conversationProvider = providerRepository.getProvider(conversation.providerId)
+                ?: return@withContext Result.failure(
+                    IllegalStateException("Provider not found: ${conversation.providerId}")
+                )
+            val customProvider = customProviderId?.let { providerRepository.getProvider(it) }
+            val provider = customProvider ?: conversationProvider
+            val shouldUseCustomModel = customModelId.isNotBlank() &&
+                (customProviderId.isNullOrBlank() || customProvider != null)
 
-            val modelToUse = if (customModelId.isNotBlank()) {
+            val modelToUse = if (shouldUseCustomModel) {
                 Log.d(TAG, "Using custom title generation model: $customModelId (provider=${provider.id})")
                 customModelId
             } else {
@@ -112,8 +109,12 @@ class GenerateConversationTitleUseCase @Inject constructor(
             val prompt = buildTitlePrompt(userMessage, assistantResponse)
             Log.d(TAG, "Prompt length: ${prompt.length}")
 
-            val localResult = generateWithPreferredLocalModel(prompt)
-            val result = localResult.getOrNull()?.let { Result.success(it) }
+            val localTitle = if (hasExplicitTitleModel) {
+                null
+            } else {
+                generateWithPreferredLocalModel(prompt).getOrNull()
+            }
+            val result = localTitle?.let { Result.success(it) }
                 ?: chatRepository.generateSimpleCompletion(
                     provider = provider,
                     prompt = prompt,
@@ -222,7 +223,10 @@ class GenerateConversationTitleUseCase @Inject constructor(
             .trim()
             .removeSurrounding("\"")
             .removeSurrounding("'")
-            .replace(Regex("^(Response|Title):\\s*", RegexOption.IGNORE_CASE), "")
+            .replace(Regex("^```[a-zA-Z0-9_-]*\\s*"), "")
+            .replace(Regex("\\s*```$"), "")
+            .replace(Regex("^[-*•]\\s*"), "")
+            .replace(Regex("^(Response|Output|Title|Emoji):\\s*", RegexOption.IGNORE_CASE), "")
             .trim()
 
         // Try to find emoji at the start
@@ -251,6 +255,7 @@ class GenerateConversationTitleUseCase @Inject constructor(
             .removeSurrounding("\"")
             .removeSurrounding("'")
             .replace(Regex("^Title:\\s*", RegexOption.IGNORE_CASE), "")
+            .replace(Regex("^[:：\\-–—|]+\\s*"), "")
             .replace(Regex("[.!?]+$"), "")
             .replace("\n", " ")
             .replace(Regex("\\s+"), " ")

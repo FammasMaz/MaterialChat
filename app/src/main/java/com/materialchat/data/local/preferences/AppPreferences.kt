@@ -151,7 +151,7 @@ class AppPreferences(private val context: Context) {
         const val DEFAULT_HAPTICS_ENABLED = true
         const val DEFAULT_NOTIFICATIONS_ENABLED = false
         const val DEFAULT_AI_GENERATED_TITLES_ENABLED = true
-        const val DEFAULT_PREFER_ON_DEVICE_TITLE_MODEL = true
+        const val DEFAULT_PREFER_ON_DEVICE_TITLE_MODEL = false
         val DEFAULT_REASONING_EFFORT = ReasoningEffort.HIGH
         const val DEFAULT_REMEMBER_LAST_MODEL = true
         const val DEFAULT_IMAGE_GENERATION_MODEL = "codex/gpt-image-2-medium"

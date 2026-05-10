@@ -34,6 +34,7 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
@@ -190,12 +191,12 @@ class ChatApiClient(
             model = model,
             messages = openAiMessages,
             stream = true,
-            reasoningEffort = reasoningEffort.apiValue,
+            reasoningEffort = openAiReasoningEffortValue(reasoningEffort),
             tools = if (disableTools) emptyList() else null,
             toolChoice = if (disableTools) "none" else null
         )
 
-        val requestJson = json.encodeToString(request)
+        val requestJson = encodeOpenAiChatRequest(request)
         val requestBody = requestJson.toRequestBody(JSON_MEDIA_TYPE)
 
         // Build HTTP request
@@ -418,11 +419,11 @@ class ChatApiClient(
                 model = cleanModel,
                 messages = buildOpenAiMessages(messages, systemPrompt),
                 stream = true,
-                reasoningEffort = reasoningEffort.apiValue
+                reasoningEffort = openAiReasoningEffortValue(reasoningEffort)
             )
             requestBuilder
                 .url("${baseUrl.trimEnd('/')}/chat/completions")
-                .post(json.encodeToString(request).toRequestBody(JSON_MEDIA_TYPE))
+                .post(encodeOpenAiChatRequest(request).toRequestBody(JSON_MEDIA_TYPE))
                 .build()
         }
 
@@ -740,10 +741,10 @@ class ChatApiClient(
             model = model,
             messages = messages,
             stream = false,
-            reasoningEffort = reasoningEffort.apiValue
+            reasoningEffort = openAiReasoningEffortValue(reasoningEffort)
         )
 
-        val requestBody = json.encodeToString(request)
+        val requestBody = encodeOpenAiChatRequest(request)
             .toRequestBody(JSON_MEDIA_TYPE)
 
         val url = buildChatCompletionsUrl(baseUrl)
@@ -771,6 +772,15 @@ class ChatApiClient(
                 Result.failure(IOException("Failed to parse response: ${e.message}"))
             }
         }
+    }
+
+    private fun openAiReasoningEffortValue(reasoningEffort: ReasoningEffort): String? {
+        return reasoningEffort.takeUnless { it == ReasoningEffort.NONE }?.apiValue
+    }
+
+    private fun encodeOpenAiChatRequest(request: OpenAiChatRequest): String {
+        val jsonObject = json.encodeToJsonElement(OpenAiChatRequest.serializer(), request).jsonObject
+        return JsonObject(jsonObject.filterValues { it !is JsonNull }).toString()
     }
 
     /**

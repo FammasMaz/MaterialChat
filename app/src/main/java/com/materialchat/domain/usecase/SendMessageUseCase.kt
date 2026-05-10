@@ -459,21 +459,24 @@ class SendMessageUseCase @Inject constructor(
             // or "providerId|modelId" (use that specific provider).
             val customRaw = appPreferences.titleGenerationModel.first()
             val (customProviderId, customModelId) = parseTitleModelSetting(customRaw)
+            val hasExplicitTitleModel = customRaw.isNotBlank()
 
-            val provider = if (!customProviderId.isNullOrBlank()) {
-                providerRepository.getProvider(customProviderId)
-                    ?: providerRepository.getProvider(conversation.providerId)
-                    ?: return
-            } else {
-                providerRepository.getProvider(conversation.providerId) ?: return
-            }
+            val conversationProvider = providerRepository.getProvider(conversation.providerId) ?: return
+            val customProvider = customProviderId?.let { providerRepository.getProvider(it) }
+            val provider = customProvider ?: conversationProvider
+            val shouldUseCustomModel = customModelId.isNotBlank() &&
+                (customProviderId.isNullOrBlank() || customProvider != null)
 
-            val modelToUse = if (customModelId.isNotBlank()) customModelId else conversation.modelName
+            val modelToUse = if (shouldUseCustomModel) customModelId else conversation.modelName
 
             val prompt = buildBranchTitlePrompt(userMessage, assistantResponse)
 
-            val localResult = generateBranchTitleWithPreferredLocalModel(prompt)
-            val result = localResult.getOrNull()?.let { Result.success(it) }
+            val localTitle = if (hasExplicitTitleModel) {
+                null
+            } else {
+                generateBranchTitleWithPreferredLocalModel(prompt).getOrNull()
+            }
+            val result = localTitle?.let { Result.success(it) }
                 ?: chatRepository.generateSimpleCompletion(
                     provider = provider,
                     prompt = prompt,
@@ -554,7 +557,10 @@ class SendMessageUseCase @Inject constructor(
             .trim()
             .removeSurrounding("\"")
             .removeSurrounding("'")
-            .replace(Regex("^(Response|Title):\\s*", RegexOption.IGNORE_CASE), "")
+            .replace(Regex("^```[a-zA-Z0-9_-]*\\s*"), "")
+            .replace(Regex("\\s*```$"), "")
+            .replace(Regex("^[-*•]\\s*"), "")
+            .replace(Regex("^(Response|Output|Title|Emoji):\\s*", RegexOption.IGNORE_CASE), "")
             .trim()
 
         // Regex to match emoji at the start
@@ -579,6 +585,7 @@ class SendMessageUseCase @Inject constructor(
             .removeSurrounding("\"")
             .removeSurrounding("'")
             .replace(Regex("^Title:\\s*", RegexOption.IGNORE_CASE), "")
+            .replace(Regex("^[:：\\-–—|]+\\s*"), "")
             .replace(Regex("[.!?]+$"), "")
             .replace("\n", " ")
             .replace(Regex("\\s+"), " ")
