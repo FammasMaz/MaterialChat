@@ -56,7 +56,35 @@ data class MemoryCandidate(
     val sourceMessageId: String? = null
 )
 
+@Serializable
+data class MemorySnippet(
+    val id: String,
+    val conversationId: String,
+    val messageId: String,
+    val role: MessageRole,
+    val content: String,
+    val createdAt: Long = System.currentTimeMillis(),
+    val updatedAt: Long = createdAt,
+    val lastRecalledAt: Long? = null,
+    val recallCount: Int = 0,
+    val isArchived: Boolean = false
+)
+
+data class MemorySnippetCandidate(
+    val conversationId: String,
+    val messageId: String,
+    val role: MessageRole,
+    val content: String,
+    val createdAt: Long = System.currentTimeMillis()
+)
+
+enum class RecalledMemorySource {
+    EXTRACTED_MEMORY,
+    VERBATIM_SNIPPET
+}
+
 data class RecalledMemory(
     val memory: Memory,
-    val score: Double
+    val score: Double,
+    val source: RecalledMemorySource = RecalledMemorySource.EXTRACTED_MEMORY
 )

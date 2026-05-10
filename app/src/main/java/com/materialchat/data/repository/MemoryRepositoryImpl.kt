@@ -5,11 +5,16 @@ import com.materialchat.data.mapper.normalizedMemoryContent
 import com.materialchat.data.mapper.toDomain
 import com.materialchat.data.mapper.toEntity
 import com.materialchat.data.mapper.toMemoryDomainList
+import com.materialchat.data.mapper.toMemorySnippetDomainList
 import com.materialchat.di.IoDispatcher
 import com.materialchat.domain.model.Memory
 import com.materialchat.domain.model.MemoryCandidate
 import com.materialchat.domain.model.MemoryKind
+import com.materialchat.domain.model.MemorySnippet
+import com.materialchat.domain.model.MemorySnippetCandidate
+import com.materialchat.domain.model.MessageRole
 import com.materialchat.domain.model.RecalledMemory
+import com.materialchat.domain.model.RecalledMemorySource
 import com.materialchat.domain.repository.MemoryRepository
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.Flow
@@ -50,17 +55,29 @@ class MemoryRepositoryImpl @Inject constructor(
         if (queryTokens.isEmpty() && contextTokens.isEmpty() && intents.isEmpty()) return@withContext emptyList()
         val minimumScore = if (intents.isEmpty()) MIN_PASSIVE_RECALL_SCORE else MIN_INTENT_RECALL_SCORE
 
-        memoryDao.getActiveMemories(limit = MAX_RECALL_POOL)
+        val extractedMemories = memoryDao.getActiveMemories(limit = MAX_RECALL_POOL)
             .mapNotNull { entity ->
                 val memory = entity.toDomain()
                 val score = scoreMemory(memory, queryTokens, contextTokens, intents)
                 if (score >= minimumScore) RecalledMemory(memory, score) else null
             }
-            .sortedWith(
-                compareByDescending<RecalledMemory> { it.score }
-                    .thenByDescending { it.memory.confidence }
-                    .thenByDescending { it.memory.updatedAt }
-            )
+            .sortedForRecall()
+
+        val snippetMinimumScore = if (intents.isEmpty()) {
+            MIN_SNIPPET_PASSIVE_RECALL_SCORE
+        } else {
+            MIN_SNIPPET_INTENT_RECALL_SCORE
+        }
+        val recalledSnippets = getSnippetRecallCandidates(queryTokens, contextTokens)
+            .mapNotNull { snippet ->
+                val score = scoreSnippet(snippet, queryTokens, contextTokens, intents)
+                if (score >= snippetMinimumScore) snippet.toRecalledMemory(score) else null
+            }
+            .sortedForRecall()
+            .take(MAX_RECALLED_SNIPPETS)
+
+        (extractedMemories + recalledSnippets)
+            .sortedForRecall()
             .take(limit.coerceIn(1, 12))
     }
 
@@ -105,10 +122,41 @@ class MemoryRepositoryImpl @Inject constructor(
         return saved.distinctBy { it.id }
     }
 
+    override suspend fun saveSnippet(candidate: MemorySnippetCandidate): MemorySnippet? = withContext(ioDispatcher) {
+        val content = sanitizeSnippetContent(candidate.content) ?: return@withContext null
+        val snippet = MemorySnippet(
+            id = snippetIdForMessage(candidate.messageId),
+            conversationId = candidate.conversationId,
+            messageId = candidate.messageId,
+            role = candidate.role,
+            content = content,
+            createdAt = candidate.createdAt,
+            updatedAt = System.currentTimeMillis()
+        )
+        memoryDao.insertSnippet(snippet.toEntity())
+        snippet
+    }
+
+    override suspend fun saveSnippets(candidates: List<MemorySnippetCandidate>): List<MemorySnippet> {
+        if (candidates.isEmpty()) return emptyList()
+        val saved = mutableListOf<MemorySnippet>()
+        candidates.take(MAX_SAVE_SNIPPETS).forEach { candidate ->
+            saveSnippet(candidate)?.let { saved.add(it) }
+        }
+        return saved.distinctBy { it.id }
+    }
+
     override suspend fun markRecalled(memoryIds: List<String>) = withContext(ioDispatcher) {
         val ids = memoryIds.distinct().filter { it.isNotBlank() }
         if (ids.isNotEmpty()) {
             memoryDao.markRecalled(ids, System.currentTimeMillis())
+        }
+    }
+
+    override suspend fun markSnippetsRecalled(snippetIds: List<String>) = withContext(ioDispatcher) {
+        val ids = snippetIds.distinct().filter { it.isNotBlank() }
+        if (ids.isNotEmpty()) {
+            memoryDao.markSnippetsRecalled(ids, System.currentTimeMillis())
         }
     }
 
@@ -127,6 +175,7 @@ class MemoryRepositoryImpl @Inject constructor(
 
     override suspend fun deleteAllMemories() = withContext(ioDispatcher) {
         memoryDao.deleteAll()
+        memoryDao.deleteAllSnippets()
     }
 
     private fun scoreMemory(
@@ -215,6 +264,117 @@ class MemoryRepositoryImpl @Inject constructor(
         }
     }
 
+    private suspend fun getSnippetRecallCandidates(
+        queryTokens: Set<String>,
+        contextTokens: Set<String>
+    ): List<MemorySnippet> {
+        val searchTerms = (queryTokens + contextTokens)
+            .asSequence()
+            .filter { it.length >= 4 && it !in GENERIC_MEMORY_TOKENS }
+            .distinct()
+            .take(MAX_SNIPPET_SEARCH_TERMS)
+            .toList()
+        val searched = if (searchTerms.isEmpty()) {
+            emptyList()
+        } else {
+            memoryDao.searchActiveSnippets(
+                term1 = searchTerms.getOrElse(0) { "" },
+                term2 = searchTerms.getOrElse(1) { "" },
+                term3 = searchTerms.getOrElse(2) { "" },
+                term4 = searchTerms.getOrElse(3) { "" },
+                limit = MAX_SNIPPET_SEARCH_POOL
+            )
+        }
+        val recent = memoryDao.getActiveSnippets(limit = MAX_SNIPPET_RECALL_POOL)
+        return (searched + recent)
+            .distinctBy { it.id }
+            .toMemorySnippetDomainList()
+    }
+
+    private fun scoreSnippet(
+        snippet: MemorySnippet,
+        queryTokens: Set<String>,
+        contextTokens: Set<String>,
+        intents: Set<RecallIntent>
+    ): Double {
+        val snippetTokens = tokenize(snippet.content)
+        if (snippetTokens.isEmpty()) return 0.0
+
+        val queryOverlap = snippetTokens.intersect(queryTokens)
+        val contextOverlap = snippetTokens.intersect(contextTokens) - queryOverlap
+        val hasRecallIntent = intents.isNotEmpty()
+        if (!hasStrongEnoughSnippetMatch(queryOverlap, contextOverlap, hasRecallIntent)) return 0.0
+
+        val coverage = queryOverlap.size.toDouble() / snippetTokens.size.coerceAtLeast(1)
+        val queryCoverage = queryOverlap.size.toDouble() / queryTokens.size.coerceAtLeast(1)
+        val contextCoverage = contextOverlap.size.toDouble() / snippetTokens.size.coerceAtLeast(1)
+        val recallBoost = ln((snippet.recallCount + 1).toDouble()) * 0.008
+        val intentBoost = if (hasRecallIntent) 0.10 else 0.0
+        val roleBoost = if (snippet.role == MessageRole.USER) 0.04 else 0.0
+        val recencyBoost = recencyBoost(snippet.updatedAt)
+
+        return (coverage * 0.26) +
+            (queryCoverage * 0.36) +
+            (contextCoverage * 0.10) +
+            (queryOverlap.size * 0.045) +
+            recallBoost +
+            intentBoost +
+            roleBoost +
+            recencyBoost
+    }
+
+    private fun hasStrongEnoughSnippetMatch(
+        queryOverlap: Set<String>,
+        contextOverlap: Set<String>,
+        hasRecallIntent: Boolean
+    ): Boolean {
+        if (queryOverlap.size >= 2) return true
+        if (hasRecallIntent && queryOverlap.isNotEmpty()) return true
+        if (queryOverlap.size == 1) {
+            val token = queryOverlap.first()
+            return token.length >= 5 && token !in GENERIC_MEMORY_TOKENS
+        }
+        return contextOverlap.size >= 2 && hasRecallIntent
+    }
+
+    private fun recencyBoost(updatedAt: Long): Double {
+        val ageDays = ((System.currentTimeMillis() - updatedAt).coerceAtLeast(0L) / DAY_MS.toDouble())
+        return 0.055 / (1.0 + (ageDays / 14.0))
+    }
+
+    private fun MemorySnippet.toRecalledMemory(score: Double): RecalledMemory {
+        val label = when (role) {
+            MessageRole.USER -> "User said: $content"
+            MessageRole.ASSISTANT -> "Assistant replied: $content"
+            MessageRole.SYSTEM -> content
+        }
+        return RecalledMemory(
+            memory = Memory(
+                id = id,
+                content = label,
+                kind = MemoryKind.OTHER,
+                confidence = SNIPPET_CONFIDENCE,
+                sourceConversationId = conversationId,
+                sourceMessageId = messageId,
+                createdAt = createdAt,
+                updatedAt = updatedAt,
+                lastRecalledAt = lastRecalledAt,
+                recallCount = recallCount,
+                isArchived = isArchived
+            ),
+            score = score,
+            source = RecalledMemorySource.VERBATIM_SNIPPET
+        )
+    }
+
+    private fun List<RecalledMemory>.sortedForRecall(): List<RecalledMemory> {
+        return sortedWith(
+            compareByDescending<RecalledMemory> { it.score }
+                .thenByDescending { it.memory.confidence }
+                .thenByDescending { it.memory.updatedAt }
+        )
+    }
+
     private fun tokenize(text: String): Set<String> {
         return text.lowercase()
             .split(Regex("[^a-z0-9]+"))
@@ -239,14 +399,40 @@ class MemoryRepositoryImpl @Inject constructor(
         return compact.replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() }
     }
 
+    private fun sanitizeSnippetContent(raw: String): String? {
+        val compact = raw
+            .replace(Regex("```[\\s\\S]*?```"), "[code]")
+            .replace(Regex("\\s+"), " ")
+            .trim()
+        if (compact.length !in MIN_SNIPPET_LENGTH..MAX_SNIPPET_LENGTH) return null
+        if (compact.count { it.isLetterOrDigit() } < MIN_SNIPPET_ALNUM_LENGTH) return null
+        if (SENSITIVE_SNIPPET_REGEX.containsMatchIn(compact)) return null
+        return compact
+    }
+
+    private fun snippetIdForMessage(messageId: String): String = "$SNIPPET_ID_PREFIX$messageId"
+
     private companion object {
         const val MAX_RECALL_POOL = 500
+        const val MAX_SNIPPET_RECALL_POOL = 700
+        const val MAX_SNIPPET_SEARCH_POOL = 1200
+        const val MAX_SNIPPET_SEARCH_TERMS = 4
+        const val MAX_RECALLED_SNIPPETS = 2
         const val MIN_PASSIVE_RECALL_SCORE = 0.48
         const val MIN_INTENT_RECALL_SCORE = 0.46
+        const val MIN_SNIPPET_PASSIVE_RECALL_SCORE = 0.34
+        const val MIN_SNIPPET_INTENT_RECALL_SCORE = 0.34
         const val MAX_SAVE_CANDIDATES = 5
+        const val MAX_SAVE_SNIPPETS = 2
         const val MIN_MEMORY_LENGTH = 12
         const val MAX_MEMORY_LENGTH = 280
         const val MIN_NORMALIZED_LENGTH = 10
+        const val MIN_SNIPPET_LENGTH = 24
+        const val MAX_SNIPPET_LENGTH = 2400
+        const val MIN_SNIPPET_ALNUM_LENGTH = 16
+        const val SNIPPET_CONFIDENCE = 0.55f
+        const val SNIPPET_ID_PREFIX = "snippet:"
+        const val DAY_MS = 86_400_000L
 
         val GENERAL_RECALL_REGEX = Regex(
             "\\b(remember|memory|memories|what do you know about me|what have i told you|what do you know|previously|before)\\b",
@@ -276,6 +462,10 @@ class MemoryRepositoryImpl @Inject constructor(
             "\\b(my wife|my husband|my partner|my friend|my son|my daughter|my team|my manager|family)\\b",
             RegexOption.IGNORE_CASE
         )
+        val SENSITIVE_SNIPPET_REGEX = Regex(
+            "\\b(api key|password|secret|token|private key|credit card|ssn|social security)\\b",
+            RegexOption.IGNORE_CASE
+        )
 
         val PASSIVE_ONE_TOKEN_KINDS = setOf(
             MemoryKind.USER_PREFERENCE,
@@ -296,15 +486,21 @@ class MemoryRepositoryImpl @Inject constructor(
             "theme" to setOf("mode", "style", "appearance"),
             "mode" to setOf("theme", "style", "appearance"),
             "style" to setOf("theme", "appearance"),
-            "stack" to setOf("tech", "technology", "framework", "language"),
+            "stack" to setOf("tech", "technology", "framework", "language", "kotlin", "android", "compose"),
             "tech" to setOf("stack", "technology", "framework", "language"),
             "technology" to setOf("tech", "stack", "framework", "language"),
             "language" to setOf("stack", "tech", "technology"),
             "framework" to setOf("stack", "tech", "technology"),
-            "android" to setOf("kotlin", "compose"),
-            "compose" to setOf("android", "kotlin", "jetpack"),
+            "android" to setOf("kotlin", "compose", "mobile", "app"),
+            "compose" to setOf("android", "kotlin", "jetpack", "ui"),
             "jetpack" to setOf("android", "compose", "kotlin"),
-            "kotlin" to setOf("android", "compose")
+            "kotlin" to setOf("android", "compose", "language", "stack"),
+            "discuss" to setOf("talked", "conversation", "mentioned"),
+            "discussed" to setOf("talked", "conversation", "mentioned"),
+            "talked" to setOf("discussed", "conversation", "mentioned"),
+            "decide" to setOf("decided", "decision", "choice", "settled"),
+            "decided" to setOf("decide", "decision", "choice", "settled"),
+            "decision" to setOf("decided", "choice", "settled")
         )
 
         val STOP_WORDS = setOf(

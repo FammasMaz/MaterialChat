@@ -12,6 +12,7 @@ import com.materialchat.domain.model.MessageRole
 import com.materialchat.domain.model.Provider
 import com.materialchat.domain.model.ReasoningEffort
 import com.materialchat.domain.model.RecalledMemory
+import com.materialchat.domain.model.RecalledMemorySource
 import com.materialchat.domain.model.StreamingState
 import com.materialchat.domain.model.toReference
 import com.materialchat.domain.model.WebSearchConfig
@@ -450,18 +451,27 @@ class SendMessageUseCase @Inject constructor(
         recalledMemories: List<RecalledMemory>
     ): String {
         if (recalledMemories.isEmpty()) return basePrompt
-        val memoryBlock = recalledMemories
+        val extracted = recalledMemories
+            .filter { it.source == RecalledMemorySource.EXTRACTED_MEMORY }
             .take(MAX_RECALLED_MEMORIES_IN_PROMPT)
-            .joinToString(separator = "\n") { recalled ->
-                "- ${recalled.memory.content}"
-            }
+        val snippets = recalledMemories
+            .filter { it.source == RecalledMemorySource.VERBATIM_SNIPPET }
+            .take(MAX_RECALLED_SNIPPETS_IN_PROMPT)
         return buildString {
             append(basePrompt)
-            append("\n\n")
-            append("Passive memory context from this device. These are local, user-visible memories that may be relevant. ")
-            append("Use them naturally if helpful; do not say you searched memory unless the user asks.\n")
-            append(memoryBlock)
-        }
+            if (extracted.isNotEmpty()) {
+                append("\n\n")
+                append("Passive memory context from this device. These are local, user-visible memories that may be relevant. ")
+                append("Use them naturally if helpful; do not say you searched memory unless the user asks.\n")
+                extracted.forEach { recalled -> append("- ${recalled.memory.content}\n") }
+            }
+            if (snippets.isNotEmpty()) {
+                append("\n")
+                append("Relevant prior chat snippets from this device. Treat these as source excerpts, not guaranteed facts. ")
+                append("Use only if they directly help the current request.\n")
+                snippets.forEach { recalled -> append("- ${recalled.memory.content.take(MAX_SNIPPET_PROMPT_CHARS)}\n") }
+            }
+        }.trimEnd()
     }
 
     private fun encodeMemoryMetadata(
@@ -495,6 +505,7 @@ class SendMessageUseCase @Inject constructor(
                     model = model,
                     conversationId = conversationId,
                     sourceMessageId = sourceMessageId,
+                    assistantMessageId = assistantMessageId,
                     userContent = userContent,
                     assistantResponse = assistantResponse,
                     recentMessages = recentMessages
@@ -887,6 +898,8 @@ MaterialChat image generation tool:
         private const val MAX_IMAGE_PROMPT_MESSAGE_CHARS = 700
         private const val MAX_CONTEXTUAL_IMAGE_PROMPT_CHARS = 6000
         private const val MAX_RECALLED_MEMORIES_IN_PROMPT = 5
+        private const val MAX_RECALLED_SNIPPETS_IN_PROMPT = 2
+        private const val MAX_SNIPPET_PROMPT_CHARS = 520
 
         val GARBAGE_PATTERNS = listOf(
             "i don't", "i can't", "i notice", "i apologize", "i'm sorry",

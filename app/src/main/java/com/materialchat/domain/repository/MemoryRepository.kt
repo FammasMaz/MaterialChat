@@ -2,6 +2,8 @@ package com.materialchat.domain.repository
 
 import com.materialchat.domain.model.Memory
 import com.materialchat.domain.model.MemoryCandidate
+import com.materialchat.domain.model.MemorySnippet
+import com.materialchat.domain.model.MemorySnippetCandidate
 import com.materialchat.domain.model.RecalledMemory
 import kotlinx.coroutines.flow.Flow
 
@@ -18,7 +20,13 @@ interface MemoryRepository {
 
     suspend fun saveCandidates(candidates: List<MemoryCandidate>): List<Memory>
 
+    suspend fun saveSnippet(candidate: MemorySnippetCandidate): MemorySnippet?
+
+    suspend fun saveSnippets(candidates: List<MemorySnippetCandidate>): List<MemorySnippet>
+
     suspend fun markRecalled(memoryIds: List<String>)
+
+    suspend fun markSnippetsRecalled(snippetIds: List<String>)
 
     suspend fun getMemories(memoryIds: List<String>): List<Memory>
 

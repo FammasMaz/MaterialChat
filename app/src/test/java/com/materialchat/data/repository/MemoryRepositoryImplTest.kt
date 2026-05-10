@@ -4,6 +4,9 @@ import com.materialchat.data.local.database.dao.MemoryDao
 import com.materialchat.data.mapper.toEntity
 import com.materialchat.domain.model.Memory
 import com.materialchat.domain.model.MemoryKind
+import com.materialchat.domain.model.MemorySnippet
+import com.materialchat.domain.model.MessageRole
+import com.materialchat.domain.model.RecalledMemorySource
 import io.mockk.coEvery
 import io.mockk.mockk
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -21,6 +24,8 @@ class MemoryRepositoryImplTest {
     @Before
     fun setup() {
         memoryDao = mockk(relaxUnitFun = true)
+        coEvery { memoryDao.getActiveSnippets(any()) } returns emptyList()
+        coEvery { memoryDao.searchActiveSnippets(any(), any(), any(), any(), any()) } returns emptyList()
     }
 
     @Test
@@ -69,6 +74,20 @@ class MemoryRepositoryImplTest {
     }
 
     @Test
+    fun `recall - snippet drawer helps explicit discussion recall`() = runTest {
+        repository = MemoryRepositoryImpl(memoryDao, StandardTestDispatcher(testScheduler))
+        coEvery { memoryDao.getActiveMemories(any()) } returns emptyList()
+        coEvery { memoryDao.getActiveSnippets(any()) } returns listOf(
+            snippet("We decided the release strategy should use patch releases for memory fixes").toEntity()
+        )
+
+        val recalled = repository.recall(query = "What did we decide about release strategy?", limit = 3)
+
+        assertEquals(RecalledMemorySource.VERBATIM_SNIPPET, recalled.single().source)
+        assertTrue(recalled.single().memory.content.contains("patch releases"))
+    }
+
+    @Test
     fun `recall - unrelated casual query stays quiet`() = runTest {
         repository = MemoryRepositoryImpl(memoryDao, StandardTestDispatcher(testScheduler))
         coEvery { memoryDao.getActiveMemories(any()) } returns listOf(
@@ -93,6 +112,16 @@ class MemoryRepositoryImplTest {
         content = content,
         kind = kind,
         confidence = confidence,
+        createdAt = 1_000L,
+        updatedAt = 1_000L
+    )
+
+    private fun snippet(content: String) = MemorySnippet(
+        id = "snippet-msg-1",
+        conversationId = "conv-1",
+        messageId = "msg-1",
+        role = MessageRole.USER,
+        content = content,
         createdAt = 1_000L,
         updatedAt = 1_000L
     )

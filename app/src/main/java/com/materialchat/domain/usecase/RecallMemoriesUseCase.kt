@@ -3,6 +3,7 @@ package com.materialchat.domain.usecase
 import com.materialchat.domain.model.Message
 import com.materialchat.domain.model.MessageRole
 import com.materialchat.domain.model.RecalledMemory
+import com.materialchat.domain.model.RecalledMemorySource
 import com.materialchat.domain.repository.MemoryRepository
 import javax.inject.Inject
 
@@ -19,7 +20,16 @@ class RecallMemoriesUseCase @Inject constructor(
             conversationContext = buildRecallContext(messages, userContent),
             limit = limit.coerceAtMost(MAX_RECALLED_MEMORIES)
         )
-        memoryRepository.markRecalled(recalled.map { it.memory.id })
+        memoryRepository.markRecalled(
+            recalled
+                .filter { it.source == RecalledMemorySource.EXTRACTED_MEMORY }
+                .map { it.memory.id }
+        )
+        memoryRepository.markSnippetsRecalled(
+            recalled
+                .filter { it.source == RecalledMemorySource.VERBATIM_SNIPPET }
+                .map { it.memory.id }
+        )
         return recalled
     }
 

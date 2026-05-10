@@ -363,7 +363,7 @@ class SendMessageUseCaseTest {
         coEvery { conversationRepository.updateMessageMemoryMetadata(any(), any()) } returns Unit
         coEvery { generateConversationTitleUseCase(any(), any(), any()) } returns Result.success("Generated Title")
         coEvery { recallMemoriesUseCase(any(), any(), any()) } returns emptyList()
-        coEvery { extractMemoriesUseCase(any(), any(), any(), any(), any(), any(), any()) } returns emptyList()
+        coEvery { extractMemoriesUseCase(any(), any(), any(), any(), any(), any(), any(), any()) } returns emptyList()
         every {
             chatRepository.sendMessage(
                 provider = any(),

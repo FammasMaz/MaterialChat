@@ -14,6 +14,7 @@ import com.materialchat.data.local.database.entity.BookmarkEntity
 import com.materialchat.data.local.database.entity.ConversationEntity
 import com.materialchat.data.local.database.entity.MessageEntity
 import com.materialchat.data.local.database.entity.MemoryEntity
+import com.materialchat.data.local.database.entity.MemorySnippetEntity
 import com.materialchat.data.local.database.entity.PersonaEntity
 import com.materialchat.data.local.database.entity.ProviderEntity
 import com.materialchat.di.IoDispatcher
@@ -116,7 +117,8 @@ class BackupRepository @Inject constructor(
             conversations = conversations.map { it.toBackup() },
             messages = messages.map { it.toBackup() },
             bookmarks = bookmarks.map { it.toBackup() },
-            memories = memoryDao.getAllMemoriesForBackup().map { it.toBackup() }
+            memories = memoryDao.getAllMemoriesForBackup().map { it.toBackup() },
+            memorySnippets = memoryDao.getAllMemorySnippetsForBackup().map { it.toBackup() }
         )
     }
 
@@ -131,6 +133,7 @@ class BackupRepository @Inject constructor(
         val messages = restoreReadyMessages(payload.messages, conversations)
         val bookmarks = restoreReadyBookmarks(payload.bookmarks, conversations, messages)
         val memories = restoreReadyMemories(payload.memories)
+        val memorySnippets = restoreReadyMemorySnippets(payload.memorySnippets, conversations, messages)
 
         database.withTransaction {
             if (providers.any { it.isActive }) providerDao.deactivateAllProviders()
@@ -141,6 +144,7 @@ class BackupRepository @Inject constructor(
             messageDao.insertAll(messages)
             bookmarkDao.insertAll(bookmarks)
             memoryDao.insertAll(memories)
+            memoryDao.insertSnippets(memorySnippets)
         }
     }
 
@@ -197,6 +201,25 @@ class BackupRepository @Inject constructor(
         return backups
             .filter { it.id.isNotBlank() && it.content.isNotBlank() && it.normalizedContent.isNotBlank() }
             .map { it.toEntity() }
+    }
+
+    private fun restoreReadyMemorySnippets(
+        backups: List<BackupMemorySnippet>,
+        conversations: List<ConversationEntity>,
+        messages: List<MessageEntity>
+    ): List<MemorySnippetEntity> {
+        val conversationIds = conversations.map { it.id }.toSet()
+        val messageIds = messages.map { it.id }.toSet()
+        return backups
+            .filter { it.id.isNotBlank() && it.content.isNotBlank() && it.normalizedContent.isNotBlank() }
+            .filter { it.conversationId in conversationIds && it.messageId in messageIds }
+            .filterNot { containsSensitiveSnippet(it.content) }
+            .map { it.toEntity() }
+    }
+
+    private fun containsSensitiveSnippet(content: String): Boolean {
+        val lower = content.lowercase()
+        return SENSITIVE_SNIPPET_TERMS.any { lower.contains(it) }
     }
 
     private fun sortedForForeignKeys(conversations: List<ConversationEntity>): List<ConversationEntity> {
@@ -308,7 +331,8 @@ class BackupRepository @Inject constructor(
             bookmarks = bookmarks.size,
             customPersonas = personas.size,
             providers = providers.size,
-            memories = memories.size
+            memories = memories.size,
+            memorySnippets = memorySnippets.size
         )
     }
 
@@ -441,9 +465,37 @@ class BackupRepository @Inject constructor(
         isArchived = isArchived
     )
 
+    private fun MemorySnippetEntity.toBackup() = BackupMemorySnippet(
+        id = id,
+        conversationId = conversationId,
+        messageId = messageId,
+        role = role,
+        content = content,
+        normalizedContent = normalizedContent,
+        createdAt = createdAt,
+        updatedAt = updatedAt,
+        lastRecalledAt = lastRecalledAt,
+        recallCount = recallCount,
+        isArchived = isArchived
+    )
+
+    private fun BackupMemorySnippet.toEntity() = MemorySnippetEntity(
+        id = id,
+        conversationId = conversationId,
+        messageId = messageId,
+        role = role,
+        content = content,
+        normalizedContent = normalizedContent,
+        createdAt = createdAt,
+        updatedAt = updatedAt,
+        lastRecalledAt = lastRecalledAt,
+        recallCount = recallCount,
+        isArchived = isArchived
+    )
+
     private companion object {
         const val BACKUP_FORMAT_VERSION = 1
-        const val DATABASE_VERSION = 18
+        const val DATABASE_VERSION = 19
         const val MIN_PASSWORD_LENGTH = 8
         const val KDF = "PBKDF2WithHmacSHA256"
         const val KDF_ITERATIONS = 180_000
@@ -452,6 +504,9 @@ class BackupRepository @Inject constructor(
         const val TAG_BITS = 128
         const val SALT_BYTES = 16
         const val IV_BYTES = 12
+        val SENSITIVE_SNIPPET_TERMS = listOf(
+            "api key", "password", "secret", "token", "private key", "credit card", "ssn", "social security"
+        )
         val ASSOCIATED_DATA = "MaterialChat encrypted backup v1".toByteArray(Charsets.UTF_8)
         val secureRandom = SecureRandom()
     }

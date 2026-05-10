@@ -29,7 +29,8 @@ data class BackupPayload(
     val conversations: List<BackupConversation>,
     val messages: List<BackupMessage>,
     val bookmarks: List<BackupBookmark>,
-    val memories: List<BackupMemory> = emptyList()
+    val memories: List<BackupMemory> = emptyList(),
+    val memorySnippets: List<BackupMemorySnippet> = emptyList()
 )
 
 @Serializable
@@ -119,18 +120,40 @@ data class BackupMemory(
     val isArchived: Boolean
 )
 
+@Serializable
+data class BackupMemorySnippet(
+    val id: String,
+    val conversationId: String,
+    val messageId: String,
+    val role: String,
+    val content: String,
+    val normalizedContent: String,
+    val createdAt: Long,
+    val updatedAt: Long,
+    val lastRecalledAt: Long?,
+    val recallCount: Int,
+    val isArchived: Boolean
+)
+
 data class BackupSummary(
     val conversations: Int,
     val messages: Int,
     val bookmarks: Int,
     val customPersonas: Int,
     val providers: Int,
-    val memories: Int = 0
+    val memories: Int = 0,
+    val memorySnippets: Int = 0
 ) {
     fun label(): String {
         val base = "$conversations conversations, $messages messages, " +
             "$bookmarks bookmarks, $customPersonas personas, $providers providers"
-        return if (memories > 0) "$base, $memories memories" else base
+        val memoryLabel = when {
+            memories > 0 && memorySnippets > 0 -> "$memories memories, $memorySnippets memory snippets"
+            memories > 0 -> "$memories memories"
+            memorySnippets > 0 -> "$memorySnippets memory snippets"
+            else -> null
+        }
+        return memoryLabel?.let { "$base, $it" } ?: base
     }
 }
 

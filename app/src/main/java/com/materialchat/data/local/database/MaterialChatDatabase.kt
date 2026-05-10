@@ -19,6 +19,7 @@ import com.materialchat.data.local.database.entity.BookmarkEntity
 import com.materialchat.data.local.database.entity.ConversationEntity
 import com.materialchat.data.local.database.entity.MessageEntity
 import com.materialchat.data.local.database.entity.MemoryEntity
+import com.materialchat.data.local.database.entity.MemorySnippetEntity
 import com.materialchat.data.local.database.entity.ModelRatingEntity
 import com.materialchat.data.local.database.entity.PersonaEntity
 import com.materialchat.data.local.database.entity.ProviderEntity
@@ -50,9 +51,10 @@ import com.materialchat.data.local.database.entity.WorkflowStepEntity
         BookmarkEntity::class,
         WorkflowEntity::class,
         WorkflowStepEntity::class,
-        MemoryEntity::class
+        MemoryEntity::class,
+        MemorySnippetEntity::class
     ],
-    version = 18,
+    version = 19,
     exportSchema = true
 )
 abstract class MaterialChatDatabase : RoomDatabase() {
@@ -409,6 +411,78 @@ abstract class MaterialChatDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * Migration from version 18 to 19: Add MemPalace-style verbatim memory
+         * snippets for hybrid transcript recall alongside extracted memories.
+         */
+        private val MIGRATION_18_19 = object : Migration(18, 19) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS memory_snippets (
+                        id TEXT NOT NULL PRIMARY KEY,
+                        conversation_id TEXT NOT NULL,
+                        message_id TEXT NOT NULL,
+                        role TEXT NOT NULL,
+                        content TEXT NOT NULL,
+                        normalized_content TEXT NOT NULL,
+                        created_at INTEGER NOT NULL,
+                        updated_at INTEGER NOT NULL,
+                        last_recalled_at INTEGER DEFAULT NULL,
+                        recall_count INTEGER NOT NULL DEFAULT 0,
+                        is_archived INTEGER NOT NULL DEFAULT 0,
+                        FOREIGN KEY (message_id) REFERENCES messages(id) ON DELETE CASCADE
+                    )
+                """)
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_memory_snippets_conversation_id ON memory_snippets(conversation_id)")
+                db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_memory_snippets_message_id ON memory_snippets(message_id)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_memory_snippets_role ON memory_snippets(role)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_memory_snippets_updated_at ON memory_snippets(updated_at)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_memory_snippets_last_recalled_at ON memory_snippets(last_recalled_at)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_memory_snippets_is_archived ON memory_snippets(is_archived)")
+                db.execSQL("""
+                    INSERT OR IGNORE INTO memory_snippets (
+                        id,
+                        conversation_id,
+                        message_id,
+                        role,
+                        content,
+                        normalized_content,
+                        created_at,
+                        updated_at,
+                        last_recalled_at,
+                        recall_count,
+                        is_archived
+                    )
+                    SELECT
+                        'snippet:' || m.id,
+                        m.conversation_id,
+                        m.id,
+                        m.role,
+                        substr(replace(replace(trim(m.content), char(10), ' '), char(13), ' '), 1, 2400),
+                        lower(substr(replace(replace(trim(m.content), char(10), ' '), char(13), ' '), 1, 2400)),
+                        m.created_at,
+                        m.created_at,
+                        NULL,
+                        0,
+                        0
+                    FROM messages m
+                    INNER JOIN conversations c ON c.id = m.conversation_id
+                    WHERE c.is_ephemeral = 0
+                      AND m.is_streaming = 0
+                      AND m.role IN ('USER', 'ASSISTANT')
+                      AND length(trim(m.content)) >= 24
+                      AND lower(m.content) NOT LIKE '%api key%'
+                      AND lower(m.content) NOT LIKE '%password%'
+                      AND lower(m.content) NOT LIKE '%secret%'
+                      AND lower(m.content) NOT LIKE '%token%'
+                      AND lower(m.content) NOT LIKE '%private key%'
+                      AND lower(m.content) NOT LIKE '%credit card%'
+                      AND lower(m.content) NOT LIKE '%ssn%'
+                      AND lower(m.content) NOT LIKE '%social security%'
+                """)
+            }
+        }
+
         internal val MIGRATIONS = arrayOf(
             MIGRATION_2_3,
             MIGRATION_3_4,
@@ -425,7 +499,8 @@ abstract class MaterialChatDatabase : RoomDatabase() {
             MIGRATION_14_15,
             MIGRATION_15_16,
             MIGRATION_16_17,
-            MIGRATION_17_18
+            MIGRATION_17_18,
+            MIGRATION_18_19
         )
 
         /**

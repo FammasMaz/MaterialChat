@@ -4,7 +4,9 @@ import com.materialchat.data.local.preferences.AppPreferences
 import com.materialchat.domain.model.Memory
 import com.materialchat.domain.model.MemoryCandidate
 import com.materialchat.domain.model.MemoryKind
+import com.materialchat.domain.model.MemorySnippetCandidate
 import com.materialchat.domain.model.Message
+import com.materialchat.domain.model.MessageRole
 import com.materialchat.domain.model.Provider
 import com.materialchat.domain.model.ReasoningEffort
 import com.materialchat.domain.repository.ChatRepository
@@ -30,10 +32,19 @@ class ExtractMemoriesUseCase @Inject constructor(
         model: String,
         conversationId: String,
         sourceMessageId: String,
+        assistantMessageId: String? = null,
         userContent: String,
         assistantResponse: String,
         recentMessages: List<Message>
     ): List<Memory> {
+        saveVerbatimSnippets(
+            conversationId = conversationId,
+            sourceMessageId = sourceMessageId,
+            assistantMessageId = assistantMessageId,
+            userContent = userContent,
+            assistantResponse = assistantResponse
+        )
+
         if (userContent.isBlank()) return emptyList()
         if (SENSITIVE_REGEX.containsMatchIn(userContent)) return emptyList()
 
@@ -71,6 +82,36 @@ class ExtractMemoriesUseCase @Inject constructor(
             .distinctBy { it.content.normalizedCandidateKey() }
             .take(MAX_EXTRACTED_MEMORIES)
         return memoryRepository.saveCandidates(candidates)
+    }
+
+    private suspend fun saveVerbatimSnippets(
+        conversationId: String,
+        sourceMessageId: String,
+        assistantMessageId: String?,
+        userContent: String,
+        assistantResponse: String
+    ) {
+        val candidates = buildList {
+            add(
+                MemorySnippetCandidate(
+                    conversationId = conversationId,
+                    messageId = sourceMessageId,
+                    role = MessageRole.USER,
+                    content = userContent
+                )
+            )
+            if (!assistantMessageId.isNullOrBlank()) {
+                add(
+                    MemorySnippetCandidate(
+                        conversationId = conversationId,
+                        messageId = assistantMessageId,
+                        role = MessageRole.ASSISTANT,
+                        content = assistantResponse
+                    )
+                )
+            }
+        }
+        runCatching { memoryRepository.saveSnippets(candidates) }
     }
 
     private suspend fun generateCandidatesWithModel(
