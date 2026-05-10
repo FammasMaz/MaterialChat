@@ -1,6 +1,7 @@
 package com.materialchat.domain.usecase
 
 import com.materialchat.domain.model.Message
+import com.materialchat.domain.model.MessageRole
 import com.materialchat.domain.model.RecalledMemory
 import com.materialchat.domain.repository.MemoryRepository
 import javax.inject.Inject
@@ -15,14 +16,28 @@ class RecallMemoriesUseCase @Inject constructor(
     ): List<RecalledMemory> {
         val recalled = memoryRepository.recall(
             query = userContent,
-            conversationContext = "",
+            conversationContext = buildRecallContext(messages, userContent),
             limit = limit.coerceAtMost(MAX_RECALLED_MEMORIES)
         )
         memoryRepository.markRecalled(recalled.map { it.memory.id })
         return recalled
     }
 
+    private fun buildRecallContext(messages: List<Message>, userContent: String): String {
+        val current = userContent.trim()
+        return messages
+            .asReversed()
+            .asSequence()
+            .filter { it.role == MessageRole.USER }
+            .map { it.content.trim() }
+            .filter { it.isNotBlank() && it != current }
+            .take(MAX_CONTEXT_MESSAGES)
+            .joinToString(separator = "\n") { it.take(MAX_CONTEXT_MESSAGE_CHARS) }
+    }
+
     private companion object {
         const val MAX_RECALLED_MEMORIES = 3
+        const val MAX_CONTEXT_MESSAGES = 3
+        const val MAX_CONTEXT_MESSAGE_CHARS = 360
     }
 }

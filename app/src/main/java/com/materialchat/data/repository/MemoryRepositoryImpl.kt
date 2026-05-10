@@ -8,6 +8,7 @@ import com.materialchat.data.mapper.toMemoryDomainList
 import com.materialchat.di.IoDispatcher
 import com.materialchat.domain.model.Memory
 import com.materialchat.domain.model.MemoryCandidate
+import com.materialchat.domain.model.MemoryKind
 import com.materialchat.domain.model.RecalledMemory
 import com.materialchat.domain.repository.MemoryRepository
 import kotlinx.coroutines.CoroutineDispatcher
@@ -24,6 +25,16 @@ class MemoryRepositoryImpl @Inject constructor(
     @param:IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) : MemoryRepository {
 
+    private enum class RecallIntent {
+        GENERAL,
+        PREFERENCE,
+        PERSONAL,
+        PROJECT,
+        GOAL,
+        INSTRUCTION,
+        RELATIONSHIP
+    }
+
     override fun observeActiveMemories(): Flow<List<Memory>> {
         return memoryDao.observeActiveMemories().map { entities -> entities.toMemoryDomainList() }
     }
@@ -34,14 +45,16 @@ class MemoryRepositoryImpl @Inject constructor(
         limit: Int
     ): List<RecalledMemory> = withContext(ioDispatcher) {
         val queryTokens = tokenize(query)
-        if (queryTokens.isEmpty()) return@withContext emptyList()
-        val explicitRecall = EXPLICIT_RECALL_REGEX.containsMatchIn(query)
+        val contextTokens = tokenize(conversationContext)
+        val intents = classifyRecallIntents(query)
+        if (queryTokens.isEmpty() && contextTokens.isEmpty() && intents.isEmpty()) return@withContext emptyList()
+        val minimumScore = if (intents.isEmpty()) MIN_PASSIVE_RECALL_SCORE else MIN_INTENT_RECALL_SCORE
 
         memoryDao.getActiveMemories(limit = MAX_RECALL_POOL)
             .mapNotNull { entity ->
                 val memory = entity.toDomain()
-                val score = scoreMemory(memory, queryTokens, explicitRecall)
-                if (score >= MIN_RECALL_SCORE) RecalledMemory(memory, score) else null
+                val score = scoreMemory(memory, queryTokens, contextTokens, intents)
+                if (score >= minimumScore) RecalledMemory(memory, score) else null
             }
             .sortedWith(
                 compareByDescending<RecalledMemory> { it.score }
@@ -116,21 +129,90 @@ class MemoryRepositoryImpl @Inject constructor(
         memoryDao.deleteAll()
     }
 
-    private fun scoreMemory(memory: Memory, queryTokens: Set<String>, explicitRecall: Boolean): Double {
+    private fun scoreMemory(
+        memory: Memory,
+        queryTokens: Set<String>,
+        contextTokens: Set<String>,
+        intents: Set<RecallIntent>
+    ): Double {
         val memoryTokens = tokenize(memory.content)
         if (memoryTokens.isEmpty()) return 0.0
 
-        val overlap = memoryTokens.intersect(queryTokens)
-        if (overlap.isEmpty()) return 0.0
-        val minOverlap = if (explicitRecall) 1 else 2
-        if (overlap.size < minOverlap) return 0.0
+        val queryOverlap = memoryTokens.intersect(queryTokens)
+        val contextOverlap = memoryTokens.intersect(contextTokens) - queryOverlap
+        val kindMatchesIntent = memory.kind.matchesAny(intents)
+        val generalRecall = RecallIntent.GENERAL in intents
+        val hasRecallIntent = intents.isNotEmpty()
+        val intentOnlyMatch = queryOverlap.isEmpty() && (kindMatchesIntent || generalRecall)
 
-        val coverage = overlap.size.toDouble() / memoryTokens.size.coerceAtLeast(1)
-        val queryCoverage = overlap.size.toDouble() / queryTokens.size.coerceAtLeast(1)
-        val confidenceBoost = 0.10 * memory.confidence.coerceIn(0f, 1f)
-        val recallBoost = ln((memory.recallCount + 1).toDouble()) * 0.02
-        val explicitBoost = if (explicitRecall) 0.12 else 0.0
-        return (coverage * 0.50) + (queryCoverage * 0.25) + (overlap.size * 0.08) + confidenceBoost + recallBoost + explicitBoost
+        if (queryOverlap.isEmpty() && !intentOnlyMatch) return 0.0
+        if (!intentOnlyMatch && !hasStrongEnoughLexicalMatch(memory, queryOverlap, hasRecallIntent)) return 0.0
+
+        val confidence = memory.confidence.coerceIn(0f, 1f).toDouble()
+        val confidenceBoost = 0.10 * confidence
+        val recallBoost = ln((memory.recallCount + 1).toDouble()) * 0.012
+        val intentBoost = when {
+            kindMatchesIntent -> 0.24
+            generalRecall -> 0.16
+            hasRecallIntent -> 0.08
+            else -> 0.0
+        }
+
+        if (intentOnlyMatch) {
+            return 0.34 + confidenceBoost + intentBoost + recallBoost
+        }
+
+        val coverage = queryOverlap.size.toDouble() / memoryTokens.size.coerceAtLeast(1)
+        val queryCoverage = queryOverlap.size.toDouble() / queryTokens.size.coerceAtLeast(1)
+        val contextCoverage = contextOverlap.size.toDouble() / memoryTokens.size.coerceAtLeast(1)
+        return (coverage * 0.44) +
+            (queryCoverage * 0.28) +
+            (contextCoverage * 0.10) +
+            (queryOverlap.size * 0.055) +
+            confidenceBoost +
+            recallBoost +
+            intentBoost
+    }
+
+    private fun hasStrongEnoughLexicalMatch(
+        memory: Memory,
+        queryOverlap: Set<String>,
+        hasRecallIntent: Boolean
+    ): Boolean {
+        if (queryOverlap.size >= 2) return true
+        if (queryOverlap.isEmpty()) return false
+        if (hasRecallIntent) return true
+
+        val singleToken = queryOverlap.first()
+        val distinctiveSingleToken = singleToken.length >= 5 && singleToken !in GENERIC_MEMORY_TOKENS
+        val highConfidenceDurableMemory = memory.confidence >= 0.74f && memory.kind in PASSIVE_ONE_TOKEN_KINDS
+        return distinctiveSingleToken && highConfidenceDurableMemory
+    }
+
+    private fun classifyRecallIntents(query: String): Set<RecallIntent> {
+        val intents = buildSet {
+            if (GENERAL_RECALL_REGEX.containsMatchIn(query)) add(RecallIntent.GENERAL)
+            if (PREFERENCE_RECALL_REGEX.containsMatchIn(query)) add(RecallIntent.PREFERENCE)
+            if (PERSONAL_RECALL_REGEX.containsMatchIn(query)) add(RecallIntent.PERSONAL)
+            if (PROJECT_RECALL_REGEX.containsMatchIn(query)) add(RecallIntent.PROJECT)
+            if (GOAL_RECALL_REGEX.containsMatchIn(query)) add(RecallIntent.GOAL)
+            if (INSTRUCTION_RECALL_REGEX.containsMatchIn(query)) add(RecallIntent.INSTRUCTION)
+            if (RELATIONSHIP_RECALL_REGEX.containsMatchIn(query)) add(RecallIntent.RELATIONSHIP)
+        }
+        return intents
+    }
+
+    private fun MemoryKind.matchesAny(intents: Set<RecallIntent>): Boolean {
+        if (intents.isEmpty()) return false
+        return when (this) {
+            MemoryKind.USER_PREFERENCE -> RecallIntent.PREFERENCE in intents || RecallIntent.GENERAL in intents
+            MemoryKind.PERSONAL_FACT -> RecallIntent.PERSONAL in intents || RecallIntent.GENERAL in intents
+            MemoryKind.PROJECT_FACT -> RecallIntent.PROJECT in intents || RecallIntent.GENERAL in intents
+            MemoryKind.LONG_TERM_GOAL -> RecallIntent.GOAL in intents || RecallIntent.PROJECT in intents || RecallIntent.GENERAL in intents
+            MemoryKind.INSTRUCTION -> RecallIntent.INSTRUCTION in intents || RecallIntent.PREFERENCE in intents || RecallIntent.GENERAL in intents
+            MemoryKind.RELATIONSHIP -> RecallIntent.RELATIONSHIP in intents || RecallIntent.PERSONAL in intents || RecallIntent.GENERAL in intents
+            MemoryKind.OTHER -> RecallIntent.GENERAL in intents
+        }
     }
 
     private fun tokenize(text: String): Set<String> {
@@ -140,7 +222,12 @@ class MemoryRepositoryImpl @Inject constructor(
             .map { it.trim() }
             .filter { it.length >= 3 }
             .filter { it !in STOP_WORDS }
+            .flatMap { expandToken(it) }
             .toSet()
+    }
+
+    private fun expandToken(token: String): Set<String> {
+        return TOKEN_SYNONYMS[token]?.plus(token) ?: setOf(token)
     }
 
     private fun sanitizeMemoryContent(raw: String): String? {
@@ -154,15 +241,70 @@ class MemoryRepositoryImpl @Inject constructor(
 
     private companion object {
         const val MAX_RECALL_POOL = 500
-        const val MIN_RECALL_SCORE = 0.58
+        const val MIN_PASSIVE_RECALL_SCORE = 0.48
+        const val MIN_INTENT_RECALL_SCORE = 0.46
         const val MAX_SAVE_CANDIDATES = 5
         const val MIN_MEMORY_LENGTH = 12
         const val MAX_MEMORY_LENGTH = 280
         const val MIN_NORMALIZED_LENGTH = 10
 
-        val EXPLICIT_RECALL_REGEX = Regex(
-            "\\b(remember|memory|memories|what do you know about me|what have i told you|my preference|my preferences|previously|before)\\b",
+        val GENERAL_RECALL_REGEX = Regex(
+            "\\b(remember|memory|memories|what do you know about me|what have i told you|what do you know|previously|before)\\b",
             RegexOption.IGNORE_CASE
+        )
+        val PREFERENCE_RECALL_REGEX = Regex(
+            "\\b(my preference|my preferences|do i prefer|what do i prefer|what i prefer|what do i like|things i like|my style|my tastes?)\\b",
+            RegexOption.IGNORE_CASE
+        )
+        val PERSONAL_RECALL_REGEX = Regex(
+            "\\b(about me|who am i|my name|where do i live|where i live|what do i do|my job|my role)\\b",
+            RegexOption.IGNORE_CASE
+        )
+        val PROJECT_RECALL_REGEX = Regex(
+            "\\b(my app|my project|this app|this project|our app|our project|project stack|tech stack|what stack|what are we building|what am i building)\\b",
+            RegexOption.IGNORE_CASE
+        )
+        val GOAL_RECALL_REGEX = Regex(
+            "\\b(my goal|my goals|what am i trying|what are we trying|roadmap|long term|plan for)\\b",
+            RegexOption.IGNORE_CASE
+        )
+        val INSTRUCTION_RECALL_REGEX = Regex(
+            "\\b(my instructions|how should you|how do i want you|from now on|always do|never do)\\b",
+            RegexOption.IGNORE_CASE
+        )
+        val RELATIONSHIP_RECALL_REGEX = Regex(
+            "\\b(my wife|my husband|my partner|my friend|my son|my daughter|my team|my manager|family)\\b",
+            RegexOption.IGNORE_CASE
+        )
+
+        val PASSIVE_ONE_TOKEN_KINDS = setOf(
+            MemoryKind.USER_PREFERENCE,
+            MemoryKind.INSTRUCTION,
+            MemoryKind.PROJECT_FACT,
+            MemoryKind.LONG_TERM_GOAL
+        )
+        val GENERIC_MEMORY_TOKENS = setOf(
+            "user", "prefers", "prefer", "preference", "likes", "like", "wants", "goal",
+            "project", "app", "assistant", "materialchat"
+        )
+
+        val TOKEN_SYNONYMS = mapOf(
+            "dark" to setOf("black", "theme", "mode"),
+            "black" to setOf("dark", "theme", "mode"),
+            "light" to setOf("white", "theme", "mode"),
+            "white" to setOf("light", "theme", "mode"),
+            "theme" to setOf("mode", "style", "appearance"),
+            "mode" to setOf("theme", "style", "appearance"),
+            "style" to setOf("theme", "appearance"),
+            "stack" to setOf("tech", "technology", "framework", "language"),
+            "tech" to setOf("stack", "technology", "framework", "language"),
+            "technology" to setOf("tech", "stack", "framework", "language"),
+            "language" to setOf("stack", "tech", "technology"),
+            "framework" to setOf("stack", "tech", "technology"),
+            "android" to setOf("kotlin", "compose"),
+            "compose" to setOf("android", "kotlin", "jetpack"),
+            "jetpack" to setOf("android", "compose", "kotlin"),
+            "kotlin" to setOf("android", "compose")
         )
 
         val STOP_WORDS = setOf(

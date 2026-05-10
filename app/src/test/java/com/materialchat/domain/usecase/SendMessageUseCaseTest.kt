@@ -47,6 +47,8 @@ class SendMessageUseCaseTest {
     private lateinit var localModelRepository: LocalModelRepository
     private lateinit var appPreferences: AppPreferences
     private lateinit var generateConversationTitleUseCase: GenerateConversationTitleUseCase
+    private lateinit var recallMemoriesUseCase: RecallMemoriesUseCase
+    private lateinit var extractMemoriesUseCase: ExtractMemoriesUseCase
     private lateinit var applicationScope: TestScope
     private lateinit var context: Context
     private lateinit var sendMessageUseCase: SendMessageUseCase
@@ -80,6 +82,8 @@ class SendMessageUseCaseTest {
         localModelRepository = mockk()
         appPreferences = mockk()
         generateConversationTitleUseCase = mockk()
+        recallMemoriesUseCase = mockk()
+        extractMemoriesUseCase = mockk()
         applicationScope = TestScope()
         context = mockk(relaxed = true)
 
@@ -98,6 +102,8 @@ class SendMessageUseCaseTest {
             localModelRepository = localModelRepository,
             appPreferences = appPreferences,
             generateConversationTitleUseCase = generateConversationTitleUseCase,
+            recallMemoriesUseCase = recallMemoriesUseCase,
+            extractMemoriesUseCase = extractMemoriesUseCase,
             applicationScope = applicationScope,
             context = context
         )
@@ -354,7 +360,10 @@ class SendMessageUseCaseTest {
         coEvery { conversationRepository.updateConversationTitle(any(), any()) } returns Unit
         coEvery { conversationRepository.updateConversationTitleAndIcon(any(), any(), any()) } returns Unit
         coEvery { conversationRepository.updateMessageWebSearchMetadata(any(), any()) } returns Unit
+        coEvery { conversationRepository.updateMessageMemoryMetadata(any(), any()) } returns Unit
         coEvery { generateConversationTitleUseCase(any(), any(), any()) } returns Result.success("Generated Title")
+        coEvery { recallMemoriesUseCase(any(), any(), any()) } returns emptyList()
+        coEvery { extractMemoriesUseCase(any(), any(), any(), any(), any(), any(), any()) } returns emptyList()
         every {
             chatRepository.sendMessage(
                 provider = any(),
