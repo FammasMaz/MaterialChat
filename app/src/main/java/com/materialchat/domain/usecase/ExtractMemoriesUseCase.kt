@@ -340,7 +340,7 @@ Use the user's wording when possible. Keep each memory under 220 characters. Ret
         val INSTRUCTION_REGEX = Regex("\\b(always|never|remember to|from now on|call me|address me|use .* style)\\b", RegexOption.IGNORE_CASE)
         val GOAL_REGEX = Regex("\\b(i want to|i'm trying to|my goal|we need to|i plan to)\\b", RegexOption.IGNORE_CASE)
         val PROJECT_REGEX = Regex("\\b(my app|my project|we are building|i am building|i'm building|project is called|app is called)\\b", RegexOption.IGNORE_CASE)
-        val RELATIONSHIP_REGEX = Regex("\\b(my wife|my husband|my partner|my friend|my son|my daughter|my manager|my team)\\b", RegexOption.IGNORE_CASE)
+        val RELATIONSHIP_REGEX = Regex("\\b(my wife|my husband|my partner|my girlfriend|my boyfriend|my gf|my bf|my spouse|my fiancee?|my fianc[eé]e?|girlfriend|boyfriend|partner|spouse|fiancee?|fianc[eé]e?|my friend|my son|my daughter|my manager|my team)\\b", RegexOption.IGNORE_CASE)
         val PERSONAL_REGEX = Regex("\\b(my name is|i live|i work|i study|my role|my job|i am a|i'm a)\\b", RegexOption.IGNORE_CASE)
         val SENSITIVE_REGEX = Regex("\\b(api key|password|secret|token|private key|credit card|ssn|social security)\\b", RegexOption.IGNORE_CASE)
     }

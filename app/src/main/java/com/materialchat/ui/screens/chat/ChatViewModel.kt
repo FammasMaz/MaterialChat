@@ -198,17 +198,17 @@ class ChatViewModel @Inject constructor(
                         val isSameConversation = currentState is ChatUiState.Success &&
                             currentState.conversationId == activeConversationId.value
                         val inputText = if (isSameConversation) {
-                            (currentState as ChatUiState.Success).inputText
+                            currentState.inputText
                         } else {
                             ""
                         }
                         val pendingAttachments = if (isSameConversation) {
-                            (currentState as ChatUiState.Success).pendingAttachments
+                            currentState.pendingAttachments
                         } else {
                             emptyList()
                         }
                         val streamingState = if (isSameConversation) {
-                            (currentState as ChatUiState.Success).streamingState
+                            currentState.streamingState
                         } else {
                             StreamingState.Idle
                         }
@@ -285,12 +285,20 @@ class ChatViewModel @Inject constructor(
 
                         // Compute branch state inline to avoid race condition
                         // (loadBranchState() ran before state was Success, so hasBranches was always false)
-                        val hasBranches = if (isSameConversation && currentState is ChatUiState.Success) {
+                        val hasBranches = if (isSameConversation) {
                             currentState.hasBranches
                         } else {
                             conversation.parentId != null ||
                                 conversationRepository.getBranchCount(activeConversationId.value) > 0
                         }
+                        val contextWindowUsage = buildContextWindowUsage(
+                            modelName = currentModelName,
+                            messages = filteredMessages,
+                            inputText = inputText,
+                            pendingAttachments = pendingAttachments,
+                            availableModels = availableModels,
+                            quotedMessage = (currentState as? ChatUiState.Success)?.quotedMessage
+                        )
 
                         _uiState.value = ChatUiState.Success(
                             conversationId = activeConversationId.value,
@@ -316,7 +324,8 @@ class ChatViewModel @Inject constructor(
                             editingText = (currentState as? ChatUiState.Success)?.editingText ?: "",
                             hasBranches = hasBranches,
                             quotedMessage = (currentState as? ChatUiState.Success)?.quotedMessage,
-                            showTokenCounter = currentShowTokenCounter
+                            showTokenCounter = currentShowTokenCounter,
+                            contextWindowUsage = contextWindowUsage
                         )
 
                         // Only scroll to bottom when a NEW message is added, not during streaming updates
@@ -370,6 +379,10 @@ class ChatViewModel @Inject constructor(
         viewModelScope.launch {
             appPreferences.systemPrompt.collect { prompt ->
                 currentSystemPrompt = prompt
+                val currentState = _uiState.value
+                if (currentState is ChatUiState.Success) {
+                    _uiState.value = currentState.withUpdatedContextWindowUsage()
+                }
             }
         }
     }
@@ -509,7 +522,7 @@ class ChatViewModel @Inject constructor(
     fun updateInputText(text: String) {
         val currentState = _uiState.value
         if (currentState is ChatUiState.Success) {
-            _uiState.value = currentState.copy(inputText = text)
+            _uiState.value = currentState.withUpdatedContextWindowUsage(inputText = text)
         }
     }
 
@@ -522,7 +535,7 @@ class ChatViewModel @Inject constructor(
         if (currentState is ChatUiState.Success) {
             val message = currentState.messages.find { it.message.id == messageId }?.message
             if (message != null && message.content.isNotEmpty()) {
-                _uiState.value = currentState.copy(quotedMessage = message)
+                _uiState.value = currentState.withUpdatedContextWindowUsage(quotedMessage = message)
             }
         }
     }
@@ -533,7 +546,7 @@ class ChatViewModel @Inject constructor(
     fun clearQuote() {
         val currentState = _uiState.value
         if (currentState is ChatUiState.Success) {
-            _uiState.value = currentState.copy(quotedMessage = null)
+            _uiState.value = currentState.withUpdatedContextWindowUsage(quotedMessage = null)
         }
     }
 
@@ -572,6 +585,57 @@ class ChatViewModel @Inject constructor(
         return timeGap <= MESSAGE_GROUP_TIME_WINDOW_MS
     }
 
+    private fun buildContextWindowUsage(
+        modelName: String,
+        messages: List<Message>,
+        inputText: String,
+        pendingAttachments: List<Attachment>,
+        availableModels: List<AiModel>,
+        quotedMessage: Message? = null
+    ): ContextWindowUsage {
+        val explicitWindow = availableModels.firstOrNull { model ->
+            model.id == modelName || model.name == modelName
+        }?.contextWindowTokens
+        return ContextWindowEstimator.estimate(
+            messages = messages,
+            draft = draftTextForContext(inputText, quotedMessage),
+            pendingAttachments = pendingAttachments,
+            systemPrompt = currentSystemPrompt,
+            modelName = modelName,
+            explicitContextWindowTokens = explicitWindow
+        )
+    }
+
+    private fun ChatUiState.Success.withUpdatedContextWindowUsage(
+        inputText: String = this.inputText,
+        pendingAttachments: List<Attachment> = this.pendingAttachments,
+        modelName: String = this.modelName,
+        availableModels: List<AiModel> = this.availableModels,
+        quotedMessage: Message? = this.quotedMessage
+    ): ChatUiState.Success {
+        return copy(
+            inputText = inputText,
+            pendingAttachments = pendingAttachments,
+            modelName = modelName,
+            availableModels = availableModels,
+            quotedMessage = quotedMessage,
+            contextWindowUsage = buildContextWindowUsage(
+                modelName = modelName,
+                messages = messages.map { it.message },
+                inputText = inputText,
+                pendingAttachments = pendingAttachments,
+                availableModels = availableModels,
+                quotedMessage = quotedMessage
+            )
+        )
+    }
+
+    private fun draftTextForContext(inputText: String, quotedMessage: Message?): String {
+        return quotedMessage?.content?.takeIf { it.isNotBlank() }?.let { quoted ->
+            "$quoted\n\n$inputText"
+        } ?: inputText
+    }
+
     /**
      * Adds an image attachment to the pending attachments list.
      *
@@ -580,7 +644,7 @@ class ChatViewModel @Inject constructor(
     fun addAttachment(attachment: Attachment) {
         val currentState = _uiState.value
         if (currentState is ChatUiState.Success) {
-            _uiState.value = currentState.copy(
+            _uiState.value = currentState.withUpdatedContextWindowUsage(
                 pendingAttachments = currentState.pendingAttachments + attachment
             )
         }
@@ -594,7 +658,7 @@ class ChatViewModel @Inject constructor(
     fun removeAttachment(attachment: Attachment) {
         val currentState = _uiState.value
         if (currentState is ChatUiState.Success) {
-            _uiState.value = currentState.copy(
+            _uiState.value = currentState.withUpdatedContextWindowUsage(
                 pendingAttachments = currentState.pendingAttachments.filter { it.id != attachment.id }
             )
         }
@@ -606,7 +670,7 @@ class ChatViewModel @Inject constructor(
     fun clearAttachments() {
         val currentState = _uiState.value
         if (currentState is ChatUiState.Success) {
-            _uiState.value = currentState.copy(pendingAttachments = emptyList())
+            _uiState.value = currentState.withUpdatedContextWindowUsage(pendingAttachments = emptyList())
         }
     }
 
@@ -667,9 +731,10 @@ class ChatViewModel @Inject constructor(
         }
 
         // Clear input, attachments, and quote immediately
-        _uiState.value = currentState.copy(
+        _uiState.value = currentState.withUpdatedContextWindowUsage(
             inputText = "",
-            pendingAttachments = emptyList(),
+            pendingAttachments = emptyList()
+        ).copy(
             streamingState = StreamingState.Starting,
             quotedMessage = null
         )
@@ -902,10 +967,9 @@ class ChatViewModel @Inject constructor(
 
                 val updatedState = _uiState.value
                 if (updatedState is ChatUiState.Success) {
-                    _uiState.value = updatedState.copy(
-                        availableModels = models,
-                        isLoadingModels = false
-                    )
+                    _uiState.value = updatedState.withUpdatedContextWindowUsage(
+                        availableModels = models
+                    ).copy(isLoadingModels = false)
                 }
 
                 // Show error if fetching failed
@@ -940,7 +1004,7 @@ class ChatViewModel @Inject constructor(
 
                 val currentState = _uiState.value
                 if (currentState is ChatUiState.Success) {
-                    _uiState.value = currentState.copy(modelName = model.id)
+                    _uiState.value = currentState.withUpdatedContextWindowUsage(modelName = model.id)
                 }
 
                 // Save as last used model if the setting is enabled
@@ -1747,9 +1811,10 @@ class ChatViewModel @Inject constructor(
         val messageContent = currentState.inputText.trim()
 
         // Clear input immediately
-        _uiState.value = currentState.copy(
+        _uiState.value = currentState.withUpdatedContextWindowUsage(
             inputText = "",
-            pendingAttachments = emptyList(),
+            pendingAttachments = emptyList()
+        ).copy(
             streamingState = StreamingState.Starting,
             isFusionRunning = true,
             fusionResult = null

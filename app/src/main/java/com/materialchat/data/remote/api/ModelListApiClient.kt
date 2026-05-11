@@ -151,7 +151,11 @@ class ModelListApiClient(
                     AiModel(
                         id = modelData.id,
                         name = modelData.id,
-                        providerId = providerId
+                        providerId = providerId,
+                        contextWindowTokens = modelData.contextLength
+                            ?: modelData.maxContextLength
+                            ?: modelData.maxInputTokens
+                            ?: modelData.maxTokens
                     )
                 }.sortedBy { it.id }
 
@@ -204,8 +208,19 @@ class ModelListApiClient(
                 val body = resp.body?.string().orEmpty()
                 val modelsResponse = json.decodeFromString<OpenAiModelsResponse>(body)
                 val models = modelsResponse.data
-                    .mapNotNull { modelData -> modelData.id.takeIf { !it.contains("embedding", ignoreCase = true) } }
-                    .map { id -> AiModel(id = id, name = id, providerId = providerId) }
+                    .mapNotNull { modelData ->
+                        val id = modelData.id.takeIf { !it.contains("embedding", ignoreCase = true) }
+                            ?: return@mapNotNull null
+                        AiModel(
+                            id = id,
+                            name = id,
+                            providerId = providerId,
+                            contextWindowTokens = modelData.contextLength
+                                ?: modelData.maxContextLength
+                                ?: modelData.maxInputTokens
+                                ?: modelData.maxTokens
+                        )
+                    }
                     .sortedBy { it.id }
                 Result.success(models.ifEmpty {
                     GITHUB_COPILOT_MODELS.map { model -> AiModel(id = model, name = model, providerId = providerId) }

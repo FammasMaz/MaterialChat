@@ -106,6 +106,54 @@ class MemoryRepositoryImplTest {
     }
 
     @Test
+    fun `recall - girlfriend name question recalls relationship memory`() = runTest {
+        repository = MemoryRepositoryImpl(memoryDao, StandardTestDispatcher(testScheduler))
+        coEvery { memoryDao.getActiveMemories(any()) } returns listOf(
+            memory(
+                content = "User's girlfriend is Maya",
+                kind = MemoryKind.RELATIONSHIP,
+                confidence = 0.86f
+            ).toEntity()
+        )
+
+        val recalled = repository.recall(query = "What is my girlfriend's name?", limit = 3)
+
+        assertEquals("User's girlfriend is Maya", recalled.single().memory.content)
+    }
+
+    @Test
+    fun `recall - gf occupation question recalls relationship memory`() = runTest {
+        repository = MemoryRepositoryImpl(memoryDao, StandardTestDispatcher(testScheduler))
+        coEvery { memoryDao.getActiveMemories(any()) } returns listOf(
+            memory(
+                content = "User's girlfriend Maya works as a nurse",
+                kind = MemoryKind.RELATIONSHIP,
+                confidence = 0.86f
+            ).toEntity()
+        )
+
+        val recalled = repository.recall(query = "What does my gf do for work?", limit = 3)
+
+        assertEquals("User's girlfriend Maya works as a nurse", recalled.single().memory.content)
+    }
+
+    @Test
+    fun `recall - partner wording recalls girlfriend memory`() = runTest {
+        repository = MemoryRepositoryImpl(memoryDao, StandardTestDispatcher(testScheduler))
+        coEvery { memoryDao.getActiveMemories(any()) } returns listOf(
+            memory(
+                content = "User's girlfriend Maya works as a nurse",
+                kind = MemoryKind.RELATIONSHIP,
+                confidence = 0.86f
+            ).toEntity()
+        )
+
+        val recalled = repository.recall(query = "What is my partner's occupation?", limit = 3)
+
+        assertEquals("User's girlfriend Maya works as a nurse", recalled.single().memory.content)
+    }
+
+    @Test
     fun `recall - random query does not recall old chat snippets`() = runTest {
         repository = MemoryRepositoryImpl(memoryDao, StandardTestDispatcher(testScheduler))
         coEvery { memoryDao.getActiveMemories(any()) } returns emptyList()

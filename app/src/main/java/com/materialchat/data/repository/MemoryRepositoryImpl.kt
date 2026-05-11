@@ -389,7 +389,7 @@ class MemoryRepositoryImpl @Inject constructor(
             .split(Regex("[^a-z0-9]+"))
             .asSequence()
             .map { it.trim() }
-            .filter { it.length >= 3 }
+            .filter { it.length >= 3 || it in SHORT_MEMORY_TOKENS }
             .filter { it !in STOP_WORDS }
             .flatMap { expandToken(it) }
             .toSet()
@@ -468,7 +468,7 @@ class MemoryRepositoryImpl @Inject constructor(
             RegexOption.IGNORE_CASE
         )
         val RELATIONSHIP_RECALL_REGEX = Regex(
-            "\\b(my wife|my husband|my partner|my friend|my son|my daughter|my team|my manager|family)\\b",
+            "\\b(my wife|my husband|my partner|my girlfriend|my boyfriend|my gf|my bf|my spouse|my fiancee?|my fianc[eé]e?|girlfriend|boyfriend|partner|spouse|fiancee?|fianc[eé]e?|gf|bf|my friend|my son|my daughter|my team|my manager|family)\\b",
             RegexOption.IGNORE_CASE
         )
         val SENSITIVE_SNIPPET_REGEX = Regex(
@@ -498,6 +498,7 @@ class MemoryRepositoryImpl @Inject constructor(
             "user", "prefers", "prefer", "preference", "likes", "like", "wants", "goal",
             "project", "app", "assistant", "materialchat"
         )
+        val SHORT_MEMORY_TOKENS = setOf("gf", "bf", "ai", "ui", "ux")
 
         val TOKEN_SYNONYMS = mapOf(
             "dark" to setOf("black", "theme", "mode"),
@@ -528,6 +529,19 @@ class MemoryRepositoryImpl @Inject constructor(
             "mobile" to setOf("phone", "device", "android", "iphone", "pixel"),
             "pixel" to setOf("phone", "device", "android", "mobile"),
             "iphone" to setOf("phone", "device", "mobile"),
+            "girlfriend" to setOf("gf", "partner", "spouse"),
+            "gf" to setOf("girlfriend", "partner", "spouse"),
+            "boyfriend" to setOf("bf", "partner", "spouse"),
+            "bf" to setOf("boyfriend", "partner", "spouse"),
+            "partner" to setOf("girlfriend", "boyfriend", "spouse"),
+            "spouse" to setOf("partner", "wife", "husband"),
+            "wife" to setOf("spouse", "partner"),
+            "husband" to setOf("spouse", "partner"),
+            "occupation" to setOf("job", "work", "role", "profession", "career"),
+            "job" to setOf("occupation", "work", "role", "profession", "career"),
+            "work" to setOf("occupation", "job", "role", "profession", "career"),
+            "profession" to setOf("occupation", "job", "work", "career"),
+            "career" to setOf("occupation", "job", "work", "profession"),
             "discuss" to setOf("talked", "conversation", "mentioned"),
             "discussed" to setOf("talked", "conversation", "mentioned"),
             "talked" to setOf("discussed", "conversation", "mentioned"),

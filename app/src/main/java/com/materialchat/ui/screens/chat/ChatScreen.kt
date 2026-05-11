@@ -803,6 +803,7 @@ private fun ChatContent(
                 quotedMessage = quotedMessage,
                 onClearQuote = onClearQuote,
                 showTokenCounter = state.showTokenCounter,
+                contextWindowUsage = state.contextWindowUsage,
                 modifier = Modifier.onSizeChanged { inputHeightPx = it.height }
             )
         }

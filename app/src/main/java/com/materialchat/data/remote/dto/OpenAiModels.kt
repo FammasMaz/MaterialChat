@@ -262,7 +262,15 @@ data class OpenAiModelData(
     val `object`: String? = null,
     val created: Long? = null,
     @SerialName("owned_by")
-    val ownedBy: String? = null
+    val ownedBy: String? = null,
+    @SerialName("context_length")
+    val contextLength: Int? = null,
+    @SerialName("max_context_length")
+    val maxContextLength: Int? = null,
+    @SerialName("max_input_tokens")
+    val maxInputTokens: Int? = null,
+    @SerialName("max_tokens")
+    val maxTokens: Int? = null
 )
 
 // ============================================================================
