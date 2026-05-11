@@ -63,18 +63,22 @@ class MemoryRepositoryImpl @Inject constructor(
             }
             .sortedForRecall()
 
-        val snippetMinimumScore = if (intents.isEmpty()) {
-            MIN_SNIPPET_PASSIVE_RECALL_SCORE
-        } else {
-            MIN_SNIPPET_INTENT_RECALL_SCORE
-        }
-        val recalledSnippets = getSnippetRecallCandidates(queryTokens, contextTokens)
-            .mapNotNull { snippet ->
-                val score = scoreSnippet(snippet, queryTokens, contextTokens, intents)
-                if (score >= snippetMinimumScore) snippet.toRecalledMemory(score) else null
+        val recalledSnippets = if (shouldRecallVerbatimSnippets(query)) {
+            val snippetMinimumScore = if (intents.isEmpty()) {
+                MIN_SNIPPET_PASSIVE_RECALL_SCORE
+            } else {
+                MIN_SNIPPET_INTENT_RECALL_SCORE
             }
-            .sortedForRecall()
-            .take(MAX_RECALLED_SNIPPETS)
+            getSnippetRecallCandidates(queryTokens, contextTokens)
+                .mapNotNull { snippet ->
+                    val score = scoreSnippet(snippet, queryTokens, contextTokens, intents)
+                    if (score >= snippetMinimumScore) snippet.toRecalledMemory(score) else null
+                }
+                .sortedForRecall()
+                .take(MAX_RECALLED_SNIPPETS)
+        } else {
+            emptyList()
+        }
 
         (extractedMemories + recalledSnippets)
             .sortedForRecall()
@@ -262,6 +266,11 @@ class MemoryRepositoryImpl @Inject constructor(
             MemoryKind.RELATIONSHIP -> RecallIntent.RELATIONSHIP in intents || RecallIntent.PERSONAL in intents || RecallIntent.GENERAL in intents
             MemoryKind.OTHER -> RecallIntent.GENERAL in intents
         }
+    }
+
+    private fun shouldRecallVerbatimSnippets(query: String): Boolean {
+        return SNIPPET_RECALL_REGEX.containsMatchIn(query) ||
+            (SNIPPET_TEMPORAL_REGEX.containsMatchIn(query) && SNIPPET_DISCUSSION_REGEX.containsMatchIn(query))
     }
 
     private suspend fun getSnippetRecallCandidates(
@@ -464,6 +473,18 @@ class MemoryRepositoryImpl @Inject constructor(
         )
         val SENSITIVE_SNIPPET_REGEX = Regex(
             "\\b(api key|password|secret|token|private key|credit card|ssn|social security)\\b",
+            RegexOption.IGNORE_CASE
+        )
+        val SNIPPET_RECALL_REGEX = Regex(
+            "\\b(what did (?:we|i|you) (?:discuss|talk about|say|decide|mention)|what have (?:we|i) (?:discussed|talked about|said|decided|mentioned)|what did i tell you|what did i say|what did you say|did we decide|what did we decide|earlier (?:chat|conversation|discussion)|previous (?:chat|conversation|discussion)|last time|we discussed|we talked|i told you|you told me|mentioned before|said before|discussed before|talked about before)\\b",
+            RegexOption.IGNORE_CASE
+        )
+        val SNIPPET_TEMPORAL_REGEX = Regex(
+            "\\b(previously|before|earlier|last time|past|old chat|old conversation)\\b",
+            RegexOption.IGNORE_CASE
+        )
+        val SNIPPET_DISCUSSION_REGEX = Regex(
+            "\\b(discuss|discussed|talk|talked|say|said|tell|told|mention|mentioned|decide|decided|conversation|chat)\\b",
             RegexOption.IGNORE_CASE
         )
 

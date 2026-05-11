@@ -106,6 +106,40 @@ class MemoryRepositoryImplTest {
     }
 
     @Test
+    fun `recall - random query does not recall old chat snippets`() = runTest {
+        repository = MemoryRepositoryImpl(memoryDao, StandardTestDispatcher(testScheduler))
+        coEvery { memoryDao.getActiveMemories(any()) } returns emptyList()
+        coEvery { memoryDao.getActiveSnippets(any()) } returns listOf(
+            snippet("We debugged a Room migration crash while working on an unrelated feature").toEntity()
+        )
+
+        val recalled = repository.recall(query = "How do I fix a Room migration crash?", limit = 3)
+
+        assertTrue(recalled.isEmpty())
+    }
+
+    @Test
+    fun `recall - saved memory wins over old chat snippets for personal query`() = runTest {
+        repository = MemoryRepositoryImpl(memoryDao, StandardTestDispatcher(testScheduler))
+        coEvery { memoryDao.getActiveMemories(any()) } returns listOf(
+            memory(
+                content = "User owns a Pixel 9 Pro",
+                kind = MemoryKind.PERSONAL_FACT,
+                confidence = 0.82f
+            ).toEntity()
+        )
+        coEvery { memoryDao.getActiveSnippets(any()) } returns listOf(
+            snippet("We discussed building phone mockups for an old design idea").toEntity()
+        )
+
+        val recalled = repository.recall(query = "What phone do I have?", limit = 3)
+
+        assertEquals(1, recalled.size)
+        assertEquals(RecalledMemorySource.EXTRACTED_MEMORY, recalled.single().source)
+        assertEquals("User owns a Pixel 9 Pro", recalled.single().memory.content)
+    }
+
+    @Test
     fun `recall - snippet drawer helps explicit discussion recall`() = runTest {
         repository = MemoryRepositoryImpl(memoryDao, StandardTestDispatcher(testScheduler))
         coEvery { memoryDao.getActiveMemories(any()) } returns emptyList()
