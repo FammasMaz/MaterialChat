@@ -54,11 +54,12 @@ class MemoryRepositoryImpl @Inject constructor(
         val intents = classifyRecallIntents(query)
         if (queryTokens.isEmpty() && contextTokens.isEmpty() && intents.isEmpty()) return@withContext emptyList()
         val minimumScore = if (intents.isEmpty()) MIN_PASSIVE_RECALL_SCORE else MIN_INTENT_RECALL_SCORE
+        val memories = getMemoryRecallCandidates(queryTokens, contextTokens)
+        val memoryCorpus = CorpusStats.from(memories.map { tokenizeTerms(it.content) })
 
-        val extractedMemories = memoryDao.getActiveMemories(limit = MAX_RECALL_POOL)
-            .mapNotNull { entity ->
-                val memory = entity.toDomain()
-                val score = scoreMemory(memory, queryTokens, contextTokens, intents)
+        val extractedMemories = memories
+            .mapNotNull { memory ->
+                val score = scoreMemory(memory, queryTokens, contextTokens, intents, memoryCorpus)
                 if (score >= minimumScore) RecalledMemory(memory, score) else null
             }
             .sortedForRecall()
@@ -69,9 +70,11 @@ class MemoryRepositoryImpl @Inject constructor(
             } else {
                 MIN_SNIPPET_INTENT_RECALL_SCORE
             }
-            getSnippetRecallCandidates(queryTokens, contextTokens)
+            val snippets = getSnippetRecallCandidates(queryTokens, contextTokens)
+            val snippetCorpus = CorpusStats.from(snippets.map { tokenizeTerms(it.content) })
+            snippets
                 .mapNotNull { snippet ->
-                    val score = scoreSnippet(snippet, queryTokens, contextTokens, intents)
+                    val score = scoreSnippet(snippet, queryTokens, contextTokens, intents, snippetCorpus)
                     if (score >= snippetMinimumScore) snippet.toRecalledMemory(score) else null
                 }
                 .sortedForRecall()
@@ -186,11 +189,13 @@ class MemoryRepositoryImpl @Inject constructor(
         memory: Memory,
         queryTokens: Set<String>,
         contextTokens: Set<String>,
-        intents: Set<RecallIntent>
+        intents: Set<RecallIntent>,
+        corpus: CorpusStats
     ): Double {
-        val memoryTokens = tokenize(memory.content)
-        if (memoryTokens.isEmpty()) return 0.0
+        val memoryTerms = tokenizeTerms(memory.content)
+        if (memoryTerms.isEmpty()) return 0.0
 
+        val memoryTokens = memoryTerms.toSet()
         val queryOverlap = memoryTokens.intersect(queryTokens)
         val contextOverlap = memoryTokens.intersect(contextTokens) - queryOverlap
         val kindMatchesIntent = memory.kind.matchesAny(intents)
@@ -201,30 +206,14 @@ class MemoryRepositoryImpl @Inject constructor(
         if (queryOverlap.isEmpty() && !intentOnlyMatch) return 0.0
         if (!intentOnlyMatch && !hasStrongEnoughLexicalMatch(memory, queryOverlap, hasRecallIntent)) return 0.0
 
-        val confidence = memory.confidence.coerceIn(0f, 1f).toDouble()
-        val confidenceBoost = 0.10 * confidence
-        val recallBoost = ln((memory.recallCount + 1).toDouble()) * 0.012
-        val intentBoost = when {
-            kindMatchesIntent -> 0.24
-            generalRecall -> 0.16
-            hasRecallIntent -> 0.08
-            else -> 0.0
-        }
+        val rankingBoosts = rankingBoosts(memory, kindMatchesIntent, generalRecall, hasRecallIntent)
+        if (intentOnlyMatch) return INTENT_ONLY_BASE_SCORE + rankingBoosts
 
-        if (intentOnlyMatch) {
-            return 0.34 + confidenceBoost + intentBoost + recallBoost
-        }
-
-        val coverage = queryOverlap.size.toDouble() / memoryTokens.size.coerceAtLeast(1)
-        val queryCoverage = queryOverlap.size.toDouble() / queryTokens.size.coerceAtLeast(1)
-        val contextCoverage = contextOverlap.size.toDouble() / memoryTokens.size.coerceAtLeast(1)
-        return (coverage * 0.44) +
-            (queryCoverage * 0.28) +
-            (contextCoverage * 0.10) +
-            (queryOverlap.size * 0.055) +
-            confidenceBoost +
-            recallBoost +
-            intentBoost
+        val queryBm25 = bm25Score(queryTokens, memoryTerms, corpus)
+        val contextBm25 = bm25Score(contextTokens, memoryTerms, corpus) * CONTEXT_BM25_WEIGHT
+        val lexicalScore = normalizeBm25(queryBm25 + contextBm25)
+        val overlapBoost = overlapBoost(queryOverlap.size, contextOverlap.size)
+        return (lexicalScore * BM25_SCORE_WEIGHT) + overlapBoost + rankingBoosts
     }
 
     private fun hasStrongEnoughLexicalMatch(
@@ -240,6 +229,49 @@ class MemoryRepositoryImpl @Inject constructor(
         val distinctiveSingleToken = singleToken.length >= 5 && singleToken !in GENERIC_MEMORY_TOKENS
         val highConfidenceDurableMemory = memory.confidence >= 0.74f && memory.kind in PASSIVE_ONE_TOKEN_KINDS
         return distinctiveSingleToken && highConfidenceDurableMemory
+    }
+
+    private fun rankingBoosts(
+        memory: Memory,
+        kindMatchesIntent: Boolean,
+        generalRecall: Boolean,
+        hasRecallIntent: Boolean
+    ): Double {
+        val confidenceBoost = 0.10 * memory.confidence.coerceIn(0f, 1f).toDouble()
+        val recallBoost = ln((memory.recallCount + 1).toDouble()) * 0.012
+        val intentBoost = when {
+            kindMatchesIntent -> 0.24
+            generalRecall -> 0.16
+            hasRecallIntent -> 0.08
+            else -> 0.0
+        }
+        return confidenceBoost + recallBoost + intentBoost
+    }
+
+    private fun bm25Score(
+        queryTokens: Set<String>,
+        documentTerms: List<String>,
+        corpus: CorpusStats
+    ): Double {
+        if (queryTokens.isEmpty() || documentTerms.isEmpty() || corpus.documentCount == 0) return 0.0
+        val termFrequency = documentTerms.groupingBy { it }.eachCount()
+        val documentLength = documentTerms.size.toDouble()
+        return queryTokens.sumOf { term ->
+            val tf = termFrequency[term]?.toDouble() ?: return@sumOf 0.0
+            val idf = corpus.idf(term)
+            val lengthNorm = 1.0 - BM25_B + BM25_B * (documentLength / corpus.averageDocumentLength)
+            idf * ((tf * (BM25_K1 + 1.0)) / (tf + BM25_K1 * lengthNorm))
+        }
+    }
+
+    private fun normalizeBm25(score: Double): Double {
+        return (score / (score + BM25_NORMALIZER)).coerceIn(0.0, 1.0)
+    }
+
+    private fun overlapBoost(queryOverlapSize: Int, contextOverlapSize: Int): Double {
+        val queryBoost = (queryOverlapSize * QUERY_OVERLAP_BOOST).coerceAtMost(MAX_QUERY_OVERLAP_BOOST)
+        val contextBoost = (contextOverlapSize * CONTEXT_OVERLAP_BOOST).coerceAtMost(MAX_CONTEXT_OVERLAP_BOOST)
+        return queryBoost + contextBoost
     }
 
     private fun classifyRecallIntents(query: String): Set<RecallIntent> {
@@ -273,16 +305,33 @@ class MemoryRepositoryImpl @Inject constructor(
             (SNIPPET_TEMPORAL_REGEX.containsMatchIn(query) && SNIPPET_DISCUSSION_REGEX.containsMatchIn(query))
     }
 
+    private suspend fun getMemoryRecallCandidates(
+        queryTokens: Set<String>,
+        contextTokens: Set<String>
+    ): List<Memory> {
+        val searchTerms = recallSearchTerms(queryTokens, contextTokens)
+        val searched = if (searchTerms.isEmpty()) {
+            emptyList()
+        } else {
+            memoryDao.searchActiveMemories(
+                term1 = searchTerms.getOrElse(0) { "" },
+                term2 = searchTerms.getOrElse(1) { "" },
+                term3 = searchTerms.getOrElse(2) { "" },
+                term4 = searchTerms.getOrElse(3) { "" },
+                limit = MAX_MEMORY_SEARCH_POOL
+            )
+        }
+        val recent = memoryDao.getActiveMemories(limit = MAX_RECALL_POOL)
+        return (searched + recent)
+            .distinctBy { it.id }
+            .map { it.toDomain() }
+    }
+
     private suspend fun getSnippetRecallCandidates(
         queryTokens: Set<String>,
         contextTokens: Set<String>
     ): List<MemorySnippet> {
-        val searchTerms = (queryTokens + contextTokens)
-            .asSequence()
-            .filter { it.length >= 4 && it !in GENERIC_MEMORY_TOKENS }
-            .distinct()
-            .take(MAX_SNIPPET_SEARCH_TERMS)
-            .toList()
+        val searchTerms = recallSearchTerms(queryTokens, contextTokens)
         val searched = if (searchTerms.isEmpty()) {
             emptyList()
         } else {
@@ -300,36 +349,43 @@ class MemoryRepositoryImpl @Inject constructor(
             .toMemorySnippetDomainList()
     }
 
+    private fun recallSearchTerms(queryTokens: Set<String>, contextTokens: Set<String>): List<String> {
+        return (queryTokens + contextTokens)
+            .asSequence()
+            .filter { it.length >= 4 && it !in GENERIC_MEMORY_TOKENS }
+            .distinct()
+            .take(MAX_RECALL_SEARCH_TERMS)
+            .toList()
+    }
+
     private fun scoreSnippet(
         snippet: MemorySnippet,
         queryTokens: Set<String>,
         contextTokens: Set<String>,
-        intents: Set<RecallIntent>
+        intents: Set<RecallIntent>,
+        corpus: CorpusStats
     ): Double {
-        val snippetTokens = tokenize(snippet.content)
-        if (snippetTokens.isEmpty()) return 0.0
+        val snippetTerms = tokenizeTerms(snippet.content)
+        if (snippetTerms.isEmpty()) return 0.0
 
+        val snippetTokens = snippetTerms.toSet()
         val queryOverlap = snippetTokens.intersect(queryTokens)
         val contextOverlap = snippetTokens.intersect(contextTokens) - queryOverlap
         val hasRecallIntent = intents.isNotEmpty()
         if (!hasStrongEnoughSnippetMatch(queryOverlap, contextOverlap, hasRecallIntent)) return 0.0
 
-        val coverage = queryOverlap.size.toDouble() / snippetTokens.size.coerceAtLeast(1)
-        val queryCoverage = queryOverlap.size.toDouble() / queryTokens.size.coerceAtLeast(1)
-        val contextCoverage = contextOverlap.size.toDouble() / snippetTokens.size.coerceAtLeast(1)
+        val queryBm25 = bm25Score(queryTokens, snippetTerms, corpus)
+        val contextBm25 = bm25Score(contextTokens, snippetTerms, corpus) * CONTEXT_BM25_WEIGHT
+        val lexicalScore = normalizeBm25(queryBm25 + contextBm25)
         val recallBoost = ln((snippet.recallCount + 1).toDouble()) * 0.008
         val intentBoost = if (hasRecallIntent) 0.10 else 0.0
         val roleBoost = if (snippet.role == MessageRole.USER) 0.04 else 0.0
-        val recencyBoost = recencyBoost(snippet.updatedAt)
-
-        return (coverage * 0.26) +
-            (queryCoverage * 0.36) +
-            (contextCoverage * 0.10) +
-            (queryOverlap.size * 0.045) +
+        return (lexicalScore * SNIPPET_BM25_SCORE_WEIGHT) +
+            overlapBoost(queryOverlap.size, contextOverlap.size) +
             recallBoost +
             intentBoost +
             roleBoost +
-            recencyBoost
+            recencyBoost(snippet.updatedAt)
     }
 
     private fun hasStrongEnoughSnippetMatch(
@@ -384,7 +440,9 @@ class MemoryRepositoryImpl @Inject constructor(
         )
     }
 
-    private fun tokenize(text: String): Set<String> {
+    private fun tokenize(text: String): Set<String> = tokenizeTerms(text).toSet()
+
+    private fun tokenizeTerms(text: String): List<String> {
         return text.lowercase()
             .split(Regex("[^a-z0-9]+"))
             .asSequence()
@@ -392,11 +450,27 @@ class MemoryRepositoryImpl @Inject constructor(
             .filter { it.length >= 3 || it in SHORT_MEMORY_TOKENS }
             .filter { it !in STOP_WORDS }
             .flatMap { expandToken(it) }
-            .toSet()
+            .toList()
     }
 
     private fun expandToken(token: String): Set<String> {
-        return TOKEN_SYNONYMS[token]?.plus(token) ?: setOf(token)
+        val expanded = mutableSetOf(token)
+        expanded += TOKEN_SYNONYMS[token].orEmpty()
+        stemToken(token)?.let { stem ->
+            expanded += stem
+            expanded += TOKEN_SYNONYMS[stem].orEmpty()
+        }
+        return expanded
+    }
+
+    private fun stemToken(token: String): String? {
+        return when {
+            token.length > 4 && token.endsWith("ies") -> token.dropLast(3) + "y"
+            token.length > 4 && token.endsWith("ing") -> token.dropLast(3)
+            token.length > 3 && token.endsWith("ed") -> token.dropLast(2)
+            token.length > 3 && token.endsWith("s") && !token.endsWith("ss") -> token.dropLast(1)
+            else -> null
+        }
     }
 
     private fun sanitizeMemoryContent(raw: String): String? {
@@ -421,16 +495,51 @@ class MemoryRepositoryImpl @Inject constructor(
 
     private fun snippetIdForMessage(messageId: String): String = "$SNIPPET_ID_PREFIX$messageId"
 
+    private data class CorpusStats(
+        val documentCount: Int,
+        val averageDocumentLength: Double,
+        val documentFrequency: Map<String, Int>
+    ) {
+        fun idf(term: String): Double {
+            val frequency = documentFrequency[term] ?: 0
+            return ln(1.0 + ((documentCount - frequency + 0.5) / (frequency + 0.5)))
+        }
+
+        companion object {
+            fun from(documents: List<List<String>>): CorpusStats {
+                if (documents.isEmpty()) return CorpusStats(0, 1.0, emptyMap())
+                val frequencies = mutableMapOf<String, Int>()
+                documents.forEach { terms ->
+                    terms.toSet().forEach { term -> frequencies[term] = (frequencies[term] ?: 0) + 1 }
+                }
+                val averageLength = documents.sumOf { it.size }.toDouble() / documents.size
+                return CorpusStats(documents.size, averageLength.coerceAtLeast(1.0), frequencies)
+            }
+        }
+    }
+
     private companion object {
         const val MAX_RECALL_POOL = 500
+        const val MAX_MEMORY_SEARCH_POOL = 1200
         const val MAX_SNIPPET_RECALL_POOL = 700
         const val MAX_SNIPPET_SEARCH_POOL = 1200
-        const val MAX_SNIPPET_SEARCH_TERMS = 4
+        const val MAX_RECALL_SEARCH_TERMS = 4
         const val MAX_RECALLED_SNIPPETS = 2
         const val MIN_PASSIVE_RECALL_SCORE = 0.48
         const val MIN_INTENT_RECALL_SCORE = 0.46
         const val MIN_SNIPPET_PASSIVE_RECALL_SCORE = 0.34
         const val MIN_SNIPPET_INTENT_RECALL_SCORE = 0.34
+        const val BM25_K1 = 1.2
+        const val BM25_B = 0.75
+        const val BM25_NORMALIZER = 1.2
+        const val BM25_SCORE_WEIGHT = 0.72
+        const val SNIPPET_BM25_SCORE_WEIGHT = 0.64
+        const val CONTEXT_BM25_WEIGHT = 0.25
+        const val QUERY_OVERLAP_BOOST = 0.055
+        const val CONTEXT_OVERLAP_BOOST = 0.025
+        const val MAX_QUERY_OVERLAP_BOOST = 0.22
+        const val MAX_CONTEXT_OVERLAP_BOOST = 0.08
+        const val INTENT_ONLY_BASE_SCORE = 0.34
         const val MAX_SAVE_CANDIDATES = 5
         const val MAX_SAVE_SNIPPETS = 2
         const val MIN_MEMORY_LENGTH = 12

@@ -300,6 +300,7 @@ fun ChatScreen(
                         isLoadingModels = state.isLoadingModels,
                         beautifulModelNamesEnabled = state.beautifulModelNamesEnabled,
                         hasBranches = state.hasBranches,
+                        contextWindowUsage = state.contextWindowUsage,
                         onNavigateBack = { viewModel.navigateBack() },
                         onExportClick = { viewModel.showExportOptions() },
                         onModelSelected = { model -> viewModel.changeModel(model) },
@@ -803,7 +804,6 @@ private fun ChatContent(
                 quotedMessage = quotedMessage,
                 onClearQuote = onClearQuote,
                 showTokenCounter = state.showTokenCounter,
-                contextWindowUsage = state.contextWindowUsage,
                 modifier = Modifier.onSizeChanged { inputHeightPx = it.height }
             )
         }

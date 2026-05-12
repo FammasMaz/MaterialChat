@@ -47,6 +47,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.materialchat.domain.model.AiModel
+import com.materialchat.ui.screens.chat.ContextWindowUsage
 import com.materialchat.ui.screens.chat.components.ModelPickerDropdown
 import com.materialchat.ui.util.ModelNameParser
 import com.materialchat.ui.components.HapticPattern
@@ -89,6 +90,7 @@ fun ChatTopBar(
     isLoadingModels: Boolean,
     beautifulModelNamesEnabled: Boolean = false,
     hasBranches: Boolean = false,
+    contextWindowUsage: ContextWindowUsage = ContextWindowUsage(),
     onNavigateBack: () -> Unit,
     onExportClick: () -> Unit,
     onModelSelected: (AiModel) -> Unit,
@@ -239,6 +241,10 @@ fun ChatTopBar(
             }
         },
         actions = {
+            ContextWindowIndicator(
+                usage = contextWindowUsage,
+                modifier = Modifier.padding(end = 2.dp)
+            )
             IconButton(onClick = { haptics.perform(HapticPattern.CLICK); showMenu = true }) {
                 Icon(
                     imageVector = Icons.Default.MoreVert,

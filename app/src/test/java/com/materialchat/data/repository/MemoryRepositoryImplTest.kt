@@ -24,6 +24,7 @@ class MemoryRepositoryImplTest {
     @Before
     fun setup() {
         memoryDao = mockk(relaxUnitFun = true)
+        coEvery { memoryDao.searchActiveMemories(any(), any(), any(), any(), any()) } returns emptyList()
         coEvery { memoryDao.getActiveSnippets(any()) } returns emptyList()
         coEvery { memoryDao.searchActiveSnippets(any(), any(), any(), any(), any()) } returns emptyList()
     }
@@ -149,6 +150,44 @@ class MemoryRepositoryImplTest {
         )
 
         val recalled = repository.recall(query = "What is my partner's occupation?", limit = 3)
+
+        assertEquals("User's girlfriend Maya works as a nurse", recalled.single().memory.content)
+    }
+
+    @Test
+    fun `recall - memory search finds relevant older memory outside recent pool`() = runTest {
+        repository = MemoryRepositoryImpl(memoryDao, StandardTestDispatcher(testScheduler))
+        coEvery { memoryDao.getActiveMemories(any()) } returns emptyList()
+        coEvery { memoryDao.searchActiveMemories(any(), any(), any(), any(), any()) } returns listOf(
+            memory(
+                content = "User's girlfriend Maya works as a nurse",
+                kind = MemoryKind.RELATIONSHIP,
+                confidence = 0.86f
+            ).toEntity()
+        )
+
+        val recalled = repository.recall(query = "What does my girlfriend do for work?", limit = 3)
+
+        assertEquals("User's girlfriend Maya works as a nurse", recalled.single().memory.content)
+    }
+
+    @Test
+    fun `recall - bm25 ranks specific relationship attribute above generic relationship fact`() = runTest {
+        repository = MemoryRepositoryImpl(memoryDao, StandardTestDispatcher(testScheduler))
+        coEvery { memoryDao.getActiveMemories(any()) } returns listOf(
+            memory(
+                content = "User's girlfriend is Maya",
+                kind = MemoryKind.RELATIONSHIP,
+                confidence = 0.90f
+            ).toEntity(),
+            memory(
+                content = "User's girlfriend Maya works as a nurse",
+                kind = MemoryKind.RELATIONSHIP,
+                confidence = 0.82f
+            ).toEntity()
+        )
+
+        val recalled = repository.recall(query = "What does my gf do for work?", limit = 1)
 
         assertEquals("User's girlfriend Maya works as a nurse", recalled.single().memory.content)
     }

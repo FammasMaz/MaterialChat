@@ -2,18 +2,26 @@ package com.materialchat.ui.screens.chat.components
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -41,47 +49,63 @@ fun ContextWindowIndicator(
 ) {
     val indicatorColors = contextIndicatorColors(usage.level)
     val label = usage.formatTokenLabel()
+    var expanded by remember { mutableStateOf(false) }
 
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 4.dp),
-        horizontalArrangement = Arrangement.End
-    ) {
+    Box(modifier = modifier) {
         Surface(
-            shape = RoundedCornerShape(50),
+            shape = CircleShape,
             color = indicatorColors.container,
             contentColor = indicatorColors.content,
             tonalElevation = 1.dp,
-            modifier = Modifier.semantics {
-                contentDescription = "Context window, $label"
-            }
+            modifier = Modifier
+                .size(48.dp)
+                .semantics { contentDescription = "Context window usage, tap for details" }
+                .clickable { expanded = true }
         ) {
-            Row(
-                modifier = Modifier.padding(start = 8.dp, end = 12.dp, top = 6.dp, bottom = 6.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
+            Box(contentAlignment = Alignment.Center) {
                 WavyContextRing(
                     progress = usage.fractionUsed ?: 0.12f,
                     progressColor = indicatorColors.progress,
                     trackColor = indicatorColors.content.copy(alpha = 0.16f),
                     modifier = Modifier.size(28.dp)
                 )
-                Column(verticalArrangement = Arrangement.Center) {
-                    Text(
-                        text = "Context",
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.SemiBold,
-                        color = indicatorColors.content.copy(alpha = 0.78f)
+            }
+        }
+
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false }
+        ) {
+            Column(
+                modifier = Modifier
+                    .widthIn(min = 180.dp, max = 240.dp)
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Text(
+                    text = "Context window",
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    WavyContextRing(
+                        progress = usage.fractionUsed ?: 0.12f,
+                        progressColor = indicatorColors.progress,
+                        trackColor = indicatorColors.content.copy(alpha = 0.16f),
+                        modifier = Modifier.size(24.dp)
                     )
+                    Spacer(modifier = Modifier.width(8.dp))
                     Text(
                         text = label,
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = indicatorColors.content
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Bold
                     )
                 }
+                Text(
+                    text = usage.detailLabel(),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         }
     }
@@ -186,6 +210,16 @@ private fun ContextWindowUsage.formatTokenLabel(): String {
     val used = compactTokenCount(usedTokens)
     val max = maxTokens?.let { compactTokenCount(it) }
     return if (max != null) "~$used / $max" else "~$used used"
+}
+
+private fun ContextWindowUsage.detailLabel(): String {
+    val model = modelName.takeIf { it.isNotBlank() } ?: "selected model"
+    val suffix = if (isApproximate) "Approximate" else "Reported"
+    return if (maxTokens == null) {
+        "$suffix token estimate for $model. Model limit unknown."
+    } else {
+        "$suffix chat context used for $model."
+    }
 }
 
 private fun compactTokenCount(tokens: Int): String {

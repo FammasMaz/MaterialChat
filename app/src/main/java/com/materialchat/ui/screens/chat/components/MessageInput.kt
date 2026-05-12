@@ -90,7 +90,6 @@ import com.materialchat.domain.model.Attachment
 import com.materialchat.domain.model.Message
 import com.materialchat.domain.model.MessageRole
 import com.materialchat.domain.model.ReasoningEffort
-import com.materialchat.ui.screens.chat.ContextWindowUsage
 import com.materialchat.ui.components.HapticPattern
 import com.materialchat.ui.components.MorphingSendButton
 import com.materialchat.ui.components.rememberHapticFeedback
@@ -154,8 +153,7 @@ fun MessageInput(
     shouldAutoFocus: Boolean = false,
     quotedMessage: Message? = null,
     onClearQuote: () -> Unit = {},
-    showTokenCounter: Boolean = false,
-    contextWindowUsage: ContextWindowUsage = ContextWindowUsage()
+    showTokenCounter: Boolean = false
 ) {
     val haptics = rememberHapticFeedback()
     val textScrollState = rememberScrollState()
@@ -233,7 +231,7 @@ fun MessageInput(
         // M3 Expressive: Row with separate circular buttons + pill input
         Row(
             modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
+            verticalAlignment = Alignment.Bottom,
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             // Add menu - compact image actions, kept behind the familiar plus affordance.
@@ -400,11 +398,6 @@ fun MessageInput(
                 reasoningEffort = reasoningEffort
             )
         }
-
-        ContextWindowIndicator(
-            usage = contextWindowUsage,
-            modifier = Modifier.fillMaxWidth()
-        )
 
         // Live token counter (shown when enabled and there is input text)
         if (showTokenCounter) {

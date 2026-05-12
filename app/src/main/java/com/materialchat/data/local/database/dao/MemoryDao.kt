@@ -43,6 +43,26 @@ interface MemoryDao {
     @Query("""
         SELECT * FROM memories
         WHERE is_archived = 0
+          AND (
+            (:term1 != '' AND normalized_content LIKE '%' || :term1 || '%') OR
+            (:term2 != '' AND normalized_content LIKE '%' || :term2 || '%') OR
+            (:term3 != '' AND normalized_content LIKE '%' || :term3 || '%') OR
+            (:term4 != '' AND normalized_content LIKE '%' || :term4 || '%')
+          )
+        ORDER BY updated_at DESC
+        LIMIT :limit
+    """)
+    suspend fun searchActiveMemories(
+        term1: String,
+        term2: String,
+        term3: String,
+        term4: String,
+        limit: Int
+    ): List<MemoryEntity>
+
+    @Query("""
+        SELECT * FROM memories
+        WHERE is_archived = 0
         ORDER BY updated_at DESC
     """)
     fun observeActiveMemories(): Flow<List<MemoryEntity>>
