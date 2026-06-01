@@ -85,6 +85,7 @@ import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import com.materialchat.ui.components.ExpressiveButton
+import com.materialchat.ui.components.ExpressiveTopBarTitle
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
@@ -309,9 +310,10 @@ fun SettingsScreen(
         topBar = {
             LargeTopAppBar(
                 title = {
-                    Text(
-                        text = "Settings",
-                        style = MaterialTheme.typography.headlineLarge
+                    ExpressiveTopBarTitle(
+                        title = "Settings",
+                        subtitle = "Providers, theme, and app behavior",
+                        collapsedFraction = scrollBehavior.state.collapsedFraction
                     )
                 },
                 scrollBehavior = scrollBehavior,

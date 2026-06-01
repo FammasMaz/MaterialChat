@@ -8,15 +8,14 @@ import androidx.compose.material.icons.outlined.Save
 import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import com.materialchat.domain.model.ArtifactType
+import com.materialchat.ui.components.ExpressiveFilledIconButton
+import com.materialchat.ui.components.ExpressiveTopBarTitle
 import com.materialchat.ui.components.HapticPattern
 import com.materialchat.ui.components.rememberHapticFeedback
 import com.materialchat.ui.screens.canvas.CanvasViewMode
@@ -74,44 +73,39 @@ fun CanvasTopBar(
 
     TopAppBar(
         title = {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleMedium
+            ExpressiveTopBarTitle(
+                title = title,
+                subtitle = if (viewMode == CanvasViewMode.PREVIEW) "Live preview" else "Source code"
             )
         },
         navigationIcon = {
-            IconButton(onClick = { haptics.perform(HapticPattern.CLICK); onNavigateBack() }) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = "Back"
-                )
-            }
+            ExpressiveFilledIconButton(
+                onClick = { haptics.perform(HapticPattern.CLICK); onNavigateBack() },
+                icon = Icons.AutoMirrored.Filled.ArrowBack,
+                contentDescription = "Back"
+            )
         },
         actions = {
-            IconButton(onClick = { haptics.perform(HapticPattern.CLICK); onToggleViewMode() }) {
-                Icon(
-                    imageVector = toggleIcon,
-                    contentDescription = toggleDescription
-                )
-            }
-            IconButton(onClick = { haptics.perform(HapticPattern.CLICK); onCopy() }) {
-                Icon(
-                    imageVector = Icons.Outlined.ContentCopy,
-                    contentDescription = "Copy code"
-                )
-            }
-            IconButton(onClick = { haptics.perform(HapticPattern.CLICK); onSave() }) {
-                Icon(
-                    imageVector = Icons.Outlined.Save,
-                    contentDescription = "Save as mini-app"
-                )
-            }
-            IconButton(onClick = { haptics.perform(HapticPattern.CLICK); onShare() }) {
-                Icon(
-                    imageVector = Icons.Outlined.Share,
-                    contentDescription = "Share"
-                )
-            }
+            ExpressiveFilledIconButton(
+                onClick = { haptics.perform(HapticPattern.CLICK); onToggleViewMode() },
+                icon = toggleIcon,
+                contentDescription = toggleDescription
+            )
+            ExpressiveFilledIconButton(
+                onClick = { haptics.perform(HapticPattern.CLICK); onCopy() },
+                icon = Icons.Outlined.ContentCopy,
+                contentDescription = "Copy code"
+            )
+            ExpressiveFilledIconButton(
+                onClick = { haptics.perform(HapticPattern.CLICK); onSave() },
+                icon = Icons.Outlined.Save,
+                contentDescription = "Save as mini-app"
+            )
+            ExpressiveFilledIconButton(
+                onClick = { haptics.perform(HapticPattern.CLICK); onShare() },
+                icon = Icons.Outlined.Share,
+                contentDescription = "Share"
+            )
         },
         colors = TopAppBarDefaults.topAppBarColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainer,

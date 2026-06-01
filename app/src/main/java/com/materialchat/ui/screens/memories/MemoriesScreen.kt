@@ -55,6 +55,9 @@ import com.materialchat.domain.model.Memory
 import com.materialchat.domain.model.MemoryKind
 import com.materialchat.ui.components.ExpressiveButton
 import com.materialchat.ui.components.ExpressiveButtonStyle
+import com.materialchat.ui.components.ExpressiveContentSurface
+import com.materialchat.ui.components.ExpressiveFilledIconButton
+import com.materialchat.ui.components.ExpressiveTopBarTitle
 import com.materialchat.ui.components.HapticPattern
 import com.materialchat.ui.components.rememberHapticFeedback
 import java.text.DateFormat
@@ -75,28 +78,27 @@ fun MemoriesScreen(
         topBar = {
             TopAppBar(
                 title = {
-                    Text(
-                        text = "Memories",
-                        style = MaterialTheme.typography.titleLarge
+                    ExpressiveTopBarTitle(
+                        title = "Memories",
+                        subtitle = "Context your assistant remembers"
                     )
                 },
                 navigationIcon = {
-                    IconButton(onClick = { haptics.perform(HapticPattern.CLICK); onNavigateBack() }) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Navigate back"
-                        )
-                    }
+                    ExpressiveFilledIconButton(
+                        onClick = { haptics.perform(HapticPattern.CLICK); onNavigateBack() },
+                        icon = Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = "Navigate back"
+                    )
                 },
                 actions = {
                     if (state.memories.isNotEmpty()) {
-                        IconButton(onClick = { haptics.perform(HapticPattern.CLICK); showDeleteAllDialog = true }) {
-                            Icon(
-                                imageVector = Icons.Outlined.Delete,
-                                contentDescription = "Delete all memories",
-                                tint = MaterialTheme.colorScheme.error
-                            )
-                        }
+                        ExpressiveFilledIconButton(
+                            onClick = { haptics.perform(HapticPattern.CLICK); showDeleteAllDialog = true },
+                            icon = Icons.Outlined.Delete,
+                            contentDescription = "Delete all memories",
+                            containerColor = MaterialTheme.colorScheme.errorContainer,
+                            contentColor = MaterialTheme.colorScheme.onErrorContainer
+                        )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -105,12 +107,8 @@ fun MemoriesScreen(
             )
         }
     ) { paddingValues ->
-        Surface(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(top = paddingValues.calculateTopPadding()),
-            shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
-            color = MaterialTheme.colorScheme.surfaceContainerLow
+        ExpressiveContentSurface(
+            padding = PaddingValues(top = paddingValues.calculateTopPadding())
         ) {
             when {
                 state.isLoading -> MemoriesLoadingContent()

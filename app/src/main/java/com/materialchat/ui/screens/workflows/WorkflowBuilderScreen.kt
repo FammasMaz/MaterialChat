@@ -19,12 +19,10 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import com.materialchat.ui.components.ExpressiveButton
 import com.materialchat.ui.components.ExpressiveButtonStyle
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
@@ -35,6 +33,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.materialchat.ui.components.ExpressiveContentSurface
+import com.materialchat.ui.components.ExpressiveFilledIconButton
+import com.materialchat.ui.components.ExpressiveTopBarTitle
 import com.materialchat.ui.components.HapticPattern
 import com.materialchat.ui.components.rememberHapticFeedback
 import com.materialchat.ui.screens.workflows.components.DraggableStepList
@@ -71,29 +72,34 @@ fun WorkflowBuilderScreen(
         topBar = {
             TopAppBar(
                 title = {
-                    Text(
-                        text = if (uiState.isEditing) "Edit Workflow" else "New Workflow",
-                        style = MaterialTheme.typography.titleLarge
+                    ExpressiveTopBarTitle(
+                        title = if (uiState.isEditing) "Edit Workflow" else "New Workflow",
+                        subtitle = "Build a repeatable chain"
                     )
                 },
                 navigationIcon = {
-                    IconButton(onClick = { haptics.perform(HapticPattern.CLICK); onNavigateBack() }) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Navigate back"
-                        )
-                    }
+                    ExpressiveFilledIconButton(
+                        onClick = { haptics.perform(HapticPattern.CLICK); onNavigateBack() },
+                        icon = Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = "Navigate back"
+                    )
                 },
                 actions = {
-                    IconButton(
-                        onClick = { viewModel.save() },
-                        enabled = uiState.name.isNotBlank() && !uiState.isSaving
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Check,
-                            contentDescription = "Save workflow"
-                        )
-                    }
+                    ExpressiveFilledIconButton(
+                        onClick = { if (uiState.name.isNotBlank() && !uiState.isSaving) viewModel.save() },
+                        icon = Icons.Default.Check,
+                        contentDescription = "Save workflow",
+                        containerColor = if (uiState.name.isNotBlank() && !uiState.isSaving) {
+                            MaterialTheme.colorScheme.primaryContainer
+                        } else {
+                            MaterialTheme.colorScheme.surfaceContainerLow
+                        },
+                        contentColor = if (uiState.name.isNotBlank() && !uiState.isSaving) {
+                            MaterialTheme.colorScheme.onPrimaryContainer
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        }
+                    )
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surfaceContainer
@@ -101,17 +107,8 @@ fun WorkflowBuilderScreen(
             )
         }
     ) { paddingValues ->
-        Surface(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(top = paddingValues.calculateTopPadding()),
-            shape = RoundedCornerShape(
-                topStart = 28.dp,
-                topEnd = 28.dp,
-                bottomStart = 0.dp,
-                bottomEnd = 0.dp
-            ),
-            color = MaterialTheme.colorScheme.surfaceContainerLow
+        ExpressiveContentSurface(
+            padding = PaddingValues(top = paddingValues.calculateTopPadding())
         ) {
             Column(
                 modifier = Modifier

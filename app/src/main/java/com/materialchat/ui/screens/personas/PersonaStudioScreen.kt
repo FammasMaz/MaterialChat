@@ -25,7 +25,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -36,6 +35,9 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import com.materialchat.ui.components.ExpressiveButton
 import com.materialchat.ui.components.ExpressiveButtonStyle
+import com.materialchat.ui.components.ExpressiveContentSurface
+import com.materialchat.ui.components.ExpressiveFilledIconButton
+import com.materialchat.ui.components.ExpressiveTopBarTitle
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -93,14 +95,18 @@ fun PersonaStudioScreen(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
             TopAppBar(
-                title = { Text("Persona Studio") },
+                title = {
+                    ExpressiveTopBarTitle(
+                        title = "Persona Studio",
+                        subtitle = "Assistant styles and starters"
+                    )
+                },
                 navigationIcon = {
-                    IconButton(onClick = { haptics.perform(HapticPattern.CLICK); onNavigateBack() }) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back"
-                        )
-                    }
+                    ExpressiveFilledIconButton(
+                        onClick = { haptics.perform(HapticPattern.CLICK); onNavigateBack() },
+                        icon = Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = "Back"
+                    )
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surfaceContainer
@@ -142,20 +148,21 @@ fun PersonaStudioScreen(
             }
 
             is PersonaStudioUiState.Success -> {
-                LazyVerticalGrid(
-                    columns = GridCells.Fixed(2),
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(paddingValues),
-                    contentPadding = PaddingValues(
-                        start = 16.dp,
-                        end = 16.dp,
-                        top = 8.dp,
-                        bottom = 88.dp // Room for FAB
-                    ),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ExpressiveContentSurface(
+                    padding = PaddingValues(top = paddingValues.calculateTopPadding())
                 ) {
+                    LazyVerticalGrid(
+                        columns = GridCells.Fixed(2),
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(
+                            start = 16.dp,
+                            end = 16.dp,
+                            top = 16.dp,
+                            bottom = 88.dp // Room for FAB
+                        ),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
                     item(span = { GridItemSpan(maxLineSpan) }) {
                         PersonaOnboardingCard()
                     }
@@ -193,6 +200,7 @@ fun PersonaStudioScreen(
                         onSave = { viewModel.savePersona(it) }
                     )
                 }
+            }
             }
         }
     }
