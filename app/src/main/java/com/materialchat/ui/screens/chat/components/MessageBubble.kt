@@ -36,7 +36,6 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.IntrinsicSize
-import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -608,7 +607,7 @@ fun MessageBubble(
 
                             Surface(
                                 modifier = Modifier
-                                    .defaultMinSize(minHeight = 44.dp)
+                                    .size(44.dp)
                                     .graphicsLayer {
                                         scaleX = bookmarkScale
                                         scaleY = bookmarkScale
@@ -631,24 +630,14 @@ fun MessageBubble(
                                 tonalElevation = 0.dp,
                                 shadowElevation = 0.dp
                             ) {
-                                Row(
-                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.Center
-                                ) {
+                                Box(contentAlignment = Alignment.Center) {
                                     Icon(
                                         imageVector = if (isBookmarked) Icons.Filled.Bookmark
                                                       else Icons.Outlined.BookmarkBorder,
                                         contentDescription = if (isBookmarked) "Remove bookmark"
                                                              else "Bookmark message",
-                                        modifier = Modifier.size(18.dp),
+                                        modifier = Modifier.size(20.dp),
                                         tint = bookmarkContent
-                                    )
-                                    Spacer(Modifier.width(7.dp))
-                                    Text(
-                                        text = if (isBookmarked) "Saved" else "Save",
-                                        style = MaterialTheme.typography.labelMedium,
-                                        color = bookmarkContent
                                     )
                                 }
                             }

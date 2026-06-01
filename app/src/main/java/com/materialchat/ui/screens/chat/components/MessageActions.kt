@@ -9,12 +9,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.defaultMinSize
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.CallSplit
@@ -25,7 +20,6 @@ import androidx.compose.material.icons.outlined.SwapHoriz
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -34,15 +28,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.materialchat.ui.components.HapticPattern
 import com.materialchat.ui.components.rememberHapticFeedback
 import com.materialchat.ui.theme.ExpressiveMotion
 
 /**
- * Message action toolbar using the same pill-like, springy button language as
- * the rest of the app.
+ * Message action toolbar using compact icon buttons with the app's springy
+ * expressive button language.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -60,11 +53,11 @@ fun MessageActions(
     modifier: Modifier = Modifier
 ) {
     val actions = buildList {
-        if (showCopy) add(MessageActionItem(Icons.Default.ContentCopy, "Copy", "Copy message", MessageActionTone.Neutral, onCopy))
-        if (showEdit && onEdit != null) add(MessageActionItem(Icons.Outlined.Edit, "Edit", "Edit message", MessageActionTone.Neutral) { onEdit() })
-        if (showBranch && onBranch != null) add(MessageActionItem(Icons.AutoMirrored.Outlined.CallSplit, "Branch", "Branch conversation", MessageActionTone.Secondary) { onBranch() })
-        if (showRedoWithModel && onRedoWithModel != null) add(MessageActionItem(Icons.Outlined.SwapHoriz, "Redo", "Redo with different model", MessageActionTone.Secondary) { onRedoWithModel() })
-        if (showRegenerate && onRegenerate != null) add(MessageActionItem(Icons.Default.Refresh, "Retry", "Regenerate response", MessageActionTone.Primary) { onRegenerate() })
+        if (showCopy) add(MessageActionItem(Icons.Default.ContentCopy, "Copy message", MessageActionTone.Neutral, onCopy))
+        if (showEdit && onEdit != null) add(MessageActionItem(Icons.Outlined.Edit, "Edit message", MessageActionTone.Neutral) { onEdit() })
+        if (showBranch && onBranch != null) add(MessageActionItem(Icons.AutoMirrored.Outlined.CallSplit, "Branch conversation", MessageActionTone.Secondary) { onBranch() })
+        if (showRedoWithModel && onRedoWithModel != null) add(MessageActionItem(Icons.Outlined.SwapHoriz, "Redo with different model", MessageActionTone.Secondary) { onRedoWithModel() })
+        if (showRegenerate && onRegenerate != null) add(MessageActionItem(Icons.Default.Refresh, "Regenerate response", MessageActionTone.Primary) { onRegenerate() })
     }
 
     FlowRow(
@@ -81,7 +74,6 @@ fun MessageActions(
 
 private data class MessageActionItem(
     val icon: ImageVector,
-    val label: String,
     val contentDescription: String,
     val tone: MessageActionTone,
     val onClick: () -> Unit
@@ -105,7 +97,7 @@ private fun ActionButton(
         label = "messageActionScale"
     )
     val radius by animateDpAsState(
-        targetValue = if (isPressed) 16.dp else 999.dp,
+        targetValue = if (isPressed) 16.dp else 22.dp,
         animationSpec = ExpressiveMotion.Spatial.shapeMorph(),
         label = "messageActionRadius"
     )
@@ -127,7 +119,7 @@ private fun ActionButton(
             item.onClick()
         },
         modifier = modifier
-            .defaultMinSize(minHeight = 44.dp)
+            .size(44.dp)
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
@@ -139,23 +131,12 @@ private fun ActionButton(
         shadowElevation = 0.dp,
         interactionSource = interactionSource
     ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.Center
-        ) {
+        Box(contentAlignment = Alignment.Center) {
             Icon(
                 imageVector = item.icon,
                 contentDescription = item.contentDescription,
                 modifier = Modifier.size(if (emphasized) 20.dp else 18.dp),
                 tint = contentColor
-            )
-            Spacer(Modifier.width(7.dp))
-            Text(
-                text = item.label,
-                style = MaterialTheme.typography.labelMedium,
-                fontWeight = if (emphasized) FontWeight.Bold else FontWeight.SemiBold,
-                color = contentColor
             )
         }
     }
