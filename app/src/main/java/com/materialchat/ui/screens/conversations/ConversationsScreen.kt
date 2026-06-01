@@ -637,7 +637,8 @@ private fun ConversationsTopBar(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "material",
+                    // NBSP gives the italic final glyph room before the animated clip.
+                    text = "material\u00A0",
                     modifier = Modifier
                         .clipToBounds()
                         .shrinkWidth(materialWidth)
