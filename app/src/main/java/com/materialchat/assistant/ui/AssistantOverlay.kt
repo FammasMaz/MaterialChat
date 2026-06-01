@@ -409,11 +409,12 @@ private fun HeaderSection(
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Text(
-                text = "MaterialChat",
+                text = "Material Chat",
                 style = MaterialTheme.typography.titleLarge.copy(
                     fontFamily = MaterialChatExpressiveTitleFontFamily
                 ),
-                color = MaterialTheme.colorScheme.onSurface
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.padding(end = 2.dp)
             )
 
             // New Chat button - always visible

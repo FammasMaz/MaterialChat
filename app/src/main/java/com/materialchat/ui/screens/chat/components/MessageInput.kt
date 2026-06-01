@@ -327,8 +327,8 @@ fun MessageInput(
                 modifier = pillModifier,
                 shape = CustomShapes.MessageInputContainer,
                 color = MaterialTheme.colorScheme.surfaceContainerHighest,
-                tonalElevation = 2.dp,
-                shadowElevation = 1.dp
+                tonalElevation = 0.dp,
+                shadowElevation = 0.dp
             ) {
                 BasicTextField(
                     value = inputText,

@@ -218,7 +218,7 @@ private fun HeroHeader() {
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Text(
-                text = "Welcome to MaterialChat",
+                text = "Welcome to Material Chat",
                 style = MaterialTheme.typography.headlineLarge.copy(
                     fontFamily = MaterialChatExpressiveTitleFontFamily
                 ),

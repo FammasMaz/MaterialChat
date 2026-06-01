@@ -245,7 +245,8 @@ fun ChatTopBar(
                     MaterialTheme.colorScheme.onTertiaryContainer
                 } else {
                     MaterialTheme.colorScheme.onSurface
-                }
+                },
+                modifier = Modifier.padding(start = 6.dp)
             )
         },
         actions = {
@@ -262,7 +263,8 @@ fun ChatTopBar(
                     MaterialTheme.colorScheme.onTertiaryContainer
                 } else {
                     MaterialTheme.colorScheme.onSurfaceVariant
-                }
+                },
+                modifier = Modifier.padding(end = 6.dp)
             )
             DropdownMenu(
                 expanded = showMenu,
