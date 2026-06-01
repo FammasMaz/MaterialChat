@@ -56,6 +56,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.materialchat.ui.components.M3ExpressiveInlineLoading
 import com.materialchat.ui.theme.CustomShapes
 import com.materialchat.ui.theme.ExpressiveMotion
+import com.materialchat.ui.theme.MaterialChatExpressiveTitleFontFamily
 
 @Composable
 fun OnboardingScreen(
@@ -93,7 +94,7 @@ private fun OnboardingContent(
 ) {
     Surface(
         modifier = Modifier.fillMaxSize(),
-        color = MaterialTheme.colorScheme.surface
+        color = MaterialTheme.colorScheme.surfaceContainer
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
             DecorativeTonalShape(
@@ -196,9 +197,9 @@ private fun HeroHeader() {
     ) {
         Surface(
             modifier = Modifier
-                .size(96.dp)
+                .size(104.dp)
                 .scale(scale),
-            shape = RoundedCornerShape(28.dp),
+            shape = RoundedCornerShape(32.dp),
             color = MaterialTheme.colorScheme.primaryContainer,
             contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
             tonalElevation = 6.dp
@@ -218,7 +219,9 @@ private fun HeroHeader() {
         ) {
             Text(
                 text = "Welcome to MaterialChat",
-                style = MaterialTheme.typography.headlineLarge,
+                style = MaterialTheme.typography.headlineLarge.copy(
+                    fontFamily = MaterialChatExpressiveTitleFontFamily
+                ),
                 color = MaterialTheme.colorScheme.onSurface,
                 fontWeight = FontWeight.Bold,
                 textAlign = TextAlign.Center
@@ -246,7 +249,7 @@ private fun CodexHeroCard(
             containerColor = MaterialTheme.colorScheme.primaryContainer,
             contentColor = MaterialTheme.colorScheme.onPrimaryContainer
         ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Column(
             modifier = Modifier.padding(24.dp),
@@ -257,8 +260,8 @@ private fun CodexHeroCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Surface(
-                    modifier = Modifier.size(56.dp),
-                    shape = RoundedCornerShape(18.dp),
+                    modifier = Modifier.size(60.dp),
+                    shape = RoundedCornerShape(20.dp),
                     color = MaterialTheme.colorScheme.primary,
                     contentColor = MaterialTheme.colorScheme.onPrimary
                 ) {
@@ -349,7 +352,7 @@ private fun ProviderOptionCard(
             .height(88.dp),
         shape = RoundedCornerShape(28.dp),
         colors = CardDefaults.cardColors(containerColor = containerColor),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
         Row(
             modifier = Modifier
@@ -359,8 +362,8 @@ private fun ProviderOptionCard(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Surface(
-                modifier = Modifier.size(52.dp),
-                shape = RoundedCornerShape(18.dp),
+                modifier = Modifier.size(56.dp),
+                shape = RoundedCornerShape(20.dp),
                 color = MaterialTheme.colorScheme.secondaryContainer,
                 contentColor = MaterialTheme.colorScheme.onSecondaryContainer
             ) {
@@ -402,7 +405,7 @@ private fun AssistiveMessageCard(
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(24.dp),
+        shape = RoundedCornerShape(28.dp),
         colors = CardDefaults.cardColors(
             containerColor = containerColor,
             contentColor = contentColor
@@ -443,7 +446,7 @@ private fun DecorativeTonalShape(
             .size(132.dp)
             .background(
                 color = containerColor.copy(alpha = 0.36f),
-                shape = RoundedCornerShape(40.dp)
+                shape = RoundedCornerShape(44.dp)
             )
     )
 }
