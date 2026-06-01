@@ -33,10 +33,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -61,7 +58,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.materialchat.assistant.ui.components.AssistantInputBar
 import com.materialchat.assistant.ui.components.AssistantResponseCard
 import com.materialchat.assistant.voice.VoiceState
+import com.materialchat.ui.components.ExpressiveFilledIconButton
 import com.materialchat.ui.theme.ExpressiveMotion
+import com.materialchat.ui.theme.MaterialChatExpressiveTitleFontFamily
 import com.materialchat.ui.theme.MaterialChatTheme
 import kotlin.math.roundToInt
 
@@ -120,7 +119,7 @@ fun AssistantOverlay(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.5f))
+                .background(Color.Black.copy(alpha = 0.42f))
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null
@@ -219,10 +218,10 @@ private fun AssistantOverlayContent(
                 scaleY = sheetScale
             }
             .alpha(alpha),
-        shape = RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp),
-        color = MaterialTheme.colorScheme.surfaceContainerLow,
-        tonalElevation = 6.dp, // M3 Expressive: Higher elevation for depth
-        shadowElevation = 24.dp // Strong shadow for depth
+        shape = RoundedCornerShape(topStart = 36.dp, topEnd = 36.dp),
+        color = MaterialTheme.colorScheme.surfaceContainer,
+        tonalElevation = 8.dp,
+        shadowElevation = 24.dp
     ) {
         Column(
             modifier = Modifier
@@ -392,16 +391,14 @@ private fun HeaderSection(
         }
 
         // Close button
-        IconButton(
+        ExpressiveFilledIconButton(
             onClick = onDismiss,
-            modifier = Modifier.align(Alignment.TopEnd)
-        ) {
-            Icon(
-                imageVector = Icons.Default.Close,
-                contentDescription = "Close",
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
+            icon = Icons.Default.Close,
+            contentDescription = "Close",
+            modifier = Modifier.align(Alignment.TopEnd),
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+            contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+        )
 
         // Title and New Chat button
         Row(
@@ -413,25 +410,21 @@ private fun HeaderSection(
         ) {
             Text(
                 text = "MaterialChat",
-                style = MaterialTheme.typography.titleMedium,
+                style = MaterialTheme.typography.titleLarge.copy(
+                    fontFamily = MaterialChatExpressiveTitleFontFamily
+                ),
                 color = MaterialTheme.colorScheme.onSurface
             )
 
             // New Chat button - always visible
-            FilledTonalIconButton(
+            ExpressiveFilledIconButton(
                 onClick = onNewChat,
-                modifier = Modifier.size(32.dp),
-                colors = IconButtonDefaults.filledTonalIconButtonColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f)
-                )
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Add,
-                    contentDescription = "New Chat",
-                    modifier = Modifier.size(18.dp),
-                    tint = MaterialTheme.colorScheme.onPrimaryContainer
-                )
-            }
+                icon = Icons.Default.Add,
+                contentDescription = "New Chat",
+                modifier = Modifier.size(48.dp),
+                containerColor = MaterialTheme.colorScheme.primaryContainer,
+                contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+            )
         }
     }
 }

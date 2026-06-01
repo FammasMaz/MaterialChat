@@ -347,6 +347,8 @@ fun MessageBubble(
                 Surface(
                     shape = bubbleStyle.shape,
                     color = bubbleStyle.backgroundColor,
+                    tonalElevation = if (isUser) 2.dp else 1.dp,
+                    shadowElevation = if (isUser) 1.dp else 0.dp,
                     modifier = Modifier
                         .widthIn(min = 40.dp, max = bubbleStyle.maxWidth)
                         .animateContentSize(
@@ -807,13 +809,13 @@ private fun getBubbleStyle(
         AppPreferences.ChatBubbleStyle.GEOMETRIC -> lerp(
             MaterialTheme.colorScheme.surfaceContainerHigh,
             MaterialTheme.colorScheme.secondaryContainer,
-            0.18f
+            0.22f
         )
-        else -> lerp(surfaceBase, MaterialTheme.colorScheme.surfaceContainerHighest, 0.86f)
+        else -> lerp(surfaceBase, MaterialTheme.colorScheme.surfaceContainerHighest, 0.92f)
     }
-    val systemBubble = lerp(surfaceBase, MaterialTheme.colorScheme.tertiaryContainer, 0.55f)
-    val horizontalPadding = if (bubbleFamily == AppPreferences.ChatBubbleStyle.COMPACT) 12.dp else 14.dp
-    val verticalPadding = if (bubbleFamily == AppPreferences.ChatBubbleStyle.COMPACT) 8.dp else 10.dp
+    val systemBubble = lerp(surfaceBase, MaterialTheme.colorScheme.tertiaryContainer, 0.62f)
+    val horizontalPadding = if (bubbleFamily == AppPreferences.ChatBubbleStyle.COMPACT) 12.dp else 16.dp
+    val verticalPadding = if (bubbleFamily == AppPreferences.ChatBubbleStyle.COMPACT) 8.dp else 12.dp
 
     return when {
         isUser -> BubbleStyle(
@@ -887,7 +889,7 @@ private fun bubbleShapeFor(
                 MessageGroupPosition.Single -> MessageBubbleShapes.AssistantBubble
             }
         }
-        AppPreferences.ChatBubbleStyle.ROUNDED -> RoundedCornerShape(30.dp)
+        AppPreferences.ChatBubbleStyle.ROUNDED -> RoundedCornerShape(34.dp)
         AppPreferences.ChatBubbleStyle.COMPACT -> when {
             isUser -> RoundedCornerShape(
                 topStart = 18.dp,

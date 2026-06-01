@@ -161,13 +161,13 @@ private fun UserQueryBubble(query: String) {
             modifier = Modifier.widthIn(min = 40.dp, max = maxBubbleWidth),
             shape = MessageBubbleShapes.UserBubble,  // Theme shape: 28dp/8dp/28dp/28dp
             color = userBubbleColor,
-            tonalElevation = 0.dp
+            tonalElevation = 2.dp
         ) {
             Text(
                 text = query,
-                style = MaterialTheme.typography.bodyLarge,  // Matches main chat
+                style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onPrimaryContainer,
-                modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp)
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
             )
         }
     }
@@ -204,10 +204,10 @@ private fun AssistantBubble(
                 ),
             shape = MessageBubbleShapes.AssistantBubble,  // Theme shape: 8dp/28dp/28dp/28dp
             color = assistantBubbleColor,
-            tonalElevation = 0.dp
+            tonalElevation = 1.dp
         ) {
             Column(
-                modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 if (response.isNotEmpty()) {
@@ -248,10 +248,10 @@ private fun AssistantLoadingBubble() {
             modifier = Modifier.widthIn(min = 80.dp),
             shape = MessageBubbleShapes.AssistantBubble,  // Theme shape
             color = assistantBubbleColor,
-            tonalElevation = 0.dp
+            tonalElevation = 1.dp
         ) {
             Box(
-                modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
                 contentAlignment = Alignment.Center
             ) {
                 // M3 Expressive TypingIndicator with shape morphing (matches main chat)

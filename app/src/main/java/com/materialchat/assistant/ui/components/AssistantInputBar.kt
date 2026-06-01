@@ -3,7 +3,6 @@ package com.materialchat.assistant.ui.components
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
@@ -13,7 +12,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
@@ -23,7 +21,6 @@ import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -35,7 +32,6 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.input.ImeAction
@@ -43,6 +39,7 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
 import com.materialchat.assistant.voice.AudioAmplitudeData
 import com.materialchat.assistant.voice.VoiceState
+import com.materialchat.ui.components.ExpressiveFilledIconButton
 import com.materialchat.ui.theme.ExpressiveMotion
 
 /**
@@ -91,7 +88,7 @@ fun AssistantInputBar(
 
     // Animate container expansion for listening state
     val containerHeight by animateDpAsState(
-        targetValue = if (isListening) 80.dp else 56.dp,
+        targetValue = if (isListening) 88.dp else 64.dp,
         animationSpec = ExpressiveMotion.Spatial.default(),
         label = "containerHeight"
     )
@@ -110,9 +107,10 @@ fun AssistantInputBar(
         modifier = modifier
             .fillMaxWidth()
             .height(containerHeight),
-        shape = RoundedCornerShape(28.dp),
+        shape = RoundedCornerShape(32.dp),
         color = containerColor,
-        tonalElevation = 2.dp
+        tonalElevation = 3.dp,
+        shadowElevation = 1.dp
     ) {
         if (isListening) {
             // Listening mode - show waveform
@@ -158,19 +156,13 @@ private fun ListeningContent(
         )
 
         // Stop button
-        IconButton(
+        ExpressiveFilledIconButton(
             onClick = onStop,
-            modifier = Modifier
-                .size(48.dp)
-                .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.error.copy(alpha = 0.1f))
-        ) {
-            Icon(
-                imageVector = Icons.Default.Close,
-                contentDescription = "Stop listening",
-                tint = MaterialTheme.colorScheme.error
-            )
-        }
+            icon = Icons.Default.Close,
+            contentDescription = "Stop listening",
+            containerColor = MaterialTheme.colorScheme.errorContainer,
+            contentColor = MaterialTheme.colorScheme.onErrorContainer
+        )
     }
 }
 

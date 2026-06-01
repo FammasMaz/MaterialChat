@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.outlined.Cloud
@@ -95,7 +96,7 @@ fun ProviderCard(
     // Animate background color for active state
     val backgroundColor by animateColorAsState(
         targetValue = if (provider.isActive) {
-            MaterialTheme.colorScheme.secondaryContainer
+            MaterialTheme.colorScheme.primaryContainer
         } else {
             MaterialTheme.colorScheme.surfaceContainerLow
         },
@@ -124,7 +125,8 @@ fun ProviderCard(
         colors = CardDefaults.cardColors(
             containerColor = backgroundColor
         ),
-        shape = CustomShapes.ProviderCard
+        shape = CustomShapes.ProviderCard,
+        elevation = CardDefaults.cardElevation(defaultElevation = if (provider.isActive) 3.dp else 1.dp)
     ) {
         Column(
             modifier = Modifier
@@ -217,9 +219,9 @@ private fun ProviderTypeIcon(
 ) {
     Box(
         modifier = modifier
-            .size(40.dp)
-            .clip(CustomShapes.Fab)
-            .background(MaterialTheme.colorScheme.primaryContainer),
+            .size(48.dp)
+            .clip(RoundedCornerShape(18.dp))
+            .background(MaterialTheme.colorScheme.secondaryContainer),
         contentAlignment = Alignment.Center
     ) {
         Icon(
@@ -233,8 +235,8 @@ private fun ProviderTypeIcon(
                 ProviderType.AICORE_GEMINI_NANO -> Icons.Outlined.Memory
             },
             contentDescription = "${type.displayName} provider",
-            tint = MaterialTheme.colorScheme.onPrimaryContainer,
-            modifier = Modifier.size(24.dp)
+            tint = MaterialTheme.colorScheme.onSecondaryContainer,
+            modifier = Modifier.size(26.dp)
         )
     }
 }
@@ -250,13 +252,13 @@ private fun ActiveIndicator(
         modifier = modifier
             .size(32.dp)
             .clip(CustomShapes.SendButton)
-            .background(MaterialTheme.colorScheme.primary),
+            .background(MaterialTheme.colorScheme.onPrimaryContainer),
         contentAlignment = Alignment.Center
     ) {
         Icon(
             imageVector = Icons.Default.Check,
             contentDescription = "Active",
-            tint = MaterialTheme.colorScheme.onPrimary,
+            tint = MaterialTheme.colorScheme.primaryContainer,
             modifier = Modifier.size(18.dp)
         )
     }

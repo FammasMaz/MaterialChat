@@ -47,7 +47,7 @@ import com.materialchat.ui.theme.ExpressiveMotion
 fun FloatingAssistantBubble(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    size: Dp = 64.dp,
+    size: Dp = 72.dp,
     isExpanded: Boolean = false,
     containerColor: Color = MaterialTheme.colorScheme.primaryContainer,
     contentColor: Color = MaterialTheme.colorScheme.onPrimaryContainer
@@ -57,7 +57,7 @@ fun FloatingAssistantBubble(
 
     // M3 Expressive shape morphing: circle → rounded square on press
     val cornerRadius by animateDpAsState(
-        targetValue = if (isPressed || isExpanded) 20.dp else size / 2,
+        targetValue = if (isPressed || isExpanded) 24.dp else size / 2.8f,
         animationSpec = ExpressiveMotion.Spatial.shapeMorph(),
         label = "cornerRadius"
     )
@@ -86,7 +86,8 @@ fun FloatingAssistantBubble(
             },
         shape = RoundedCornerShape(cornerRadius),
         color = containerColor,
-        shadowElevation = 8.dp,
+        tonalElevation = 4.dp,
+        shadowElevation = 10.dp,
         interactionSource = interactionSource
     ) {
         Box(

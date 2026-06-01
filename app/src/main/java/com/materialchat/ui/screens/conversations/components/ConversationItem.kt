@@ -9,6 +9,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -100,12 +101,19 @@ fun ConversationItem(
     )
 
     // Background color animation - effects spring (no overshoot)
+    val baseContainerColor = if (conversationItem.isStreaming) {
+        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.48f)
+    } else if (conversationItem.conversation.isArchived) {
+        MaterialTheme.colorScheme.surfaceContainer
+    } else {
+        MaterialTheme.colorScheme.surfaceContainerLow
+    }
     val pressedOverlay = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)
     val backgroundColor by animateColorAsState(
         targetValue = if (isPressed) {
-            pressedOverlay.compositeOver(MaterialTheme.colorScheme.surfaceContainer)
+            pressedOverlay.compositeOver(MaterialTheme.colorScheme.surfaceContainerHigh)
         } else {
-            MaterialTheme.colorScheme.surfaceContainer
+            baseContainerColor
         },
         animationSpec = spring(
             dampingRatio = 1.0f,
@@ -128,28 +136,32 @@ fun ConversationItem(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp),
+                .padding(horizontal = 16.dp, vertical = 14.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Chat icon or emoji - 40dp for visual prominence
-            if (conversationItem.conversation.icon != null) {
-                // Display AI-generated emoji
-                Text(
-                    text = conversationItem.conversation.icon,
-                    style = MaterialTheme.typography.headlineMedium,
-                    modifier = Modifier.size(40.dp)
-                )
-            } else {
-                // Fallback to chat icon - uses primary color
-                Icon(
-                    imageVector = Icons.AutoMirrored.Outlined.Chat,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(40.dp)
-                )
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(RoundedCornerShape(18.dp))
+                    .background(MaterialTheme.colorScheme.primaryContainer),
+                contentAlignment = Alignment.Center
+            ) {
+                if (conversationItem.conversation.icon != null) {
+                    Text(
+                        text = conversationItem.conversation.icon,
+                        style = MaterialTheme.typography.headlineSmall
+                    )
+                } else {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Outlined.Chat,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                        modifier = Modifier.size(26.dp)
+                    )
+                }
             }
 
-            Spacer(modifier = Modifier.width(16.dp))
+            Spacer(modifier = Modifier.width(14.dp))
 
             // Content
             Column(
