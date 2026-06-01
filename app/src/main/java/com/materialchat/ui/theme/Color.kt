@@ -18,7 +18,7 @@ import androidx.compose.ui.graphics.Color
  * experience when dynamic color is not available.
  */
 
-// Primary colors - PixelPlayer-inspired electric violet fallback
+// Primary colors - electric violet fallback
 val PrimaryLight = Color(0xFF6C4FF5)
 val OnPrimaryLight = Color(0xFFFFFFFF)
 val PrimaryContainerLight = Color(0xFFE4DDFF)
@@ -29,7 +29,7 @@ val OnPrimaryDark = Color(0xFF3B248D)
 val PrimaryContainerDark = Color(0xFF5339C7)
 val OnPrimaryContainerDark = Color(0xFFE8DDFF)
 
-// Secondary colors - PixelPlayer pink for expressive accents and nav indicators
+// Secondary colors - vivid pink for expressive accents and nav indicators
 val SecondaryLight = Color(0xFF9A405F)
 val OnSecondaryLight = Color(0xFFFFFFFF)
 val SecondaryContainerLight = Color(0xFFFFD9E4)
@@ -40,7 +40,7 @@ val OnSecondaryDark = Color(0xFF5E1134)
 val SecondaryContainerDark = Color(0xFF7C294B)
 val OnSecondaryContainerDark = Color(0xFFFFD9E4)
 
-// Tertiary colors - PixelPlayer coral/orange for hero and temporary-chat moments
+// Tertiary colors - coral/orange for hero and temporary-chat moments
 val TertiaryLight = Color(0xFF8C4B2F)
 val OnTertiaryLight = Color(0xFFFFFFFF)
 val TertiaryContainerLight = Color(0xFFFFDBCF)
@@ -62,7 +62,7 @@ val OnErrorDark = Color(0xFF690005)
 val ErrorContainerDark = Color(0xFF93000A)
 val OnErrorContainerDark = Color(0xFFFFDAD6)
 
-// Surface colors - Light theme (PixelPlayer lavender paper)
+// Surface colors - Light theme (lavender paper)
 val BackgroundLight = Color(0xFFF8F2FF)
 val OnBackgroundLight = Color(0xFF1E1237)
 val SurfaceLight = Color(0xFFFCF8FF)
@@ -77,7 +77,7 @@ val SurfaceContainerLight = Color(0xFFF1E9FB)
 val SurfaceContainerHighLight = Color(0xFFEAE1F5)
 val SurfaceContainerHighestLight = Color(0xFFE3DAEF)
 
-// Surface colors - Dark theme (PixelPlayer deep purple stage)
+// Surface colors - Dark theme (deep purple stage)
 val BackgroundDark = Color(0xFF15101D)
 val OnBackgroundDark = Color(0xFFEDE5F4)
 val SurfaceDark = Color(0xFF15101D)

@@ -23,7 +23,7 @@ val MaterialChatShapes = Shapes(
     // Small - buttons, text fields (M3 Expressive: 8dp)
     small = RoundedCornerShape(8.dp),
 
-    // Medium - cards, dialogs (PixelPlayer-style smooth 16dp containers)
+    // Medium - cards, dialogs (smooth 16dp containers)
     medium = RoundedCornerShape(16.dp),
 
     // Large - bottom sheets, navigation drawers, list cards

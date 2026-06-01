@@ -83,10 +83,10 @@ private const val ExpressiveTitleYopqAxis = 90f
 private const val ExpressiveTitleYtlcAxis = 505f
 
 /**
- * PixelPlayer-inspired Google Sans Flex resource font.
+ * Google Sans Flex resource font with a rounded Material You axis.
  *
- * The rounded axis gives MaterialChat the soft, bubbly Material You feel from
- * PixelPlayer while staying readable for chat-heavy UI.
+ * The rounded axis gives Material Chat a soft, bubbly feel while staying
+ * readable for chat-heavy UI.
  */
 @OptIn(ExperimentalTextApi::class)
 val MaterialChatRoundedFontFamily = FontFamily(

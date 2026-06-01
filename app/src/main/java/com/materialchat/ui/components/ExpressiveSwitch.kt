@@ -18,7 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 
 /**
- * Material 3 Expressive Switch with animated thumb icons and PixelPlayer-style color contrast.
+ * Material 3 Expressive Switch with animated thumb icons and high-contrast color roles.
  */
 @Composable
 fun ExpressiveSwitch(

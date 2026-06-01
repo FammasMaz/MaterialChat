@@ -36,6 +36,7 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -68,8 +69,6 @@ import androidx.compose.material3.LoadingIndicator
 import com.materialchat.ui.components.ExpressiveButton
 import com.materialchat.ui.components.ExpressiveButtonStyle
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ripple
 import androidx.compose.material3.Surface
@@ -114,6 +113,7 @@ import com.materialchat.domain.util.normalizeStreamingTextBoundary
 import com.materialchat.ui.screens.chat.MessageUiItem
 import com.materialchat.ui.screens.chat.MessageGroupPosition
 import com.materialchat.ui.screens.chat.SiblingInfo
+import com.materialchat.ui.components.ExpressiveFilledIconButton
 import com.materialchat.ui.components.HapticPattern
 import com.materialchat.ui.components.rememberHapticFeedback
 import com.materialchat.data.local.preferences.AppPreferences
@@ -493,39 +493,30 @@ fun MessageBubble(
                             modifier = Modifier.padding(horizontal = 4.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            IconButton(
+                            ExpressiveFilledIconButton(
                                 onClick = { haptics.perform(HapticPattern.CLICK, hapticsEnabled); onCopy(); showUserContextMenu = false },
-                                modifier = Modifier.size(48.dp)
-                            ) {
-                                Icon(
-                                    Icons.Default.ContentCopy, "Copy",
-                                    modifier = Modifier.size(20.dp),
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                icon = Icons.Default.ContentCopy,
+                                contentDescription = "Copy",
+                                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            if (onEdit != null) {
+                                ExpressiveFilledIconButton(
+                                    onClick = { haptics.perform(HapticPattern.CLICK, hapticsEnabled); onEdit(); showUserContextMenu = false },
+                                    icon = Icons.Outlined.Edit,
+                                    contentDescription = "Edit",
+                                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
-                            if (onEdit != null) {
-                                IconButton(
-                                    onClick = { haptics.perform(HapticPattern.CLICK, hapticsEnabled); onEdit(); showUserContextMenu = false },
-                                    modifier = Modifier.size(48.dp)
-                                ) {
-                                    Icon(
-                                        Icons.Outlined.Edit, "Edit",
-                                        modifier = Modifier.size(20.dp),
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                            }
                             if (onBranch != null) {
-                                IconButton(
+                                ExpressiveFilledIconButton(
                                     onClick = { haptics.perform(HapticPattern.CLICK, hapticsEnabled); onBranch(); showUserContextMenu = false },
-                                    modifier = Modifier.size(48.dp)
-                                ) {
-                                    Icon(
-                                        Icons.AutoMirrored.Outlined.CallSplit, "Branch",
-                                        modifier = Modifier.size(20.dp),
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
+                                    icon = Icons.AutoMirrored.Outlined.CallSplit,
+                                    contentDescription = "Branch",
+                                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                                )
                             }
                         }
                     }
@@ -615,15 +606,13 @@ fun MessageBubble(
                                 label = "bookmarkActionContent"
                             )
 
-                            Box(
+                            Surface(
                                 modifier = Modifier
-                                    .size(46.dp)
+                                    .defaultMinSize(minHeight = 44.dp)
                                     .graphicsLayer {
                                         scaleX = bookmarkScale
                                         scaleY = bookmarkScale
                                     }
-                                    .clip(RoundedCornerShape(bookmarkRadius))
-                                    .background(bookmarkContainer)
                                     .combinedClickable(
                                         interactionSource = bookmarkInteractionSource,
                                         indication = ripple(),
@@ -636,16 +625,32 @@ fun MessageBubble(
                                             onBookmarkLongPress?.invoke()
                                         }
                                     ),
-                                contentAlignment = Alignment.Center
+                                shape = RoundedCornerShape(bookmarkRadius),
+                                color = bookmarkContainer,
+                                contentColor = bookmarkContent,
+                                tonalElevation = 0.dp,
+                                shadowElevation = 0.dp
                             ) {
-                                Icon(
-                                    imageVector = if (isBookmarked) Icons.Filled.Bookmark
-                                                  else Icons.Outlined.BookmarkBorder,
-                                    contentDescription = if (isBookmarked) "Remove bookmark"
-                                                         else "Bookmark message",
-                                    modifier = Modifier.size(20.dp),
-                                    tint = bookmarkContent
-                                )
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.Center
+                                ) {
+                                    Icon(
+                                        imageVector = if (isBookmarked) Icons.Filled.Bookmark
+                                                      else Icons.Outlined.BookmarkBorder,
+                                        contentDescription = if (isBookmarked) "Remove bookmark"
+                                                             else "Bookmark message",
+                                        modifier = Modifier.size(18.dp),
+                                        tint = bookmarkContent
+                                    )
+                                    Spacer(Modifier.width(7.dp))
+                                    Text(
+                                        text = if (isBookmarked) "Saved" else "Save",
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = bookmarkContent
+                                    )
+                                }
                             }
                         }
                     }
@@ -1079,23 +1084,16 @@ private fun ModelSiblingRow(
     Row(
         modifier = Modifier.padding(start = 4.dp, bottom = 2.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(0.dp)
+        horizontalArrangement = Arrangement.spacedBy(6.dp)
     ) {
-        // Previous arrow
-        IconButton(
+        ExpressiveFilledIconButton(
             onClick = { haptics.perform(HapticPattern.CLICK); onNavigatePrevious?.invoke() },
+            icon = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
+            contentDescription = "Previous response",
             enabled = canGoPrevious,
-            modifier = Modifier.size(48.dp)
-        ) {
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
-                contentDescription = "Previous response",
-                modifier = Modifier.size(16.dp),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(
-                    alpha = if (canGoPrevious) 0.6f else 0.25f
-                )
-            )
-        }
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+            contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+        )
 
         // Model name and count
         Text(
@@ -1104,21 +1102,14 @@ private fun ModelSiblingRow(
             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
         )
 
-        // Next arrow
-        IconButton(
+        ExpressiveFilledIconButton(
             onClick = { haptics.perform(HapticPattern.CLICK); onNavigateNext?.invoke() },
+            icon = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+            contentDescription = "Next response",
             enabled = canGoNext,
-            modifier = Modifier.size(48.dp)
-        ) {
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                contentDescription = "Next response",
-                modifier = Modifier.size(16.dp),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(
-                    alpha = if (canGoNext) 0.6f else 0.25f
-                )
-            )
-        }
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+            contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }
 

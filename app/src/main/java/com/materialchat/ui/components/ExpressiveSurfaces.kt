@@ -151,25 +151,29 @@ fun ExpressiveFilledIconButton(
     icon: ImageVector,
     contentDescription: String?,
     modifier: Modifier = Modifier,
+    enabled: Boolean = true,
     containerColor: Color = MaterialTheme.colorScheme.surfaceContainerLow,
     contentColor: Color = MaterialTheme.colorScheme.onSurface
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val pressed by interactionSource.collectIsPressedAsState()
     val scale by animateFloatAsState(
-        targetValue = if (pressed) 0.9f else 1f,
+        targetValue = if (pressed && enabled) 0.9f else 1f,
         animationSpec = ExpressiveMotion.Spatial.scale(),
         label = "expressiveIconButtonScale"
     )
     FilledIconButton(
         onClick = onClick,
+        enabled = enabled,
         modifier = modifier
             .size(48.dp)
             .graphicsLayer { scaleX = scale; scaleY = scale },
         interactionSource = interactionSource,
         colors = IconButtonDefaults.filledIconButtonColors(
             containerColor = containerColor,
-            contentColor = contentColor
+            contentColor = contentColor,
+            disabledContainerColor = containerColor.copy(alpha = 0.42f),
+            disabledContentColor = contentColor.copy(alpha = 0.38f)
         )
     ) {
         Icon(icon, contentDescription = contentDescription)
