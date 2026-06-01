@@ -48,7 +48,7 @@ fun StepEditor(
 ) {
     Surface(
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(20.dp),
         color = MaterialTheme.colorScheme.surfaceContainerHigh,
         tonalElevation = 1.dp
     ) {
@@ -61,7 +61,7 @@ fun StepEditor(
             ) {
                 // Step number badge
                 Surface(
-                    shape = RoundedCornerShape(10.dp),
+                    shape = RoundedCornerShape(14.dp),
                     color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(32.dp)
                 ) {
@@ -112,7 +112,7 @@ fun StepEditor(
                 placeholder = { Text("Enter prompt for this step...") },
                 minLines = 3,
                 maxLines = 8,
-                shape = RoundedCornerShape(12.dp),
+                shape = RoundedCornerShape(16.dp),
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = MaterialTheme.colorScheme.primary,
                     unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant

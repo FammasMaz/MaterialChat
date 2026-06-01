@@ -43,7 +43,7 @@ fun NodePreviewTooltip(
         properties = PopupProperties(focusable = true)
     ) {
         Surface(
-            shape = RoundedCornerShape(16.dp),
+            shape = RoundedCornerShape(20.dp),
             color = MaterialTheme.colorScheme.surfaceContainerHighest,
             tonalElevation = 6.dp,
             shadowElevation = 8.dp

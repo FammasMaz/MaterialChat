@@ -196,7 +196,7 @@ private fun WorkflowInputDialog(
                     minLines = 3,
                     maxLines = 6,
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
+                    shape = RoundedCornerShape(16.dp),
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = MaterialTheme.colorScheme.primary,
                         unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
@@ -481,7 +481,7 @@ private fun StatusBanner(
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(14.dp),
+        shape = RoundedCornerShape(18.dp),
         color = containerColor
     ) {
         Text(
@@ -506,7 +506,7 @@ private fun CurrentStepStreamingCard(
         modifier = Modifier
             .fillMaxWidth()
             .animateContentSize(animationSpec = ExpressiveMotion.Spatial.container()),
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(20.dp),
         color = MaterialTheme.colorScheme.surfaceContainerHigh,
         tonalElevation = 1.dp
     ) {
@@ -560,7 +560,7 @@ private fun CurrentStepStreamingCard(
 private fun CurrentStepLoadingCard(stepNumber: Int) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(20.dp),
         color = MaterialTheme.colorScheme.surfaceContainerHigh,
         tonalElevation = 1.dp
     ) {

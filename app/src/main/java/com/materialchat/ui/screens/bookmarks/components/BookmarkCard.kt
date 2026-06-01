@@ -44,7 +44,7 @@ import com.materialchat.ui.screens.bookmarks.BookmarkWithMessage
  *
  * Shows the category icon, message content preview, model badge,
  * conversation title, tag chips, and action buttons.
- * Follows Material 3 Expressive design with RoundedCornerShape(20.dp).
+ * Follows Material 3 Expressive design with RoundedCornerShape(24.dp).
  *
  * @param bookmarkWithMessage The bookmark data with associated message info
  * @param onDelete Callback when the delete button is clicked
@@ -64,7 +64,7 @@ fun BookmarkCard(
 
     Surface(
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(24.dp),
         color = MaterialTheme.colorScheme.surfaceContainerHigh,
         tonalElevation = 1.dp
     ) {
@@ -99,7 +99,7 @@ fun BookmarkCard(
                 // Model badge
                 if (bookmarkWithMessage.modelName != null) {
                     Surface(
-                        shape = RoundedCornerShape(12.dp),
+                        shape = RoundedCornerShape(16.dp),
                         color = MaterialTheme.colorScheme.secondaryContainer
                     ) {
                         Text(

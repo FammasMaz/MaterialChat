@@ -904,7 +904,7 @@ private fun AttachmentPreviewItem(
             contentScale = ContentScale.Crop,
             modifier = Modifier
                 .size(64.dp)
-                .clip(RoundedCornerShape(12.dp))
+                .clip(RoundedCornerShape(16.dp))
                 .align(Alignment.BottomStart)
         )
 

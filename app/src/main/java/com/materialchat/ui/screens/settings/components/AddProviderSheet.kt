@@ -588,7 +588,7 @@ private fun SaveButton(
         onClick = onClick,
         enabled = canSubmit && !isSaving,
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp)
+        shape = RoundedCornerShape(24.dp)
     ) {
         if (isSaving) {
             com.materialchat.ui.components.M3ExpressiveInlineLoading(

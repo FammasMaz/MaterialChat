@@ -186,7 +186,7 @@ private fun LeaderboardItem(
         ) {
             // Rank badge
             Surface(
-                shape = RoundedCornerShape(12.dp),
+                shape = RoundedCornerShape(16.dp),
                 color = contentColor.copy(alpha = 0.15f),
                 modifier = Modifier
             ) {

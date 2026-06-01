@@ -227,7 +227,7 @@ private fun WorkflowsListContent(
                             .fillMaxSize()
                             .background(
                                 color = MaterialTheme.colorScheme.errorContainer,
-                                shape = RoundedCornerShape(20.dp)
+                                shape = RoundedCornerShape(24.dp)
                             )
                             .padding(horizontal = 20.dp),
                         contentAlignment = Alignment.CenterEnd

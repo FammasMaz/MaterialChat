@@ -273,7 +273,7 @@ private fun PersonaStudioErrorContent(
 @Composable
 private fun PersonaOnboardingCard() {
     Surface(
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(24.dp),
         color = MaterialTheme.colorScheme.secondaryContainer,
         modifier = Modifier.fillMaxWidth()
     ) {

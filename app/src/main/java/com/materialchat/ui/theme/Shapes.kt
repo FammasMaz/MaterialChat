@@ -64,12 +64,12 @@ object MessageBubbleShapes {
      * System message bubble shape.
      * Fully rounded corners for neutral appearance.
      */
-    val SystemBubble = RoundedCornerShape(20.dp)
+    val SystemBubble = RoundedCornerShape(24.dp)
 
     /**
      * Continuation message shape (for messages in a sequence).
      */
-    val ContinuationBubble = RoundedCornerShape(20.dp)
+    val ContinuationBubble = RoundedCornerShape(24.dp)
     
     /**
      * Grouped message shapes - for consecutive messages from same sender.
@@ -140,7 +140,7 @@ object CustomShapes {
     /**
      * Shape for code blocks in chat messages.
      */
-    val CodeBlock = RoundedCornerShape(16.dp)
+    val CodeBlock = RoundedCornerShape(20.dp)
 
     /**
      * Shape for inline code spans.
@@ -150,7 +150,7 @@ object CustomShapes {
     /**
      * Shape for action buttons on message bubbles.
      */
-    val MessageActionButton = RoundedCornerShape(20.dp)
+    val MessageActionButton = RoundedCornerShape(24.dp)
     
     /**
      * Button shape - M3 Expressive round buttons use pill-like corners.
@@ -185,7 +185,7 @@ object CustomShapes {
     /**
      * Shape for dropdown menus.
      */
-    val Dropdown = RoundedCornerShape(20.dp)
+    val Dropdown = RoundedCornerShape(24.dp)
 
     /**
      * Shape for model picker dropdown.
@@ -195,7 +195,7 @@ object CustomShapes {
     /**
      * Shape for snackbars.
      */
-    val Snackbar = RoundedCornerShape(20.dp)
+    val Snackbar = RoundedCornerShape(24.dp)
 
     /**
      * Pill shape for tags and badges.

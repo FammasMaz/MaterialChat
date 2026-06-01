@@ -100,7 +100,7 @@ fun PersonaEditorSheet(
                     onValueChange = { if (it.length <= 4) emoji = it },
                     label = { Text("Emoji") },
                     singleLine = true,
-                    shape = RoundedCornerShape(16.dp),
+                    shape = RoundedCornerShape(20.dp),
                     modifier = Modifier.weight(0.25f)
                 )
                 OutlinedTextField(
@@ -108,7 +108,7 @@ fun PersonaEditorSheet(
                     onValueChange = { name = it },
                     label = { Text("Name") },
                     singleLine = true,
-                    shape = RoundedCornerShape(16.dp),
+                    shape = RoundedCornerShape(20.dp),
                     modifier = Modifier.weight(0.75f)
                 )
             }
@@ -121,7 +121,7 @@ fun PersonaEditorSheet(
                 onValueChange = { description = it },
                 label = { Text("Description") },
                 singleLine = true,
-                shape = RoundedCornerShape(16.dp),
+                shape = RoundedCornerShape(20.dp),
                 modifier = Modifier.fillMaxWidth()
             )
 
@@ -134,7 +134,7 @@ fun PersonaEditorSheet(
                 label = { Text("System Prompt") },
                 minLines = 3,
                 maxLines = 6,
-                shape = RoundedCornerShape(16.dp),
+                shape = RoundedCornerShape(20.dp),
                 modifier = Modifier.fillMaxWidth()
             )
 
@@ -146,7 +146,7 @@ fun PersonaEditorSheet(
                 onValueChange = { tagsText = it },
                 label = { Text("Expertise Tags (comma-separated)") },
                 singleLine = true,
-                shape = RoundedCornerShape(16.dp),
+                shape = RoundedCornerShape(20.dp),
                 modifier = Modifier.fillMaxWidth()
             )
 
@@ -173,7 +173,7 @@ fun PersonaEditorSheet(
                                     .replaceFirstChar { it.uppercase() }
                             )
                         },
-                        shape = RoundedCornerShape(12.dp)
+                        shape = RoundedCornerShape(16.dp)
                     )
                 }
             }
@@ -187,7 +187,7 @@ fun PersonaEditorSheet(
                 label = { Text("Conversation Starters (one per line)") },
                 minLines = 3,
                 maxLines = 5,
-                shape = RoundedCornerShape(16.dp),
+                shape = RoundedCornerShape(20.dp),
                 modifier = Modifier.fillMaxWidth()
             )
 

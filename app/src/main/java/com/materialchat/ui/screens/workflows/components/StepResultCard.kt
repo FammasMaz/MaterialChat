@@ -57,7 +57,7 @@ fun StepResultCard(
         modifier = modifier
             .fillMaxWidth()
             .animateContentSize(animationSpec = ExpressiveMotion.Spatial.container()),
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(20.dp),
         color = MaterialTheme.colorScheme.surfaceContainerHigh,
         tonalElevation = 1.dp
     ) {

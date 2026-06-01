@@ -868,8 +868,8 @@ private fun bubbleShapeFor(
 ): Shape {
     if (!isUser && !isAssistant) {
         return when (style) {
-            AppPreferences.ChatBubbleStyle.COMPACT -> RoundedCornerShape(16.dp)
-            AppPreferences.ChatBubbleStyle.GEOMETRIC -> RoundedCornerShape(12.dp)
+            AppPreferences.ChatBubbleStyle.COMPACT -> RoundedCornerShape(20.dp)
+            AppPreferences.ChatBubbleStyle.GEOMETRIC -> RoundedCornerShape(16.dp)
             else -> MessageBubbleShapes.SystemBubble
         }
     }
@@ -1194,7 +1194,7 @@ private fun MemoryDisclosure(
                 )
         ) {
             Surface(
-                shape = RoundedCornerShape(20.dp),
+                shape = RoundedCornerShape(24.dp),
                 color = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.86f),
                 contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
                 tonalElevation = 2.dp
