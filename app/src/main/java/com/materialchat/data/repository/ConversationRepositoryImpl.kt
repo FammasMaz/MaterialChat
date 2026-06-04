@@ -124,6 +124,20 @@ class ConversationRepositoryImpl @Inject constructor(
         )
     }
 
+    override suspend fun updateConversationTitleGenerationMetadata(
+        conversationId: String,
+        providerId: String?,
+        modelName: String?,
+        generatedAt: Long?
+    ) {
+        conversationDao.updateTitleGenerationMetadata(
+            conversationId = conversationId,
+            providerId = providerId,
+            modelName = modelName,
+            generatedAt = generatedAt
+        )
+    }
+
     override suspend fun updateConversationModel(conversationId: String, modelName: String) {
         conversationDao.updateModel(
             conversationId = conversationId,

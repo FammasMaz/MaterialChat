@@ -84,6 +84,9 @@ fun Conversation.toEntity(): ConversationEntity = ConversationEntity(
     parentId = parentId,
     branchSourceMessageId = branchSourceMessageId,
     personaId = personaId,
+    titleGeneratedByProviderId = titleGeneratedByProviderId,
+    titleGeneratedByModel = titleGeneratedByModel,
+    titleGeneratedAt = titleGeneratedAt,
     createdAt = createdAt,
     updatedAt = updatedAt
 )
@@ -105,6 +108,9 @@ fun ConversationEntity.toDomain(): Conversation = Conversation(
     parentId = parentId,
     branchSourceMessageId = branchSourceMessageId,
     personaId = personaId,
+    titleGeneratedByProviderId = titleGeneratedByProviderId,
+    titleGeneratedByModel = titleGeneratedByModel,
+    titleGeneratedAt = titleGeneratedAt,
     createdAt = createdAt,
     updatedAt = updatedAt
 )

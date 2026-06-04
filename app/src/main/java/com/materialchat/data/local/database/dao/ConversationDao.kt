@@ -156,6 +156,17 @@ interface ConversationDao {
     suspend fun updateTitleAndIcon(conversationId: String, title: String, icon: String?, updatedAt: Long)
 
     /**
+     * Record which model generated the current title.
+     */
+    @Query("UPDATE conversations SET title_generated_by_provider_id = :providerId, title_generated_by_model = :modelName, title_generated_at = :generatedAt WHERE id = :conversationId")
+    suspend fun updateTitleGenerationMetadata(
+        conversationId: String,
+        providerId: String?,
+        modelName: String?,
+        generatedAt: Long?
+    )
+
+    /**
      * Update the model of a conversation.
      */
     @Query("UPDATE conversations SET model_name = :modelName, updated_at = :updatedAt WHERE id = :conversationId")

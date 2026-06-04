@@ -3,6 +3,7 @@ package com.materialchat.ui.screens.settings
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -15,6 +16,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.OpenInNew
@@ -438,12 +441,34 @@ private fun OnDeviceModelCard(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
+
+                if (!isAicore && state.isUsable) {
+                    Text(
+                        text = if (state.isMountedInRam) "In RAM" else "Not in RAM",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = if (state.isMountedInRam) {
+                            MaterialTheme.colorScheme.onTertiaryContainer
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        },
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(50))
+                            .background(
+                                if (state.isMountedInRam) {
+                                    MaterialTheme.colorScheme.tertiaryContainer
+                                } else {
+                                    MaterialTheme.colorScheme.surfaceContainerHighest
+                                }
+                            )
+                            .padding(horizontal = 10.dp, vertical = 6.dp)
+                    )
+                }
             }
 
             Text(
                 text = statusText(state),
                 style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.primary
+                color = if (state.isMountedInRam) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.primary
             )
 
             if (state.availability == LocalModelAvailability.DOWNLOADING) {
@@ -528,11 +553,14 @@ private fun OnDeviceModelCard(
 
 private fun statusText(state: LocalModelState): String {
     val size = state.totalBytes?.let { " • ${formatBytes(it)}" }.orEmpty()
+    if (state.isMountedInRam) {
+        return "Mounted in memory · Unmount if it gets stuck or you need RAM"
+    }
     return when (state.availability) {
         LocalModelAvailability.NOT_DOWNLOADED -> "Not downloaded$size"
         LocalModelAvailability.DOWNLOADABLE -> "Downloadable$size"
         LocalModelAvailability.DOWNLOADING -> "Downloading ${formatBytes(state.downloadedBytes)}${state.totalBytes?.let { " / ${formatBytes(it)}" }.orEmpty()}"
-        LocalModelAvailability.DOWNLOADED -> "Downloaded${state.downloadedBytes.takeIf { it > 0L }?.let { " • ${formatBytes(it)}" }.orEmpty()}"
+        LocalModelAvailability.DOWNLOADED -> "Downloaded · not currently in memory${state.downloadedBytes.takeIf { it > 0L }?.let { " • ${formatBytes(it)}" }.orEmpty()}"
         LocalModelAvailability.AVAILABLE -> "Available on this device"
         LocalModelAvailability.UNAVAILABLE -> if (state.descriptor.backend == LocalModelBackend.AICORE_GEMINI_NANO) {
             "Not supported on this device"

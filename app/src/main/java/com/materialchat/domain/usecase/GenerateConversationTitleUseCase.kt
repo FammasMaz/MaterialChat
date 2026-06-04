@@ -21,6 +21,12 @@ data class TitleGenerationResult(
     val icon: String?
 )
 
+private data class TitleCompletion(
+    val text: String,
+    val providerId: String?,
+    val modelId: String
+)
+
 /**
  * Use case for generating AI-powered conversation titles with emoji icons.
  *
@@ -110,22 +116,29 @@ class GenerateConversationTitleUseCase @Inject constructor(
             val prompt = buildTitlePrompt(userMessage, assistantResponse)
             Log.d(TAG, "Prompt length: ${prompt.length}")
 
-            val localTitle = if (hasExplicitTitleModel) {
+            val localCompletion = if (hasExplicitTitleModel) {
                 null
             } else {
                 generateWithPreferredLocalModel(prompt).getOrNull()
             }
-            val result = localTitle?.let { Result.success(it) }
+            val result = localCompletion?.let { Result.success(it) }
                 ?: chatRepository.generateSimpleCompletion(
                     provider = provider,
                     prompt = prompt,
                     model = modelToUse,
                     systemPrompt = TITLE_SYSTEM_PROMPT,
                     reasoningEffort = ReasoningEffort.NONE
-                )
+                ).map { generated ->
+                    TitleCompletion(
+                        text = generated,
+                        providerId = provider.id,
+                        modelId = modelToUse
+                    )
+                }
 
             result.fold(
-                onSuccess = { generatedResponse ->
+                onSuccess = { completion ->
+                    val generatedResponse = completion.text
                     Log.d(TAG, "AI generated response: $generatedResponse")
                     if (isGarbageTitle(generatedResponse)) {
                         Log.w(TAG, "Garbage title detected, using fallback")
@@ -139,6 +152,12 @@ class GenerateConversationTitleUseCase @Inject constructor(
                             conversationId,
                             parsed.title,
                             parsed.icon
+                        )
+                        conversationRepository.updateConversationTitleGenerationMetadata(
+                            conversationId = conversationId,
+                            providerId = completion.providerId,
+                            modelName = completion.modelId,
+                            generatedAt = System.currentTimeMillis()
                         )
                         Result.success(parsed.title)
                     }
@@ -161,7 +180,7 @@ class GenerateConversationTitleUseCase @Inject constructor(
         }
     }
 
-    private suspend fun generateWithPreferredLocalModel(prompt: String): Result<String> {
+    private suspend fun generateWithPreferredLocalModel(prompt: String): Result<TitleCompletion> {
         if (!appPreferences.preferOnDeviceBackgroundTasks.first()) {
             return Result.failure(IllegalStateException("On-device background tasks are disabled"))
         }
@@ -172,7 +191,13 @@ class GenerateConversationTitleUseCase @Inject constructor(
             modelId = localModelId,
             prompt = prompt,
             systemPrompt = TITLE_SYSTEM_PROMPT
-        )
+        ).map { generated ->
+            TitleCompletion(
+                text = generated,
+                providerId = if (localModelId.startsWith("aicore/")) "local-gemini-nano" else "local-litert-lm",
+                modelId = localModelId
+            )
+        }
     }
 
     private fun buildTitlePrompt(userMessage: String, assistantResponse: String): String {

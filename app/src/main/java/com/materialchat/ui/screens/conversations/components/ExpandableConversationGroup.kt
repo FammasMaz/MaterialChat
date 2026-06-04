@@ -10,6 +10,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -41,6 +42,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.materialchat.domain.model.Conversation
+import com.materialchat.ui.screens.conversations.ConversationUiItem
 import com.materialchat.ui.screens.conversations.ConversationGroupUiItem
 import com.materialchat.ui.components.HapticPattern
 import com.materialchat.ui.components.rememberHapticFeedback
@@ -77,6 +79,8 @@ fun ExpandableConversationGroup(
     group: ConversationGroupUiItem,
     onParentClick: (String) -> Unit,
     onBranchClick: (String) -> Unit,
+    onParentLongClick: (ConversationUiItem) -> Unit = {},
+    onBranchLongClick: (ConversationUiItem) -> Unit = {},
     onExpandToggle: (String) -> Unit,
     onDelete: (Conversation) -> Unit,
     onArchiveToggle: (Conversation) -> Unit,
@@ -150,10 +154,13 @@ fun ExpandableConversationGroup(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clickable {
-                                haptics.perform(HapticPattern.CLICK, hapticsEnabled)
-                                onParentClick(group.parent.conversation.id)
-                            }
+                            .combinedClickable(
+                                onClick = {
+                                    haptics.perform(HapticPattern.CLICK, hapticsEnabled)
+                                    onParentClick(group.parent.conversation.id)
+                                },
+                                onLongClick = { onParentLongClick(group.parent) }
+                            )
                             .padding(horizontal = 16.dp, vertical = 12.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -361,6 +368,7 @@ fun ExpandableConversationGroup(
                                 haptics.perform(HapticPattern.CLICK, hapticsEnabled)
                                 onBranchClick(branch.conversation.id)
                             },
+                            onLongClick = { onBranchLongClick(branch) },
                             isFirst = branchIsFirst,
                             isLast = branchIsLast,
                             isOnly = branchIsOnly,

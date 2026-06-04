@@ -54,7 +54,7 @@ import com.materialchat.data.local.database.entity.WorkflowStepEntity
         MemoryEntity::class,
         MemorySnippetEntity::class
     ],
-    version = 19,
+    version = 20,
     exportSchema = true
 )
 abstract class MaterialChatDatabase : RoomDatabase() {
@@ -483,6 +483,17 @@ abstract class MaterialChatDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * Migration from version 19 to 20: Track the model that generated conversation titles.
+         */
+        private val MIGRATION_19_20 = object : Migration(19, 20) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE conversations ADD COLUMN title_generated_by_provider_id TEXT DEFAULT NULL")
+                db.execSQL("ALTER TABLE conversations ADD COLUMN title_generated_by_model TEXT DEFAULT NULL")
+                db.execSQL("ALTER TABLE conversations ADD COLUMN title_generated_at INTEGER DEFAULT NULL")
+            }
+        }
+
         internal val MIGRATIONS = arrayOf(
             MIGRATION_2_3,
             MIGRATION_3_4,
@@ -500,7 +511,8 @@ abstract class MaterialChatDatabase : RoomDatabase() {
             MIGRATION_15_16,
             MIGRATION_16_17,
             MIGRATION_17_18,
-            MIGRATION_18_19
+            MIGRATION_18_19,
+            MIGRATION_19_20
         )
 
         /**

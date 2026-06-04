@@ -45,6 +45,7 @@ import androidx.compose.ui.geometry.RoundRect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
@@ -347,15 +348,23 @@ fun ExpressiveFastScrollBar(
                 )
                 if (squiggleAmount > 0.02f) {
                     val waveStrength = when {
-                        isDragging -> 0.36f
-                        isPressed -> 0.28f
-                        else -> 0.2f
+                        isDragging -> 0.42f
+                        isPressed -> 0.34f
+                        else -> 0.26f
                     }
-                    indicatorPath.addSquigglyFastScrollThumb(
-                        rect = rect,
-                        leftRadius = leftRadius,
-                        rightRadius = resolvedRightRadius,
+                    indicatorPath.addVerticalSquiggle(
+                        centerX = currentIndicatorX + indicatorWidth / 2f,
+                        top = handleY + indicatorWidth / 2f,
+                        bottom = handleY + handleHeight - indicatorWidth / 2f,
                         amplitude = (indicatorWidth * waveStrength).coerceAtLeast(3f) * squiggleAmount
+                    )
+                    drawPath(
+                        path = indicatorPath,
+                        color = primaryColor,
+                        style = Stroke(
+                            width = indicatorWidth,
+                            cap = StrokeCap.Round
+                        )
                     )
                 } else {
                     indicatorPath.addRoundRect(
@@ -367,8 +376,8 @@ fun ExpressiveFastScrollBar(
                             bottomRight = CornerRadius(resolvedRightRadius, resolvedRightRadius)
                         )
                     )
+                    drawPath(indicatorPath, primaryColor)
                 }
-                drawPath(indicatorPath, primaryColor)
             }
 
             if (iconAlpha > 0f) {
@@ -420,7 +429,7 @@ fun ExpressiveFastScrollBar(
                                 y = (handleY + (minHeightPx / 2f) - (labelHeightPx / 2f)).toInt()
                             )
                         }
-                        .widthIn(min = dragLabelMinWidth, max = dragLabelMaxWidth)
+                        .width(dragLabelMaxWidth)
                         .heightIn(min = dragLabelMinHeight)
                         .graphicsLayer {
                             alpha = labelAlpha
@@ -440,6 +449,7 @@ fun ExpressiveFastScrollBar(
                         Text(
                             text = label,
                             style = MaterialTheme.typography.titleSmall,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer,
                             fontWeight = FontWeight.SemiBold,
                             textAlign = TextAlign.Center,
                             maxLines = 2,
@@ -452,30 +462,26 @@ fun ExpressiveFastScrollBar(
     }
 }
 
-private fun Path.addSquigglyFastScrollThumb(
-    rect: Rect,
-    leftRadius: Float,
-    rightRadius: Float,
+private fun Path.addVerticalSquiggle(
+    centerX: Float,
+    top: Float,
+    bottom: Float,
     amplitude: Float
 ) {
-    val waveLength = (rect.height / 2.4f).coerceAtLeast(18f)
-    moveTo(rect.left + leftRadius, rect.top)
-    lineTo(rect.right - rightRadius, rect.top)
+    val safeTop = top.coerceAtMost(bottom)
+    val safeBottom = bottom.coerceAtLeast(top)
+    val height = (safeBottom - safeTop).coerceAtLeast(1f)
+    val waveLength = (height / 2.1f).coerceAtLeast(18f)
+    moveTo(centerX, safeTop)
 
-    var y = rect.top
-    while (y <= rect.bottom) {
-        val phase = ((y - rect.top) / waveLength) * (2f * PI.toFloat())
-        val x = rect.right + (sin(phase.toDouble()).toFloat() * amplitude)
+    var y = safeTop
+    while (y <= safeBottom) {
+        val phase = ((y - safeTop) / waveLength) * (2f * PI.toFloat())
+        val x = centerX + sin(phase.toDouble()).toFloat() * amplitude
         lineTo(x, y)
-        y += 4f
+        y += 3.5f
     }
-
-    lineTo(rect.right - rightRadius, rect.bottom)
-    lineTo(rect.left + leftRadius, rect.bottom)
-    quadraticTo(rect.left, rect.bottom, rect.left, rect.bottom - leftRadius)
-    lineTo(rect.left, rect.top + leftRadius)
-    quadraticTo(rect.left, rect.top, rect.left + leftRadius, rect.top)
-    close()
+    lineTo(centerX, safeBottom)
 }
 
 private fun resolveFastScrollTargetIndex(

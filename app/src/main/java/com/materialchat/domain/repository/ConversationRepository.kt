@@ -98,6 +98,16 @@ interface ConversationRepository {
     suspend fun updateConversationTitleAndIcon(conversationId: String, title: String, icon: String?)
 
     /**
+     * Records the provider/model that generated the current title.
+     */
+    suspend fun updateConversationTitleGenerationMetadata(
+        conversationId: String,
+        providerId: String?,
+        modelName: String?,
+        generatedAt: Long?
+    )
+
+    /**
      * Updates the model used in a conversation.
      *
      * @param conversationId The ID of the conversation

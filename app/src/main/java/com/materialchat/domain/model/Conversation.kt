@@ -26,6 +26,9 @@ data class Conversation(
     val parentId: String? = null,
     val branchSourceMessageId: String? = null,
     val personaId: String? = null,
+    val titleGeneratedByProviderId: String? = null,
+    val titleGeneratedByModel: String? = null,
+    val titleGeneratedAt: Long? = null,
     val createdAt: Long = System.currentTimeMillis(),
     val updatedAt: Long = System.currentTimeMillis()
 ) {

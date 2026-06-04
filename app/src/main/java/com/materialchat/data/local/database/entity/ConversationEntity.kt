@@ -76,6 +76,15 @@ data class ConversationEntity(
     @ColumnInfo(name = "persona_id", defaultValue = "NULL")
     val personaId: String? = null,
 
+    @ColumnInfo(name = "title_generated_by_provider_id", defaultValue = "NULL")
+    val titleGeneratedByProviderId: String? = null,
+
+    @ColumnInfo(name = "title_generated_by_model", defaultValue = "NULL")
+    val titleGeneratedByModel: String? = null,
+
+    @ColumnInfo(name = "title_generated_at", defaultValue = "NULL")
+    val titleGeneratedAt: Long? = null,
+
     @ColumnInfo(name = "updated_at")
     val updatedAt: Long
 )
