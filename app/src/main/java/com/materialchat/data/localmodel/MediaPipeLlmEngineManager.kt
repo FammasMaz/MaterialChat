@@ -49,8 +49,21 @@ class MediaPipeLlmEngineManager @Inject constructor(
             .build()
         val inference = LlmInference.createFromOptions(context, options)
         activeInference = inference
+        var lastCumulative = ""
         val future = inference.generateResponseAsync(buildPrompt(messages, systemPrompt)) { partialResult: String, done: Boolean ->
-            if (partialResult.isNotEmpty()) trySend(partialResult)
+            if (partialResult.isNotEmpty()) {
+                val delta = when {
+                    lastCumulative.isNotEmpty() &&
+                        partialResult.length >= lastCumulative.length &&
+                        partialResult.startsWith(lastCumulative) ->
+                        partialResult.substring(lastCumulative.length)
+                    else -> partialResult
+                }
+                if (delta.isNotEmpty()) {
+                    lastCumulative = partialResult
+                    trySend(delta)
+                }
+            }
             if (done) close()
         }
         future.addListener(

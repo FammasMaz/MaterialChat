@@ -153,6 +153,7 @@ import com.materialchat.ui.theme.MaterialChatThemePalettes
 @Composable
 fun SettingsScreen(
     onNavigateToInteractionSettings: () -> Unit = {},
+    onNavigateToModelAssignments: () -> Unit = {},
     onNavigateToOnDeviceModels: () -> Unit = {},
     onNavigateToMemories: () -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel()
@@ -412,6 +413,7 @@ fun SettingsScreen(
             onCreateBackup = { showCreateBackupDialog = true },
             onRestoreBackup = { restoreBackupLauncher.launch(arrayOf("application/octet-stream", "*/*")) },
             onNavigateToInteractionSettings = onNavigateToInteractionSettings,
+            onNavigateToModelAssignments = onNavigateToModelAssignments,
             onNavigateToOnDeviceModels = onNavigateToOnDeviceModels,
             onNavigateToMemories = onNavigateToMemories
         )
@@ -606,6 +608,7 @@ private fun SettingsContent(
     onCreateBackup: () -> Unit,
     onRestoreBackup: () -> Unit,
     onNavigateToInteractionSettings: () -> Unit,
+    onNavigateToModelAssignments: () -> Unit,
     onNavigateToOnDeviceModels: () -> Unit,
     onNavigateToMemories: () -> Unit
 ) {
@@ -676,6 +679,7 @@ private fun SettingsContent(
                     onCreateBackup = onCreateBackup,
                     onRestoreBackup = onRestoreBackup,
                     onNavigateToInteractionSettings = onNavigateToInteractionSettings,
+                    onNavigateToModelAssignments = onNavigateToModelAssignments,
                     onNavigateToOnDeviceModels = onNavigateToOnDeviceModels,
                     onNavigateToMemories = onNavigateToMemories
                 )
@@ -753,6 +757,7 @@ private fun SuccessContent(
     onCreateBackup: () -> Unit,
     onRestoreBackup: () -> Unit,
     onNavigateToInteractionSettings: () -> Unit,
+    onNavigateToModelAssignments: () -> Unit,
     onNavigateToOnDeviceModels: () -> Unit,
     onNavigateToMemories: () -> Unit
 ) {
@@ -803,6 +808,10 @@ private fun SuccessContent(
 
         item {
             OnDeviceModelsSettingsCard(onClick = onNavigateToOnDeviceModels)
+        }
+
+        item {
+            ModelAssignmentsSettingsCard(onClick = onNavigateToModelAssignments)
         }
 
         item {
@@ -1268,6 +1277,52 @@ private fun OnDeviceModelsSettingsCard(onClick: () -> Unit) {
                     color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.78f)
                 )
             }
+        }
+    }
+}
+
+@Composable
+private fun ModelAssignmentsSettingsCard(onClick: () -> Unit) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
+        shape = CustomShapes.ProviderCard,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+            contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+        )
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .defaultMinSize(minHeight = 72.dp)
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Outlined.AutoAwesome,
+                contentDescription = null,
+                modifier = Modifier.size(28.dp)
+            )
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "Model assignments",
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer
+                )
+                Text(
+                    text = "Titles, memories, images — on-device vs cloud per task",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.78f)
+                )
+            }
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                contentDescription = null,
+                modifier = Modifier.graphicsLayer { rotationZ = 180f }
+            )
         }
     }
 }

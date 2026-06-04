@@ -91,6 +91,19 @@ class SendMessageUseCase @Inject constructor(
         val provider = providerRepository.getProvider(conversation.providerId)
             ?: throw IllegalStateException("Provider not found: ${conversation.providerId}")
 
+        if (provider.type.isOnDevice) {
+            if (attachments.isNotEmpty()) {
+                throw IllegalStateException(
+                    "On-device models support text only. Remove image attachments or switch to a cloud provider."
+                )
+            }
+            if (!localModelRepository.isModelUsable(conversation.modelName)) {
+                throw IllegalStateException(
+                    "This on-device model is not ready. Open Settings → On-device models to download it first."
+                )
+            }
+        }
+
         // Resolve the effective system prompt: persona overrides global
         val effectiveSystemPrompt = if (conversation.personaId != null) {
             val persona = personaRepository.getPersonaById(conversation.personaId)

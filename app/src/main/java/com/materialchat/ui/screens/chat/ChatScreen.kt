@@ -77,7 +77,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.materialchat.domain.model.Attachment
 import com.materialchat.domain.model.MessageRole
 import com.materialchat.domain.model.ReasoningEffort
+import com.materialchat.ui.components.ExpressiveFastScrollBar
 import com.materialchat.ui.components.HapticPattern
+import com.materialchat.ui.components.fastScrollMessageDateLabel
 import com.materialchat.ui.components.rememberHapticFeedback
 import com.materialchat.ui.screens.bookmarks.components.AddBookmarkSheet
 import com.materialchat.ui.screens.chat.components.ChatTopBar
@@ -868,17 +870,18 @@ private fun MessageList(
     hapticsEnabled: Boolean = true,
     modifier: Modifier = Modifier
 ) {
-    LazyColumn(
-        modifier = modifier,
-        state = listState,
-        contentPadding = PaddingValues(
-            start = 16.dp,
-            end = 16.dp,
-            top = 8.dp,
-            bottom = 8.dp
-        ),
-        verticalArrangement = Arrangement.spacedBy(0.dp)
-    ) {
+    Box(modifier = modifier.fillMaxSize()) {
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            state = listState,
+            contentPadding = PaddingValues(
+                start = 16.dp,
+                end = 28.dp,
+                top = 8.dp,
+                bottom = 8.dp
+            ),
+            verticalArrangement = Arrangement.spacedBy(0.dp)
+        ) {
         itemsIndexed(
             items = messages,
             key = { _, item -> item.message.id },
@@ -978,6 +981,17 @@ private fun MessageList(
                     .padding(top = topSpacing)
             )
         }
+    }
+
+        ExpressiveFastScrollBar(
+            listState = listState,
+            dragLabelProvider = { index ->
+                messages.getOrNull(index)?.message?.createdAt?.let { fastScrollMessageDateLabel(it) }
+            },
+            modifier = Modifier
+                .align(Alignment.CenterEnd)
+                .padding(top = 8.dp, bottom = 8.dp, end = 2.dp)
+        )
     }
 }
 

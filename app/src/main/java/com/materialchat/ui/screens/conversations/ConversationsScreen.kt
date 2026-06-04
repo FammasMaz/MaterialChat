@@ -101,7 +101,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.materialchat.ui.components.ExpressiveFastScrollBar
 import com.materialchat.ui.components.HapticPattern
-import com.materialchat.ui.components.fastScrollGlyph
+import com.materialchat.ui.components.fastScrollDateLabel
 import com.materialchat.ui.components.rememberHapticFeedback
 import com.materialchat.ui.screens.conversations.components.ConversationItem
 import com.materialchat.ui.screens.conversations.components.ExpandableConversationGroup
@@ -1189,7 +1189,7 @@ private fun ConversationList(
         ExpressiveFastScrollBar(
             listState = listState,
             dragLabelProvider = { index ->
-                fastScrollGlyph(conversations.getOrNull(index)?.conversation?.title)
+                conversations.getOrNull(index)?.conversation?.updatedAt?.let { fastScrollDateLabel(it) }
             },
             modifier = Modifier
                 .align(Alignment.CenterEnd)
@@ -1266,7 +1266,7 @@ private fun GroupedConversationList(
         ExpressiveFastScrollBar(
             listState = listState,
             dragLabelProvider = { index ->
-                fastScrollGlyph(groups.getOrNull(index)?.parent?.conversation?.title)
+                groups.getOrNull(index)?.parent?.conversation?.updatedAt?.let { fastScrollDateLabel(it) }
             },
             modifier = Modifier
                 .align(Alignment.CenterEnd)

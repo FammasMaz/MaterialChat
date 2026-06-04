@@ -13,6 +13,7 @@ import com.materialchat.domain.repository.ChatRepository
 import com.materialchat.domain.repository.LocalModelRepository
 import com.materialchat.domain.repository.MemoryRepository
 import com.materialchat.domain.repository.ProviderRepository
+import com.materialchat.domain.util.TaskModelAssignmentCodec
 import kotlinx.coroutines.flow.first
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.decodeFromString
@@ -147,9 +148,9 @@ class ExtractMemoriesUseCase @Inject constructor(
         defaultProvider: Provider,
         defaultModel: String
     ): Result<String> {
-        val titleModelSetting = appPreferences.titleGenerationModel.first()
-        val hasExplicitTitleModel = titleModelSetting.isNotBlank()
-        if (!hasExplicitTitleModel && appPreferences.preferOnDeviceTitleModel.first()) {
+        val memoryModelSetting = appPreferences.memoryExtractionModel.first()
+        val hasExplicitMemoryModel = memoryModelSetting.isNotBlank()
+        if (!hasExplicitMemoryModel && appPreferences.preferOnDeviceBackgroundTasks.first()) {
             val localModelId = localModelRepository.preferredTitleModelIdOrNull()
             if (localModelId != null) {
                 val localResult = localModelRepository.generateSimpleCompletion(
@@ -161,7 +162,7 @@ class ExtractMemoriesUseCase @Inject constructor(
             }
         }
 
-        val (providerId, configuredModel) = parseTitleModelSetting(titleModelSetting)
+        val (providerId, configuredModel) = TaskModelAssignmentCodec.decode(memoryModelSetting)
         val configuredProvider = providerId?.let { providerRepository.getProvider(it) }
         val provider = configuredProvider ?: defaultProvider
         val model = configuredModel.ifBlank { defaultModel }
@@ -270,15 +271,6 @@ Extract only durable memories that will help future chats.
         if (userContent.length < 12) return false
         if (userContent.length > MAX_USER_EXTRACTION_CHARS) return false
         return true
-    }
-
-    private fun parseTitleModelSetting(raw: String): Pair<String?, String> {
-        if (raw.isBlank()) return null to ""
-        val pipe = raw.indexOf('|')
-        if (pipe < 0) return null to raw.trim()
-        val providerId = raw.substring(0, pipe).trim()
-        val modelId = raw.substring(pipe + 1).trim()
-        return providerId.ifBlank { null } to modelId
     }
 
     private fun sanitizeExplicitMemory(text: String): String? {

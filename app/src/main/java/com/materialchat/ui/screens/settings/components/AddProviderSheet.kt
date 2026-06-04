@@ -256,8 +256,8 @@ private fun AddProviderSheetContent(
                 ProviderType.CODEX_NATIVE -> "gpt-5.4"
                 ProviderType.GITHUB_COPILOT_NATIVE -> "gpt-4.1"
                 ProviderType.ANTIGRAVITY_NATIVE -> "gemini-3-flash"
-                ProviderType.LITERT_LM_LOCAL -> "gemma3-1b-it-int4"
-                ProviderType.AICORE_GEMINI_NANO -> "gemini-nano"
+                ProviderType.LITERT_LM_LOCAL -> com.materialchat.domain.model.LocalModelIds.GEMMA3_1B_IT_INT4
+                ProviderType.AICORE_GEMINI_NANO -> com.materialchat.domain.model.LocalModelIds.GEMINI_NANO
             },
             leadingIcon = Icons.Outlined.Memory,
             error = formState.defaultModelError,

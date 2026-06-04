@@ -26,9 +26,11 @@ import androidx.compose.material.icons.filled.SystemUpdate
 import androidx.compose.material.icons.outlined.NewReleases
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.LinearWavyProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ProgressIndicatorDefaults
+import androidx.compose.material3.WavyProgressIndicatorDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -249,13 +251,16 @@ private fun DownloadingBannerContent(
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        M3ExpressiveDeterminateProgress(
-            progress = animatedProgress,
+        @OptIn(ExperimentalMaterial3ExpressiveApi::class)
+        LinearWavyProgressIndicator(
+            progress = { animatedProgress },
             modifier = Modifier
                 .fillMaxWidth()
-                .height(6.dp),
+                .height(8.dp),
             color = MaterialTheme.colorScheme.primary,
-            trackColor = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.2f)
+            trackColor = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.2f),
+            stroke = WavyProgressIndicatorDefaults.linearIndicatorStroke,
+            trackStroke = WavyProgressIndicatorDefaults.linearTrackStroke
         )
     }
 }

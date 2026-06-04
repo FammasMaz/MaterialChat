@@ -56,6 +56,8 @@ class AppPreferences(private val context: Context) {
         val AI_GENERATED_TITLES_ENABLED = booleanPreferencesKey("ai_generated_titles_enabled")
         val PREFER_ON_DEVICE_TITLE_MODEL = booleanPreferencesKey("prefer_on_device_title_model")
         val TITLE_GENERATION_MODEL = stringPreferencesKey("title_generation_model")
+        val MEMORY_EXTRACTION_MODEL = stringPreferencesKey("memory_extraction_model")
+        val PREFER_ON_DEVICE_BACKGROUND_TASKS = booleanPreferencesKey("prefer_on_device_background_tasks")
         val DEFAULT_IMAGE_GENERATION_MODEL = stringPreferencesKey("default_image_generation_model")
         val DEFAULT_IMAGE_OUTPUT_FORMAT = stringPreferencesKey("default_image_output_format")
         val AUTO_CHECK_UPDATES = booleanPreferencesKey("auto_check_updates")
@@ -152,6 +154,7 @@ class AppPreferences(private val context: Context) {
         const val DEFAULT_NOTIFICATIONS_ENABLED = false
         const val DEFAULT_AI_GENERATED_TITLES_ENABLED = true
         const val DEFAULT_PREFER_ON_DEVICE_TITLE_MODEL = false
+        const val DEFAULT_PREFER_ON_DEVICE_BACKGROUND_TASKS = true
         val DEFAULT_REASONING_EFFORT = ReasoningEffort.HIGH
         const val DEFAULT_REMEMBER_LAST_MODEL = true
         const val DEFAULT_IMAGE_GENERATION_MODEL = "codex/gpt-image-2-medium"
@@ -502,6 +505,32 @@ class AppPreferences(private val context: Context) {
     suspend fun setTitleGenerationModel(model: String) {
         dataStore.edit { preferences ->
             preferences[Keys.TITLE_GENERATION_MODEL] = model
+        }
+    }
+
+    /**
+     * Prefer smallest downloaded on-device model for titles and memory when no explicit cloud model is set.
+     */
+    val preferOnDeviceBackgroundTasks: Flow<Boolean> = dataStore.data.map { preferences ->
+        preferences[Keys.PREFER_ON_DEVICE_BACKGROUND_TASKS]
+            ?: preferences[Keys.PREFER_ON_DEVICE_TITLE_MODEL]
+            ?: DEFAULT_PREFER_ON_DEVICE_BACKGROUND_TASKS
+    }
+
+    suspend fun setPreferOnDeviceBackgroundTasks(enabled: Boolean) {
+        dataStore.edit { preferences ->
+            preferences[Keys.PREFER_ON_DEVICE_BACKGROUND_TASKS] = enabled
+            preferences[Keys.PREFER_ON_DEVICE_TITLE_MODEL] = enabled
+        }
+    }
+
+    val memoryExtractionModel: Flow<String> = dataStore.data.map { preferences ->
+        preferences[Keys.MEMORY_EXTRACTION_MODEL] ?: ""
+    }
+
+    suspend fun setMemoryExtractionModel(model: String) {
+        dataStore.edit { preferences ->
+            preferences[Keys.MEMORY_EXTRACTION_MODEL] = model
         }
     }
 

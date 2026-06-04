@@ -79,11 +79,16 @@ class OnDeviceModelsViewModel @Inject constructor(
     fun download(modelId: String) {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(activeModelId = modelId)
+            val isAicore = com.materialchat.data.localmodel.LocalModelCatalog.descriptor(modelId)
+                ?.backend == com.materialchat.domain.model.LocalModelBackend.AICORE_GEMINI_NANO
             localModelRepository.download(modelId)
                 .onSuccess {
-                    _events.emit(OnDeviceModelsEvent.ShowSnackbar(
+                    val message = if (isAicore) {
+                        "Downloading Gemini Nano via Android AICore…"
+                    } else {
                         "Download started. You can leave the app; progress continues in notifications."
-                    ))
+                    }
+                    _events.emit(OnDeviceModelsEvent.ShowSnackbar(message))
                 }
                 .onFailure { _events.emit(OnDeviceModelsEvent.ShowSnackbar(it.message ?: "Model download failed")) }
             _uiState.value = _uiState.value.copy(activeModelId = null)

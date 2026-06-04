@@ -60,7 +60,12 @@ class ChatRepositoryImpl @Inject constructor(
                 modelId = model,
                 messages = messages,
                 systemPrompt = systemPrompt
-            )
+            ).catch { exception ->
+                when (exception) {
+                    is kotlinx.coroutines.CancellationException -> emit(StreamingState.Cancelled())
+                    else -> emit(StreamingState.Error(error = exception))
+                }
+            }
         }
 
         return flow {

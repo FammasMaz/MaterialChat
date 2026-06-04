@@ -15,6 +15,7 @@ import com.materialchat.domain.model.AiModel
 import com.materialchat.domain.model.LocalModelAvailability
 import com.materialchat.domain.model.LocalModelBackend
 import com.materialchat.domain.model.LocalModelDescriptor
+import com.materialchat.domain.model.LightweightOnDeviceModels
 import com.materialchat.domain.model.LocalModelIds
 import com.materialchat.domain.model.LocalModelState
 import com.materialchat.domain.model.Message
@@ -25,6 +26,7 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.CoroutineScope
@@ -131,9 +133,15 @@ class LocalModelRepositoryImpl @Inject constructor(
         _models.value
             .filter { it.descriptor.backend.matchesProviderBackend(backend) }
             .map { state ->
+                val statusSuffix = when {
+                    state.isUsable -> null
+                    state.availability == LocalModelAvailability.DOWNLOADING -> " (downloading…)"
+                    state.availability == LocalModelAvailability.ERROR -> " (error)"
+                    else -> " (download required)"
+                }
                 AiModel(
                     id = state.descriptor.id,
-                    name = state.descriptor.displayName,
+                    name = state.descriptor.displayName + (statusSuffix ?: ""),
                     providerId = providerId
                 )
             }
@@ -179,7 +187,10 @@ class LocalModelRepositoryImpl @Inject constructor(
             )
         )
     }.catch { error ->
-        emit(StreamingState.Error(error = error))
+        when (error) {
+            is CancellationException -> emit(StreamingState.Cancelled())
+            else -> emit(StreamingState.Error(error = error))
+        }
     }
 
     override suspend fun generateSimpleCompletion(
@@ -226,13 +237,7 @@ class LocalModelRepositoryImpl @Inject constructor(
     }
 
     override suspend fun preferredTitleModelIdOrNull(): String? = withContext(ioDispatcher) {
-        val preferredOrder = listOf(
-            LocalModelIds.QWEN25_05B_INSTRUCT,
-            LocalModelIds.QWEN3_06B,
-            LocalModelIds.GEMMA3_1B_IT_INT4,
-            LocalModelIds.GEMINI_NANO
-        )
-        preferredOrder.firstOrNull { isModelUsable(it) }
+        LightweightOnDeviceModels.preferredOrder.firstOrNull { isModelUsable(it) }
     }
 
     override suspend fun firstUsableModelId(backend: LocalModelBackend): String? = withContext(ioDispatcher) {

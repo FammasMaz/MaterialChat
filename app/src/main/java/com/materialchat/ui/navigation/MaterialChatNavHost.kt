@@ -32,6 +32,7 @@ import com.materialchat.ui.screens.mindmap.MindMapScreen
 import com.materialchat.ui.screens.onboarding.OnboardingScreen
 import com.materialchat.ui.screens.personas.PersonaStudioScreen
 import com.materialchat.ui.screens.settings.InteractionSettingsScreen
+import com.materialchat.ui.screens.settings.ModelAssignmentsScreen
 import com.materialchat.ui.screens.settings.OnDeviceModelsScreen
 import com.materialchat.ui.screens.settings.SettingsScreen
 import com.materialchat.ui.screens.workflows.WorkflowBuilderScreen
@@ -216,6 +217,9 @@ fun MaterialChatNavHost(
                     onNavigateToInteractionSettings = {
                         navController.navigate(Screen.InteractionSettings.route)
                     },
+                    onNavigateToModelAssignments = {
+                        navController.navigate(Screen.ModelAssignments.route)
+                    },
                     onNavigateToOnDeviceModels = {
                         navController.navigate(Screen.OnDeviceModels.route)
                     },
@@ -233,6 +237,12 @@ fun MaterialChatNavHost(
 
             composable(route = Screen.OnDeviceModels.route) {
                 OnDeviceModelsScreen(
+                    onNavigateBack = { navController.popBackStack() }
+                )
+            }
+
+            composable(route = Screen.ModelAssignments.route) {
+                ModelAssignmentsScreen(
                     onNavigateBack = { navController.popBackStack() }
                 )
             }

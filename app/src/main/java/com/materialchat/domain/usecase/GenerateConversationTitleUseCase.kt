@@ -7,6 +7,7 @@ import com.materialchat.domain.repository.ChatRepository
 import com.materialchat.domain.repository.ConversationRepository
 import com.materialchat.domain.repository.LocalModelRepository
 import com.materialchat.domain.repository.ProviderRepository
+import com.materialchat.domain.util.TaskModelAssignmentCodec
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
@@ -86,7 +87,7 @@ class GenerateConversationTitleUseCase @Inject constructor(
             // Format: either bare "modelId" (use conversation provider)
             // or "providerId|modelId" (use that specific provider).
             val customModelRaw = appPreferences.titleGenerationModel.first()
-            val (customProviderId, customModelId) = parseTitleModelSetting(customModelRaw)
+            val (customProviderId, customModelId) = TaskModelAssignmentCodec.decode(customModelRaw)
             val hasExplicitTitleModel = customModelRaw.isNotBlank()
 
             val conversationProvider = providerRepository.getProvider(conversation.providerId)
@@ -161,8 +162,8 @@ class GenerateConversationTitleUseCase @Inject constructor(
     }
 
     private suspend fun generateWithPreferredLocalModel(prompt: String): Result<String> {
-        if (!appPreferences.preferOnDeviceTitleModel.first()) {
-            return Result.failure(IllegalStateException("On-device title generation is disabled"))
+        if (!appPreferences.preferOnDeviceBackgroundTasks.first()) {
+            return Result.failure(IllegalStateException("On-device background tasks are disabled"))
         }
         val localModelId = localModelRepository.preferredTitleModelIdOrNull()
             ?: return Result.failure(IllegalStateException("No on-device title model is available"))
@@ -271,20 +272,6 @@ class GenerateConversationTitleUseCase @Inject constructor(
         }
 
         return cleaned.ifBlank { "New Chat" }
-    }
-
-    /**
-     * Parses the stored title generation model setting.
-     * Returns (providerId, modelId). providerId is null when the setting
-     * is empty or uses the bare modelId format (legacy).
-     */
-    private fun parseTitleModelSetting(raw: String): Pair<String?, String> {
-        if (raw.isBlank()) return null to ""
-        val pipe = raw.indexOf('|')
-        if (pipe < 0) return null to raw.trim()
-        val providerId = raw.substring(0, pipe).trim()
-        val modelId = raw.substring(pipe + 1).trim()
-        return (providerId.ifBlank { null }) to modelId
     }
 
     private fun generateFallbackTitle(content: String): String {
