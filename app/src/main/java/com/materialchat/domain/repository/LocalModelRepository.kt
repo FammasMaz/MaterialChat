@@ -19,6 +19,8 @@ interface LocalModelRepository {
 
     suspend fun delete(modelId: String): Result<Unit>
 
+    suspend fun unmount(modelId: String): Result<Unit>
+
     suspend fun fetchAvailableAiModels(
         providerId: String,
         backend: LocalModelBackend

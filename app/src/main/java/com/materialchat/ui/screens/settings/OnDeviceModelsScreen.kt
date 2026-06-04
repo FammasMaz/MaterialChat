@@ -173,7 +173,8 @@ fun OnDeviceModelsScreen(
                         state = state,
                         isBusy = uiState.activeModelId == state.descriptor.id,
                         onDownload = { viewModel.download(state.descriptor.id) },
-                        onDelete = { pendingDelete = state }
+                        onDelete = { pendingDelete = state },
+                        onUnmount = { viewModel.unmount(state.descriptor.id) }
                     )
                 }
             }
@@ -395,7 +396,8 @@ private fun OnDeviceModelCard(
     state: LocalModelState,
     isBusy: Boolean,
     onDownload: () -> Unit,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    onUnmount: () -> Unit
 ) {
     val descriptor = state.descriptor
     val isAicore = descriptor.backend == LocalModelBackend.AICORE_GEMINI_NANO
@@ -486,6 +488,14 @@ private fun OnDeviceModelCard(
                         )
                     }
                     state.isUsable -> {
+                        if (state.isMountedInRam) {
+                            ExpressiveButton(
+                                onClick = onUnmount,
+                                text = "Unmount",
+                                style = ExpressiveButtonStyle.FilledTonal,
+                                enabled = !isBusy
+                            )
+                        }
                         ExpressiveButton(
                             onClick = onDelete,
                             text = "Delete",

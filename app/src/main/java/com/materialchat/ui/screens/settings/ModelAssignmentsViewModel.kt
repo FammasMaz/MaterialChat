@@ -39,20 +39,23 @@ class ModelAssignmentsViewModel @Inject constructor(
             appPreferences.titleGenerationModel,
             appPreferences.memoryExtractionModel,
             appPreferences.defaultImageGenerationModel,
-            appPreferences.aiGeneratedTitlesEnabled
-        ) { preferOnDevice, titleModel, memoryModel, imageModel, aiTitles ->
+            appPreferences.defaultImageOutputFormat
+        ) { preferOnDevice, titleModel, memoryModel, imageModel, imageFormat ->
             AssignmentPrefs(
                 preferOnDevice = preferOnDevice,
                 titleModel = titleModel,
                 memoryModel = memoryModel,
                 imageModel = imageModel,
-                aiTitlesEnabled = aiTitles
+                imageFormat = imageFormat,
+                aiTitlesEnabled = true
             )
         },
+        appPreferences.aiGeneratedTitlesEnabled,
         _providers,
         localModelRepository.observeModels(),
         _pickerState
-    ) { prefs, providers, localStates, picker ->
+    ) { prefsBase, aiTitles, providers, localStates, picker ->
+        val prefs = prefsBase.copy(aiTitlesEnabled = aiTitles)
         val onDeviceRows = LightweightOnDeviceModels.preferredOrder.mapNotNull { id ->
             localStates.find { it.descriptor.id == id }?.let { state ->
                 OnDeviceModelRow(
@@ -77,6 +80,7 @@ class ModelAssignmentsViewModel @Inject constructor(
             titleModelRaw = prefs.titleModel,
             memoryModelRaw = prefs.memoryModel,
             imageModelRaw = prefs.imageModel,
+            imageOutputFormat = prefs.imageFormat,
             aiGeneratedTitlesEnabled = prefs.aiTitlesEnabled,
             providers = providers,
             onDeviceModels = onDeviceRows,
@@ -164,6 +168,18 @@ class ModelAssignmentsViewModel @Inject constructor(
         }
     }
 
+    fun setImageOutputFormat(format: String) {
+        viewModelScope.launch {
+            appPreferences.setDefaultImageOutputFormat(format)
+        }
+    }
+
+    fun setAiGeneratedTitles(enabled: Boolean) {
+        viewModelScope.launch {
+            appPreferences.setAiGeneratedTitlesEnabled(enabled)
+        }
+    }
+
     private fun formatSize(bytes: Long): String {
         val mb = bytes / (1024.0 * 1024.0)
         return if (mb >= 1024) String.format("%.1f GB", mb / 1024.0) else String.format("%.0f MB", mb)
@@ -175,6 +191,7 @@ data class ModelAssignmentsUiState(
     val titleModelRaw: String = "",
     val memoryModelRaw: String = "",
     val imageModelRaw: String = AppPreferences.DEFAULT_IMAGE_GENERATION_MODEL,
+    val imageOutputFormat: String = AppPreferences.DEFAULT_IMAGE_OUTPUT_FORMAT,
     val aiGeneratedTitlesEnabled: Boolean = true,
     val providers: List<Provider> = emptyList(),
     val onDeviceModels: List<OnDeviceModelRow> = emptyList(),
@@ -195,5 +212,6 @@ private data class AssignmentPrefs(
     val titleModel: String,
     val memoryModel: String,
     val imageModel: String,
+    val imageFormat: String,
     val aiTitlesEnabled: Boolean
 )

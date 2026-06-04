@@ -87,6 +87,18 @@ class GetConversationsUseCase @Inject constructor(
         conversationRepository.updateConversationModel(conversationId, modelName)
     }
 
+    suspend fun updateConversationProviderAndModel(
+        conversationId: String,
+        providerId: String,
+        modelName: String
+    ) {
+        conversationRepository.updateConversationProviderAndModel(
+            conversationId,
+            providerId,
+            modelName
+        )
+    }
+
     /**
      * Observes sibling branches sharing the same parent and branch source message.
      *

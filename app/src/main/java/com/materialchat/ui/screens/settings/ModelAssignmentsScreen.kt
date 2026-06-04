@@ -28,6 +28,8 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ElevatedCard
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -142,19 +144,16 @@ fun ModelAssignmentsScreen(
                 }
 
                 item {
-                    TaskAssignmentCard(
-                        task = TaskModelAssignment.CONVERSATION_TITLE,
+                    TitleAssignmentCard(
                         currentRaw = uiState.titleModelRaw,
                         providers = uiState.providers,
                         pickerState = uiState.pickerState,
-                        enabled = uiState.aiGeneratedTitlesEnabled,
-                        disabledHint = "Enable AI-generated titles in Settings to use this assignment.",
-                        automaticLabel = "Automatic (on-device if enabled, else chat model)",
+                        aiTitlesEnabled = uiState.aiGeneratedTitlesEnabled,
+                        onAiTitlesChange = viewModel::setAiGeneratedTitles,
                         onLoadModels = { viewModel.loadCloudModels() },
                         onAssign = { providerId, modelId ->
                             viewModel.setTitleModel(providerId, modelId)
-                        },
-                        icon = Icons.Outlined.Title
+                        }
                     )
                 }
 
@@ -178,7 +177,9 @@ fun ModelAssignmentsScreen(
                 item {
                     ImageGenerationAssignmentCard(
                         currentModel = uiState.imageModelRaw,
-                        onModelChange = viewModel::setImageModel
+                        currentFormat = uiState.imageOutputFormat,
+                        onModelChange = viewModel::setImageModel,
+                        onFormatChange = viewModel::setImageOutputFormat
                     )
                 }
             }
@@ -305,6 +306,54 @@ private fun OnDeviceModelStatusRow(row: OnDeviceModelRow) {
 }
 
 @Composable
+private fun TitleAssignmentCard(
+    currentRaw: String,
+    providers: List<com.materialchat.domain.model.Provider>,
+    pickerState: TitleModelPickerState,
+    aiTitlesEnabled: Boolean,
+    onAiTitlesChange: (Boolean) -> Unit,
+    onLoadModels: () -> Unit,
+    onAssign: (providerId: String?, modelId: String) -> Unit
+) {
+    TaskAssignmentCard(
+        task = TaskModelAssignment.CONVERSATION_TITLE,
+        currentRaw = currentRaw,
+        providers = providers,
+        pickerState = pickerState,
+        enabled = aiTitlesEnabled,
+        disabledHint = "Turn on AI-generated titles to enable this model assignment.",
+        automaticLabel = "Automatic (on-device if enabled, else chat model)",
+        onLoadModels = onLoadModels,
+        onAssign = onAssign,
+        icon = Icons.Outlined.Title,
+        headerContent = {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "AI-generated titles",
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.Medium
+                    )
+                    Text(
+                        text = "Create an emoji + concise title after the first response",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                ExpressiveSwitch(
+                    checked = aiTitlesEnabled,
+                    onCheckedChange = onAiTitlesChange
+                )
+            }
+        }
+    )
+}
+
+@Composable
 private fun TaskAssignmentCard(
     task: TaskModelAssignment,
     currentRaw: String,
@@ -315,7 +364,8 @@ private fun TaskAssignmentCard(
     automaticLabel: String,
     onLoadModels: () -> Unit,
     onAssign: (providerId: String?, modelId: String) -> Unit,
-    icon: androidx.compose.ui.graphics.vector.ImageVector
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    headerContent: (@Composable ColumnScope.() -> Unit)? = null
 ) {
     val (currentProviderId, currentModelId) = remember(currentRaw) {
         TaskModelAssignmentCodec.decode(currentRaw)
@@ -336,6 +386,10 @@ private fun TaskAssignmentCard(
         description = task.subtitle,
         icon = icon
     ) {
+        headerContent?.let {
+            it()
+            Spacer(modifier = Modifier.height(12.dp))
+        }
         if (!enabled && disabledHint != null) {
             Text(
                 text = disabledHint,
@@ -440,7 +494,9 @@ private fun TaskAssignmentCard(
 @Composable
 private fun ImageGenerationAssignmentCard(
     currentModel: String,
-    onModelChange: (String) -> Unit
+    currentFormat: String,
+    onModelChange: (String) -> Unit,
+    onFormatChange: (String) -> Unit
 ) {
     var text by remember(currentModel) { mutableStateOf(currentModel) }
     AssignmentSectionCard(
@@ -466,11 +522,55 @@ private fun ImageGenerationAssignmentCard(
             singleLine = true
         )
         Spacer(modifier = Modifier.height(8.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            AppPreferences.SUPPORTED_IMAGE_GENERATION_MODELS.forEach { model ->
+                val tier = model.substringAfterLast('-').replaceFirstChar { it.uppercase() }
+                FilterChip(
+                    selected = currentModel == model,
+                    onClick = {
+                        text = model
+                        onModelChange(model)
+                    },
+                    label = { Text(tier) },
+                    modifier = Modifier
+                        .weight(1f)
+                        .defaultMinSize(minHeight = 48.dp),
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                        selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                )
+            }
+        }
+        Spacer(modifier = Modifier.height(12.dp))
         Text(
-            text = "Suggested: ${AppPreferences.SUPPORTED_IMAGE_GENERATION_MODELS.joinToString()}",
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            text = "Output format",
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.primary
         )
+        Spacer(modifier = Modifier.height(6.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            AppPreferences.SUPPORTED_IMAGE_OUTPUT_FORMATS.forEach { format ->
+                FilterChip(
+                    selected = currentFormat == format,
+                    onClick = { onFormatChange(format) },
+                    label = { Text(format.uppercase()) },
+                    modifier = Modifier
+                        .weight(1f)
+                        .defaultMinSize(minHeight = 48.dp),
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
+                        selectedLabelColor = MaterialTheme.colorScheme.onSecondaryContainer
+                    )
+                )
+            }
+        }
         Spacer(modifier = Modifier.height(8.dp))
         Row(
             modifier = Modifier.fillMaxWidth(),

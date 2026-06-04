@@ -132,6 +132,19 @@ class ConversationRepositoryImpl @Inject constructor(
         )
     }
 
+    override suspend fun updateConversationProviderAndModel(
+        conversationId: String,
+        providerId: String,
+        modelName: String
+    ) {
+        conversationDao.updateProviderAndModel(
+            conversationId = conversationId,
+            providerId = providerId,
+            modelName = modelName,
+            updatedAt = System.currentTimeMillis()
+        )
+    }
+
     // ========== Message Operations ==========
 
     override fun observeMessages(conversationId: String): Flow<List<Message>> {

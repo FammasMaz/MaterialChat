@@ -105,6 +105,11 @@ interface ConversationRepository {
      */
     suspend fun updateConversationModel(conversationId: String, modelName: String)
 
+    /**
+     * Updates both provider and model used in a conversation.
+     */
+    suspend fun updateConversationProviderAndModel(conversationId: String, providerId: String, modelName: String)
+
     // ========== Message Operations ==========
 
     /**

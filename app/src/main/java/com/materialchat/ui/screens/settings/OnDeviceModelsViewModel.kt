@@ -104,4 +104,14 @@ class OnDeviceModelsViewModel @Inject constructor(
             _uiState.value = _uiState.value.copy(activeModelId = null)
         }
     }
+
+    fun unmount(modelId: String) {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(activeModelId = modelId)
+            localModelRepository.unmount(modelId)
+                .onSuccess { _events.emit(OnDeviceModelsEvent.ShowSnackbar("Model unmounted from RAM")) }
+                .onFailure { _events.emit(OnDeviceModelsEvent.ShowSnackbar(it.message ?: "Could not unmount model")) }
+            _uiState.value = _uiState.value.copy(activeModelId = null)
+        }
+    }
 }

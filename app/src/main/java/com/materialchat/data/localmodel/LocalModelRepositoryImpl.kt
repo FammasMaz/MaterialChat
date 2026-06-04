@@ -63,17 +63,24 @@ class LocalModelRepositoryImpl @Inject constructor(
                     applyDownloadWorkStates(workInfos)
                 }
         }
+        applicationScope.launch {
+            liteRtLmEngineManager.mountedModelId.collectLatest { mountedId ->
+                applyMountedModelState(mountedId)
+            }
+        }
     }
 
     override fun observeModels(): Flow<List<LocalModelState>> = _models.asStateFlow()
 
     override suspend fun refreshStatuses() = withContext(ioDispatcher) {
+        val mountedId = liteRtLmEngineManager.mountedModelId.value
         val refreshed = LocalModelCatalog.models.map { descriptor ->
-            when (descriptor.backend) {
+            val state = when (descriptor.backend) {
                 LocalModelBackend.LITERT_LM,
                 LocalModelBackend.MEDIAPIPE_LLM -> fileBackedState(descriptor)
                 LocalModelBackend.AICORE_GEMINI_NANO -> aicoreState(descriptor)
             }
+            state.copy(isMountedInRam = descriptor.id == mountedId)
         }
         _models.value = refreshed
     }
@@ -125,6 +132,20 @@ class LocalModelRepositoryImpl @Inject constructor(
         }
     }
 
+    override suspend fun unmount(modelId: String): Result<Unit> = withContext(ioDispatcher) {
+        runCatching {
+            val descriptor = requireDescriptor(modelId)
+            when (descriptor.backend) {
+                LocalModelBackend.LITERT_LM -> liteRtLmEngineManager.closeModel(modelId)
+                LocalModelBackend.MEDIAPIPE_LLM -> mediaPipeLlmEngineManager.cancelActiveGeneration()
+                LocalModelBackend.AICORE_GEMINI_NANO -> throw UnsupportedOperationException(
+                    "Gemini Nano is managed by Android AICore and cannot be unmounted by MaterialChat."
+                )
+            }
+            applyMountedModelState(liteRtLmEngineManager.mountedModelId.value)
+        }
+    }
+
     override suspend fun fetchAvailableAiModels(
         providerId: String,
         backend: LocalModelBackend
@@ -132,16 +153,11 @@ class LocalModelRepositoryImpl @Inject constructor(
         refreshStatuses()
         _models.value
             .filter { it.descriptor.backend.matchesProviderBackend(backend) }
+            .filter { it.isUsable }
             .map { state ->
-                val statusSuffix = when {
-                    state.isUsable -> null
-                    state.availability == LocalModelAvailability.DOWNLOADING -> " (downloading…)"
-                    state.availability == LocalModelAvailability.ERROR -> " (error)"
-                    else -> " (download required)"
-                }
                 AiModel(
                     id = state.descriptor.id,
-                    name = state.descriptor.displayName + (statusSuffix ?: ""),
+                    name = state.descriptor.displayName,
                     providerId = providerId
                 )
             }
@@ -397,6 +413,14 @@ class LocalModelRepositoryImpl @Inject constructor(
                     )
                 }
             }
+    }
+
+    private fun applyMountedModelState(mountedId: String?) {
+        _models.update { states ->
+            states.map { state ->
+                state.copy(isMountedInRam = state.descriptor.id == mountedId)
+            }
+        }
     }
 
     private fun requireDescriptor(modelId: String): LocalModelDescriptor {

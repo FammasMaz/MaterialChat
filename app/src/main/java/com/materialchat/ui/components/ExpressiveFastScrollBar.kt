@@ -12,11 +12,14 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyListState
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.UnfoldMore
 import androidx.compose.material3.Icon
@@ -46,13 +49,17 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlin.math.abs
+import kotlin.math.PI
 import kotlin.math.roundToInt
+import kotlin.math.sin
 
 private data class FastScrollMetrics(
     val progress: Float,
@@ -77,8 +84,10 @@ fun ExpressiveFastScrollBar(
     paddingEnd: Dp = 4.dp,
     trackGap: Dp = 8.dp,
     dragLabelProvider: ((Int) -> String?)? = null,
-    dragLabelSize: Dp = 40.dp,
-    dragLabelGap: Dp = 10.dp
+    dragLabelMinWidth: Dp = 112.dp,
+    dragLabelMaxWidth: Dp = 200.dp,
+    dragLabelMinHeight: Dp = 56.dp,
+    dragLabelGap: Dp = 12.dp
 ) {
     var isPressed by remember { mutableStateOf(false) }
     var isDragging by remember { mutableStateOf(false) }
@@ -103,6 +112,11 @@ fun ExpressiveFastScrollBar(
         targetValue = if (isPressed || isDragging) 1f else 0f,
         animationSpec = tween(durationMillis = 180, easing = FastOutSlowInEasing),
         label = "fastScrollIconAlpha"
+    )
+    val squiggleAmount by animateFloatAsState(
+        targetValue = if (isDragging || isPressed || listState.isScrollInProgress) 1f else 0f,
+        animationSpec = tween(durationMillis = 220, easing = FastOutSlowInEasing),
+        label = "fastScrollSquiggle"
     )
 
     BoxWithConstraints(
@@ -327,18 +341,33 @@ fun ExpressiveFastScrollBar(
                 }
 
                 indicatorPath.reset()
-                indicatorPath.addRoundRect(
-                    RoundRect(
-                        rect = Rect(
-                            offset = Offset(currentIndicatorX, handleY),
-                            size = Size(indicatorWidth, handleHeight)
-                        ),
-                        topLeft = CornerRadius(leftRadius, leftRadius),
-                        bottomLeft = CornerRadius(leftRadius, leftRadius),
-                        topRight = CornerRadius(resolvedRightRadius, resolvedRightRadius),
-                        bottomRight = CornerRadius(resolvedRightRadius, resolvedRightRadius)
-                    )
+                val rect = Rect(
+                    offset = Offset(currentIndicatorX, handleY),
+                    size = Size(indicatorWidth, handleHeight)
                 )
+                if (squiggleAmount > 0.02f) {
+                    val waveStrength = when {
+                        isDragging -> 0.36f
+                        isPressed -> 0.28f
+                        else -> 0.2f
+                    }
+                    indicatorPath.addSquigglyFastScrollThumb(
+                        rect = rect,
+                        leftRadius = leftRadius,
+                        rightRadius = resolvedRightRadius,
+                        amplitude = (indicatorWidth * waveStrength).coerceAtLeast(3f) * squiggleAmount
+                    )
+                } else {
+                    indicatorPath.addRoundRect(
+                        RoundRect(
+                            rect = rect,
+                            topLeft = CornerRadius(leftRadius, leftRadius),
+                            bottomLeft = CornerRadius(leftRadius, leftRadius),
+                            topRight = CornerRadius(resolvedRightRadius, resolvedRightRadius),
+                            bottomRight = CornerRadius(resolvedRightRadius, resolvedRightRadius)
+                        )
+                    )
+                }
                 drawPath(indicatorPath, primaryColor)
             }
 
@@ -378,7 +407,8 @@ fun ExpressiveFastScrollBar(
                             val stats = metrics()
                             val displayProgress = if (isDragging && dragProgress >= 0f) dragProgress else displayedProgress.value
                             val handleY = displayProgress * stats.scrollableHeightPx
-                            val labelSizePx = with(density) { dragLabelSize.toPx() }
+                            val labelWidthPx = with(density) { dragLabelMaxWidth.toPx() }
+                            val labelHeightPx = with(density) { dragLabelMinHeight.toPx() }
                             val labelGapPx = with(density) { dragLabelGap.toPx() }
                             val labelSlidePx = with(density) { labelSlide.toPx() }
                             val paddingEndPx = with(density) { paddingEnd.toPx() }
@@ -386,34 +416,66 @@ fun ExpressiveFastScrollBar(
                             val maxWidthPx = with(density) { constraintsMaxWidth.toPx() }
                             val indicatorX = maxWidthPx - paddingEndPx - animatedWidthPx
                             IntOffset(
-                                x = (indicatorX - labelSizePx - labelGapPx - labelSlidePx).toInt(),
-                                y = (handleY + (minHeightPx / 2f) - (labelSizePx / 2f)).toInt()
+                                x = (indicatorX - labelWidthPx - labelGapPx - labelSlidePx).toInt(),
+                                y = (handleY + (minHeightPx / 2f) - (labelHeightPx / 2f)).toInt()
                             )
                         }
-                        .size(dragLabelSize)
+                        .widthIn(min = dragLabelMinWidth, max = dragLabelMaxWidth)
+                        .heightIn(min = dragLabelMinHeight)
                         .graphicsLayer {
                             alpha = labelAlpha
                             scaleX = labelScale
                             scaleY = labelScale
                         },
-                    shape = CircleShape,
+                    shape = RoundedCornerShape(22.dp),
                     color = MaterialTheme.colorScheme.secondaryContainer,
                     contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
                     tonalElevation = 6.dp,
                     shadowElevation = 0.dp
                 ) {
-                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Box(
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
                         Text(
                             text = label,
-                            style = MaterialTheme.typography.labelLarge,
+                            style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.SemiBold,
-                            maxLines = 2
+                            textAlign = TextAlign.Center,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
                 }
             }
         }
     }
+}
+
+private fun Path.addSquigglyFastScrollThumb(
+    rect: Rect,
+    leftRadius: Float,
+    rightRadius: Float,
+    amplitude: Float
+) {
+    val waveLength = (rect.height / 2.4f).coerceAtLeast(18f)
+    moveTo(rect.left + leftRadius, rect.top)
+    lineTo(rect.right - rightRadius, rect.top)
+
+    var y = rect.top
+    while (y <= rect.bottom) {
+        val phase = ((y - rect.top) / waveLength) * (2f * PI.toFloat())
+        val x = rect.right + (sin(phase.toDouble()).toFloat() * amplitude)
+        lineTo(x, y)
+        y += 4f
+    }
+
+    lineTo(rect.right - rightRadius, rect.bottom)
+    lineTo(rect.left + leftRadius, rect.bottom)
+    quadraticTo(rect.left, rect.bottom, rect.left, rect.bottom - leftRadius)
+    lineTo(rect.left, rect.top + leftRadius)
+    quadraticTo(rect.left, rect.top, rect.left + leftRadius, rect.top)
+    close()
 }
 
 private fun resolveFastScrollTargetIndex(

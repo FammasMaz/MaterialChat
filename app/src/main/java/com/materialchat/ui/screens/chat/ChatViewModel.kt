@@ -961,9 +961,15 @@ class ChatViewModel @Inject constructor(
                     return@launch
                 }
 
-                val modelsResult = manageProvidersUseCase.fetchModels(conversation.providerId)
-                val models = modelsResult.getOrElse { emptyList() }
-                    .filterNot { isImageGenerationModelId(it.id) }
+                val providers = manageProvidersUseCase.getProviders()
+                val failures = mutableListOf<String>()
+                val models = providers.flatMap { provider ->
+                    manageProvidersUseCase.fetchModels(provider.id)
+                        .onFailure { error -> failures += "${provider.name}: ${error.message ?: "fetch failed"}" }
+                        .getOrElse { emptyList() }
+                        .filterNot { isImageGenerationModelId(it.id) }
+                        .map { model -> model.copy(providerId = provider.id) }
+                }.distinctBy { it.providerId to it.id }
 
                 val updatedState = _uiState.value
                 if (updatedState is ChatUiState.Success) {
@@ -972,11 +978,10 @@ class ChatViewModel @Inject constructor(
                     ).copy(isLoadingModels = false)
                 }
 
-                // Show error if fetching failed
-                modelsResult.exceptionOrNull()?.let { error ->
+                if (models.isEmpty() && failures.isNotEmpty()) {
                     _events.emit(
                         ChatEvent.ShowSnackbar(
-                            message = "Failed to load models: ${error.message}"
+                            message = "Failed to load models: ${failures.joinToString("; ")}"
                         )
                     )
                 }
@@ -1000,7 +1005,11 @@ class ChatViewModel @Inject constructor(
     fun changeModel(model: AiModel) {
         viewModelScope.launch {
             try {
-                getConversationsUseCase.updateConversationModel(activeConversationId.value, model.id)
+                getConversationsUseCase.updateConversationProviderAndModel(
+                    conversationId = activeConversationId.value,
+                    providerId = model.providerId,
+                    modelName = model.id
+                )
 
                 val currentState = _uiState.value
                 if (currentState is ChatUiState.Success) {

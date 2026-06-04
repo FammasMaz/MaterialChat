@@ -934,46 +934,6 @@ private fun SuccessContent(
         }
 
         item {
-            AiGeneratedTitlesToggle(
-                enabled = uiState.aiGeneratedTitlesEnabled,
-                onToggle = onAiGeneratedTitlesChange
-            )
-        }
-
-        // Show title generation model field only when AI titles are enabled
-        if (uiState.aiGeneratedTitlesEnabled) {
-            item {
-                PreferOnDeviceTitleModelToggle(
-                    enabled = uiState.preferOnDeviceTitleModel,
-                    onToggle = onPreferOnDeviceTitleModelChange
-                )
-            }
-            item {
-                TitleGenerationModelField(
-                    currentModel = uiState.titleGenerationModel,
-                    providers = uiState.providers.map { it.provider },
-                    pickerState = titleModelPickerState,
-                    onLoadModels = onLoadTitleGenerationModels,
-                    onModelChange = onTitleGenerationModelChange
-                )
-            }
-        }
-
-        item {
-            DefaultImageGenerationModelField(
-                currentModel = uiState.defaultImageGenerationModel,
-                onModelChange = onDefaultImageGenerationModelChange
-            )
-        }
-
-        item {
-            DefaultImageOutputFormatField(
-                currentFormat = uiState.defaultImageOutputFormat,
-                onFormatChange = onDefaultImageOutputFormatChange
-            )
-        }
-
-        item {
             AlwaysShowThinkingToggle(
                 enabled = uiState.alwaysShowThinking,
                 onToggle = onAlwaysShowThinkingChange

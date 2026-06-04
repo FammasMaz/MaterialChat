@@ -162,6 +162,12 @@ interface ConversationDao {
     suspend fun updateModel(conversationId: String, modelName: String, updatedAt: Long)
 
     /**
+     * Update both provider and model of a conversation.
+     */
+    @Query("UPDATE conversations SET provider_id = :providerId, model_name = :modelName, updated_at = :updatedAt WHERE id = :conversationId")
+    suspend fun updateProviderAndModel(conversationId: String, providerId: String, modelName: String, updatedAt: Long)
+
+    /**
      * Update the updated_at timestamp of a conversation.
      */
     @Query("UPDATE conversations SET updated_at = :updatedAt WHERE id = :conversationId")

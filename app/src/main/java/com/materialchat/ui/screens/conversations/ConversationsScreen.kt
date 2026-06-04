@@ -1191,6 +1191,9 @@ private fun ConversationList(
             dragLabelProvider = { index ->
                 conversations.getOrNull(index)?.conversation?.updatedAt?.let { fastScrollDateLabel(it) }
             },
+            dragLabelMinWidth = 124.dp,
+            dragLabelMaxWidth = 228.dp,
+            dragLabelMinHeight = 64.dp,
             modifier = Modifier
                 .align(Alignment.CenterEnd)
                 .padding(top = 16.dp, bottom = 88.dp, end = 2.dp)
@@ -1268,6 +1271,9 @@ private fun GroupedConversationList(
             dragLabelProvider = { index ->
                 groups.getOrNull(index)?.parent?.conversation?.updatedAt?.let { fastScrollDateLabel(it) }
             },
+            dragLabelMinWidth = 124.dp,
+            dragLabelMaxWidth = 228.dp,
+            dragLabelMinHeight = 64.dp,
             modifier = Modifier
                 .align(Alignment.CenterEnd)
                 .padding(top = 16.dp, bottom = 88.dp, end = 2.dp)

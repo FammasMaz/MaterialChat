@@ -45,7 +45,8 @@ data class LocalModelState(
     val availability: LocalModelAvailability,
     val downloadedBytes: Long = 0L,
     val totalBytes: Long? = null,
-    val errorMessage: String? = null
+    val errorMessage: String? = null,
+    val isMountedInRam: Boolean = false
 ) {
     val isUsable: Boolean
         get() = availability == LocalModelAvailability.DOWNLOADED ||

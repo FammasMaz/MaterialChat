@@ -14,7 +14,12 @@ import com.materialchat.domain.model.MessageRole
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.withContext
 import java.io.File
 import javax.inject.Inject
@@ -31,6 +36,8 @@ class LiteRtLmEngineManager @Inject constructor(
     private var loadedModelId: String? = null
     private var loadedEngine: Engine? = null
     private var activeConversation: Conversation? = null
+    private val _mountedModelId = MutableStateFlow<String?>(null)
+    val mountedModelId: StateFlow<String?> = _mountedModelId.asStateFlow()
 
     fun stream(
         descriptor: LocalModelDescriptor,
@@ -55,12 +62,22 @@ class LiteRtLmEngineManager @Inject constructor(
                 val text = chunk.toString()
                 if (text.isNotEmpty()) emit(text)
             }
+        } catch (e: Exception) {
+            throw IllegalStateException(
+                e.message ?: "On-device model failed. Try Unmount in Settings → On-device models, then send again.",
+                e
+            )
         } finally {
             synchronized(lock) {
                 if (activeConversation === conversation) activeConversation = null
             }
             runCatching { conversation.close() }
         }
+    }.flowOn(Dispatchers.IO).catch { e ->
+        throw IllegalStateException(
+            e.message ?: "On-device model failed. Try Unmount in Settings → On-device models, then send again.",
+            e
+        )
     }
 
     suspend fun generate(
@@ -101,6 +118,7 @@ class LiteRtLmEngineManager @Inject constructor(
                 activeConversation = null
                 loadedEngine = null
                 loadedModelId = null
+                _mountedModelId.value = null
             }
         }
     }
@@ -113,6 +131,7 @@ class LiteRtLmEngineManager @Inject constructor(
             activeConversation = null
             loadedEngine = null
             loadedModelId = null
+            _mountedModelId.value = null
         }
     }
 
@@ -124,6 +143,7 @@ class LiteRtLmEngineManager @Inject constructor(
             activeConversation = null
             loadedEngine = null
             loadedModelId = null
+            _mountedModelId.value = null
 
             val engine = Engine(
                 EngineConfig(
@@ -136,6 +156,7 @@ class LiteRtLmEngineManager @Inject constructor(
             engine.initialize()
             loadedEngine = engine
             loadedModelId = modelId
+            _mountedModelId.value = modelId
             return engine
         }
     }
