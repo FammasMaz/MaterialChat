@@ -383,19 +383,13 @@ private fun MathDocumentWebView(
     AndroidView(
         factory = { context ->
             createMathDocumentWebView(context) { view ->
-                fun updateHeight() {
-                    measureDocumentHeight(view) { measuredHeight ->
-                        if (measuredHeight > 0) {
-                            hasMeasuredHeight = true
-                            val heightBufferPx = (12 * view.context.resources.displayMetrics.density).toInt()
-                            webViewHeight = measuredHeight + heightBufferPx
-                        }
+                measureDocumentHeight(view) { measuredHeight ->
+                    if (measuredHeight > 0) {
+                        hasMeasuredHeight = true
+                        val heightBufferPx = (12 * view.context.resources.displayMetrics.density).toInt()
+                        webViewHeight = measuredHeight + heightBufferPx
                     }
                 }
-                updateHeight()
-                view.postDelayed({ updateHeight() }, 80)
-                view.postDelayed({ updateHeight() }, 220)
-                view.postDelayed({ updateHeight() }, 500)
             }
         },
         update = { webView ->
@@ -673,22 +667,16 @@ private fun MathBlockView(
             factory = { context ->
                 createMathWebView(context) { view ->
                     val heightBufferPx = (8 * context.resources.displayMetrics.density).toInt()
-                    fun updateHeight() {
-                        measureMathHeight(view) { measuredHeight ->
-                            if (measuredHeight > 0) {
-                                hasMeasuredHeight = true
-                                webViewHeight = if (isStreaming) {
-                                    maxOf(measuredHeight + heightBufferPx, fallbackHeightPx)
-                                } else {
-                                    maxOf(measuredHeight + heightBufferPx, settledMinHeightPx)
-                                }
+                    measureMathHeight(view) { measuredHeight ->
+                        if (measuredHeight > 0) {
+                            hasMeasuredHeight = true
+                            webViewHeight = if (isStreaming) {
+                                maxOf(measuredHeight + heightBufferPx, fallbackHeightPx)
+                            } else {
+                                maxOf(measuredHeight + heightBufferPx, settledMinHeightPx)
                             }
                         }
                     }
-                    updateHeight()
-                    view.postDelayed({ updateHeight() }, 48)
-                    view.postDelayed({ updateHeight() }, 160)
-                    view.postDelayed({ updateHeight() }, 350)
                 }
             },
             update = { webView ->

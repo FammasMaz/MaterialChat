@@ -32,6 +32,8 @@ class SpeechRecognitionManager @Inject constructor(
     private val _amplitudeData = MutableStateFlow(AudioAmplitudeData.Empty)
     val amplitudeData: StateFlow<AudioAmplitudeData> = _amplitudeData.asStateFlow()
 
+    private var lastAmplitudeEmitUptimeMs = 0L
+
     /**
      * Check if speech recognition is available on this device.
      */
@@ -167,21 +169,29 @@ class SpeechRecognitionManager @Inject constructor(
      * Uses a sliding window approach for smooth animation.
      */
     private fun updateAmplitudeData(newAmplitude: Float) {
+        val now = android.os.SystemClock.uptimeMillis()
+        if (now - lastAmplitudeEmitUptimeMs < AMPLITUDE_MIN_INTERVAL_MS) return
+        lastAmplitudeEmitUptimeMs = now
+
         val currentAmplitudes = _amplitudeData.value.amplitudes.toMutableList()
 
-        // Shift existing amplitudes and add new one
         for (i in 0 until currentAmplitudes.size - 1) {
             currentAmplitudes[i] = currentAmplitudes[i + 1]
         }
         currentAmplitudes[currentAmplitudes.size - 1] = newAmplitude
 
-        // Add some variation to create more organic waveform
+        val phase = now * 0.01f
         val variedAmplitudes = currentAmplitudes.mapIndexed { index, amplitude ->
-            val variation = 0.1f * kotlin.math.sin(index * 0.5f + System.currentTimeMillis() * 0.01f).toFloat()
+            val variation = 0.1f * kotlin.math.sin(index * 0.5f + phase).toFloat()
             (amplitude + variation).coerceIn(0.05f, 1f)
         }
 
         _amplitudeData.value = AudioAmplitudeData(variedAmplitudes)
+    }
+
+    private companion object {
+        /** Limits RMS callbacks (~60/s) to ~20/s — less Compose churn while listening. */
+        const val AMPLITUDE_MIN_INTERVAL_MS = 50L
     }
 
     /**

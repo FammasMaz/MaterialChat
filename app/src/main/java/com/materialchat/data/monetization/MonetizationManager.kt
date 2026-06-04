@@ -41,7 +41,6 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 private const val REWARDED_PREMIUM_DURATION_MILLIS = 24L * 60L * 60L * 1000L
-private const val PREMIUM_TICK_INTERVAL_MILLIS = 60L * 1000L
 
 /**
  * Handles AdMob rewarded ads and Google Play Billing entitlement for ad removal.
@@ -98,14 +97,16 @@ class MonetizationManager @Inject constructor(
     )
 
     init {
-        applicationScope.launch {
-            while (true) {
-                _nowMillis.value = System.currentTimeMillis()
-                delay(PREMIUM_TICK_INTERVAL_MILLIS)
-            }
-        }
-
         if (BuildConfig.ADS_ENABLED) {
+            applicationScope.launch {
+                appPreferences.rewardedPremiumUntilMillis.collect { untilMillis ->
+                    val remaining = untilMillis - System.currentTimeMillis()
+                    if (remaining <= 0L) return@collect
+                    _nowMillis.value = System.currentTimeMillis()
+                    delay(remaining.coerceAtMost(REWARDED_PREMIUM_DURATION_MILLIS))
+                    _nowMillis.value = System.currentTimeMillis()
+                }
+            }
             applicationScope.launch(mainDispatcher) {
                 startBillingConnection()
                 loadRewardedAd()

@@ -208,4 +208,5 @@ private fun String.nextSmoothStreamingRevealEnd(startIndex: Int): Int {
 private val NATURAL_STREAMING_BOUNDARIES = setOf('.', ',', ';', ':', '!', '?', ')', ']', '}')
 private const val STREAMING_TEXT_FRAME_MS = 18L
 private const val THINKING_TEXT_FRAME_MS = 28L
-private const val STREAMING_IDLE_POLL_MS = 24L
+/** Longer idle poll while waiting for more tokens — fewer wakeups, same reveal latency. */
+private const val STREAMING_IDLE_POLL_MS = 48L

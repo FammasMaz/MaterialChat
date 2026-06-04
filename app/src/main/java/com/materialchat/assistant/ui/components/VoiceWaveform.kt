@@ -65,8 +65,8 @@ fun VoiceWaveform(
         List(barCount) { Animatable(0.1f) }
     }
 
-    // Animate bars based on amplitude data
-    LaunchedEffect(amplitudeData) {
+    // Animate bars based on amplitude data (emissions are throttled in SpeechRecognitionManager)
+    LaunchedEffect(amplitudeData.amplitudes) {
         amplitudeData.amplitudes.forEachIndexed { index, amplitude ->
             if (index < barAnimatables.size) {
                 launch {

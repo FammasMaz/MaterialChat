@@ -28,7 +28,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
@@ -56,14 +56,10 @@ class LocalModelRepositoryImpl @Inject constructor(
 
     init {
         applicationScope.launch {
-            while (true) {
-                val workInfos = runCatching {
-                    workManager.getWorkInfosByTag(LocalModelDownloadWorker.WORK_TAG).get()
-                }.getOrDefault(emptyList())
-                applyDownloadWorkStates(workInfos)
-                val hasActiveDownload = workInfos.any { !it.state.isFinished }
-                delay(if (hasActiveDownload) ACTIVE_DOWNLOAD_POLL_MS else IDLE_DOWNLOAD_POLL_MS)
-            }
+            workManager.getWorkInfosByTagFlow(LocalModelDownloadWorker.WORK_TAG)
+                .collectLatest { workInfos ->
+                    applyDownloadWorkStates(workInfos)
+                }
         }
     }
 
@@ -449,7 +445,5 @@ class LocalModelRepositoryImpl @Inject constructor(
         const val PROGRESS_EMIT_BYTES = 512L * 1024L
         const val MAX_CONTEXT_MESSAGES = 12
         const val HUGGING_FACE_TOKEN_ID = "huggingface_access_token"
-        const val ACTIVE_DOWNLOAD_POLL_MS = 1_000L
-        const val IDLE_DOWNLOAD_POLL_MS = 5_000L
     }
 }
