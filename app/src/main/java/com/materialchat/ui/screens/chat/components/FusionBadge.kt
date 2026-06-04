@@ -30,7 +30,7 @@ fun FusionBadge(
 ) {
     Surface(
         modifier = modifier,
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(16.dp),
         color = MaterialTheme.colorScheme.tertiaryContainer
     ) {
         Row(

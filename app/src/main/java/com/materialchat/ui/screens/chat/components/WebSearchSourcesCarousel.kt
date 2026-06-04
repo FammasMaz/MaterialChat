@@ -219,7 +219,7 @@ fun WebSearchSourcesCarousel(
                             val intent = Intent(Intent.ACTION_VIEW, Uri.parse(result.url))
                             context.startActivity(intent)
                         },
-                        modifier = Modifier.maskClip(RoundedCornerShape(20.dp))
+                        modifier = Modifier.maskClip(RoundedCornerShape(24.dp))
                     )
                 }
             }
@@ -257,9 +257,9 @@ private fun WebSearchSourceCard(
         modifier = modifier
             .fillMaxWidth()
             .height(132.dp)
-            .clip(RoundedCornerShape(20.dp))
+            .clip(RoundedCornerShape(24.dp))
             .clickable(onClick = onClick),
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(24.dp),
         color = MaterialTheme.colorScheme.surfaceContainerHighest,
         contentColor = MaterialTheme.colorScheme.onSurface
     ) {

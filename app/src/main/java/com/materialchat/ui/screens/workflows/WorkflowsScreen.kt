@@ -25,11 +25,9 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import com.materialchat.ui.components.ExpressiveFab
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
@@ -45,6 +43,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.materialchat.ui.components.ExpressiveContentSurface
+import com.materialchat.ui.components.ExpressiveFilledIconButton
+import com.materialchat.ui.components.ExpressiveTopBarTitle
 import com.materialchat.ui.components.HapticPattern
 import com.materialchat.ui.components.rememberHapticFeedback
 import com.materialchat.ui.screens.workflows.components.WorkflowCard
@@ -77,18 +78,17 @@ fun WorkflowsScreen(
         topBar = {
             TopAppBar(
                 title = {
-                    Text(
-                        text = "Workflows",
-                        style = MaterialTheme.typography.titleLarge
+                    ExpressiveTopBarTitle(
+                        title = "Workflows",
+                        subtitle = "Reusable prompt chains"
                     )
                 },
                 navigationIcon = {
-                    IconButton(onClick = { haptics.perform(HapticPattern.CLICK); onNavigateBack() }) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Navigate back"
-                        )
-                    }
+                    ExpressiveFilledIconButton(
+                        onClick = { haptics.perform(HapticPattern.CLICK); onNavigateBack() },
+                        icon = Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = "Navigate back"
+                    )
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surfaceContainer
@@ -105,17 +105,8 @@ fun WorkflowsScreen(
             )
         }
     ) { paddingValues ->
-        Surface(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(top = paddingValues.calculateTopPadding()),
-            shape = RoundedCornerShape(
-                topStart = 28.dp,
-                topEnd = 28.dp,
-                bottomStart = 0.dp,
-                bottomEnd = 0.dp
-            ),
-            color = MaterialTheme.colorScheme.surfaceContainerLow
+        ExpressiveContentSurface(
+            padding = PaddingValues(top = paddingValues.calculateTopPadding())
         ) {
             when (val state = uiState) {
                 is WorkflowsUiState.Loading -> {
@@ -236,7 +227,7 @@ private fun WorkflowsListContent(
                             .fillMaxSize()
                             .background(
                                 color = MaterialTheme.colorScheme.errorContainer,
-                                shape = RoundedCornerShape(20.dp)
+                                shape = RoundedCornerShape(24.dp)
                             )
                             .padding(horizontal = 20.dp),
                         contentAlignment = Alignment.CenterEnd

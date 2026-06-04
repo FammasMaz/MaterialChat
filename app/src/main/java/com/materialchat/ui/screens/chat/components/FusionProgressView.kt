@@ -78,7 +78,7 @@ fun FusionProgressView(
             modifier = modifier
                 .fillMaxWidth()
                 .padding(horizontal = 8.dp, vertical = 4.dp),
-            shape = RoundedCornerShape(20.dp),
+            shape = RoundedCornerShape(24.dp),
             color = MaterialTheme.colorScheme.surfaceContainerHigh
         ) {
             Column(
@@ -206,7 +206,7 @@ private fun FusionModelCard(
 
     Surface(
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(16.dp),
         color = if (response.isStreaming) {
             MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.25f)
         } else {

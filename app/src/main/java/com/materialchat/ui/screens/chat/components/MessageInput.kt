@@ -326,7 +326,9 @@ fun MessageInput(
             Surface(
                 modifier = pillModifier,
                 shape = CustomShapes.MessageInputContainer,
-                color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                color = MaterialTheme.colorScheme.surfaceContainerHighest,
+                tonalElevation = 0.dp,
+                shadowElevation = 0.dp
             ) {
                 BasicTextField(
                     value = inputText,
@@ -334,7 +336,7 @@ fun MessageInput(
                     enabled = !isStreaming,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .heightIn(min = 48.dp, max = 160.dp)
+                        .heightIn(min = 56.dp, max = 168.dp)
                         .verticalScroll(textScrollState)
                         .focusRequester(focusRequester),
                     textStyle = MaterialTheme.typography.bodyLarge.copy(
@@ -357,12 +359,12 @@ fun MessageInput(
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 12.dp),
+                                .padding(horizontal = 18.dp, vertical = 14.dp),
                             contentAlignment = Alignment.CenterStart
                         ) {
                             if (inputText.isEmpty()) {
                                 Text(
-                                    text = "Type a message...",
+                                    text = "Ask anything...",
                                     style = MaterialTheme.typography.bodyLarge,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -902,7 +904,7 @@ private fun AttachmentPreviewItem(
             contentScale = ContentScale.Crop,
             modifier = Modifier
                 .size(64.dp)
-                .clip(RoundedCornerShape(12.dp))
+                .clip(RoundedCornerShape(16.dp))
                 .align(Alignment.BottomStart)
         )
 

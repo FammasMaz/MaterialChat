@@ -23,14 +23,14 @@ val MaterialChatShapes = Shapes(
     // Small - buttons, text fields (M3 Expressive: 8dp)
     small = RoundedCornerShape(8.dp),
 
-    // Medium - cards, dialogs (M3 Expressive: 12dp)
-    medium = RoundedCornerShape(12.dp),
+    // Medium - cards, dialogs (smooth 16dp containers)
+    medium = RoundedCornerShape(16.dp),
 
-    // Large - bottom sheets, navigation drawers (M3 Expressive: 16dp)
-    large = RoundedCornerShape(16.dp),
+    // Large - bottom sheets, navigation drawers, list cards
+    large = RoundedCornerShape(24.dp),
 
-    // Extra large - full-screen dialogs, hero containers (M3 Expressive: 28dp)
-    extraLarge = RoundedCornerShape(28.dp)
+    // Extra large - full-screen dialogs, hero containers, page sheets
+    extraLarge = RoundedCornerShape(32.dp)
 )
 
 /**
@@ -64,12 +64,12 @@ object MessageBubbleShapes {
      * System message bubble shape.
      * Fully rounded corners for neutral appearance.
      */
-    val SystemBubble = RoundedCornerShape(20.dp)
+    val SystemBubble = RoundedCornerShape(24.dp)
 
     /**
      * Continuation message shape (for messages in a sequence).
      */
-    val ContinuationBubble = RoundedCornerShape(20.dp)
+    val ContinuationBubble = RoundedCornerShape(24.dp)
     
     /**
      * Grouped message shapes - for consecutive messages from same sender.
@@ -140,7 +140,7 @@ object CustomShapes {
     /**
      * Shape for code blocks in chat messages.
      */
-    val CodeBlock = RoundedCornerShape(16.dp)
+    val CodeBlock = RoundedCornerShape(20.dp)
 
     /**
      * Shape for inline code spans.
@@ -150,7 +150,7 @@ object CustomShapes {
     /**
      * Shape for action buttons on message bubbles.
      */
-    val MessageActionButton = RoundedCornerShape(20.dp)
+    val MessageActionButton = RoundedCornerShape(24.dp)
     
     /**
      * Button shape - M3 Expressive round buttons use pill-like corners.
@@ -175,27 +175,27 @@ object CustomShapes {
     /**
      * Shape for provider cards in settings.
      */
-    val ProviderCard = RoundedCornerShape(24.dp)
+    val ProviderCard = RoundedCornerShape(28.dp)
 
     /**
      * Shape for conversation list items - rounded like Google Messages.
      */
-    val ConversationItem = RoundedCornerShape(20.dp)
+    val ConversationItem = RoundedCornerShape(24.dp)
 
     /**
      * Shape for dropdown menus.
      */
-    val Dropdown = RoundedCornerShape(16.dp)
+    val Dropdown = RoundedCornerShape(24.dp)
 
     /**
      * Shape for model picker dropdown.
      */
-    val ModelPicker = RoundedCornerShape(20.dp)
+    val ModelPicker = RoundedCornerShape(24.dp)
 
     /**
      * Shape for snackbars.
      */
-    val Snackbar = RoundedCornerShape(16.dp)
+    val Snackbar = RoundedCornerShape(24.dp)
 
     /**
      * Pill shape for tags and badges.
@@ -220,5 +220,5 @@ object CustomShapes {
     /**
      * Shape for search bar - fully rounded pill shape.
      */
-    val SearchBar = RoundedCornerShape(28.dp)
+    val SearchBar = RoundedCornerShape(32.dp)
 }

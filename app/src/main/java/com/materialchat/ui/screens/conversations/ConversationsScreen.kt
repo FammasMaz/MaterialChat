@@ -99,7 +99,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalDensity
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.materialchat.ui.components.ExpressiveFastScrollBar
 import com.materialchat.ui.components.HapticPattern
+import com.materialchat.ui.components.fastScrollGlyph
 import com.materialchat.ui.components.rememberHapticFeedback
 import com.materialchat.ui.screens.conversations.components.ConversationItem
 import com.materialchat.ui.screens.conversations.components.ExpandableConversationGroup
@@ -635,7 +637,8 @@ private fun ConversationsTopBar(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "material",
+                    // NBSP gives the italic final glyph room before the animated clip.
+                    text = "material\u00A0",
                     modifier = Modifier
                         .clipToBounds()
                         .shrinkWidth(materialWidth)
@@ -1120,22 +1123,23 @@ private fun ConversationList(
     val cornerRadius = 20.dp
     ConversationScrollHaptics(listState = listState, hapticsEnabled = hapticsEnabled)
 
-    LazyColumn(
-        state = listState,
-        modifier = modifier.fillMaxSize(),
-        contentPadding = PaddingValues(
-            start = 16.dp,
-            end = 16.dp,
-            top = 16.dp,
-            bottom = 88.dp // Extra padding for FAB
-        ),
-        verticalArrangement = Arrangement.spacedBy(0.dp)
-    ) {
-        itemsIndexed(
-            items = conversations,
-            key = { _, item -> item.conversation.id },
-            contentType = { _, item -> item.conversation.isArchived }
-        ) { index, conversationItem ->
+    Box(modifier = modifier.fillMaxSize()) {
+        LazyColumn(
+            state = listState,
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(
+                start = 16.dp,
+                end = 24.dp,
+                top = 16.dp,
+                bottom = 88.dp // Extra padding for FAB
+            ),
+            verticalArrangement = Arrangement.spacedBy(0.dp)
+        ) {
+            itemsIndexed(
+                items = conversations,
+                key = { _, item -> item.conversation.id },
+                contentType = { _, item -> item.conversation.isArchived }
+            ) { index, conversationItem ->
             val isFirst = index == 0
             val isLast = index == conversations.lastIndex
             val baseCorners = when {
@@ -1179,7 +1183,18 @@ private fun ConversationList(
                     showDivider = !isLast
                 )
             }
+            }
         }
+
+        ExpressiveFastScrollBar(
+            listState = listState,
+            dragLabelProvider = { index ->
+                fastScrollGlyph(conversations.getOrNull(index)?.conversation?.title)
+            },
+            modifier = Modifier
+                .align(Alignment.CenterEnd)
+                .padding(top = 16.dp, bottom = 88.dp, end = 2.dp)
+        )
     }
 }
 
@@ -1202,22 +1217,23 @@ private fun GroupedConversationList(
     val cornerRadius = 20.dp
     ConversationScrollHaptics(listState = listState, hapticsEnabled = hapticsEnabled)
 
-    LazyColumn(
-        state = listState,
-        modifier = modifier.fillMaxSize(),
-        contentPadding = PaddingValues(
-            start = 16.dp,
-            end = 16.dp,
-            top = 16.dp,
-            bottom = 88.dp // Extra padding for FAB
-        ),
-        verticalArrangement = Arrangement.spacedBy(0.dp)
-    ) {
-        itemsIndexed(
-            items = groups,
-            key = { _, group -> group.parent.conversation.id },
-            contentType = { _, group -> group.parent.conversation.isArchived }
-        ) { index, group ->
+    Box(modifier = modifier.fillMaxSize()) {
+        LazyColumn(
+            state = listState,
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(
+                start = 16.dp,
+                end = 24.dp,
+                top = 16.dp,
+                bottom = 88.dp // Extra padding for FAB
+            ),
+            verticalArrangement = Arrangement.spacedBy(0.dp)
+        ) {
+            itemsIndexed(
+                items = groups,
+                key = { _, group -> group.parent.conversation.id },
+                contentType = { _, group -> group.parent.conversation.isArchived }
+            ) { index, group ->
             val isFirst = index == 0
             val isLast = index == groups.lastIndex
 
@@ -1244,7 +1260,18 @@ private fun GroupedConversationList(
                         )
                     )
             )
+            }
         }
+
+        ExpressiveFastScrollBar(
+            listState = listState,
+            dragLabelProvider = { index ->
+                fastScrollGlyph(groups.getOrNull(index)?.parent?.conversation?.title)
+            },
+            modifier = Modifier
+                .align(Alignment.CenterEnd)
+                .padding(top = 16.dp, bottom = 88.dp, end = 2.dp)
+        )
     }
 }
 

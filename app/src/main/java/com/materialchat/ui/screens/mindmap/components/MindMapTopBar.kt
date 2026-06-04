@@ -4,13 +4,12 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import com.materialchat.ui.components.ExpressiveFilledIconButton
+import com.materialchat.ui.components.ExpressiveTopBarTitle
 import com.materialchat.ui.components.HapticPattern
 import com.materialchat.ui.components.rememberHapticFeedback
 
@@ -29,18 +28,17 @@ fun MindMapTopBar(
     val haptics = rememberHapticFeedback()
     CenterAlignedTopAppBar(
         title = {
-            Text(
-                text = "Mind Map",
-                style = MaterialTheme.typography.titleLarge
+            ExpressiveTopBarTitle(
+                title = "Mind Map",
+                subtitle = "Conversation branches"
             )
         },
         navigationIcon = {
-            IconButton(onClick = { haptics.perform(HapticPattern.CLICK); onNavigateBack() }) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = "Navigate back"
-                )
-            }
+            ExpressiveFilledIconButton(
+                onClick = { haptics.perform(HapticPattern.CLICK); onNavigateBack() },
+                icon = Icons.AutoMirrored.Filled.ArrowBack,
+                contentDescription = "Navigate back"
+            )
         },
         colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainer

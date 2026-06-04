@@ -68,8 +68,6 @@ import androidx.compose.material3.LoadingIndicator
 import com.materialchat.ui.components.ExpressiveButton
 import com.materialchat.ui.components.ExpressiveButtonStyle
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ripple
 import androidx.compose.material3.Surface
@@ -114,6 +112,7 @@ import com.materialchat.domain.util.normalizeStreamingTextBoundary
 import com.materialchat.ui.screens.chat.MessageUiItem
 import com.materialchat.ui.screens.chat.MessageGroupPosition
 import com.materialchat.ui.screens.chat.SiblingInfo
+import com.materialchat.ui.components.ExpressiveFilledIconButton
 import com.materialchat.ui.components.HapticPattern
 import com.materialchat.ui.components.rememberHapticFeedback
 import com.materialchat.data.local.preferences.AppPreferences
@@ -347,6 +346,8 @@ fun MessageBubble(
                 Surface(
                     shape = bubbleStyle.shape,
                     color = bubbleStyle.backgroundColor,
+                    tonalElevation = if (isUser) 2.dp else 1.dp,
+                    shadowElevation = if (isUser) 1.dp else 0.dp,
                     modifier = Modifier
                         .widthIn(min = 40.dp, max = bubbleStyle.maxWidth)
                         .animateContentSize(
@@ -491,39 +492,30 @@ fun MessageBubble(
                             modifier = Modifier.padding(horizontal = 4.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            IconButton(
+                            ExpressiveFilledIconButton(
                                 onClick = { haptics.perform(HapticPattern.CLICK, hapticsEnabled); onCopy(); showUserContextMenu = false },
-                                modifier = Modifier.size(48.dp)
-                            ) {
-                                Icon(
-                                    Icons.Default.ContentCopy, "Copy",
-                                    modifier = Modifier.size(20.dp),
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                icon = Icons.Default.ContentCopy,
+                                contentDescription = "Copy",
+                                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            if (onEdit != null) {
+                                ExpressiveFilledIconButton(
+                                    onClick = { haptics.perform(HapticPattern.CLICK, hapticsEnabled); onEdit(); showUserContextMenu = false },
+                                    icon = Icons.Outlined.Edit,
+                                    contentDescription = "Edit",
+                                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
-                            if (onEdit != null) {
-                                IconButton(
-                                    onClick = { haptics.perform(HapticPattern.CLICK, hapticsEnabled); onEdit(); showUserContextMenu = false },
-                                    modifier = Modifier.size(48.dp)
-                                ) {
-                                    Icon(
-                                        Icons.Outlined.Edit, "Edit",
-                                        modifier = Modifier.size(20.dp),
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                            }
                             if (onBranch != null) {
-                                IconButton(
+                                ExpressiveFilledIconButton(
                                     onClick = { haptics.perform(HapticPattern.CLICK, hapticsEnabled); onBranch(); showUserContextMenu = false },
-                                    modifier = Modifier.size(48.dp)
-                                ) {
-                                    Icon(
-                                        Icons.AutoMirrored.Outlined.CallSplit, "Branch",
-                                        modifier = Modifier.size(20.dp),
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
+                                    icon = Icons.AutoMirrored.Outlined.CallSplit,
+                                    contentDescription = "Branch",
+                                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                                )
                             }
                         }
                     }
@@ -613,15 +605,13 @@ fun MessageBubble(
                                 label = "bookmarkActionContent"
                             )
 
-                            Box(
+                            Surface(
                                 modifier = Modifier
-                                    .size(46.dp)
+                                    .size(44.dp)
                                     .graphicsLayer {
                                         scaleX = bookmarkScale
                                         scaleY = bookmarkScale
                                     }
-                                    .clip(RoundedCornerShape(bookmarkRadius))
-                                    .background(bookmarkContainer)
                                     .combinedClickable(
                                         interactionSource = bookmarkInteractionSource,
                                         indication = ripple(),
@@ -634,16 +624,22 @@ fun MessageBubble(
                                             onBookmarkLongPress?.invoke()
                                         }
                                     ),
-                                contentAlignment = Alignment.Center
+                                shape = RoundedCornerShape(bookmarkRadius),
+                                color = bookmarkContainer,
+                                contentColor = bookmarkContent,
+                                tonalElevation = 0.dp,
+                                shadowElevation = 0.dp
                             ) {
-                                Icon(
-                                    imageVector = if (isBookmarked) Icons.Filled.Bookmark
-                                                  else Icons.Outlined.BookmarkBorder,
-                                    contentDescription = if (isBookmarked) "Remove bookmark"
-                                                         else "Bookmark message",
-                                    modifier = Modifier.size(20.dp),
-                                    tint = bookmarkContent
-                                )
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(
+                                        imageVector = if (isBookmarked) Icons.Filled.Bookmark
+                                                      else Icons.Outlined.BookmarkBorder,
+                                        contentDescription = if (isBookmarked) "Remove bookmark"
+                                                             else "Bookmark message",
+                                        modifier = Modifier.size(20.dp),
+                                        tint = bookmarkContent
+                                    )
+                                }
                             }
                         }
                     }
@@ -807,13 +803,13 @@ private fun getBubbleStyle(
         AppPreferences.ChatBubbleStyle.GEOMETRIC -> lerp(
             MaterialTheme.colorScheme.surfaceContainerHigh,
             MaterialTheme.colorScheme.secondaryContainer,
-            0.18f
+            0.22f
         )
-        else -> lerp(surfaceBase, MaterialTheme.colorScheme.surfaceContainerHighest, 0.86f)
+        else -> lerp(surfaceBase, MaterialTheme.colorScheme.surfaceContainerHighest, 0.92f)
     }
-    val systemBubble = lerp(surfaceBase, MaterialTheme.colorScheme.tertiaryContainer, 0.55f)
-    val horizontalPadding = if (bubbleFamily == AppPreferences.ChatBubbleStyle.COMPACT) 12.dp else 14.dp
-    val verticalPadding = if (bubbleFamily == AppPreferences.ChatBubbleStyle.COMPACT) 8.dp else 10.dp
+    val systemBubble = lerp(surfaceBase, MaterialTheme.colorScheme.tertiaryContainer, 0.62f)
+    val horizontalPadding = if (bubbleFamily == AppPreferences.ChatBubbleStyle.COMPACT) 12.dp else 16.dp
+    val verticalPadding = if (bubbleFamily == AppPreferences.ChatBubbleStyle.COMPACT) 8.dp else 12.dp
 
     return when {
         isUser -> BubbleStyle(
@@ -866,8 +862,8 @@ private fun bubbleShapeFor(
 ): Shape {
     if (!isUser && !isAssistant) {
         return when (style) {
-            AppPreferences.ChatBubbleStyle.COMPACT -> RoundedCornerShape(16.dp)
-            AppPreferences.ChatBubbleStyle.GEOMETRIC -> RoundedCornerShape(12.dp)
+            AppPreferences.ChatBubbleStyle.COMPACT -> RoundedCornerShape(20.dp)
+            AppPreferences.ChatBubbleStyle.GEOMETRIC -> RoundedCornerShape(16.dp)
             else -> MessageBubbleShapes.SystemBubble
         }
     }
@@ -887,7 +883,7 @@ private fun bubbleShapeFor(
                 MessageGroupPosition.Single -> MessageBubbleShapes.AssistantBubble
             }
         }
-        AppPreferences.ChatBubbleStyle.ROUNDED -> RoundedCornerShape(30.dp)
+        AppPreferences.ChatBubbleStyle.ROUNDED -> RoundedCornerShape(34.dp)
         AppPreferences.ChatBubbleStyle.COMPACT -> when {
             isUser -> RoundedCornerShape(
                 topStart = 18.dp,
@@ -1077,23 +1073,16 @@ private fun ModelSiblingRow(
     Row(
         modifier = Modifier.padding(start = 4.dp, bottom = 2.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(0.dp)
+        horizontalArrangement = Arrangement.spacedBy(6.dp)
     ) {
-        // Previous arrow
-        IconButton(
+        ExpressiveFilledIconButton(
             onClick = { haptics.perform(HapticPattern.CLICK); onNavigatePrevious?.invoke() },
+            icon = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
+            contentDescription = "Previous response",
             enabled = canGoPrevious,
-            modifier = Modifier.size(48.dp)
-        ) {
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
-                contentDescription = "Previous response",
-                modifier = Modifier.size(16.dp),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(
-                    alpha = if (canGoPrevious) 0.6f else 0.25f
-                )
-            )
-        }
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+            contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+        )
 
         // Model name and count
         Text(
@@ -1102,21 +1091,14 @@ private fun ModelSiblingRow(
             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
         )
 
-        // Next arrow
-        IconButton(
+        ExpressiveFilledIconButton(
             onClick = { haptics.perform(HapticPattern.CLICK); onNavigateNext?.invoke() },
+            icon = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+            contentDescription = "Next response",
             enabled = canGoNext,
-            modifier = Modifier.size(48.dp)
-        ) {
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                contentDescription = "Next response",
-                modifier = Modifier.size(16.dp),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(
-                    alpha = if (canGoNext) 0.6f else 0.25f
-                )
-            )
-        }
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+            contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }
 
@@ -1192,7 +1174,7 @@ private fun MemoryDisclosure(
                 )
         ) {
             Surface(
-                shape = RoundedCornerShape(20.dp),
+                shape = RoundedCornerShape(24.dp),
                 color = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.86f),
                 contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
                 tonalElevation = 2.dp

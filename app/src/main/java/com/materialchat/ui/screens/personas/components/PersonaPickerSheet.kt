@@ -86,7 +86,7 @@ fun PersonaPickerSheet(
                     .fillMaxWidth()
                     .clickable { onDismiss() }
                     .padding(horizontal = 16.dp, vertical = 4.dp),
-                shape = RoundedCornerShape(16.dp),
+                shape = RoundedCornerShape(20.dp),
                 color = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.5f)
             ) {
                 Row(
@@ -159,7 +159,7 @@ private fun PersonaPickerItem(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick),
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(20.dp),
         color = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.5f)
     ) {
         Row(

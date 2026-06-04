@@ -1,27 +1,27 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- Brand colors for MaterialChat -->
-    <color name="splash_background">#EADDFF</color>
-    <color name="splash_icon_background">#6750A4</color>
+    <color name="splash_background">#E4DDFF</color>
+    <color name="splash_icon_background">#6C4FF5</color>
     <!-- Dark splash colors (fallback - overridden in values-night) -->
-    <color name="splash_background_dark">#381E72</color>
-    <color name="splash_icon_background_dark">#D0BCFF</color>
+    <color name="splash_background_dark">#15101D</color>
+    <color name="splash_icon_background_dark">#D2C2FF</color>
 
     <!-- Primary brand colors -->
-    <color name="primary">#006B5F</color>
-    <color name="primary_container">#74F8E3</color>
+    <color name="primary">#6C4FF5</color>
+    <color name="primary_container">#E4DDFF</color>
     <color name="on_primary">#FFFFFF</color>
-    <color name="on_primary_container">#00201C</color>
+    <color name="on_primary_container">#21005D</color>
 
     <!-- Secondary brand colors -->
-    <color name="secondary">#D4410C</color>
-    <color name="secondary_container">#FFDBCF</color>
+    <color name="secondary">#9A405F</color>
+    <color name="secondary_container">#FFD9E4</color>
 
     <!-- Surface colors -->
-    <color name="surface">#FFFBFE</color>
-    <color name="surface_variant">#F3F3F3</color>
+    <color name="surface">#FCF8FF</color>
+    <color name="surface_variant">#E8DEF9</color>
 
     <!-- Tertiary colors -->
-    <color name="tertiary">#7D5260</color>
-    <color name="tertiary_container">#FFD8E4</color>
+    <color name="tertiary">#8C4B2F</color>
+    <color name="tertiary_container">#FFDBCF</color>
 </resources>

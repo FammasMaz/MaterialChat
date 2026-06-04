@@ -29,7 +29,6 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -51,6 +50,10 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.materialchat.domain.model.GeneratedImage
+import com.materialchat.ui.components.ExpressiveContentSurface
+import com.materialchat.ui.components.ExpressiveEmptyState
+import com.materialchat.ui.components.ExpressiveFilledIconButton
+import com.materialchat.ui.components.ExpressiveTopBarTitle
 import com.materialchat.util.GeneratedImageActions
 import kotlinx.coroutines.launch
 import java.text.DateFormat
@@ -70,16 +73,17 @@ fun GeneratedImagesScreen(
         topBar = {
             TopAppBar(
                 title = {
-                    Text(
-                        text = "Generated Images",
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.SemiBold
+                    ExpressiveTopBarTitle(
+                        title = "Generated Images",
+                        subtitle = "AI artwork library"
                     )
                 },
                 navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
+                    ExpressiveFilledIconButton(
+                        onClick = onNavigateBack,
+                        icon = Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = "Back"
+                    )
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surfaceContainer
@@ -87,30 +91,32 @@ fun GeneratedImagesScreen(
             )
         }
     ) { paddingValues ->
-        if (uiState.images.isEmpty()) {
-            EmptyGeneratedImages(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues)
-            )
-        } else {
-            LazyVerticalGrid(
+        ExpressiveContentSurface(
+            padding = PaddingValues(top = paddingValues.calculateTopPadding())
+        ) {
+            if (uiState.images.isEmpty()) {
+                EmptyGeneratedImages(
+                    modifier = Modifier.fillMaxSize()
+                )
+            } else {
+                LazyVerticalGrid(
                 columns = GridCells.Adaptive(minSize = 164.dp),
                 contentPadding = PaddingValues(
                     start = 16.dp,
                     end = 16.dp,
-                    top = paddingValues.calculateTopPadding() + 12.dp,
+                    top = 16.dp,
                     bottom = 96.dp
                 ),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
                 modifier = Modifier.fillMaxSize()
-            ) {
-                items(uiState.images, key = { it.id }) { image ->
-                    GeneratedImageCard(
-                        image = image,
-                        onOpenThread = { onNavigateToConversation(image.conversationId) }
-                    )
+                ) {
+                    items(uiState.images, key = { it.id }) { image ->
+                        GeneratedImageCard(
+                            image = image,
+                            onOpenThread = { onNavigateToConversation(image.conversationId) }
+                        )
+                    }
                 }
             }
         }
@@ -243,35 +249,10 @@ private fun ImageActionButton(
 @Composable
 private fun EmptyGeneratedImages(modifier: Modifier = Modifier) {
     Box(modifier = modifier, contentAlignment = Alignment.Center) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-            modifier = Modifier.padding(32.dp)
-        ) {
-            Surface(
-                shape = RoundedCornerShape(28.dp),
-                color = MaterialTheme.colorScheme.primaryContainer,
-                contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-            ) {
-                Icon(
-                    imageVector = Icons.Filled.Image,
-                    contentDescription = null,
-                    modifier = Modifier
-                        .padding(22.dp)
-                        .size(40.dp)
-                )
-            }
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = "No generated images yet",
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-            Text(
-                text = "Create an image from any chat and it will appear here automatically.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
+        ExpressiveEmptyState(
+            icon = Icons.Filled.Image,
+            title = "No generated images yet",
+            message = "Create an image from any chat and it will appear here automatically."
+        )
     }
 }

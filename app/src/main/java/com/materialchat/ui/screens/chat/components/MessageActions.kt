@@ -7,7 +7,8 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -33,12 +34,10 @@ import com.materialchat.ui.components.rememberHapticFeedback
 import com.materialchat.ui.theme.ExpressiveMotion
 
 /**
- * Subtle message action toolbar.
- *
- * These actions intentionally use separate, matching tonal icon containers instead
- * of a connected group. That keeps the row calm under chat bubbles while still
- * using M3 Expressive press morphs, spring scale, haptics, and emphasis color.
+ * Message action toolbar using compact icon buttons with the app's springy
+ * expressive button language.
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun MessageActions(
     showCopy: Boolean = true,
@@ -61,10 +60,11 @@ fun MessageActions(
         if (showRegenerate && onRegenerate != null) add(MessageActionItem(Icons.Default.Refresh, "Regenerate response", MessageActionTone.Primary) { onRegenerate() })
     }
 
-    Row(
+    FlowRow(
         modifier = modifier,
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(6.dp)
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+        itemVerticalAlignment = Alignment.CenterVertically
     ) {
         actions.forEach { action ->
             ActionButton(item = action)
@@ -92,16 +92,12 @@ private fun ActionButton(
     val emphasized = item.tone != MessageActionTone.Neutral
 
     val scale by animateFloatAsState(
-        targetValue = if (isPressed) 0.90f else 1f,
+        targetValue = if (isPressed) 0.94f else 1f,
         animationSpec = ExpressiveMotion.Spatial.scale(),
         label = "messageActionScale"
     )
     val radius by animateDpAsState(
-        targetValue = when {
-            isPressed -> 13.dp
-            emphasized -> 20.dp
-            else -> 18.dp
-        },
+        targetValue = if (isPressed) 16.dp else 22.dp,
         animationSpec = ExpressiveMotion.Spatial.shapeMorph(),
         label = "messageActionRadius"
     )
@@ -123,7 +119,7 @@ private fun ActionButton(
             item.onClick()
         },
         modifier = modifier
-            .size(48.dp)
+            .size(44.dp)
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
@@ -131,7 +127,7 @@ private fun ActionButton(
         shape = RoundedCornerShape(radius),
         color = containerColor,
         contentColor = contentColor,
-        tonalElevation = if (emphasized) 3.dp else 1.dp,
+        tonalElevation = 0.dp,
         shadowElevation = 0.dp,
         interactionSource = interactionSource
     ) {
@@ -139,7 +135,7 @@ private fun ActionButton(
             Icon(
                 imageVector = item.icon,
                 contentDescription = item.contentDescription,
-                modifier = Modifier.size(if (emphasized) 21.dp else 20.dp),
+                modifier = Modifier.size(if (emphasized) 20.dp else 18.dp),
                 tint = contentColor
             )
         }
@@ -151,7 +147,7 @@ private fun actionColors(tone: MessageActionTone): ActionColors {
     val scheme = MaterialTheme.colorScheme
     return when (tone) {
         MessageActionTone.Neutral -> ActionColors(
-            container = scheme.surfaceContainerHigh.copy(alpha = 0.78f),
+            container = scheme.surfaceContainerHigh.copy(alpha = 0.92f),
             pressedContainer = scheme.surfaceContainerHighest,
             content = scheme.onSurfaceVariant
         )
@@ -161,7 +157,7 @@ private fun actionColors(tone: MessageActionTone): ActionColors {
             content = scheme.onPrimaryContainer
         )
         MessageActionTone.Secondary -> ActionColors(
-            container = scheme.secondaryContainer.copy(alpha = 0.74f),
+            container = scheme.secondaryContainer.copy(alpha = 0.88f),
             pressedContainer = scheme.secondaryContainer,
             content = scheme.onSecondaryContainer
         )

@@ -149,7 +149,7 @@ private fun ProviderDropdown(
             )
         },
         enabled = enabled,
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(24.dp),
         modifier = modifier.fillMaxWidth()
     )
 
@@ -199,7 +199,7 @@ private fun ModelDropdown(
             )
         },
         enabled = enabled,
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(24.dp),
         colors = FilterChipDefaults.filterChipColors(
             selectedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
             selectedLabelColor = MaterialTheme.colorScheme.onSecondaryContainer

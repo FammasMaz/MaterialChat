@@ -28,7 +28,6 @@ import androidx.compose.material3.DropdownMenuItem
 import com.materialchat.ui.theme.CustomShapes
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -50,8 +49,10 @@ import com.materialchat.domain.model.AiModel
 import com.materialchat.ui.screens.chat.ContextWindowUsage
 import com.materialchat.ui.screens.chat.components.ModelPickerDropdown
 import com.materialchat.ui.util.ModelNameParser
+import com.materialchat.ui.components.ExpressiveFilledIconButton
 import com.materialchat.ui.components.HapticPattern
 import com.materialchat.ui.components.rememberHapticFeedback
+import com.materialchat.ui.theme.MaterialChatExpressiveTitleFontFamily
 
 /**
  * Top app bar for the Chat screen.
@@ -161,7 +162,9 @@ fun ChatTopBar(
                     }
                     Text(
                         text = animatedTitle,
-                        style = MaterialTheme.typography.titleMedium,
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontFamily = MaterialChatExpressiveTitleFontFamily
+                        ),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.alpha(
@@ -233,24 +236,36 @@ fun ChatTopBar(
             }
         },
         navigationIcon = {
-            IconButton(onClick = { haptics.perform(HapticPattern.CLICK); onNavigateBack() }) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = "Back"
-                )
-            }
+            ExpressiveFilledIconButton(
+                onClick = { haptics.perform(HapticPattern.CLICK); onNavigateBack() },
+                icon = Icons.AutoMirrored.Filled.ArrowBack,
+                contentDescription = "Back",
+                containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+                contentColor = if (isEphemeral) {
+                    MaterialTheme.colorScheme.onTertiaryContainer
+                } else {
+                    MaterialTheme.colorScheme.onSurface
+                },
+                modifier = Modifier.padding(start = 6.dp)
+            )
         },
         actions = {
             ContextWindowIndicator(
                 usage = contextWindowUsage,
                 modifier = Modifier.padding(end = 2.dp)
             )
-            IconButton(onClick = { haptics.perform(HapticPattern.CLICK); showMenu = true }) {
-                Icon(
-                    imageVector = Icons.Default.MoreVert,
-                    contentDescription = "More options"
-                )
-            }
+            ExpressiveFilledIconButton(
+                onClick = { haptics.perform(HapticPattern.CLICK); showMenu = true },
+                icon = Icons.Default.MoreVert,
+                contentDescription = "More options",
+                containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+                contentColor = if (isEphemeral) {
+                    MaterialTheme.colorScheme.onTertiaryContainer
+                } else {
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                },
+                modifier = Modifier.padding(end = 6.dp)
+            )
             DropdownMenu(
                 expanded = showMenu,
                 onDismissRequest = { showMenu = false },

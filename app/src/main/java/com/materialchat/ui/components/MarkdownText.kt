@@ -537,7 +537,7 @@ private fun CodeBlockView(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 8.dp)
-            .clip(RoundedCornerShape(16.dp))
+            .clip(RoundedCornerShape(20.dp))
             .background(backgroundColor)
     ) {
         val highlightedCode = remember(code, language) {

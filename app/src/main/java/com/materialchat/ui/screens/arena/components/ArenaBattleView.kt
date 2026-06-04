@@ -86,7 +86,7 @@ fun ArenaBattleView(
 
         // VS badge centered between panels
         Surface(
-            shape = RoundedCornerShape(16.dp),
+            shape = RoundedCornerShape(20.dp),
             color = MaterialTheme.colorScheme.errorContainer,
             contentColor = MaterialTheme.colorScheme.onErrorContainer,
             shadowElevation = 4.dp,

@@ -3,7 +3,6 @@ package com.materialchat.ui.components
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
@@ -19,11 +18,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonColors
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
@@ -48,7 +44,6 @@ import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.materialchat.ui.theme.ExpressiveMotion
-import com.materialchat.ui.theme.MaterialChatMotion
 import com.materialchat.ui.components.HapticPattern
 import com.materialchat.ui.components.rememberHapticFeedback
 
@@ -90,22 +85,23 @@ fun ExpressiveButton(
     // Animate corner radius on press with SPATIAL spring (shape morph effect).
     // M3 Expressive: round buttons become less rounded when pressed.
     val cornerRadius by animateDpAsState(
-        targetValue = if (isPressed) 12.dp else 24.dp,
+        targetValue = if (isPressed) 16.dp else 28.dp,
         animationSpec = ExpressiveMotion.Spatial.shapeMorph(),
         label = "cornerRadius"
     )
 
     val shape = RoundedCornerShape(cornerRadius)
+    val expressivePadding = PaddingValues(horizontal = 28.dp, vertical = 0.dp)
 
     when (style) {
         ExpressiveButtonStyle.Filled -> {
             Button(
                 onClick = { haptics.perform(HapticPattern.CLICK); onClick() },
-                modifier = modifier.defaultMinSize(minHeight = 48.dp).scale(scale),
+                modifier = modifier.defaultMinSize(minHeight = 56.dp).scale(scale),
                 enabled = enabled,
                 shape = shape,
                 interactionSource = interactionSource,
-                contentPadding = ButtonDefaults.ContentPadding
+                contentPadding = expressivePadding
             ) {
                 ButtonContent(
                     text = text,
@@ -118,11 +114,11 @@ fun ExpressiveButton(
         ExpressiveButtonStyle.FilledTonal -> {
             FilledTonalButton(
                 onClick = { haptics.perform(HapticPattern.CLICK); onClick() },
-                modifier = modifier.defaultMinSize(minHeight = 48.dp).scale(scale),
+                modifier = modifier.defaultMinSize(minHeight = 56.dp).scale(scale),
                 enabled = enabled,
                 shape = shape,
                 interactionSource = interactionSource,
-                contentPadding = ButtonDefaults.ContentPadding
+                contentPadding = expressivePadding
             ) {
                 ButtonContent(
                     text = text,
@@ -135,11 +131,11 @@ fun ExpressiveButton(
         ExpressiveButtonStyle.Outlined -> {
             OutlinedButton(
                 onClick = { haptics.perform(HapticPattern.CLICK); onClick() },
-                modifier = modifier.defaultMinSize(minHeight = 48.dp).scale(scale),
+                modifier = modifier.defaultMinSize(minHeight = 56.dp).scale(scale),
                 enabled = enabled,
                 shape = shape,
                 interactionSource = interactionSource,
-                contentPadding = ButtonDefaults.ContentPadding
+                contentPadding = expressivePadding
             ) {
                 ButtonContent(
                     text = text,
@@ -152,11 +148,11 @@ fun ExpressiveButton(
         ExpressiveButtonStyle.Text -> {
             TextButton(
                 onClick = { haptics.perform(HapticPattern.CLICK); onClick() },
-                modifier = modifier.defaultMinSize(minHeight = 48.dp).scale(scale),
+                modifier = modifier.defaultMinSize(minHeight = 56.dp).scale(scale),
                 enabled = enabled,
                 shape = shape,
                 interactionSource = interactionSource,
-                contentPadding = ButtonDefaults.TextButtonContentPadding
+                contentPadding = PaddingValues(horizontal = 24.dp, vertical = 0.dp)
             ) {
                 ButtonContent(
                     text = text,
@@ -181,7 +177,7 @@ private fun ButtonContent(
         Icon(
             imageVector = leadingIcon,
             contentDescription = null,
-            modifier = Modifier.size(18.dp)
+            modifier = Modifier.size(20.dp)
         )
         Spacer(modifier = Modifier.width(8.dp))
     }
@@ -189,7 +185,7 @@ private fun ButtonContent(
     Text(
         text = text,
         style = MaterialTheme.typography.labelLarge,
-        fontWeight = FontWeight.Medium
+        fontWeight = FontWeight.Bold
     )
 
     if (trailingIcon != null) {
@@ -197,7 +193,7 @@ private fun ButtonContent(
         Icon(
             imageVector = trailingIcon,
             contentDescription = null,
-            modifier = Modifier.size(18.dp)
+            modifier = Modifier.size(20.dp)
         )
     }
 }
@@ -246,9 +242,9 @@ fun ExpressiveIconButton(
         label = "iconButtonScale"
     )
 
-    // Animate corner radius on press with SPATIAL spring (more rounded when pressed)
+    // Animate corner radius on press with SPATIAL spring (squircle → softer circle)
     val cornerRadius by animateDpAsState(
-        targetValue = if (isPressed) size / 2 else size / 4,
+        targetValue = if (isPressed) size / 2.4f else size / 3f,
         animationSpec = ExpressiveMotion.Spatial.shapeMorph(),
         label = "iconButtonCornerRadius"
     )
@@ -322,7 +318,7 @@ fun ExpressiveActionButton(
     // M3 Expressive SPATIAL spring for shape morph.
     // Rounded action buttons become less rounded when pressed.
     val cornerRadius by animateDpAsState(
-        targetValue = if (isPressed) 8.dp else 12.dp,
+        targetValue = if (isPressed) 12.dp else 18.dp,
         animationSpec = ExpressiveMotion.Spatial.shapeMorph(),
         label = "actionButtonCornerRadius"
     )
@@ -337,7 +333,7 @@ fun ExpressiveActionButton(
             },
         enabled = enabled,
         shape = RoundedCornerShape(cornerRadius),
-        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        color = MaterialTheme.colorScheme.surfaceContainerHighest,
         contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
         interactionSource = interactionSource
     ) {

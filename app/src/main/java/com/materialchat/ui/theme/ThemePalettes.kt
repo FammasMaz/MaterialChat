@@ -32,7 +32,7 @@ object MaterialChatThemePalettes {
 
     fun previewColor(palette: AppPreferences.ThemePalette): Color {
         return when (palette) {
-            AppPreferences.ThemePalette.VIOLET -> Color(0xFF6750A4)
+            AppPreferences.ThemePalette.VIOLET -> Color(0xFF6C4FF5)
             AppPreferences.ThemePalette.OCEAN -> Color(0xFF006A6A)
             AppPreferences.ThemePalette.JADE -> Color(0xFF216D3B)
             AppPreferences.ThemePalette.SUNSET -> Color(0xFF9B4521)
@@ -44,7 +44,7 @@ object MaterialChatThemePalettes {
 
     fun previewSecondaryColor(palette: AppPreferences.ThemePalette): Color {
         return when (palette) {
-            AppPreferences.ThemePalette.VIOLET -> Color(0xFF7D5260)
+            AppPreferences.ThemePalette.VIOLET -> Color(0xFFF06292)
             AppPreferences.ThemePalette.OCEAN -> Color(0xFF006B8F)
             AppPreferences.ThemePalette.JADE -> Color(0xFF4D6353)
             AppPreferences.ThemePalette.SUNSET -> Color(0xFF8A4F62)
@@ -55,33 +55,33 @@ object MaterialChatThemePalettes {
     }
 
     private val violetLight = materialLightScheme(
-        primary = Color(0xFF6750A4),
+        primary = Color(0xFF6C4FF5),
         onPrimary = Color.White,
-        primaryContainer = Color(0xFFEADDFF),
+        primaryContainer = Color(0xFFE4DDFF),
         onPrimaryContainer = Color(0xFF21005D),
-        secondary = Color(0xFF625B71),
+        secondary = Color(0xFF9A405F),
         onSecondary = Color.White,
-        secondaryContainer = Color(0xFFE8DEF8),
-        onSecondaryContainer = Color(0xFF1D192B),
-        tertiary = Color(0xFF7D5260),
+        secondaryContainer = Color(0xFFFFD9E4),
+        onSecondaryContainer = Color(0xFF3E001D),
+        tertiary = Color(0xFF8C4B2F),
         onTertiary = Color.White,
-        tertiaryContainer = Color(0xFFFFD8E4),
-        onTertiaryContainer = Color(0xFF31111D)
+        tertiaryContainer = Color(0xFFFFDBCF),
+        onTertiaryContainer = Color(0xFF351000)
     )
 
     private val violetDark = materialDarkScheme(
-        primary = Color(0xFFD0BCFF),
-        onPrimary = Color(0xFF381E72),
-        primaryContainer = Color(0xFF4F378B),
-        onPrimaryContainer = Color(0xFFEADDFF),
-        secondary = Color(0xFFCCC2DC),
-        onSecondary = Color(0xFF332D41),
-        secondaryContainer = Color(0xFF4A4458),
-        onSecondaryContainer = Color(0xFFE8DEF8),
-        tertiary = Color(0xFFEFB8C8),
-        onTertiary = Color(0xFF492532),
-        tertiaryContainer = Color(0xFF633B48),
-        onTertiaryContainer = Color(0xFFFFD8E4)
+        primary = Color(0xFFD2C2FF),
+        onPrimary = Color(0xFF3B248D),
+        primaryContainer = Color(0xFF5339C7),
+        onPrimaryContainer = Color(0xFFE8DDFF),
+        secondary = Color(0xFFFFB0CA),
+        onSecondary = Color(0xFF5E1134),
+        secondaryContainer = Color(0xFF7C294B),
+        onSecondaryContainer = Color(0xFFFFD9E4),
+        tertiary = Color(0xFFFFB59B),
+        onTertiary = Color(0xFF542100),
+        tertiaryContainer = Color(0xFF70371A),
+        onTertiaryContainer = Color(0xFFFFDBCF)
     )
 
     private val oceanLight = materialLightScheme(
