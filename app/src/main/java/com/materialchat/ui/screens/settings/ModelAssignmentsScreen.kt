@@ -165,7 +165,7 @@ fun ModelAssignmentsScreen(
                         pickerState = uiState.pickerState,
                         enabled = true,
                         disabledHint = null,
-                        automaticLabel = "Automatic (on-device if enabled, else chat model)",
+                        automaticLabel = "Automatic (on-device if available, else chat model)",
                         onLoadModels = { viewModel.loadCloudModels() },
                         onAssign = { providerId, modelId ->
                             viewModel.setMemoryModel(providerId, modelId)
@@ -322,7 +322,7 @@ private fun TitleAssignmentCard(
         pickerState = pickerState,
         enabled = aiTitlesEnabled,
         disabledHint = "Turn on AI-generated titles to enable this model assignment.",
-        automaticLabel = "Automatic (on-device if enabled, else chat model)",
+        automaticLabel = "Automatic (on-device if available, else chat model)",
         onLoadModels = onLoadModels,
         onAssign = onAssign,
         icon = Icons.Outlined.Title,
@@ -458,6 +458,13 @@ private fun TaskAssignmentCard(
                 onClick = {
                     menuExpanded = false
                     onAssign(null, "")
+                }
+            )
+            DropdownMenuItem(
+                text = { Text("Use chat model") },
+                onClick = {
+                    menuExpanded = false
+                    onAssign(null, TaskModelAssignmentCodec.chatModel())
                 }
             )
             HorizontalDivider()

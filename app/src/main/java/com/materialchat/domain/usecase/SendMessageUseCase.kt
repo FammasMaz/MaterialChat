@@ -22,6 +22,7 @@ import com.materialchat.domain.repository.LocalModelRepository
 import com.materialchat.domain.repository.PersonaRepository
 import com.materialchat.domain.repository.ProviderRepository
 import com.materialchat.domain.repository.WebSearchRepository
+import com.materialchat.domain.util.TaskModelAssignmentCodec
 import com.materialchat.notifications.ImageGenerationForegroundService
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
@@ -596,20 +597,21 @@ class SendMessageUseCase @Inject constructor(
             // Format: bare "modelId" (use conversation provider)
             // or "providerId|modelId" (use that specific provider).
             val customRaw = appPreferences.titleGenerationModel.first()
+            val useChatModel = TaskModelAssignmentCodec.isChatModel(customRaw)
             val (customProviderId, customModelId) = parseTitleModelSetting(customRaw)
-            val hasExplicitTitleModel = customRaw.isNotBlank()
+            val hasExplicitTitleModel = customRaw.isNotBlank() && !useChatModel
 
             val conversationProvider = providerRepository.getProvider(conversation.providerId) ?: return
             val customProvider = customProviderId?.let { providerRepository.getProvider(it) }
-            val provider = customProvider ?: conversationProvider
-            val shouldUseCustomModel = customModelId.isNotBlank() &&
+            val shouldUseCustomModel = hasExplicitTitleModel && customModelId.isNotBlank() &&
                 (customProviderId.isNullOrBlank() || customProvider != null)
+            val provider = if (shouldUseCustomModel && customProvider != null) customProvider else conversationProvider
 
             val modelToUse = if (shouldUseCustomModel) customModelId else conversation.modelName
 
             val prompt = buildBranchTitlePrompt(userMessage, assistantResponse)
 
-            val localTitle = if (hasExplicitTitleModel) {
+            val localTitle = if (hasExplicitTitleModel || useChatModel) {
                 null
             } else {
                 generateBranchTitleWithPreferredLocalModel(prompt).getOrNull()

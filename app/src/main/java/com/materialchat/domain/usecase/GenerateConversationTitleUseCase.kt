@@ -93,18 +93,18 @@ class GenerateConversationTitleUseCase @Inject constructor(
             // Format: either bare "modelId" (use conversation provider)
             // or "providerId|modelId" (use that specific provider).
             val customModelRaw = appPreferences.titleGenerationModel.first()
+            val useChatModel = TaskModelAssignmentCodec.isChatModel(customModelRaw)
             val (customProviderId, customModelId) = TaskModelAssignmentCodec.decode(customModelRaw)
-            val hasExplicitTitleModel = customModelRaw.isNotBlank()
+            val hasExplicitTitleModel = customModelRaw.isNotBlank() && !useChatModel
 
             val customProvider = customProviderId?.let { providerRepository.getProvider(it) }
-            val shouldUseCustomModel = customModelId.isNotBlank() &&
+            val shouldUseCustomModel = hasExplicitTitleModel && customModelId.isNotBlank() &&
                 (customProviderId.isNullOrBlank() || customProvider != null)
-            val conversationProvider = if (customProvider != null) {
-                null
-            } else {
-                providerRepository.getProvider(conversation.providerId)
+            val conversationProvider = providerRepository.getProvider(conversation.providerId)
+            val provider = when {
+                shouldUseCustomModel && customProvider != null -> customProvider
+                else -> conversationProvider
             }
-            val provider = customProvider ?: conversationProvider
             if (provider == null) {
                 val fallbackTitle = generateFallbackTitle(userMessage)
                 conversationRepository.updateConversationTitle(conversationId, fallbackTitle)
@@ -124,7 +124,7 @@ class GenerateConversationTitleUseCase @Inject constructor(
             val prompt = buildTitlePrompt(userMessage, assistantResponse)
             Log.d(TAG, "Prompt length: ${prompt.length}")
 
-            val localCompletion = if (hasExplicitTitleModel) {
+            val localCompletion = if (hasExplicitTitleModel || useChatModel) {
                 null
             } else {
                 generateWithPreferredLocalModel(prompt).getOrNull()

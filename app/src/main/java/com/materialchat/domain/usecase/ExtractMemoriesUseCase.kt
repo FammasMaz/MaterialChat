@@ -149,8 +149,9 @@ class ExtractMemoriesUseCase @Inject constructor(
         defaultModel: String
     ): Result<String> {
         val memoryModelSetting = appPreferences.memoryExtractionModel.first()
-        val hasExplicitMemoryModel = memoryModelSetting.isNotBlank()
-        if (!hasExplicitMemoryModel && appPreferences.preferOnDeviceBackgroundTasks.first()) {
+        val useChatModel = TaskModelAssignmentCodec.isChatModel(memoryModelSetting)
+        val hasExplicitMemoryModel = memoryModelSetting.isNotBlank() && !useChatModel
+        if (!hasExplicitMemoryModel && !useChatModel && appPreferences.preferOnDeviceBackgroundTasks.first()) {
             val localModelId = localModelRepository.preferredTitleModelIdOrNull()
             if (localModelId != null) {
                 val localResult = localModelRepository.generateSimpleCompletion(
@@ -165,7 +166,7 @@ class ExtractMemoriesUseCase @Inject constructor(
         val (providerId, configuredModel) = TaskModelAssignmentCodec.decode(memoryModelSetting)
         val configuredProvider = providerId?.let { providerRepository.getProvider(it) }
         val provider = configuredProvider ?: defaultProvider
-        val model = configuredModel.ifBlank { defaultModel }
+        val model = if (useChatModel) defaultModel else configuredModel.ifBlank { defaultModel }
         return chatRepository.generateSimpleCompletion(
             provider = provider,
             prompt = prompt,
