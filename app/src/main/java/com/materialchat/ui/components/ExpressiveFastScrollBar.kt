@@ -4,6 +4,7 @@ import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectDragGestures
@@ -116,7 +117,10 @@ fun ExpressiveFastScrollBar(
     )
     val squiggleAmount by animateFloatAsState(
         targetValue = if (isDragging || listState.isScrollInProgress) 1f else 0f,
-        animationSpec = tween(durationMillis = 220, easing = FastOutSlowInEasing),
+        animationSpec = spring(
+            dampingRatio = 1f,
+            stiffness = 500f
+        ),
         label = "fastScrollSquiggle"
     )
     var scrollDrivenPhase by remember { mutableFloatStateOf(0f) }
@@ -211,8 +215,12 @@ fun ExpressiveFastScrollBar(
                 .collect { positionPx ->
                     if (!lastScrollPositionPx.isNaN()) {
                         val deltaPx = positionPx - lastScrollPositionPx
-                        if (abs(deltaPx) > 0.5f) {
-                            scrollDrivenPhase = (scrollDrivenPhase + deltaPx / 28f)
+                        if (abs(deltaPx) > 1.5f) {
+                            // Keep the wave tied to scroll distance, but calm it down:
+                            // one full wave phase takes roughly a screenful-ish scroll,
+                            // instead of racing every few list rows.
+                            val phaseDelta = (deltaPx / 144f).coerceIn(-0.18f, 0.18f)
+                            scrollDrivenPhase = (scrollDrivenPhase + phaseDelta)
                                 .positiveModulo(2f * PI.toFloat())
                         }
                     }
