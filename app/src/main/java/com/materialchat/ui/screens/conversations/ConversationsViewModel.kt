@@ -531,22 +531,36 @@ class ConversationsViewModel @Inject constructor(
             try {
                 val messages = conversationRepository.getMessages(conversation.id)
                 val firstUserMsg = messages.firstOrNull { it.role == MessageRole.USER }
-                val firstAssistantMsg = messages.firstOrNull { it.role == MessageRole.ASSISTANT }
+                val firstAssistantMsg = messages.firstOrNull {
+                    it.role == MessageRole.ASSISTANT && it.content.isNotBlank()
+                } ?: messages.firstOrNull { it.role == MessageRole.ASSISTANT }
 
-                if (firstUserMsg == null || firstAssistantMsg == null) {
-                    _events.emit(ConversationsEvent.ShowSnackbar(message = "Not enough messages to generate title"))
+                if (firstUserMsg == null) {
+                    _events.emit(ConversationsEvent.ShowSnackbar(message = "No user message to title"))
                     return@launch
                 }
 
                 _events.emit(ConversationsEvent.ShowSnackbar(message = "Generating title..."))
 
-                generateConversationTitleUseCase(
+                val result = generateConversationTitleUseCase(
                     conversationId = conversation.id,
                     userMessage = firstUserMsg.content,
-                    assistantResponse = firstAssistantMsg.content
+                    assistantResponse = firstAssistantMsg?.content?.takeIf { it.isNotBlank() }
+                        ?: firstUserMsg.content
                 )
 
-                _events.emit(ConversationsEvent.ShowSnackbar(message = "Title updated"))
+                result.fold(
+                    onSuccess = { title ->
+                        _events.emit(ConversationsEvent.ShowSnackbar(message = "Title updated: $title"))
+                    },
+                    onFailure = { error ->
+                        _events.emit(
+                            ConversationsEvent.ShowSnackbar(
+                                message = error.message ?: "Title generation failed"
+                            )
+                        )
+                    }
+                )
             } catch (e: Exception) {
                 _events.emit(
                     ConversationsEvent.ShowSnackbar(

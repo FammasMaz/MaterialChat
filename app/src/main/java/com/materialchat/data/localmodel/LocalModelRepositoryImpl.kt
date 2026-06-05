@@ -170,7 +170,7 @@ class LocalModelRepositoryImpl @Inject constructor(
     ): Flow<StreamingState> = flow {
         val descriptor = requireDescriptor(modelId)
         val messageId = UUID.randomUUID().toString()
-        val accumulated = StringBuilder()
+        val rawAccumulated = StringBuilder()
         emit(StreamingState.Starting)
 
         val tokenFlow = when (descriptor.backend) {
@@ -188,17 +188,21 @@ class LocalModelRepositoryImpl @Inject constructor(
         }
 
         tokenFlow.collect { token ->
-            accumulated.append(token)
+            rawAccumulated.append(token)
+            val parts = splitLocalThinkingTags(rawAccumulated.toString())
             emit(
                 StreamingState.Streaming(
-                    content = accumulated.toString(),
+                    content = parts.visibleContent,
+                    thinkingContent = parts.thinkingContent.takeIf { it.isNotBlank() },
                     messageId = messageId
                 )
             )
         }
+        val finalParts = splitLocalThinkingTags(rawAccumulated.toString())
         emit(
             StreamingState.Completed(
-                finalContent = accumulated.toString(),
+                finalContent = finalParts.visibleContent,
+                finalThinkingContent = finalParts.thinkingContent.takeIf { it.isNotBlank() },
                 messageId = messageId
             )
         )
@@ -218,20 +222,22 @@ class LocalModelRepositoryImpl @Inject constructor(
             val descriptor = requireDescriptor(modelId)
             when (descriptor.backend) {
                 LocalModelBackend.LITERT_LM -> {
-                    liteRtLmEngineManager.generate(
+                    val raw = liteRtLmEngineManager.generate(
                         descriptor = descriptor,
                         modelFile = LocalModelCatalog.modelFile(context, descriptor),
                         prompt = prompt,
                         systemPrompt = systemPrompt
                     )
+                    splitLocalThinkingTags(raw).bestEffortVisibleText()
                 }
                 LocalModelBackend.MEDIAPIPE_LLM -> {
-                    mediaPipeLlmEngineManager.generate(
+                    val raw = mediaPipeLlmEngineManager.generate(
                         descriptor = descriptor,
                         modelFile = LocalModelCatalog.modelFile(context, descriptor),
                         prompt = prompt,
                         systemPrompt = systemPrompt
                     )
+                    splitLocalThinkingTags(raw).bestEffortVisibleText()
                 }
                 LocalModelBackend.AICORE_GEMINI_NANO -> {
                     geminiNanoClient.generate(
@@ -286,6 +292,46 @@ class LocalModelRepositoryImpl @Inject constructor(
         liteRtLmEngineManager.cancelActiveGeneration()
         mediaPipeLlmEngineManager.cancelActiveGeneration()
     }
+
+
+    private fun splitLocalThinkingTags(raw: String): LocalThinkingParts {
+        if (raw.isBlank()) return LocalThinkingParts("", "")
+        val thinking = StringBuilder()
+        val visible = StringBuilder()
+        var cursor = 0
+        for (match in COMPLETE_THINK_TAG_REGEX.findAll(raw)) {
+            visible.append(raw.substring(cursor, match.range.first))
+            thinking.append(match.groupValues.getOrNull(1).orEmpty()).append('\n')
+            cursor = match.range.last + 1
+        }
+        val tail = raw.substring(cursor)
+        val openMatch = OPEN_THINK_TAG_REGEX.find(tail)
+        if (openMatch != null) {
+            visible.append(tail.substring(0, openMatch.range.first))
+            thinking.append(tail.substring(openMatch.range.last + 1))
+        } else {
+            visible.append(tail)
+        }
+        return LocalThinkingParts(
+            visibleContent = visible.toString()
+                .replace(OPEN_THINK_TAG_REGEX, "")
+                .replace(CLOSE_THINK_TAG_REGEX, "")
+                .trim(),
+            thinkingContent = thinking.toString()
+                .replace(OPEN_THINK_TAG_REGEX, "")
+                .replace(CLOSE_THINK_TAG_REGEX, "")
+                .trim()
+        )
+    }
+
+    private fun LocalThinkingParts.bestEffortVisibleText(): String {
+        return visibleContent.ifBlank { thinkingContent }
+    }
+
+    private data class LocalThinkingParts(
+        val visibleContent: String,
+        val thinkingContent: String
+    )
 
     private fun initialStates(): List<LocalModelState> = LocalModelCatalog.models.map { descriptor ->
         when (descriptor.backend) {
@@ -474,5 +520,8 @@ class LocalModelRepositoryImpl @Inject constructor(
         const val PROGRESS_EMIT_BYTES = 512L * 1024L
         const val MAX_CONTEXT_MESSAGES = 12
         const val HUGGING_FACE_TOKEN_ID = "huggingface_access_token"
+        val COMPLETE_THINK_TAG_REGEX = Regex("(?is)<think>(.*?)</think>")
+        val OPEN_THINK_TAG_REGEX = Regex("(?is)<think>")
+        val CLOSE_THINK_TAG_REGEX = Regex("(?is)</think>")
     }
 }

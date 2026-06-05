@@ -551,21 +551,24 @@ class SendMessageUseCase @Inject constructor(
             // Check if AI-generated titles are enabled
             val aiTitlesEnabled = appPreferences.aiGeneratedTitlesEnabled.first()
 
-            if (aiTitlesEnabled && assistantResponse.isNotBlank()) {
-                // Launch non-blocking AI title generation in application scope
+            val titleContext = assistantResponse.ifBlank { userContent }
+            if (aiTitlesEnabled && titleContext.isNotBlank()) {
+                // Launch non-blocking AI title generation in application scope.
+                // Local reasoning models can initially return only hidden <think> text;
+                // falling back to user text keeps title generation from silently skipping.
                 applicationScope.launch {
                     if (conversation.isBranch) {
                         // For branches, use specialized title generation
                         generateBranchTitle(
                             conversationId = conversation.id,
                             userMessage = userContent,
-                            assistantResponse = assistantResponse
+                            assistantResponse = titleContext
                         )
                     } else {
                         generateConversationTitleUseCase(
                             conversationId = conversation.id,
                             userMessage = userContent,
-                            assistantResponse = assistantResponse
+                            assistantResponse = titleContext
                         )
                     }
                 }
@@ -631,6 +634,12 @@ class SendMessageUseCase @Inject constructor(
                 if (isGarbageTitleResponse(generatedResponse)) {
                     val fallbackTitle = generateTitleFromMessage(userMessage)
                     conversationRepository.updateConversationTitle(conversationId, fallbackTitle)
+                    conversationRepository.updateConversationTitleGenerationMetadata(
+                        conversationId = conversationId,
+                        providerId = completion.providerId,
+                        modelName = completion.modelId,
+                        generatedAt = System.currentTimeMillis()
+                    )
                 } else {
                     val parsed = parseBranchTitleResponse(generatedResponse)
                     conversationRepository.updateConversationTitleAndIcon(
@@ -649,6 +658,12 @@ class SendMessageUseCase @Inject constructor(
                 // Fall back to simple truncation
                 val fallbackTitle = generateTitleFromMessage(userMessage)
                 conversationRepository.updateConversationTitle(conversationId, fallbackTitle)
+                conversationRepository.updateConversationTitleGenerationMetadata(
+                    conversationId = conversationId,
+                    providerId = provider.id,
+                    modelName = modelToUse,
+                    generatedAt = System.currentTimeMillis()
+                )
             }
         } catch (e: Exception) {
             val fallbackTitle = generateTitleFromMessage(userMessage)

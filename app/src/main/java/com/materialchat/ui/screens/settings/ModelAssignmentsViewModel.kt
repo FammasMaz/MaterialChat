@@ -148,6 +148,7 @@ class ModelAssignmentsViewModel @Inject constructor(
 
     fun setTitleModel(providerId: String?, modelId: String) {
         viewModelScope.launch {
+            appPreferences.setAiGeneratedTitlesEnabled(true)
             appPreferences.setTitleGenerationModel(
                 TaskModelAssignmentCodec.encode(providerId, modelId)
             )

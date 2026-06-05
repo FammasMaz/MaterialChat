@@ -1,14 +1,9 @@
 package com.materialchat.ui.components
 
 import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectDragGestures
@@ -120,20 +115,12 @@ fun ExpressiveFastScrollBar(
         label = "fastScrollIconAlpha"
     )
     val squiggleAmount by animateFloatAsState(
-        targetValue = if (isDragging || isPressed || listState.isScrollInProgress) 1f else 0f,
+        targetValue = if (isDragging || listState.isScrollInProgress) 1f else 0f,
         animationSpec = tween(durationMillis = 220, easing = FastOutSlowInEasing),
         label = "fastScrollSquiggle"
     )
-    val snakeTransition = rememberInfiniteTransition(label = "fastScrollSnake")
-    val snakePhase by snakeTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = 2f * PI.toFloat(),
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 680, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "fastScrollSnakePhase"
-    )
+    var scrollDrivenPhase by remember { mutableFloatStateOf(0f) }
+    var lastScrollPositionPx by remember { mutableFloatStateOf(Float.NaN) }
 
     BoxWithConstraints(
         modifier = modifier
@@ -205,6 +192,31 @@ fun ExpressiveFastScrollBar(
                 .distinctUntilChanged()
                 .collectLatest { index ->
                     if (index >= 0) listState.scrollToItem(index)
+                }
+        }
+
+        LaunchedEffect(listState) {
+            snapshotFlow {
+                val layoutInfo = listState.layoutInfo
+                val representativeSize = layoutInfo.visibleItemsInfo
+                    .map { it.size }
+                    .filter { it > 0 }
+                    .sorted()
+                    .let { sizes -> sizes.getOrNull(sizes.size / 2) }
+                    ?.toFloat()
+                    ?: minHeightPx
+                listState.firstVisibleItemIndex * representativeSize +
+                    listState.firstVisibleItemScrollOffset
+            }
+                .collect { positionPx ->
+                    if (!lastScrollPositionPx.isNaN()) {
+                        val deltaPx = positionPx - lastScrollPositionPx
+                        if (abs(deltaPx) > 0.5f) {
+                            scrollDrivenPhase = (scrollDrivenPhase + deltaPx / 28f)
+                                .positiveModulo(2f * PI.toFloat())
+                        }
+                    }
+                    lastScrollPositionPx = positionPx
                 }
         }
 
@@ -378,7 +390,7 @@ fun ExpressiveFastScrollBar(
                         top = handleY + indicatorWidth / 2f,
                         bottom = handleY + handleHeight - indicatorWidth / 2f,
                         amplitude = (indicatorWidth * waveStrength).coerceAtLeast(3f) * squiggleAmount,
-                        phaseOffset = snakePhase
+                        phaseOffset = scrollDrivenPhase
                     )
                     drawPath(
                         path = indicatorPath,
@@ -508,6 +520,12 @@ private fun Path.addVerticalSquiggle(
         y += 3.5f
     }
     lineTo(centerX, safeBottom)
+}
+
+private fun Float.positiveModulo(modulus: Float): Float {
+    if (modulus == 0f) return 0f
+    val value = this % modulus
+    return if (value < 0f) value + modulus else value
 }
 
 private fun resolveFastScrollTargetIndex(

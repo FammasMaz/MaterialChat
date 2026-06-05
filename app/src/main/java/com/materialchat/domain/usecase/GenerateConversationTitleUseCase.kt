@@ -96,14 +96,22 @@ class GenerateConversationTitleUseCase @Inject constructor(
             val (customProviderId, customModelId) = TaskModelAssignmentCodec.decode(customModelRaw)
             val hasExplicitTitleModel = customModelRaw.isNotBlank()
 
-            val conversationProvider = providerRepository.getProvider(conversation.providerId)
-                ?: return@withContext Result.failure(
-                    IllegalStateException("Provider not found: ${conversation.providerId}")
-                )
             val customProvider = customProviderId?.let { providerRepository.getProvider(it) }
-            val provider = customProvider ?: conversationProvider
             val shouldUseCustomModel = customModelId.isNotBlank() &&
                 (customProviderId.isNullOrBlank() || customProvider != null)
+            val conversationProvider = if (customProvider != null) {
+                null
+            } else {
+                providerRepository.getProvider(conversation.providerId)
+            }
+            val provider = customProvider ?: conversationProvider
+            if (provider == null) {
+                val fallbackTitle = generateFallbackTitle(userMessage)
+                conversationRepository.updateConversationTitle(conversationId, fallbackTitle)
+                return@withContext Result.failure(
+                    IllegalStateException("Title provider not found. Saved fallback title instead.")
+                )
+            }
 
             val modelToUse = if (shouldUseCustomModel) {
                 Log.d(TAG, "Using custom title generation model: $customModelId (provider=${provider.id})")
@@ -138,12 +146,18 @@ class GenerateConversationTitleUseCase @Inject constructor(
 
             result.fold(
                 onSuccess = { completion ->
-                    val generatedResponse = completion.text
+                    val generatedResponse = stripThinkingTags(completion.text)
                     Log.d(TAG, "AI generated response: $generatedResponse")
-                    if (isGarbageTitle(generatedResponse)) {
+                    if (generatedResponse.isBlank() || isGarbageTitle(generatedResponse)) {
                         Log.w(TAG, "Garbage title detected, using fallback")
                         val fallbackTitle = generateFallbackTitle(userMessage)
                         conversationRepository.updateConversationTitle(conversationId, fallbackTitle)
+                        conversationRepository.updateConversationTitleGenerationMetadata(
+                            conversationId = conversationId,
+                            providerId = completion.providerId,
+                            modelName = completion.modelId,
+                            generatedAt = System.currentTimeMillis()
+                        )
                         Result.success(fallbackTitle)
                     } else {
                         val parsed = parseEmojiAndTitle(generatedResponse)
@@ -167,6 +181,12 @@ class GenerateConversationTitleUseCase @Inject constructor(
                     val fallbackTitle = generateFallbackTitle(userMessage)
                     Log.d(TAG, "Using fallback title: $fallbackTitle")
                     conversationRepository.updateConversationTitle(conversationId, fallbackTitle)
+                    conversationRepository.updateConversationTitleGenerationMetadata(
+                        conversationId = conversationId,
+                        providerId = provider.id,
+                        modelName = modelToUse,
+                        generatedAt = System.currentTimeMillis()
+                    )
                     Result.success(fallbackTitle)
                 }
             )
@@ -198,6 +218,14 @@ class GenerateConversationTitleUseCase @Inject constructor(
                 modelId = localModelId
             )
         }
+    }
+
+    private fun stripThinkingTags(raw: String): String {
+        return raw
+            .replace(Regex("(?is)<think>.*?</think>"), "")
+            .replace(Regex("(?is)<think>.*"), "")
+            .replace(Regex("(?is)</think>"), "")
+            .trim()
     }
 
     private fun buildTitlePrompt(userMessage: String, assistantResponse: String): String {
