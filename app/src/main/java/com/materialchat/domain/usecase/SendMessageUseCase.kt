@@ -618,9 +618,16 @@ class SendMessageUseCase @Inject constructor(
                     model = modelToUse,
                     systemPrompt = BRANCH_TITLE_SYSTEM_PROMPT,
                     reasoningEffort = ReasoningEffort.NONE
-                )
+                ).map { generated ->
+                    BranchTitleCompletion(
+                        text = generated,
+                        providerId = provider.id,
+                        modelId = modelToUse
+                    )
+                }
 
-            result.onSuccess { generatedResponse ->
+            result.onSuccess { completion ->
+                val generatedResponse = completion.text
                 if (isGarbageTitleResponse(generatedResponse)) {
                     val fallbackTitle = generateTitleFromMessage(userMessage)
                     conversationRepository.updateConversationTitle(conversationId, fallbackTitle)
@@ -630,6 +637,12 @@ class SendMessageUseCase @Inject constructor(
                         conversationId,
                         parsed.title,
                         parsed.icon
+                    )
+                    conversationRepository.updateConversationTitleGenerationMetadata(
+                        conversationId = conversationId,
+                        providerId = completion.providerId,
+                        modelName = completion.modelId,
+                        generatedAt = System.currentTimeMillis()
                     )
                 }
             }.onFailure {
@@ -659,8 +672,8 @@ class SendMessageUseCase @Inject constructor(
         return (providerId.ifBlank { null }) to modelId
     }
 
-    private suspend fun generateBranchTitleWithPreferredLocalModel(prompt: String): Result<String> {
-        if (!appPreferences.preferOnDeviceTitleModel.first()) {
+    private suspend fun generateBranchTitleWithPreferredLocalModel(prompt: String): Result<BranchTitleCompletion> {
+        if (!appPreferences.preferOnDeviceBackgroundTasks.first()) {
             return Result.failure(IllegalStateException("On-device title generation is disabled"))
         }
         val localModelId = localModelRepository.preferredTitleModelIdOrNull()
@@ -669,7 +682,13 @@ class SendMessageUseCase @Inject constructor(
             modelId = localModelId,
             prompt = prompt,
             systemPrompt = BRANCH_TITLE_SYSTEM_PROMPT
-        )
+        ).map { generated ->
+            BranchTitleCompletion(
+                text = generated,
+                providerId = if (localModelId.startsWith("aicore/")) "local-gemini-nano" else "local-litert-lm",
+                modelId = localModelId
+            )
+        }
     }
 
     /**
@@ -878,6 +897,12 @@ class SendMessageUseCase @Inject constructor(
     }
 
     private data class BranchTitleResult(val title: String, val icon: String?)
+
+    private data class BranchTitleCompletion(
+        val text: String,
+        val providerId: String?,
+        val modelId: String
+    )
 
     /** System instruction for branch title generation. */
     private companion object {

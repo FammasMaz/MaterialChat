@@ -159,6 +159,9 @@ fun OnDeviceModelsScreen(
                     OnDeviceModelsHero()
                 }
                 item {
+                    RuntimeMemoryStatusCard(models = uiState.models)
+                }
+                item {
                     ModelDownloadGuideCard(
                         onOpenLink = { url -> uriHandler.openUri(url) }
                     )
@@ -390,6 +393,56 @@ private fun HuggingFaceTokenCard(
                     enabled = token.isNotBlank()
                 )
             }
+        }
+    }
+}
+
+@Composable
+private fun RuntimeMemoryStatusCard(models: List<LocalModelState>) {
+    val mounted = models.firstOrNull { it.isMountedInRam }
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = CustomShapes.ProviderCard,
+        colors = CardDefaults.cardColors(
+            containerColor = if (mounted != null) {
+                MaterialTheme.colorScheme.tertiaryContainer
+            } else {
+                MaterialTheme.colorScheme.surfaceContainerHigh
+            },
+            contentColor = if (mounted != null) {
+                MaterialTheme.colorScheme.onTertiaryContainer
+            } else {
+                MaterialTheme.colorScheme.onSurface
+            }
+        )
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            Text(
+                text = "Runtime memory",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold
+            )
+            Text(
+                text = mounted?.let { "Mounted in RAM: ${it.descriptor.displayName}" }
+                    ?: "No local model is currently mounted in RAM",
+                style = MaterialTheme.typography.bodyMedium
+            )
+            Text(
+                text = if (mounted != null) {
+                    "Use the Unmount button on that model card if local generation gets stuck."
+                } else {
+                    "A model appears here after the first successful local chat/title generation load."
+                },
+                style = MaterialTheme.typography.bodySmall,
+                color = if (mounted != null) {
+                    MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.78f)
+                } else {
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                }
+            )
         }
     }
 }

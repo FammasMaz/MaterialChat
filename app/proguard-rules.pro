@@ -54,6 +54,20 @@
 -keep class com.google.crypto.tink.** { *; }
 -dontwarn com.google.crypto.tink.**
 
+
+# LiteRT-LM uses JNI callbacks by exact Java method name (for example
+# JniMessageCallback.onMessage(String) and onDone()). If R8 obfuscates these
+# classes/methods, nativeSendMessageAsync aborts the process with NoSuchMethodError.
+-keep class com.google.ai.edge.litertlm.** { *; }
+-keepclassmembers class com.google.ai.edge.litertlm.** { *; }
+-dontwarn com.google.ai.edge.litertlm.**
+
+# Keep any Java methods declared native and the classes that own them. This is
+# a general JNI safety net for bundled native ML libraries.
+-keepclasseswithmembers class * {
+    native <methods>;
+}
+
 # MediaPipe GenAI bundles lite protobuf annotations that are optional at runtime.
 -dontwarn com.google.protobuf.Internal$ProtoMethodMayReturnNull
 -dontwarn com.google.protobuf.Internal$ProtoNonnullApi

@@ -1,9 +1,14 @@
 package com.materialchat.ui.components
 
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectDragGestures
@@ -119,11 +124,24 @@ fun ExpressiveFastScrollBar(
         animationSpec = tween(durationMillis = 220, easing = FastOutSlowInEasing),
         label = "fastScrollSquiggle"
     )
+    val snakeTransition = rememberInfiniteTransition(label = "fastScrollSnake")
+    val snakePhase by snakeTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 2f * PI.toFloat(),
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 680, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "fastScrollSnakePhase"
+    )
 
     BoxWithConstraints(
         modifier = modifier
             .fillMaxHeight()
-            .width(expandedWidth + paddingEnd)
+            .width(
+                expandedWidth + paddingEnd +
+                    if (dragLabelProvider != null) dragLabelMaxWidth + dragLabelGap else 0.dp
+            )
     ) {
         val constraintsMaxWidth = maxWidth
         val maxHeightPx = with(density) { maxHeight.toPx() }
@@ -257,10 +275,13 @@ fun ExpressiveFastScrollBar(
         val primaryColor = MaterialTheme.colorScheme.primary
         val trackColor = MaterialTheme.colorScheme.secondaryContainer
 
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .pointerInput(Unit) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.CenterEnd)
+                    .fillMaxHeight()
+                    .width(expandedWidth + paddingEnd)
+                    .pointerInput(Unit) {
                     detectTapGestures(
                         onPress = {
                             isPressed = true
@@ -305,10 +326,10 @@ fun ExpressiveFastScrollBar(
                         }
                     )
                 }
-        ) {
-            val rightAnchorX = with(density) { (constraintsMaxWidth - paddingEnd).toPx() }
-            val trackX = rightAnchorX - with(density) { thickness.toPx() / 2f }
-            val rightCornerRadius = with(density) { 6.dp.toPx() }
+            ) {
+                val rightAnchorX = with(density) { expandedWidth.toPx() }
+                val trackX = rightAnchorX - with(density) { thickness.toPx() / 2f }
+                val rightCornerRadius = with(density) { 6.dp.toPx() }
 
             Canvas(modifier = Modifier.fillMaxSize()) {
                 val stats = metrics()
@@ -356,7 +377,8 @@ fun ExpressiveFastScrollBar(
                         centerX = currentIndicatorX + indicatorWidth / 2f,
                         top = handleY + indicatorWidth / 2f,
                         bottom = handleY + handleHeight - indicatorWidth / 2f,
-                        amplitude = (indicatorWidth * waveStrength).coerceAtLeast(3f) * squiggleAmount
+                        amplitude = (indicatorWidth * waveStrength).coerceAtLeast(3f) * squiggleAmount,
+                        phaseOffset = snakePhase
                     )
                     drawPath(
                         path = indicatorPath,
@@ -393,7 +415,7 @@ fun ExpressiveFastScrollBar(
                             val iconSizePx = with(density) { 24.dp.toPx() }
                             val paddingEndPx = with(density) { paddingEnd.toPx() }
                             val animatedWidthPx = with(density) { animatedWidth.toPx() }
-                            val maxWidthPx = with(density) { constraintsMaxWidth.toPx() }
+                            val maxWidthPx = with(density) { (expandedWidth + paddingEnd).toPx() }
                             IntOffset(
                                 x = (maxWidthPx - paddingEndPx - (animatedWidthPx / 2f) - (iconSizePx / 2f)).toInt(),
                                 y = (handleY + (minHeightPx / 2f) - (iconSizePx / 2f)).toInt()
@@ -406,6 +428,8 @@ fun ExpressiveFastScrollBar(
                             scaleY = iconAlpha
                         }
                 )
+            }
+
             }
 
             val label = activeDragLabel ?: retainedDragLabel
@@ -424,10 +448,11 @@ fun ExpressiveFastScrollBar(
                             val animatedWidthPx = with(density) { animatedWidth.toPx() }
                             val maxWidthPx = with(density) { constraintsMaxWidth.toPx() }
                             val indicatorX = maxWidthPx - paddingEndPx - animatedWidthPx
-                            IntOffset(
-                                x = (indicatorX - labelWidthPx - labelGapPx - labelSlidePx).toInt(),
-                                y = (handleY + (minHeightPx / 2f) - (labelHeightPx / 2f)).toInt()
-                            )
+                            val x = (indicatorX - labelWidthPx - labelGapPx - labelSlidePx)
+                                .coerceAtLeast(0f)
+                            val y = (handleY + (minHeightPx / 2f) - (labelHeightPx / 2f))
+                                .coerceIn(0f, (maxHeightPx - labelHeightPx).coerceAtLeast(0f))
+                            IntOffset(x = x.toInt(), y = y.toInt())
                         }
                         .width(dragLabelMaxWidth)
                         .heightIn(min = dragLabelMinHeight)
@@ -466,7 +491,8 @@ private fun Path.addVerticalSquiggle(
     centerX: Float,
     top: Float,
     bottom: Float,
-    amplitude: Float
+    amplitude: Float,
+    phaseOffset: Float
 ) {
     val safeTop = top.coerceAtMost(bottom)
     val safeBottom = bottom.coerceAtLeast(top)
@@ -476,7 +502,7 @@ private fun Path.addVerticalSquiggle(
 
     var y = safeTop
     while (y <= safeBottom) {
-        val phase = ((y - safeTop) / waveLength) * (2f * PI.toFloat())
+        val phase = ((y - safeTop) / waveLength) * (2f * PI.toFloat()) + phaseOffset
         val x = centerX + sin(phase.toDouble()).toFloat() * amplitude
         lineTo(x, y)
         y += 3.5f

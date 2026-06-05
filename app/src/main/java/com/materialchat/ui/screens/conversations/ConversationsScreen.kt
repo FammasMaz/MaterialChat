@@ -907,7 +907,7 @@ private fun ConversationMetadataDialog(
             append(titleModel)
         }
     } else {
-        "Not recorded yet"
+        "Not recorded yet — retry/regenerate the title to capture the source"
     }
 
     AlertDialog(
