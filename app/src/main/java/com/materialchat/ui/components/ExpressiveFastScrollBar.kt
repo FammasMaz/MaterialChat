@@ -39,10 +39,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Rect
-import androidx.compose.ui.geometry.RoundRect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
@@ -116,7 +113,9 @@ fun ExpressiveFastScrollBar(
         label = "fastScrollIconAlpha"
     )
     val squiggleAmount by animateFloatAsState(
-        targetValue = if (isDragging || listState.isScrollInProgress) 1f else 0f,
+        // Only wave during free scroll/fling. While the user is touching the bar
+        // (pressed or dragging) the handle smoothly settles into a solid grip.
+        targetValue = if (!isDragging && !isPressed && listState.isScrollInProgress) 1f else 0f,
         animationSpec = spring(
             dampingRatio = 1f,
             stiffness = 500f
@@ -349,7 +348,6 @@ fun ExpressiveFastScrollBar(
             ) {
                 val rightAnchorX = with(density) { expandedWidth.toPx() }
                 val trackX = rightAnchorX - with(density) { thickness.toPx() / 2f }
-                val rightCornerRadius = with(density) { 6.dp.toPx() }
 
             Canvas(modifier = Modifier.fillMaxSize()) {
                 val stats = metrics()
@@ -360,8 +358,6 @@ fun ExpressiveFastScrollBar(
                 val indicatorWidth = animatedWidth.toPx()
                 val gap = trackGap.toPx()
                 val currentIndicatorX = rightAnchorX - indicatorWidth
-                val leftRadius = indicatorWidth / 2f
-                val resolvedRightRadius = rightCornerRadius.coerceAtMost(indicatorWidth / 2f)
 
                 if (handleY > gap) {
                     drawLine(
@@ -382,44 +378,28 @@ fun ExpressiveFastScrollBar(
                     )
                 }
 
+                // Always draw the handle as a stroked path with round caps. When the
+                // wave amplitude is zero this renders a clean stadium-shaped handle;
+                // as it grows it morphs into the squiggle. Round caps + tapered ends
+                // keep the rounded tips fixed so they never get cut off mid-wiggle.
                 indicatorPath.reset()
-                val rect = Rect(
-                    offset = Offset(currentIndicatorX, handleY),
-                    size = Size(indicatorWidth, handleHeight)
+                val waveStrength = 0.26f
+                val amplitude = indicatorWidth * waveStrength * squiggleAmount
+                indicatorPath.addVerticalSquiggle(
+                    centerX = currentIndicatorX + indicatorWidth / 2f,
+                    top = handleY + indicatorWidth / 2f,
+                    bottom = handleY + handleHeight - indicatorWidth / 2f,
+                    amplitude = amplitude,
+                    phaseOffset = scrollDrivenPhase
                 )
-                if (squiggleAmount > 0.02f) {
-                    val waveStrength = when {
-                        isDragging -> 0.42f
-                        isPressed -> 0.34f
-                        else -> 0.26f
-                    }
-                    indicatorPath.addVerticalSquiggle(
-                        centerX = currentIndicatorX + indicatorWidth / 2f,
-                        top = handleY + indicatorWidth / 2f,
-                        bottom = handleY + handleHeight - indicatorWidth / 2f,
-                        amplitude = (indicatorWidth * waveStrength).coerceAtLeast(3f) * squiggleAmount,
-                        phaseOffset = scrollDrivenPhase
+                drawPath(
+                    path = indicatorPath,
+                    color = primaryColor,
+                    style = Stroke(
+                        width = indicatorWidth,
+                        cap = StrokeCap.Round
                     )
-                    drawPath(
-                        path = indicatorPath,
-                        color = primaryColor,
-                        style = Stroke(
-                            width = indicatorWidth,
-                            cap = StrokeCap.Round
-                        )
-                    )
-                } else {
-                    indicatorPath.addRoundRect(
-                        RoundRect(
-                            rect = rect,
-                            topLeft = CornerRadius(leftRadius, leftRadius),
-                            bottomLeft = CornerRadius(leftRadius, leftRadius),
-                            topRight = CornerRadius(resolvedRightRadius, resolvedRightRadius),
-                            bottomRight = CornerRadius(resolvedRightRadius, resolvedRightRadius)
-                        )
-                    )
-                    drawPath(indicatorPath, primaryColor)
-                }
+                )
             }
 
             if (iconAlpha > 0f) {
@@ -518,16 +498,31 @@ private fun Path.addVerticalSquiggle(
     val safeBottom = bottom.coerceAtLeast(top)
     val height = (safeBottom - safeTop).coerceAtLeast(1f)
     val waveLength = (height / 2.1f).coerceAtLeast(18f)
+    // Fraction of the handle over which the wave fades in/out at each end. This
+    // pins the start and end points to centerX so the round caps stay fixed and
+    // the rounded ends never get clipped while the middle still squiggles.
+    val edge = 0.2f
     moveTo(centerX, safeTop)
 
     var y = safeTop
     while (y <= safeBottom) {
+        val t = (y - safeTop) / height
+        val envelope = when {
+            t < edge -> smoothStep(t / edge)
+            t > 1f - edge -> smoothStep((1f - t) / edge)
+            else -> 1f
+        }
         val phase = ((y - safeTop) / waveLength) * (2f * PI.toFloat()) + phaseOffset
-        val x = centerX + sin(phase.toDouble()).toFloat() * amplitude
+        val x = centerX + sin(phase.toDouble()).toFloat() * amplitude * envelope
         lineTo(x, y)
         y += 3.5f
     }
     lineTo(centerX, safeBottom)
+}
+
+private fun smoothStep(x: Float): Float {
+    val clamped = x.coerceIn(0f, 1f)
+    return clamped * clamped * (3f - 2f * clamped)
 }
 
 private fun Float.positiveModulo(modulus: Float): Float {
