@@ -212,12 +212,18 @@ class ChatViewModel @Inject constructor(
                         } else {
                             StreamingState.Idle
                         }
-                        val availableModels = if (currentState is ChatUiState.Success) {
-                            currentState.availableModels
+                        // Model lists are scoped to the current conversation/provider.
+                        // Clear cached models when switching conversations or when the
+                        // cached list no longer matches the conversation's provider.
+                        val cachedModels = (currentState as? ChatUiState.Success)?.availableModels.orEmpty()
+                        val modelsMatchConversationProvider = cachedModels.isEmpty() ||
+                            cachedModels.all { it.providerId == conversation.providerId }
+                        val availableModels = if (isSameConversation && modelsMatchConversationProvider) {
+                            cachedModels
                         } else {
                             emptyList()
                         }
-                        val isLoadingModels = if (currentState is ChatUiState.Success) {
+                        val isLoadingModels = if (isSameConversation && modelsMatchConversationProvider) {
                             currentState.isLoadingModels
                         } else {
                             false
@@ -961,15 +967,26 @@ class ChatViewModel @Inject constructor(
                     return@launch
                 }
 
-                val providers = manageProvidersUseCase.getProviders()
-                val failures = mutableListOf<String>()
-                val models = providers.flatMap { provider ->
-                    manageProvidersUseCase.fetchModels(provider.id)
-                        .onFailure { error -> failures += "${provider.name}: ${error.message ?: "fetch failed"}" }
-                        .getOrElse { emptyList() }
-                        .filterNot { isImageGenerationModelId(it.id) }
-                        .map { model -> model.copy(providerId = provider.id) }
-                }.distinctBy { it.providerId to it.id }
+                val provider = manageProvidersUseCase.getProvider(conversation.providerId)
+                if (provider == null) {
+                    val updatedState = _uiState.value
+                    if (updatedState is ChatUiState.Success) {
+                        _uiState.value = updatedState.withUpdatedContextWindowUsage(
+                            availableModels = emptyList()
+                        ).copy(isLoadingModels = false)
+                    }
+                    _events.emit(
+                        ChatEvent.ShowSnackbar(
+                            message = "Current provider is missing. Check provider settings."
+                        )
+                    )
+                    return@launch
+                }
+
+                val modelsResult = manageProvidersUseCase.fetchModels(provider.id)
+                val models = modelsResult.getOrElse { emptyList() }
+                    .filterNot { isImageGenerationModelId(it.id) }
+                    .map { model -> model.copy(providerId = provider.id) }
 
                 val updatedState = _uiState.value
                 if (updatedState is ChatUiState.Success) {
@@ -978,10 +995,10 @@ class ChatViewModel @Inject constructor(
                     ).copy(isLoadingModels = false)
                 }
 
-                if (models.isEmpty() && failures.isNotEmpty()) {
+                modelsResult.exceptionOrNull()?.let { error ->
                     _events.emit(
                         ChatEvent.ShowSnackbar(
-                            message = "Failed to load models: ${failures.joinToString("; ")}"
+                            message = "Failed to load models for ${provider.name}: ${error.message ?: "fetch failed"}"
                         )
                     )
                 }
