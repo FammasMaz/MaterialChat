@@ -386,10 +386,9 @@ private fun TaskAssignmentCard(
         }
     }
 
-    val manualProviderLabel = when (manualProviderId) {
-        null -> "Conversation's provider"
-        else -> providers.firstOrNull { it.id == manualProviderId }?.name ?: manualProviderId
-    }
+    val manualProviderLabel = manualProviderId?.let { id ->
+        providers.firstOrNull { it.id == id }?.name ?: id
+    } ?: "Conversation's provider"
     val manualDirty = manualModel.trim() != currentModelId.trim() ||
         manualProviderId != currentProviderId
 
