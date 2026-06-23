@@ -19,6 +19,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.CancellationException
 import javax.inject.Inject
 
 @HiltViewModel
@@ -97,6 +98,16 @@ class ModelAssignmentsViewModel @Inject constructor(
         viewModelScope.launch {
             manageProvidersUseCase.observeProviders().collect { list ->
                 _providers.value = list
+                // Models can't load until providers are known. The eager loadCloudModels()
+                // below usually runs before providers arrive, so kick off a load the first
+                // time we see a non-empty provider list — otherwise the picker stays empty
+                // until the user manually taps Refresh.
+                if (list.isNotEmpty() &&
+                    !_pickerState.value.hasLoaded &&
+                    !_pickerState.value.isLoading
+                ) {
+                    loadCloudModels()
+                }
             }
         }
         viewModelScope.launch {
@@ -117,7 +128,16 @@ class ModelAssignmentsViewModel @Inject constructor(
             val results = mutableMapOf<String, List<AiModel>>()
             val failures = mutableListOf<String>()
             for (provider in providers) {
-                manageProvidersUseCase.fetchModels(provider.id)
+                // fetchModels is hardened to return Result.failure, but guard per-provider
+                // anyway so one unexpected throw can never abort the loop or crash the app.
+                val result = try {
+                    manageProvidersUseCase.fetchModels(provider.id)
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    Result.failure(e)
+                }
+                result
                     .onSuccess { models ->
                         if (models.isNotEmpty()) {
                             results[provider.id] = models.sortedBy { it.name }

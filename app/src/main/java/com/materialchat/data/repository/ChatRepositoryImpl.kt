@@ -158,22 +158,30 @@ class ChatRepositoryImpl @Inject constructor(
         provider: Provider,
         apiKeyOverride: String?
     ): Result<List<AiModel>> {
-        if (provider.type.isOnDevice) {
-            val backend = when (provider.type) {
-                ProviderType.LITERT_LM_LOCAL -> LocalModelBackend.LITERT_LM
-                ProviderType.AICORE_GEMINI_NANO -> LocalModelBackend.AICORE_GEMINI_NANO
-                else -> LocalModelBackend.LITERT_LM
+        // Never let credential retrieval / local model lookups escape as a throw —
+        // callers (model picker refresh) treat this as a Result, and an uncaught
+        // throw here crashes the app and aborts the per-provider load loop.
+        return try {
+            if (provider.type.isOnDevice) {
+                val backend = when (provider.type) {
+                    ProviderType.LITERT_LM_LOCAL -> LocalModelBackend.LITERT_LM
+                    ProviderType.AICORE_GEMINI_NANO -> LocalModelBackend.AICORE_GEMINI_NANO
+                    else -> LocalModelBackend.LITERT_LM
+                }
+                Result.success(localModelRepository.fetchAvailableAiModels(provider.id, backend))
+            } else {
+                val apiKey = if (!apiKeyOverride.isNullOrBlank()) {
+                    apiKeyOverride
+                } else {
+                    getProviderCredential(provider)
+                }
+                modelListApiClient.fetchModels(provider, apiKey)
             }
-            return Result.success(localModelRepository.fetchAvailableAiModels(provider.id, backend))
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Result.failure(e)
         }
-
-        val apiKey = if (!apiKeyOverride.isNullOrBlank()) {
-            apiKeyOverride
-        } else {
-            getProviderCredential(provider)
-        }
-
-        return modelListApiClient.fetchModels(provider, apiKey)
     }
 
     override fun cancelStreaming() {

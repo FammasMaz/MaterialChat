@@ -29,6 +29,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.CancellationException
 import javax.inject.Inject
 
 /**
@@ -87,7 +88,13 @@ class SettingsViewModel @Inject constructor(
             val results = mutableMapOf<String, List<com.materialchat.domain.model.AiModel>>()
             val failures = mutableListOf<String>()
             for (provider in providers) {
-                val res = manageProvidersUseCase.fetchModels(provider.id)
+                val res = try {
+                    manageProvidersUseCase.fetchModels(provider.id)
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    Result.failure(e)
+                }
                 res.onSuccess { models ->
                     if (models.isNotEmpty()) {
                         results[provider.id] = models.sortedBy { it.name }

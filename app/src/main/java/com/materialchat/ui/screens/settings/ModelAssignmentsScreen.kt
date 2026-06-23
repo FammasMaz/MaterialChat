@@ -18,6 +18,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material.icons.outlined.Memory
@@ -150,7 +151,7 @@ fun ModelAssignmentsScreen(
                         pickerState = uiState.pickerState,
                         aiTitlesEnabled = uiState.aiGeneratedTitlesEnabled,
                         onAiTitlesChange = viewModel::setAiGeneratedTitles,
-                        onLoadModels = { viewModel.loadCloudModels() },
+                        onLoadModels = { viewModel.loadCloudModels(force = true) },
                         onAssign = { providerId, modelId ->
                             viewModel.setTitleModel(providerId, modelId)
                         }
@@ -166,7 +167,7 @@ fun ModelAssignmentsScreen(
                         enabled = true,
                         disabledHint = null,
                         automaticLabel = "Automatic (on-device if available, else chat model)",
-                        onLoadModels = { viewModel.loadCloudModels() },
+                        onLoadModels = { viewModel.loadCloudModels(force = true) },
                         onAssign = { providerId, modelId ->
                             viewModel.setMemoryModel(providerId, modelId)
                         },
@@ -371,6 +372,10 @@ private fun TaskAssignmentCard(
         TaskModelAssignmentCodec.decode(currentRaw)
     }
     var menuExpanded by remember { mutableStateOf(false) }
+    var manualMode by remember { mutableStateOf(false) }
+    var manualModel by remember(currentRaw) { mutableStateOf(currentModelId) }
+    var manualProviderId by remember(currentRaw) { mutableStateOf(currentProviderId) }
+    var providerMenuExpanded by remember { mutableStateOf(false) }
     val providerName = providers.firstOrNull { it.id == currentProviderId }?.name
     val selectedLabel = TaskModelAssignmentCodec.displayLabel(currentRaw, providerName)
         .let { if (currentRaw.isBlank()) automaticLabel else it }
@@ -380,6 +385,13 @@ private fun TaskAssignmentCard(
             (pickerState.modelsByProvider[p.id] ?: emptyList()).map { m -> p to m }
         }
     }
+
+    val manualProviderLabel = when (manualProviderId) {
+        null -> "Conversation's provider"
+        else -> providers.firstOrNull { it.id == manualProviderId }?.name ?: manualProviderId
+    }
+    val manualDirty = manualModel.trim() != currentModelId.trim() ||
+        manualProviderId != currentProviderId
 
     AssignmentSectionCard(
         title = task.title,
@@ -421,70 +433,178 @@ private fun TaskAssignmentCard(
                 color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.clickable(enabled = !pickerState.isLoading) { onLoadModels() }
             )
+            Spacer(modifier = Modifier.width(12.dp))
+            Text(
+                text = if (manualMode) "Pick from list" else "Enter manually",
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.clickable(enabled = enabled) { manualMode = !manualMode }
+            )
         }
         Spacer(modifier = Modifier.height(8.dp))
-        Surface(
-            modifier = Modifier
-                .fillMaxWidth()
-                .defaultMinSize(minHeight = 48.dp)
-                .clickable(enabled = enabled) { menuExpanded = true },
-            shape = RoundedCornerShape(16.dp),
-            color = MaterialTheme.colorScheme.surfaceContainerHighest,
-            tonalElevation = 0.dp
-        ) {
-            Row(
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
-                verticalAlignment = Alignment.CenterVertically
+
+        if (manualMode) {
+            Text(
+                text = "Provider",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .defaultMinSize(minHeight = 48.dp)
+                    .clickable(enabled = enabled) { providerMenuExpanded = true },
+                shape = RoundedCornerShape(16.dp),
+                color = MaterialTheme.colorScheme.surfaceContainerHighest,
+                tonalElevation = 0.dp
             ) {
-                Text(
-                    text = selectedLabel,
-                    style = MaterialTheme.typography.bodyLarge,
-                    modifier = Modifier.weight(1f),
-                    color = if (enabled) {
-                        MaterialTheme.colorScheme.onSurface
-                    } else {
-                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                Row(
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = manualProviderLabel,
+                        style = MaterialTheme.typography.bodyLarge,
+                        modifier = Modifier.weight(1f),
+                        color = if (enabled) {
+                            MaterialTheme.colorScheme.onSurface
+                        } else {
+                            MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                        }
+                    )
+                    Icon(
+                        imageVector = Icons.Filled.ArrowDropDown,
+                        contentDescription = "Expand"
+                    )
+                }
+            }
+            DropdownMenu(
+                expanded = providerMenuExpanded && enabled,
+                onDismissRequest = { providerMenuExpanded = false },
+                modifier = Modifier.fillMaxWidth(0.92f)
+            ) {
+                DropdownMenuItem(
+                    text = { Text("Conversation's provider") },
+                    onClick = {
+                        providerMenuExpanded = false
+                        manualProviderId = null
                     }
                 )
+                HorizontalDivider()
+                providers.forEach { p ->
+                    DropdownMenuItem(
+                        text = { Text(p.name) },
+                        onClick = {
+                            providerMenuExpanded = false
+                            manualProviderId = p.id
+                        }
+                    )
+                }
+                if (providers.isEmpty()) {
+                    DropdownMenuItem(
+                        text = { Text("No providers configured — add one in Settings") },
+                        onClick = { providerMenuExpanded = false },
+                        enabled = false
+                    )
+                }
             }
-        }
-        DropdownMenu(
-            expanded = menuExpanded && enabled,
-            onDismissRequest = { menuExpanded = false },
-            modifier = Modifier.fillMaxWidth(0.92f)
-        ) {
-            DropdownMenuItem(
-                text = { Text(automaticLabel) },
-                onClick = {
-                    menuExpanded = false
-                    onAssign(null, "")
-                }
+            Spacer(modifier = Modifier.height(8.dp))
+            OutlinedTextField(
+                value = manualModel,
+                onValueChange = { manualModel = it },
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                label = { Text("Model id") },
+                placeholder = { Text("e.g., gpt-4o-mini or llama3.2:1b") },
+                singleLine = true,
+                enabled = enabled
             )
-            DropdownMenuItem(
-                text = { Text("Use chat model") },
-                onClick = {
-                    menuExpanded = false
-                    onAssign(null, TaskModelAssignmentCodec.chatModel())
-                }
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = "Use this when the model list won't load. The id must match what your provider expects.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-            HorizontalDivider()
-            allModels.forEach { (provider, model) ->
-                DropdownMenuItem(
-                    text = {
-                        Text("${provider.name} · ${model.name}")
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End
+            ) {
+                ExpressiveButton(
+                    onClick = {
+                        onAssign(manualProviderId, manualModel.trim())
+                        manualMode = false
                     },
+                    enabled = enabled && manualModel.trim().isNotBlank() && manualDirty,
+                    text = "Save",
+                    style = ExpressiveButtonStyle.FilledTonal
+                )
+            }
+        } else {
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .defaultMinSize(minHeight = 48.dp)
+                    .clickable(enabled = enabled) { menuExpanded = true },
+                shape = RoundedCornerShape(16.dp),
+                color = MaterialTheme.colorScheme.surfaceContainerHighest,
+                tonalElevation = 0.dp
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = selectedLabel,
+                        style = MaterialTheme.typography.bodyLarge,
+                        modifier = Modifier.weight(1f),
+                        color = if (enabled) {
+                            MaterialTheme.colorScheme.onSurface
+                        } else {
+                            MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                        }
+                    )
+                }
+            }
+            DropdownMenu(
+                expanded = menuExpanded && enabled,
+                onDismissRequest = { menuExpanded = false },
+                modifier = Modifier.fillMaxWidth(0.92f)
+            ) {
+                DropdownMenuItem(
+                    text = { Text(automaticLabel) },
                     onClick = {
                         menuExpanded = false
-                        onAssign(provider.id, model.id)
+                        onAssign(null, "")
                     }
                 )
-            }
-            if (allModels.isEmpty() && !pickerState.isLoading) {
                 DropdownMenuItem(
-                    text = { Text("No cloud models loaded — add a provider in Settings") },
-                    onClick = { menuExpanded = false },
-                    enabled = false
+                    text = { Text("Use chat model") },
+                    onClick = {
+                        menuExpanded = false
+                        onAssign(null, TaskModelAssignmentCodec.chatModel())
+                    }
                 )
+                HorizontalDivider()
+                allModels.forEach { (provider, model) ->
+                    DropdownMenuItem(
+                        text = {
+                            Text("${provider.name} · ${model.name}")
+                        },
+                        onClick = {
+                            menuExpanded = false
+                            onAssign(provider.id, model.id)
+                        }
+                    )
+                }
+                if (allModels.isEmpty() && !pickerState.isLoading) {
+                    DropdownMenuItem(
+                        text = { Text("No cloud models loaded — tap \"Enter manually\" or add a provider in Settings") },
+                        onClick = { menuExpanded = false },
+                        enabled = false
+                    )
+                }
             }
         }
         pickerState.error?.let { err ->

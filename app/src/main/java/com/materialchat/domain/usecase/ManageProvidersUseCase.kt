@@ -6,6 +6,7 @@ import com.materialchat.domain.model.ProviderType
 import com.materialchat.domain.repository.ChatRepository
 import com.materialchat.domain.repository.ProviderRepository
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.CancellationException
 import javax.inject.Inject
 
 /**
@@ -198,10 +199,18 @@ class ManageProvidersUseCase @Inject constructor(
      * @return A Result containing the list of models or an error
      */
     suspend fun fetchModels(providerId: String): Result<List<AiModel>> {
-        val provider = providerRepository.getProvider(providerId)
-            ?: return Result.failure(IllegalStateException("Provider not found: $providerId"))
-
-        return chatRepository.fetchModels(provider)
+        // Guard the whole call so a throwing provider (e.g. a failed native-auth
+        // token refresh) is reported as a failure instead of crashing the caller's
+        // coroutine and aborting the model-picker load loop.
+        return try {
+            val provider = providerRepository.getProvider(providerId)
+                ?: return Result.failure(IllegalStateException("Provider not found: $providerId"))
+            chatRepository.fetchModels(provider)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
     }
 
     /**
