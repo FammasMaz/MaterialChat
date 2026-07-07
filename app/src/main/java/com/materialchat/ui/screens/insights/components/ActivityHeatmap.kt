@@ -81,8 +81,12 @@ fun ActivityHeatmap(
             Spacer(modifier = Modifier.height(16.dp))
 
             // Build lookup map from date string -> count
-            val activityMap = dailyActivity.associate { it.date to it.count }
-            val maxCount = dailyActivity.maxOfOrNull { it.count } ?: 1
+            val activityMap = remember(dailyActivity) {
+                dailyActivity.associate { it.date to it.count }
+            }
+            val maxCount = remember(dailyActivity) {
+                dailyActivity.maxOfOrNull { it.count } ?: 1
+            }
 
             // Generate 13 weeks (91 days) ending today
             val today = LocalDate.now()
@@ -93,7 +97,7 @@ fun ActivityHeatmap(
             val adjustedStart = startDate.with(DayOfWeek.MONDAY)
             val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
 
-            val dayLabels = listOf("M", "", "W", "", "F", "", "S")
+            val dayLabels = remember { listOf("M", "", "W", "", "F", "", "S") }
 
             Row(
                 horizontalArrangement = Arrangement.spacedBy(3.dp),

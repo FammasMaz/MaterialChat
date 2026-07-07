@@ -13,6 +13,9 @@ import java.io.File
 object LocalModelCatalog {
     private const val MODELS_DIR = "local_models"
 
+    // Compiled once; modelFile() is called on every status check, download, and stream init.
+    private val UNSAFE_FILENAME_CHARS = Regex("[^A-Za-z0-9._-]")
+
     val models: List<LocalModelDescriptor> = listOf(
         LocalModelDescriptor(
             id = LocalModelIds.GEMMA3_1B_IT_INT4,
@@ -56,7 +59,7 @@ object LocalModelCatalog {
     fun descriptor(modelId: String): LocalModelDescriptor? = models.firstOrNull { it.id == modelId }
 
     fun modelFile(context: Context, descriptor: LocalModelDescriptor): File {
-        val safeId = descriptor.id.replace(Regex("[^A-Za-z0-9._-]"), "_")
+        val safeId = descriptor.id.replace(UNSAFE_FILENAME_CHARS, "_")
         val fileName = descriptor.filename ?: "model.bin"
         return File(File(context.filesDir, MODELS_DIR), "$safeId/$fileName")
     }

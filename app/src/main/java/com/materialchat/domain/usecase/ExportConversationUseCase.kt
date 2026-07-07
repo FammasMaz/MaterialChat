@@ -101,11 +101,16 @@ class ExportConversationUseCase @Inject constructor(
      */
     private fun sanitizeFilename(name: String): String {
         return name
-            .replace(Regex("[\\\\/:*?\"<>|]"), "_")
-            .replace(Regex("\\s+"), "_")
+            .replace(INVALID_FILENAME_CHARS, "_")
+            .replace(FILENAME_WHITESPACE, "_")
             .take(50)
             .trimEnd('_')
             .ifEmpty { "conversation" }
+    }
+
+    private companion object {
+        val INVALID_FILENAME_CHARS = Regex("[\\\\/:*?\"<>|]")
+        val FILENAME_WHITESPACE = Regex("\\s+")
     }
 }
 

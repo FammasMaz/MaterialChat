@@ -102,6 +102,9 @@ fun M3StreamingShapeIndicator(
         label = "shapeMorph"
     )
 
+    val morphPath = remember { Path() }
+    val morphVertices = remember { FloatArray(40) }
+
     Box(
         modifier = modifier.size(size),
         contentAlignment = Alignment.Center
@@ -141,7 +144,9 @@ fun M3StreamingShapeIndicator(
                     outerRadius = radius,
                     innerRadiusRatio = innerRadiusRatio,
                     points = points.toInt().coerceAtLeast(3),
-                    color = color
+                    color = color,
+                    path = morphPath,
+                    vertices = morphVertices
                 )
             }
         }
@@ -213,52 +218,52 @@ private fun DrawScope.drawMorphingShape(
     outerRadius: Float,
     innerRadiusRatio: Float,
     points: Int,
-    color: Color
+    color: Color,
+    path: Path,
+    vertices: FloatArray
 ) {
-    val path = Path()
+    path.rewind()
     val innerRadius = outerRadius * innerRadiusRatio
 
     val isStarShape = innerRadiusRatio < 0.99f
     val totalPoints = if (isStarShape) points * 2 else points
     val angleStep = (2 * PI / totalPoints).toFloat()
 
-    // Calculate all vertex positions
-    val vertices = mutableListOf<Pair<Float, Float>>()
+    // Reusable vertex buffer: [x0, y0, x1, y1, ...] — avoids per-frame list allocation.
     for (i in 0 until totalPoints) {
         val angle = (i * angleStep) - (PI / 2).toFloat()
         val r = if (isStarShape && i % 2 == 1) innerRadius else outerRadius
-        val x = centerX + r * cos(angle)
-        val y = centerY + r * sin(angle)
-        vertices.add(Pair(x, y))
+        vertices[i * 2] = centerX + r * cos(angle)
+        vertices[i * 2 + 1] = centerY + r * sin(angle)
     }
 
     // M3 Expressive: Use high smoothing for soft, rounded corners
     // Higher values = rounder, softer shapes (0.75-0.85 is ideal for M3)
     val smoothing = if (isStarShape) 0.75f else 0.8f
 
-    // Calculate midpoints for smooth curve starting
-    val firstMidX = (vertices[0].first + vertices[1].first) / 2
-    val firstMidY = (vertices[0].second + vertices[1].second) / 2
+    fun vx(i: Int) = vertices[(i % totalPoints) * 2]
+    fun vy(i: Int) = vertices[(i % totalPoints) * 2 + 1]
+
+    val firstMidX = (vx(0) + vx(1)) / 2
+    val firstMidY = (vy(0) + vy(1)) / 2
     path.moveTo(firstMidX, firstMidY)
 
     // Draw smooth curves using cubic bezier for M3 Expressive soft curves
-    for (i in vertices.indices) {
-        val current = vertices[(i + 1) % vertices.size]
-        val next = vertices[(i + 2) % vertices.size]
+    for (i in 0 until totalPoints) {
+        val curX = vx(i + 1)
+        val curY = vy(i + 1)
+        val nextX = vx(i + 2)
+        val nextY = vy(i + 2)
 
-        // Current midpoint (where we are)
-        val currentMidX = (vertices[i].first + current.first) / 2
-        val currentMidY = (vertices[i].second + current.second) / 2
+        val currentMidX = (vx(i) + curX) / 2
+        val currentMidY = (vy(i) + curY) / 2
+        val nextMidX = (curX + nextX) / 2
+        val nextMidY = (curY + nextY) / 2
 
-        // Next midpoint (where we're going)
-        val nextMidX = (current.first + next.first) / 2
-        val nextMidY = (current.second + next.second) / 2
-
-        // Control points - lerp between midpoint and vertex for smoothness
-        val cp1x = lerp(currentMidX, current.first, smoothing)
-        val cp1y = lerp(currentMidY, current.second, smoothing)
-        val cp2x = lerp(nextMidX, current.first, smoothing)
-        val cp2y = lerp(nextMidY, current.second, smoothing)
+        val cp1x = lerp(currentMidX, curX, smoothing)
+        val cp1y = lerp(currentMidY, curY, smoothing)
+        val cp2x = lerp(nextMidX, curX, smoothing)
+        val cp2y = lerp(nextMidY, curY, smoothing)
 
         path.cubicTo(cp1x, cp1y, cp2x, cp2y, nextMidX, nextMidY)
     }
@@ -366,53 +371,88 @@ fun M3TripleShapeIndicator(
         horizontalArrangement = Arrangement.spacedBy(spacing),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Three shape indicators with staggered animations
-        listOf(morphProgress1, morphProgress2, morphProgress3).forEach { progress ->
-            val normalizedProgress = progress % 3f  // Keep in 0-3 range
+        // Three shape indicators with staggered animations — extracted to a
+        // composable so each item owns a cached Path/FloatArray instead of
+        // allocating inside the per-frame draw lambda.
+        ShapeMorphItem(
+            rotation = rotation,
+            progress = morphProgress1,
+            color = color,
+            containerColor = containerColor,
+            shapeSize = shapeSize
+        )
+        ShapeMorphItem(
+            rotation = rotation,
+            progress = morphProgress2,
+            color = color,
+            containerColor = containerColor,
+            shapeSize = shapeSize
+        )
+        ShapeMorphItem(
+            rotation = rotation,
+            progress = morphProgress3,
+            color = color,
+            containerColor = containerColor,
+            shapeSize = shapeSize
+        )
+    }
+}
 
-            Box(
-                modifier = Modifier.size(shapeSize),
-                contentAlignment = Alignment.Center
-            ) {
-                // Container circle
-                Box(
-                    modifier = Modifier
-                        .size(shapeSize)
-                        .background(containerColor, CircleShape)
-                )
+@Composable
+private fun ShapeMorphItem(
+    rotation: Float,
+    progress: Float,
+    color: Color,
+    containerColor: Color,
+    shapeSize: Dp
+) {
+    val morphPath = remember { Path() }
+    val morphVertices = remember { FloatArray(40) }
+    val normalizedProgress = progress % 3f  // Keep in 0-3 range
 
-                // Morphing shape
-                Canvas(modifier = Modifier.size(shapeSize * 0.55f)) {
-                    val centerX = size.width / 2
-                    val centerY = size.height / 2
-                    val radius = minOf(size.width, size.height) / 2
+    Box(
+        modifier = Modifier.size(shapeSize),
+        contentAlignment = Alignment.Center
+    ) {
+        // Container circle
+        Box(
+            modifier = Modifier
+                .size(shapeSize)
+                .background(containerColor, CircleShape)
+        )
 
-                    rotate(rotation) {
-                        val (points, innerRadiusRatio) = when {
-                            normalizedProgress < 1f -> {
-                                val t = normalizedProgress
-                                Pair(lerp(10f, 5f, t), lerp(0.55f, 1f, t))
-                            }
-                            normalizedProgress < 2f -> {
-                                val t = normalizedProgress - 1f
-                                Pair(lerp(5f, 6f, t), 1f)
-                            }
-                            else -> {
-                                val t = normalizedProgress - 2f
-                                Pair(lerp(6f, 10f, t), lerp(1f, 0.55f, t))
-                            }
-                        }
+        // Morphing shape
+        Canvas(modifier = Modifier.size(shapeSize * 0.55f)) {
+            val centerX = size.width / 2
+            val centerY = size.height / 2
+            val radius = minOf(size.width, size.height) / 2
 
-                        drawMorphingShape(
-                            centerX = centerX,
-                            centerY = centerY,
-                            outerRadius = radius,
-                            innerRadiusRatio = innerRadiusRatio,
-                            points = points.toInt().coerceAtLeast(3),
-                            color = color
-                        )
+            rotate(rotation) {
+                val (points, innerRadiusRatio) = when {
+                    normalizedProgress < 1f -> {
+                        val t = normalizedProgress
+                        Pair(lerp(10f, 5f, t), lerp(0.55f, 1f, t))
+                    }
+                    normalizedProgress < 2f -> {
+                        val t = normalizedProgress - 1f
+                        Pair(lerp(5f, 6f, t), 1f)
+                    }
+                    else -> {
+                        val t = normalizedProgress - 2f
+                        Pair(lerp(6f, 10f, t), lerp(1f, 0.55f, t))
                     }
                 }
+
+                drawMorphingShape(
+                    centerX = centerX,
+                    centerY = centerY,
+                    outerRadius = radius,
+                    innerRadiusRatio = innerRadiusRatio,
+                    points = points.toInt().coerceAtLeast(3),
+                    color = color,
+                    path = morphPath,
+                    vertices = morphVertices
+                )
             }
         }
     }

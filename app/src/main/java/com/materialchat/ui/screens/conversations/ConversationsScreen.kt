@@ -1521,7 +1521,8 @@ private fun SearchResultsList(
     ) {
         items(
             items = results,
-            key = { it.id }
+            key = { it.id },
+            contentType = { "searchResult" }
         ) { item ->
             SearchResultItem(
                 item = item,

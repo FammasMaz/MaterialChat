@@ -65,19 +65,31 @@ private fun AmbientGradientField(modifier: Modifier = Modifier) {
     val primary = MaterialTheme.colorScheme.primary.copy(alpha = 0.16f)
     val secondary = MaterialTheme.colorScheme.secondary.copy(alpha = 0.12f)
     val tertiary = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.10f)
+    // Brushes depend only on theme colors (which change rarely), so remember
+    // them instead of rebuilding 3 RadialGradient shaders + 3 color lists on
+    // every draw pass. The gradient center/radius resolve from draw bounds.
+    val primaryBrush = remember(primary) {
+        Brush.radialGradient(listOf(primary, Color.Transparent))
+    }
+    val secondaryBrush = remember(secondary) {
+        Brush.radialGradient(listOf(secondary, Color.Transparent))
+    }
+    val tertiaryBrush = remember(tertiary) {
+        Brush.radialGradient(listOf(tertiary, Color.Transparent))
+    }
     Canvas(modifier = modifier.fillMaxSize()) {
         drawOval(
-            brush = Brush.radialGradient(listOf(primary, Color.Transparent)),
+            brush = primaryBrush,
             topLeft = Offset(size.width * 0.52f, -size.height * 0.18f),
             size = Size(size.width * 0.72f, size.height * 0.38f)
         )
         drawOval(
-            brush = Brush.radialGradient(listOf(secondary, Color.Transparent)),
+            brush = secondaryBrush,
             topLeft = Offset(-size.width * 0.24f, size.height * 0.12f),
             size = Size(size.width * 0.66f, size.height * 0.34f)
         )
         drawOval(
-            brush = Brush.radialGradient(listOf(tertiary, Color.Transparent)),
+            brush = tertiaryBrush,
             topLeft = Offset(size.width * 0.24f, size.height * 0.74f),
             size = Size(size.width * 0.84f, size.height * 0.34f)
         )

@@ -62,7 +62,7 @@ fun ModelUsageChart(
     modifier: Modifier = Modifier
 ) {
     val colors = chartColors()
-    val total = modelUsage.sumOf { it.count }.toFloat()
+    val total = remember(modelUsage) { modelUsage.sumOf { it.count }.toFloat() }
     val animationProgress = remember { Animatable(0f) }
 
     LaunchedEffect(modelUsage) {

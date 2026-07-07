@@ -1212,9 +1212,7 @@ class ChatApiClient(
         reader.lineSequence().forEach { line ->
             if (cancelled.get()) return
 
-            android.util.Log.d("ChatApiClient", "SSE line: $line")
             val event = sseEventParser.parseOpenAiEvent(line)
-            android.util.Log.d("ChatApiClient", "Parsed event: $event")
 
             when (event) {
                 is StreamingEvent.Done -> {
@@ -1228,7 +1226,6 @@ class ChatApiClient(
                 }
                 is StreamingEvent.Content -> {
                     hasContent = true
-                    android.util.Log.d("ChatApiClient", "Content chunk: '${event.content}'")
                     onEvent(event)
                 }
                 is StreamingEvent.Connected,
@@ -1244,7 +1241,6 @@ class ChatApiClient(
         // If stream ended naturally without explicit Done (some APIs combine content+finish in one chunk)
         // emit Done to properly finalize the message
         if (hasContent && !cancelled.get()) {
-            android.util.Log.d("ChatApiClient", "Stream ended, emitting implicit Done")
             onEvent(StreamingEvent.Done(model = lastModel))
         }
     }

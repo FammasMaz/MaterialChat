@@ -142,6 +142,29 @@ fun MindMapCanvas(
     val onSecondaryContainerColor = MaterialTheme.colorScheme.onSecondaryContainer
     val outlineVariantColor = MaterialTheme.colorScheme.outlineVariant
 
+    // Precomputed pixel constants — avoid per-frame dp.toPx() inside draw calls.
+    val strokePx = with(density) { 2.dp.toPx() }
+    val glowExpandPx = with(density) { 6.dp.toPx() }
+    val outlineWidthPx = with(density) { 3.dp.toPx() }
+    val textXPadPx = with(density) { 12.dp.toPx() }
+    val textYOffsetPx = with(density) { 2.dp.toPx() }
+    val titleTextSizePx = with(density) { 13.dp.toPx() }
+    val badgeTextSizePx = with(density) { 10.dp.toPx() }
+    val badgePadEndPx = with(density) { 10.dp.toPx() }
+    val badgePadBottomPx = with(density) { 8.dp.toPx() }
+
+    // Reusable Paint/Path objects — without this, every frame allocated one Path
+    // per edge and two Paints per node (2N+E allocations/frame).
+    val edgePath = remember { Path() }
+    val textPaint = remember { android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG) }
+    val badgePaint = remember { android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG) }
+    val typeface = remember {
+        android.graphics.Typeface.create(
+            android.graphics.Typeface.DEFAULT,
+            android.graphics.Typeface.NORMAL
+        )
+    }
+
     // Compute layout tree and derived flat/edge lists
     val layoutRoot = remember(tree, nodeWidthPx, nodeHeightPx, hSpacingPx, vSpacingPx, paddingTopPx) {
         computeLayout(
@@ -206,7 +229,7 @@ fun MindMapCanvas(
         ) {
             // Draw edges (Bezier curves)
             edges.forEach { (from, to) ->
-                drawEdge(from, to, outlineVariantColor)
+                drawEdge(from, to, outlineVariantColor, edgePath, strokePx)
             }
 
             // Draw nodes
@@ -223,7 +246,18 @@ fun MindMapCanvas(
                     onPrimaryContainerColor = onPrimaryContainerColor,
                     onPrimaryColor = onPrimaryColor,
                     secondaryContainerColor = secondaryContainerColor,
-                    onSecondaryContainerColor = onSecondaryContainerColor
+                    onSecondaryContainerColor = onSecondaryContainerColor,
+                    textPaint = textPaint,
+                    badgePaint = badgePaint,
+                    typeface = typeface,
+                    glowExpand = glowExpandPx,
+                    outlineWidth = outlineWidthPx,
+                    textXPad = textXPadPx,
+                    textYOffset = textYOffsetPx,
+                    titleTextSize = titleTextSizePx,
+                    badgeTextSize = badgeTextSizePx,
+                    badgePadEnd = badgePadEndPx,
+                    badgePadBottom = badgePadBottomPx
                 )
             }
         }
@@ -363,23 +397,28 @@ private fun findNodeAtPosition(
 /**
  * Draws a Bezier curve edge from parent bottom-center to child top-center.
  */
-private fun DrawScope.drawEdge(from: Offset, to: Offset, color: Color) {
+private fun DrawScope.drawEdge(
+    from: Offset,
+    to: Offset,
+    color: Color,
+    path: Path,
+    strokeWidth: Float
+) {
     val controlPointOffset = (to.y - from.y) / 2f
-    val path = Path().apply {
-        moveTo(from.x, from.y)
-        cubicTo(
-            x1 = from.x,
-            y1 = from.y + controlPointOffset,
-            x2 = to.x,
-            y2 = to.y - controlPointOffset,
-            x3 = to.x,
-            y3 = to.y
-        )
-    }
+    path.reset()
+    path.moveTo(from.x, from.y)
+    path.cubicTo(
+        x1 = from.x,
+        y1 = from.y + controlPointOffset,
+        x2 = to.x,
+        y2 = to.y - controlPointOffset,
+        x3 = to.x,
+        y3 = to.y
+    )
     drawPath(
         path = path,
         color = color,
-        style = Stroke(width = 2.dp.toPx())
+        style = Stroke(width = strokeWidth)
     )
 }
 
@@ -399,7 +438,18 @@ private fun DrawScope.drawNode(
     onPrimaryContainerColor: Color,
     onPrimaryColor: Color,
     secondaryContainerColor: Color,
-    onSecondaryContainerColor: Color
+    onSecondaryContainerColor: Color,
+    textPaint: android.graphics.Paint,
+    badgePaint: android.graphics.Paint,
+    typeface: android.graphics.Typeface,
+    glowExpand: Float,
+    outlineWidth: Float,
+    textXPad: Float,
+    textYOffset: Float,
+    titleTextSize: Float,
+    badgeTextSize: Float,
+    badgePadEnd: Float,
+    badgePadBottom: Float
 ) {
     val node = layoutNode.node
     val left = layoutNode.x - nodeWidth / 2f
@@ -414,7 +464,6 @@ private fun DrawScope.drawNode(
 
     // Pulsing glow for current conversation
     if (node.isCurrentConversation) {
-        val glowExpand = 6.dp.toPx()
         drawRoundRect(
             color = primaryColor.copy(alpha = glowAlpha),
             topLeft = Offset(left - glowExpand, top - glowExpand),
@@ -425,7 +474,6 @@ private fun DrawScope.drawNode(
 
     // Selection outline for non-current selected node
     if (node.id == selectedNodeId && !node.isCurrentConversation) {
-        val outlineWidth = 3.dp.toPx()
         drawRoundRect(
             color = primaryColor,
             topLeft = Offset(left - outlineWidth, top - outlineWidth),
@@ -443,17 +491,12 @@ private fun DrawScope.drawNode(
         cornerRadius = CornerRadius(cornerRadius)
     )
 
-    // Draw text using native canvas for emoji and text rendering
+    // Draw text using native canvas for emoji and text rendering.
+    // Paint objects are reused across nodes; only cheap setters run per node.
     drawContext.canvas.nativeCanvas.apply {
-        val textPaint = android.graphics.Paint().apply {
-            color = textColor.toArgb()
-            textSize = 13.dp.toPx()
-            isAntiAlias = true
-            typeface = android.graphics.Typeface.create(
-                android.graphics.Typeface.DEFAULT,
-                android.graphics.Typeface.NORMAL
-            )
-        }
+        textPaint.color = textColor.toArgb()
+        textPaint.textSize = titleTextSize
+        textPaint.typeface = typeface
 
         // Build display title: optional icon prefix + truncated title
         val iconPrefix = if (!node.icon.isNullOrEmpty()) "${node.icon} " else ""
@@ -464,22 +507,19 @@ private fun DrawScope.drawNode(
         }
         val fullTitle = "$iconPrefix$displayTitle"
 
-        val textX = left + 12.dp.toPx()
-        val textY = top + nodeHeight / 2f - 2.dp.toPx()
+        val textX = left + textXPad
+        val textY = top + nodeHeight / 2f - textYOffset
         drawText(fullTitle, textX, textY, textPaint)
 
         // Message count badge (bottom-right area)
-        val badgePaint = android.graphics.Paint().apply {
-            color = textColor.copy(alpha = 0.7f).toArgb()
-            textSize = 10.dp.toPx()
-            isAntiAlias = true
-        }
+        badgePaint.color = textColor.copy(alpha = 0.7f).toArgb()
+        badgePaint.textSize = badgeTextSize
         val badgeText = "${node.messageCount} msgs"
         val badgeWidth = badgePaint.measureText(badgeText)
         drawText(
             badgeText,
-            left + nodeWidth - badgeWidth - 10.dp.toPx(),
-            top + nodeHeight - 8.dp.toPx(),
+            left + nodeWidth - badgeWidth - badgePadEnd,
+            top + nodeHeight - badgePadBottom,
             badgePaint
         )
     }

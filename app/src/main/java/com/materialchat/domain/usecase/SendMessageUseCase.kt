@@ -759,7 +759,7 @@ class SendMessageUseCase @Inject constructor(
             .replace(Regex("^[:：\\-–—|]+\\s*"), "")
             .replace(Regex("[.!?]+$"), "")
             .replace("\n", " ")
-            .replace(Regex("\\s+"), " ")
+            .replace(WHITESPACE_REGEX, " ")
             .trim()
 
         val words = cleaned.split(" ")
@@ -803,7 +803,7 @@ class SendMessageUseCase @Inject constructor(
         completedAtMs: Long
     ): Long {
         if (content.isBlank()) return 0L
-        val words = content.trim().split(Regex("\\s+")).count { it.isNotBlank() }
+        val words = content.trim().split(WHITESPACE_REGEX).count { it.isNotBlank() }
         val estimatedRevealMs = (words * 30L).coerceIn(360L, 2400L)
         val elapsedRevealMs = revealStartedAtMs?.let { completedAtMs - it } ?: 0L
         return (estimatedRevealMs - elapsedRevealMs).coerceIn(0L, 1800L)
@@ -904,7 +904,7 @@ class SendMessageUseCase @Inject constructor(
     private fun sanitizeForImagePrompt(text: String): String {
         return text
             .replace(IMAGE_TOOL_DIRECTIVE_REGEX, "")
-            .replace(Regex("\\s+"), " ")
+            .replace(WHITESPACE_REGEX, " ")
             .trim()
             .take(MAX_IMAGE_PROMPT_MESSAGE_CHARS)
     }
@@ -944,6 +944,8 @@ MaterialChat image generation tool:
             "^\\s*(/image|/img|image:)\\s*",
             RegexOption.IGNORE_CASE
         )
+        val WHITESPACE_REGEX = Regex("\\s+")
+        val CR_TAB_REGEX = Regex("[\\r\\t]")
         val IMAGE_REQUEST_REGEX = Regex(
             "\\b(generate|create|make|draw|paint|render|design|illustrate|visualize)\\b[\\s\\S]{0,120}\\b(image|picture|photo|illustration|artwork|poster|logo|wallpaper|avatar|icon|sticker)\\b|" +
                 "\\b(image|picture|photo|illustration|artwork|poster|logo|wallpaper|avatar|icon|sticker)\\b[\\s\\S]{0,80}\\b(of|showing|depicting|for)\\b",
@@ -999,7 +1001,7 @@ MaterialChat image generation tool:
         val maxLength = 40
         val cleaned = content
             .replace("\n", " ")
-            .replace(Regex("[\\r\\t]"), "")
+            .replace(CR_TAB_REGEX, "")
             .trim()
 
         return if (cleaned.length <= maxLength) {

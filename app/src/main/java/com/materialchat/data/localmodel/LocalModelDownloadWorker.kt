@@ -168,6 +168,7 @@ class LocalModelDownloadWorker(
         const val KEY_DOWNLOADED_BYTES = "downloaded_bytes"
         const val KEY_TOTAL_BYTES = "total_bytes"
         const val KEY_ERROR = "error"
+        private val UNSAFE_FILENAME_CHARS = Regex("[^A-Za-z0-9._-]")
         const val WORK_TAG = "local_model_download"
 
         private const val CHANNEL_ID = "model_downloads"
@@ -183,7 +184,7 @@ class LocalModelDownloadWorker(
             .build()
 
         fun uniqueWorkName(modelId: String): String {
-            return "local_model_download_" + modelId.replace(Regex("[^A-Za-z0-9._-]"), "_")
+            return "local_model_download_" + modelId.replace(UNSAFE_FILENAME_CHARS, "_")
         }
 
         fun inputData(modelId: String): Data = Data.Builder()

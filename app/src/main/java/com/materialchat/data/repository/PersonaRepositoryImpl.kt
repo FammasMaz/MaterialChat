@@ -6,7 +6,9 @@ import com.materialchat.data.mapper.toEntity
 import com.materialchat.data.mapper.toPersonaEntityList
 import com.materialchat.domain.model.Persona
 import com.materialchat.domain.repository.PersonaRepository
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -22,7 +24,7 @@ class PersonaRepositoryImpl @Inject constructor(
     override fun observeAllPersonas(): Flow<List<Persona>> =
         personaDao.getAllPersonas().map { entities ->
             entities.map { it.toDomain() }
-        }
+        }.flowOn(Dispatchers.IO)
 
     override suspend fun getPersonaById(id: String): Persona? =
         personaDao.getPersonaById(id)?.toDomain()

@@ -63,6 +63,15 @@ import com.materialchat.ui.components.ExpressiveSwitch
 import com.materialchat.ui.components.ExpressiveTopBarTitle
 import com.materialchat.ui.theme.CustomShapes
 
+/**
+ * Pre-computed display tiers for the constant image-generation model list so the
+ * per-chip label isn't re-derived on every recomposition.
+ */
+private val IMAGE_MODEL_TIERS: List<Pair<String, String>> =
+    AppPreferences.SUPPORTED_IMAGE_GENERATION_MODELS.map { model ->
+        model to model.substringAfterLast('-').replaceFirstChar { it.uppercase() }
+    }
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ModelAssignmentsScreen(
@@ -652,8 +661,7 @@ private fun ImageGenerationAssignmentCard(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            AppPreferences.SUPPORTED_IMAGE_GENERATION_MODELS.forEach { model ->
-                val tier = model.substringAfterLast('-').replaceFirstChar { it.uppercase() }
+            IMAGE_MODEL_TIERS.forEach { (model, tier) ->
                 FilterChip(
                     selected = currentModel == model,
                     onClick = {

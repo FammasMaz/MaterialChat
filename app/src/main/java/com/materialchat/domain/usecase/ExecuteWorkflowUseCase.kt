@@ -165,13 +165,16 @@ class ExecuteWorkflowUseCase @Inject constructor(
         var resolved = template.replace("{{input}}", initialInput)
 
         // Replace {{step_N}} with corresponding step output (1-indexed)
-        val stepPattern = Regex("\\{\\{step_(\\d+)\\}\\}")
-        resolved = stepPattern.replace(resolved) { match ->
+        resolved = STEP_PATTERN.replace(resolved) { match ->
             val stepNumber = match.groupValues[1].toIntOrNull() ?: return@replace match.value
             val stepIndex = stepNumber - 1 // Convert 1-indexed to 0-indexed
             stepResults[stepIndex] ?: "[Step $stepNumber output not available]"
         }
 
         return resolved
+    }
+
+    private companion object {
+        val STEP_PATTERN = Regex("\\{\\{step_(\\d+)\\}\\}")
     }
 }

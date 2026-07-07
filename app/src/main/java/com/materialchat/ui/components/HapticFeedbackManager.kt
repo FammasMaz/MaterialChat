@@ -140,6 +140,136 @@ class HapticFeedbackManager(
         }.toSet()
     }
 
+    // ---- Cached VibrationEffect instances ----
+    // VibrationEffect objects are immutable and safe to reuse. Building them per
+    // haptic trigger (which can fire many times per second during scrolling /
+    // streaming ticks) wastes CPU on the main thread and creates GC pressure.
+    //
+    // Each property is only ever read inside its matching Build.VERSION.SDK_INT
+    // guard at the call site, so the lazy initializer is guaranteed to run only
+    // on devices that support the corresponding API. The @RequiresApi lint
+    // annotations on the VibrationEffect APIs are not enforced by kotlinc.
+    @get:RequiresApi(Build.VERSION_CODES.Q)
+    private val effectClick: VibrationEffect by lazy {
+        VibrationEffect.createPredefined(VibrationEffect.EFFECT_CLICK)
+    }
+    @get:RequiresApi(Build.VERSION_CODES.Q)
+    private val effectHeavyClick: VibrationEffect by lazy {
+        VibrationEffect.createPredefined(VibrationEffect.EFFECT_HEAVY_CLICK)
+    }
+    @get:RequiresApi(Build.VERSION_CODES.Q)
+    private val effectTick: VibrationEffect by lazy {
+        VibrationEffect.createPredefined(VibrationEffect.EFFECT_TICK)
+    }
+    @get:RequiresApi(Build.VERSION_CODES.Q)
+    private val effectDoubleClick: VibrationEffect by lazy {
+        VibrationEffect.createPredefined(VibrationEffect.EFFECT_DOUBLE_CLICK)
+    }
+
+    // Cached compositions (API 30+). Each is built once and reused; if a
+    // primitive isn't supported the corresponding composition is simply never
+    // retrieved, so no wasted work.
+    @get:RequiresApi(Build.VERSION_CODES.R)
+    private val clickComposition: VibrationEffect by lazy {
+        VibrationEffect.startComposition()
+            .addPrimitive(VibrationEffect.Composition.PRIMITIVE_CLICK, 0.7f)
+            .compose()
+    }
+    @get:RequiresApi(Build.VERSION_CODES.R)
+    private val swipeThresholdComposition: VibrationEffect by lazy {
+        VibrationEffect.startComposition()
+            .addPrimitive(VibrationEffect.Composition.PRIMITIVE_CLICK, 1.0f)
+            .compose()
+    }
+    @get:RequiresApi(Build.VERSION_CODES.R)
+    private val confirmComposition: VibrationEffect by lazy {
+        VibrationEffect.startComposition()
+            .addPrimitive(VibrationEffect.Composition.PRIMITIVE_QUICK_RISE, 0.5f)
+            .addPrimitive(VibrationEffect.Composition.PRIMITIVE_TICK, 0.8f, 50)
+            .compose()
+    }
+    @get:RequiresApi(Build.VERSION_CODES.R)
+    private val rejectComposition: VibrationEffect by lazy {
+        VibrationEffect.startComposition()
+            .addPrimitive(VibrationEffect.Composition.PRIMITIVE_CLICK, 0.7f)
+            .addPrimitive(VibrationEffect.Composition.PRIMITIVE_CLICK, 0.9f, 60)
+            .compose()
+    }
+    @get:RequiresApi(Build.VERSION_CODES.R)
+    private val emphasisComposition: VibrationEffect by lazy {
+        VibrationEffect.startComposition()
+            .addPrimitive(VibrationEffect.Composition.PRIMITIVE_CLICK, 0.8f)
+            .addPrimitive(VibrationEffect.Composition.PRIMITIVE_CLICK, 1.0f, 80)
+            .compose()
+    }
+    @get:RequiresApi(Build.VERSION_CODES.R)
+    private val gestureStartComposition: VibrationEffect by lazy {
+        VibrationEffect.startComposition()
+            .addPrimitive(VibrationEffect.Composition.PRIMITIVE_SLOW_RISE, 0.4f)
+            .compose()
+    }
+    @get:RequiresApi(Build.VERSION_CODES.R)
+    private val gestureEndComposition: VibrationEffect by lazy {
+        VibrationEffect.startComposition()
+            .addPrimitive(VibrationEffect.Composition.PRIMITIVE_QUICK_FALL, 0.5f)
+            .compose()
+    }
+    @get:RequiresApi(Build.VERSION_CODES.R)
+    private val segmentTickLowComposition: VibrationEffect by lazy {
+        VibrationEffect.startComposition()
+            .addPrimitive(VibrationEffect.Composition.PRIMITIVE_LOW_TICK, 0.3f)
+            .compose()
+    }
+    @get:RequiresApi(Build.VERSION_CODES.R)
+    private val segmentTickComposition: VibrationEffect by lazy {
+        VibrationEffect.startComposition()
+            .addPrimitive(VibrationEffect.Composition.PRIMITIVE_TICK, 0.2f)
+            .compose()
+    }
+    @get:RequiresApi(Build.VERSION_CODES.R)
+    private val keyboardTapComposition: VibrationEffect by lazy {
+        VibrationEffect.startComposition()
+            .addPrimitive(VibrationEffect.Composition.PRIMITIVE_TICK, 0.4f)
+            .compose()
+    }
+    @get:RequiresApi(Build.VERSION_CODES.R)
+    private val toggleComposition: VibrationEffect by lazy {
+        VibrationEffect.startComposition()
+            .addPrimitive(VibrationEffect.Composition.PRIMITIVE_CLICK, 0.6f)
+            .addPrimitive(VibrationEffect.Composition.PRIMITIVE_TICK, 0.3f, 30)
+            .compose()
+    }
+    @get:RequiresApi(Build.VERSION_CODES.R)
+    private val thinkingTickLowComposition: VibrationEffect by lazy {
+        VibrationEffect.startComposition()
+            .addPrimitive(VibrationEffect.Composition.PRIMITIVE_LOW_TICK, 0.15f)
+            .compose()
+    }
+    @get:RequiresApi(Build.VERSION_CODES.R)
+    private val thinkingTickComposition: VibrationEffect by lazy {
+        VibrationEffect.startComposition()
+            .addPrimitive(VibrationEffect.Composition.PRIMITIVE_TICK, 0.1f)
+            .compose()
+    }
+    @get:RequiresApi(Build.VERSION_CODES.R)
+    private val contentTickComposition: VibrationEffect by lazy {
+        VibrationEffect.startComposition()
+            .addPrimitive(VibrationEffect.Composition.PRIMITIVE_TICK, 0.4f)
+            .compose()
+    }
+    @get:RequiresApi(Build.VERSION_CODES.R)
+    private val morphTransitionComposition: VibrationEffect by lazy {
+        VibrationEffect.startComposition()
+            .addPrimitive(VibrationEffect.Composition.PRIMITIVE_QUICK_RISE, 0.3f)
+            .compose()
+    }
+    @get:RequiresApi(Build.VERSION_CODES.R)
+    private val morphTransitionTickComposition: VibrationEffect by lazy {
+        VibrationEffect.startComposition()
+            .addPrimitive(VibrationEffect.Composition.PRIMITIVE_TICK, 0.25f)
+            .compose()
+    }
+
     /**
      * Check if a specific predefined effect is supported (API 29+).
      */
@@ -184,17 +314,11 @@ class HapticFeedbackManager(
             // API 30+: Use composition with PRIMITIVE_CLICK for premium feel
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.R &&
                 supportedPrimitives.contains(VibrationEffect.Composition.PRIMITIVE_CLICK) -> {
-                vibrator?.vibrate(
-                    VibrationEffect.startComposition()
-                        .addPrimitive(VibrationEffect.Composition.PRIMITIVE_CLICK, 0.7f)
-                        .compose()
-                )
+                vibrator?.vibrate(clickComposition)
             }
             // API 29+: Use predefined EFFECT_CLICK
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q -> {
-                vibrator?.vibrate(
-                    VibrationEffect.createPredefined(VibrationEffect.EFFECT_CLICK)
-                )
+                vibrator?.vibrate(effectClick)
             }
             // Fallback to Compose haptics
             else -> {
@@ -217,9 +341,7 @@ class HapticFeedbackManager(
             // Fallback to Vibrator API if View haptic fails (common on Android 15+)
             if (!success) {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    vibrator?.vibrate(
-                        VibrationEffect.createPredefined(VibrationEffect.EFFECT_HEAVY_CLICK)
-                    )
+                    vibrator?.vibrate(effectHeavyClick)
                 } else {
                     hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
                 }
@@ -239,17 +361,11 @@ class HapticFeedbackManager(
             // API 30+: Use CLICK at full intensity for strong but crisp feedback
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.R &&
                 supportedPrimitives.contains(VibrationEffect.Composition.PRIMITIVE_CLICK) -> {
-                vibrator?.vibrate(
-                    VibrationEffect.startComposition()
-                        .addPrimitive(VibrationEffect.Composition.PRIMITIVE_CLICK, 1.0f)
-                        .compose()
-                )
+                vibrator?.vibrate(swipeThresholdComposition)
             }
             // API 29+: Use EFFECT_HEAVY_CLICK (still crisp on Pixel)
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q -> {
-                vibrator?.vibrate(
-                    VibrationEffect.createPredefined(VibrationEffect.EFFECT_HEAVY_CLICK)
-                )
+                vibrator?.vibrate(effectHeavyClick)
             }
             // Fallback to Compose long press (crisp, not buzzy)
             else -> {
@@ -274,29 +390,17 @@ class HapticFeedbackManager(
                 // Fallback to Vibrator API if View haptic fails
                 if (!success && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R &&
                     supportedPrimitives.contains(VibrationEffect.Composition.PRIMITIVE_QUICK_RISE)) {
-                    vibrator?.vibrate(
-                        VibrationEffect.startComposition()
-                            .addPrimitive(VibrationEffect.Composition.PRIMITIVE_QUICK_RISE, 0.5f)
-                            .addPrimitive(VibrationEffect.Composition.PRIMITIVE_TICK, 0.8f, 50)
-                            .compose()
-                    )
+                    vibrator?.vibrate(confirmComposition)
                 }
             }
             // API 30+: Use composition with rising effect for "success" feel
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.R &&
                 supportedPrimitives.contains(VibrationEffect.Composition.PRIMITIVE_QUICK_RISE) -> {
-                vibrator?.vibrate(
-                    VibrationEffect.startComposition()
-                        .addPrimitive(VibrationEffect.Composition.PRIMITIVE_QUICK_RISE, 0.5f)
-                        .addPrimitive(VibrationEffect.Composition.PRIMITIVE_TICK, 0.8f, 50)
-                        .compose()
-                )
+                vibrator?.vibrate(confirmComposition)
             }
             // API 29+: Use EFFECT_TICK
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q -> {
-                vibrator?.vibrate(
-                    VibrationEffect.createPredefined(VibrationEffect.EFFECT_TICK)
-                )
+                vibrator?.vibrate(effectTick)
             }
             // Fallback
             else -> {
@@ -322,29 +426,17 @@ class HapticFeedbackManager(
                 // Fallback to Vibrator API if View haptic fails
                 if (!success && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R &&
                     supportedPrimitives.contains(VibrationEffect.Composition.PRIMITIVE_CLICK)) {
-                    vibrator?.vibrate(
-                        VibrationEffect.startComposition()
-                            .addPrimitive(VibrationEffect.Composition.PRIMITIVE_CLICK, 0.7f)
-                            .addPrimitive(VibrationEffect.Composition.PRIMITIVE_CLICK, 0.9f, 60)
-                            .compose()
-                    )
+                    vibrator?.vibrate(rejectComposition)
                 }
             }
             // API 30+: Use double CLICK for crisp "error" feel
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.R &&
                 supportedPrimitives.contains(VibrationEffect.Composition.PRIMITIVE_CLICK) -> {
-                vibrator?.vibrate(
-                    VibrationEffect.startComposition()
-                        .addPrimitive(VibrationEffect.Composition.PRIMITIVE_CLICK, 0.7f)
-                        .addPrimitive(VibrationEffect.Composition.PRIMITIVE_CLICK, 0.9f, 60)
-                        .compose()
-                )
+                vibrator?.vibrate(rejectComposition)
             }
             // API 29+: Double click for emphasis
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q -> {
-                vibrator?.vibrate(
-                    VibrationEffect.createPredefined(VibrationEffect.EFFECT_DOUBLE_CLICK)
-                )
+                vibrator?.vibrate(effectDoubleClick)
             }
             // Fallback to Compose haptics (no waveforms!)
             else -> {
@@ -363,18 +455,11 @@ class HapticFeedbackManager(
             // API 30+: Use composition for precise double-tap
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.R &&
                 supportedPrimitives.contains(VibrationEffect.Composition.PRIMITIVE_CLICK) -> {
-                vibrator?.vibrate(
-                    VibrationEffect.startComposition()
-                        .addPrimitive(VibrationEffect.Composition.PRIMITIVE_CLICK, 0.8f)
-                        .addPrimitive(VibrationEffect.Composition.PRIMITIVE_CLICK, 1.0f, 80)
-                        .compose()
-                )
+                vibrator?.vibrate(emphasisComposition)
             }
             // API 29+: Use predefined EFFECT_DOUBLE_CLICK
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q -> {
-                vibrator?.vibrate(
-                    VibrationEffect.createPredefined(VibrationEffect.EFFECT_DOUBLE_CLICK)
-                )
+                vibrator?.vibrate(effectDoubleClick)
             }
             // Fallback to Compose haptics (no waveforms!)
             else -> {
@@ -399,27 +484,17 @@ class HapticFeedbackManager(
                 // Fallback to Vibrator API if View haptic fails
                 if (!success && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R &&
                     supportedPrimitives.contains(VibrationEffect.Composition.PRIMITIVE_SLOW_RISE)) {
-                    vibrator?.vibrate(
-                        VibrationEffect.startComposition()
-                            .addPrimitive(VibrationEffect.Composition.PRIMITIVE_SLOW_RISE, 0.4f)
-                            .compose()
-                    )
+                    vibrator?.vibrate(gestureStartComposition)
                 }
             }
             // API 30+: Use SLOW_RISE for anticipation feel
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.R &&
                 supportedPrimitives.contains(VibrationEffect.Composition.PRIMITIVE_SLOW_RISE) -> {
-                vibrator?.vibrate(
-                    VibrationEffect.startComposition()
-                        .addPrimitive(VibrationEffect.Composition.PRIMITIVE_SLOW_RISE, 0.4f)
-                        .compose()
-                )
+                vibrator?.vibrate(gestureStartComposition)
             }
             // Fallback: Light tick
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q -> {
-                vibrator?.vibrate(
-                    VibrationEffect.createPredefined(VibrationEffect.EFFECT_TICK)
-                )
+                vibrator?.vibrate(effectTick)
             }
             else -> {
                 hapticFeedback.performHapticFeedback(HapticFeedbackType.TextHandleMove)
@@ -443,27 +518,17 @@ class HapticFeedbackManager(
                 // Fallback to Vibrator API if View haptic fails
                 if (!success && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R &&
                     supportedPrimitives.contains(VibrationEffect.Composition.PRIMITIVE_QUICK_FALL)) {
-                    vibrator?.vibrate(
-                        VibrationEffect.startComposition()
-                            .addPrimitive(VibrationEffect.Composition.PRIMITIVE_QUICK_FALL, 0.5f)
-                            .compose()
-                    )
+                    vibrator?.vibrate(gestureEndComposition)
                 }
             }
             // API 30+: Use QUICK_FALL for completion feel
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.R &&
                 supportedPrimitives.contains(VibrationEffect.Composition.PRIMITIVE_QUICK_FALL) -> {
-                vibrator?.vibrate(
-                    VibrationEffect.startComposition()
-                        .addPrimitive(VibrationEffect.Composition.PRIMITIVE_QUICK_FALL, 0.5f)
-                        .compose()
-                )
+                vibrator?.vibrate(gestureEndComposition)
             }
             // Fallback: Click effect
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q -> {
-                vibrator?.vibrate(
-                    VibrationEffect.createPredefined(VibrationEffect.EFFECT_CLICK)
-                )
+                vibrator?.vibrate(effectClick)
             }
             else -> {
                 hapticFeedback.performHapticFeedback(HapticFeedbackType.TextHandleMove)
@@ -480,26 +545,16 @@ class HapticFeedbackManager(
             // API 31+: Use LOW_TICK for very subtle feedback
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
                 supportedPrimitives.contains(VibrationEffect.Composition.PRIMITIVE_LOW_TICK) -> {
-                vibrator?.vibrate(
-                    VibrationEffect.startComposition()
-                        .addPrimitive(VibrationEffect.Composition.PRIMITIVE_LOW_TICK, 0.3f)
-                        .compose()
-                )
+                vibrator?.vibrate(segmentTickLowComposition)
             }
             // API 30+: Use regular TICK at low intensity
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.R &&
                 supportedPrimitives.contains(VibrationEffect.Composition.PRIMITIVE_TICK) -> {
-                vibrator?.vibrate(
-                    VibrationEffect.startComposition()
-                        .addPrimitive(VibrationEffect.Composition.PRIMITIVE_TICK, 0.2f)
-                        .compose()
-                )
+                vibrator?.vibrate(segmentTickComposition)
             }
             // API 29+: Use EFFECT_TICK
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q -> {
-                vibrator?.vibrate(
-                    VibrationEffect.createPredefined(VibrationEffect.EFFECT_TICK)
-                )
+                vibrator?.vibrate(effectTick)
             }
             // Fallback
             else -> {
@@ -524,11 +579,7 @@ class HapticFeedbackManager(
                 // Fallback to Vibrator API if View haptic fails
                 if (!success && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R &&
                     supportedPrimitives.contains(VibrationEffect.Composition.PRIMITIVE_TICK)) {
-                    vibrator?.vibrate(
-                        VibrationEffect.startComposition()
-                            .addPrimitive(VibrationEffect.Composition.PRIMITIVE_TICK, 0.4f)
-                            .compose()
-                    )
+                    vibrator?.vibrate(keyboardTapComposition)
                 }
             }
             // API 27+: Use KEYBOARD_TAP via View
@@ -542,11 +593,7 @@ class HapticFeedbackManager(
             // Fallback to light tick
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.R &&
                 supportedPrimitives.contains(VibrationEffect.Composition.PRIMITIVE_TICK) -> {
-                vibrator?.vibrate(
-                    VibrationEffect.startComposition()
-                        .addPrimitive(VibrationEffect.Composition.PRIMITIVE_TICK, 0.4f)
-                        .compose()
-                )
+                vibrator?.vibrate(keyboardTapComposition)
             }
             else -> {
                 hapticFeedback.performHapticFeedback(HapticFeedbackType.TextHandleMove)
@@ -570,29 +617,17 @@ class HapticFeedbackManager(
                 // Fallback to Vibrator API if View haptic fails
                 if (!success && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R &&
                     supportedPrimitives.contains(VibrationEffect.Composition.PRIMITIVE_CLICK)) {
-                    vibrator?.vibrate(
-                        VibrationEffect.startComposition()
-                            .addPrimitive(VibrationEffect.Composition.PRIMITIVE_CLICK, 0.6f)
-                            .addPrimitive(VibrationEffect.Composition.PRIMITIVE_TICK, 0.3f, 30)
-                            .compose()
-                    )
+                    vibrator?.vibrate(toggleComposition)
                 }
             }
             // API 30+: Use composition for snappy toggle feel
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.R &&
                 supportedPrimitives.contains(VibrationEffect.Composition.PRIMITIVE_CLICK) -> {
-                vibrator?.vibrate(
-                    VibrationEffect.startComposition()
-                        .addPrimitive(VibrationEffect.Composition.PRIMITIVE_CLICK, 0.6f)
-                        .addPrimitive(VibrationEffect.Composition.PRIMITIVE_TICK, 0.3f, 30)
-                        .compose()
-                )
+                vibrator?.vibrate(toggleComposition)
             }
             // API 29+: Simple click
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q -> {
-                vibrator?.vibrate(
-                    VibrationEffect.createPredefined(VibrationEffect.EFFECT_CLICK)
-                )
+                vibrator?.vibrate(effectClick)
             }
             // Fallback
             else -> {
@@ -611,26 +646,16 @@ class HapticFeedbackManager(
             // API 31+: Use LOW_TICK at very low intensity - barely perceptible
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
                 supportedPrimitives.contains(VibrationEffect.Composition.PRIMITIVE_LOW_TICK) -> {
-                vibrator?.vibrate(
-                    VibrationEffect.startComposition()
-                        .addPrimitive(VibrationEffect.Composition.PRIMITIVE_LOW_TICK, 0.15f)
-                        .compose()
-                )
+                vibrator?.vibrate(thinkingTickLowComposition)
             }
             // API 30+: Use TICK at very low intensity
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.R &&
                 supportedPrimitives.contains(VibrationEffect.Composition.PRIMITIVE_TICK) -> {
-                vibrator?.vibrate(
-                    VibrationEffect.startComposition()
-                        .addPrimitive(VibrationEffect.Composition.PRIMITIVE_TICK, 0.1f)
-                        .compose()
-                )
+                vibrator?.vibrate(thinkingTickComposition)
             }
             // API 29+: Use EFFECT_TICK (lightest predefined)
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q -> {
-                vibrator?.vibrate(
-                    VibrationEffect.createPredefined(VibrationEffect.EFFECT_TICK)
-                )
+                vibrator?.vibrate(effectTick)
             }
             // Fallback: Use Compose haptics (TextHandleMove is very light)
             else -> {
@@ -649,17 +674,11 @@ class HapticFeedbackManager(
             // API 30+: Use TICK at moderate intensity - crisp and noticeable
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.R &&
                 supportedPrimitives.contains(VibrationEffect.Composition.PRIMITIVE_TICK) -> {
-                vibrator?.vibrate(
-                    VibrationEffect.startComposition()
-                        .addPrimitive(VibrationEffect.Composition.PRIMITIVE_TICK, 0.4f)
-                        .compose()
-                )
+                vibrator?.vibrate(contentTickComposition)
             }
             // API 29+: Use EFFECT_TICK
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q -> {
-                vibrator?.vibrate(
-                    VibrationEffect.createPredefined(VibrationEffect.EFFECT_TICK)
-                )
+                vibrator?.vibrate(effectTick)
             }
             // Fallback
             else -> {
@@ -678,26 +697,16 @@ class HapticFeedbackManager(
             // API 30+: Use QUICK_RISE for a subtle "building up" feel
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.R &&
                 supportedPrimitives.contains(VibrationEffect.Composition.PRIMITIVE_QUICK_RISE) -> {
-                vibrator?.vibrate(
-                    VibrationEffect.startComposition()
-                        .addPrimitive(VibrationEffect.Composition.PRIMITIVE_QUICK_RISE, 0.3f)
-                        .compose()
-                )
+                vibrator?.vibrate(morphTransitionComposition)
             }
             // API 30+ fallback: Use TICK at low intensity
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.R &&
                 supportedPrimitives.contains(VibrationEffect.Composition.PRIMITIVE_TICK) -> {
-                vibrator?.vibrate(
-                    VibrationEffect.startComposition()
-                        .addPrimitive(VibrationEffect.Composition.PRIMITIVE_TICK, 0.25f)
-                        .compose()
-                )
+                vibrator?.vibrate(morphTransitionTickComposition)
             }
             // API 29+: Use EFFECT_TICK
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q -> {
-                vibrator?.vibrate(
-                    VibrationEffect.createPredefined(VibrationEffect.EFFECT_TICK)
-                )
+                vibrator?.vibrate(effectTick)
             }
             // Fallback
             else -> {

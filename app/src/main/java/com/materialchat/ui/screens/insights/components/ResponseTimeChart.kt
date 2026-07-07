@@ -92,7 +92,9 @@ fun ResponseTimeChart(
                     )
                 }
             } else {
-                val maxDuration = modelDurations.maxOf { it.avgDurationMs }
+                val maxDuration = remember(modelDurations) {
+                    modelDurations.maxOf { it.avgDurationMs }
+                }
 
                 Column(
                     verticalArrangement = Arrangement.spacedBy(12.dp)

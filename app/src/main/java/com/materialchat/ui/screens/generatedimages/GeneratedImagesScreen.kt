@@ -37,6 +37,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -58,6 +59,9 @@ import com.materialchat.util.GeneratedImageActions
 import kotlinx.coroutines.launch
 import java.text.DateFormat
 import java.util.Date
+
+private val generatedImageDateFormatter: DateFormat =
+    DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -131,6 +135,15 @@ private fun GeneratedImageCard(
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val imageRequest = remember(image.uri) {
+        ImageRequest.Builder(context)
+            .data(image.uri)
+            .crossfade(true)
+            .build()
+    }
+    val formattedTimestamp = remember(image.createdAt) {
+        "${image.mimeType.substringAfter('/').uppercase()} • ${generatedImageDateFormatter.format(Date(image.createdAt))}"
+    }
 
     ElevatedCard(
         onClick = onOpenThread,
@@ -143,10 +156,7 @@ private fun GeneratedImageCard(
     ) {
         Column {
             AsyncImage(
-                model = ImageRequest.Builder(context)
-                    .data(image.uri)
-                    .crossfade(true)
-                    .build(),
+                model = imageRequest,
                 contentDescription = image.prompt ?: "Generated image",
                 contentScale = ContentScale.Crop,
                 modifier = Modifier
@@ -175,7 +185,7 @@ private fun GeneratedImageCard(
                 )
 
                 Text(
-                    text = "${image.mimeType.substringAfter('/').uppercase()} • ${DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT).format(Date(image.createdAt))}",
+                    text = formattedTimestamp,
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,

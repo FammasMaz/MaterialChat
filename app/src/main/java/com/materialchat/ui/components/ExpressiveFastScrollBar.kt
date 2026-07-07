@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.LazyListItemInfo
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.UnfoldMore
@@ -138,6 +139,11 @@ fun ExpressiveFastScrollBar(
         val minHeightPx = with(density) { minHeight.toPx() }
         val coarseJumpThresholdPx = with(density) { 16.dp.toPx() }
         val smoothJumpMinDistancePx = with(density) { 10.dp.toPx() }
+        // Reusable scratch buffer for median-size computation in metrics() and
+        // the scroll-phase snapshotFlow. Avoids 3 list allocations (map/filter/
+        //sorted) per call; metrics() is invoked several times per frame during
+        // drag/scroll.
+        val representativeSizesScratch = remember { IntArray(64) }
 
         fun metrics(): FastScrollMetrics {
             val layoutInfo = listState.layoutInfo
@@ -147,14 +153,7 @@ fun ExpressiveFastScrollBar(
             }
 
             val visibleItems = layoutInfo.visibleItemsInfo
-            val firstVisible = visibleItems.firstOrNull()
-            val representativeSize = visibleItems
-                .map { it.size }
-                .filter { it > 0 }
-                .sorted()
-                .let { sizes -> sizes.getOrNull(sizes.size / 2) }
-                ?.toFloat()
-                ?: minHeightPx
+            val representativeSize = representativeItemSizePx(visibleItems, representativeSizesScratch, minHeightPx)
             val viewportHeight = (layoutInfo.viewportEndOffset - layoutInfo.viewportStartOffset)
                 .toFloat()
                 .coerceAtLeast(1f)
@@ -201,13 +200,11 @@ fun ExpressiveFastScrollBar(
         LaunchedEffect(listState) {
             snapshotFlow {
                 val layoutInfo = listState.layoutInfo
-                val representativeSize = layoutInfo.visibleItemsInfo
-                    .map { it.size }
-                    .filter { it > 0 }
-                    .sorted()
-                    .let { sizes -> sizes.getOrNull(sizes.size / 2) }
-                    ?.toFloat()
-                    ?: minHeightPx
+                val representativeSize = representativeItemSizePx(
+                    layoutInfo.visibleItemsInfo,
+                    representativeSizesScratch,
+                    minHeightPx
+                )
                 listState.firstVisibleItemIndex * representativeSize +
                     listState.firstVisibleItemScrollOffset
             }
@@ -542,6 +539,30 @@ private fun resolveFastScrollTargetIndex(
     return (progress.coerceIn(0f, 1f) * maxScrollIndex.coerceAtLeast(1))
         .roundToInt()
         .coerceIn(0, lastIndex)
+}
+
+/**
+ * Computes a representative (upper-median) item size in px from the currently
+ * visible list items, reusing [scratch] to avoid allocating intermediate lists.
+ *
+ * Mirrors the previous `map { it.size }.filter { >0 }.sorted().getOrNull(size/2)`
+ * behaviour but with zero list allocations.
+ */
+private fun representativeItemSizePx(
+    visibleItems: List<LazyListItemInfo>,
+    scratch: IntArray,
+    fallback: Float
+): Float {
+    if (visibleItems.isEmpty()) return fallback
+    val cap = minOf(visibleItems.size, scratch.size)
+    var n = 0
+    for (i in 0 until cap) {
+        val s = visibleItems[i].size
+        if (s > 0) scratch[n++] = s
+    }
+    if (n == 0) return fallback
+    scratch.sort(0, n)
+    return scratch[n / 2].toFloat()
 }
 
 fun fastScrollGlyph(value: String?): String? {

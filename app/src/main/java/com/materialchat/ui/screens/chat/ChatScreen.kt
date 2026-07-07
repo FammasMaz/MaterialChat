@@ -564,7 +564,7 @@ private fun ChatContent(
     val imePadding = with(density) { (imeBottom - navBottom).coerceAtLeast(0).toDp() }
     var autoScrollEnabled by remember { mutableStateOf(true) }
     var inputHeightPx by remember { mutableIntStateOf(0) }
-    val bottomThresholdPx = with(density) { 24.dp.toPx() }
+    val bottomThresholdPx = remember(density) { with(density) { 24.dp.toPx() } }
 
     // Sibling switching slide animation (M3 Expressive spring physics)
     val slideOffset = remember { Animatable(0f) }
@@ -583,9 +583,9 @@ private fun ChatContent(
     }
 
     // Fix 1: Visual buffer during streaming (20dp to prevent bottom cutoff)
-    val scrollBufferPx = with(density) { 20.dp.toPx() }
+    val scrollBufferPx = remember(density) { with(density) { 20.dp.toPx() } }
     // Fix 2: Larger buffer for action buttons when streaming ends (~56dp)
-    val actionButtonHeightPx = with(density) { 56.dp.toPx() }
+    val actionButtonHeightPx = remember(density) { with(density) { 56.dp.toPx() } }
 
     // Fix 3: NestedScrollConnection to detect upward scroll gestures immediately
     val autoScrollConnection = remember {

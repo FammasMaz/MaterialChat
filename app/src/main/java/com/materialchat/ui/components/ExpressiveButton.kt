@@ -75,6 +75,13 @@ fun ExpressiveButton(
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
 
+    // Shared click handler with haptic feedback. Remembered so it stays stable
+    // across recompositions driven by unrelated param changes (text/icon),
+    // letting the underlying Button skip recomposition.
+    val clickWithHaptics = remember(haptics, onClick) {
+        { haptics.perform(HapticPattern.CLICK); onClick() }
+    }
+
     // Animate scale on press with M3 Expressive SPATIAL spring (bouncy)
     val scale by animateFloatAsState(
         targetValue = if (isPressed) 0.95f else 1f,
@@ -91,12 +98,12 @@ fun ExpressiveButton(
     )
 
     val shape = RoundedCornerShape(cornerRadius)
-    val expressivePadding = PaddingValues(horizontal = 28.dp, vertical = 0.dp)
+    val expressivePadding = remember { PaddingValues(horizontal = 28.dp, vertical = 0.dp) }
 
     when (style) {
         ExpressiveButtonStyle.Filled -> {
             Button(
-                onClick = { haptics.perform(HapticPattern.CLICK); onClick() },
+                onClick = clickWithHaptics,
                 modifier = modifier.defaultMinSize(minHeight = 56.dp).scale(scale),
                 enabled = enabled,
                 shape = shape,
@@ -113,7 +120,7 @@ fun ExpressiveButton(
 
         ExpressiveButtonStyle.FilledTonal -> {
             FilledTonalButton(
-                onClick = { haptics.perform(HapticPattern.CLICK); onClick() },
+                onClick = clickWithHaptics,
                 modifier = modifier.defaultMinSize(minHeight = 56.dp).scale(scale),
                 enabled = enabled,
                 shape = shape,
@@ -130,7 +137,7 @@ fun ExpressiveButton(
 
         ExpressiveButtonStyle.Outlined -> {
             OutlinedButton(
-                onClick = { haptics.perform(HapticPattern.CLICK); onClick() },
+                onClick = clickWithHaptics,
                 modifier = modifier.defaultMinSize(minHeight = 56.dp).scale(scale),
                 enabled = enabled,
                 shape = shape,
@@ -147,7 +154,7 @@ fun ExpressiveButton(
 
         ExpressiveButtonStyle.Text -> {
             TextButton(
-                onClick = { haptics.perform(HapticPattern.CLICK); onClick() },
+                onClick = clickWithHaptics,
                 modifier = modifier.defaultMinSize(minHeight = 56.dp).scale(scale),
                 enabled = enabled,
                 shape = shape,
@@ -235,6 +242,10 @@ fun ExpressiveIconButton(
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
 
+    val clickWithHaptics = remember(haptics, onClick) {
+        { haptics.perform(HapticPattern.CLICK); onClick() }
+    }
+
     // Animate scale on press with M3 Expressive SPATIAL spring
     val scale by animateFloatAsState(
         targetValue = if (isPressed) 0.9f else 1f,
@@ -261,7 +272,7 @@ fun ExpressiveIconButton(
     )
 
     Surface(
-        onClick = { haptics.perform(HapticPattern.CLICK); onClick() },
+        onClick = clickWithHaptics,
         modifier = modifier
             .size(size)
             .graphicsLayer {
@@ -308,6 +319,10 @@ fun ExpressiveActionButton(
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
 
+    val clickWithHaptics = remember(haptics, onClick) {
+        { haptics.perform(HapticPattern.CLICK); onClick() }
+    }
+
     // M3 Expressive SPATIAL spring for scale
     val scale by animateFloatAsState(
         targetValue = if (isPressed) 0.85f else 1f,
@@ -324,7 +339,7 @@ fun ExpressiveActionButton(
     )
 
     Surface(
-        onClick = { haptics.perform(HapticPattern.CLICK); onClick() },
+        onClick = clickWithHaptics,
         modifier = modifier
             .size(48.dp) // M3 Expressive: 48dp minimum touch target
             .graphicsLayer {
@@ -373,6 +388,10 @@ fun ExpressiveFab(
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
 
+    val clickWithHaptics = remember(haptics, onClick) {
+        { haptics.perform(HapticPattern.CLICK); onClick() }
+    }
+
     // M3 Expressive SPATIAL spring for playful scale (FAB is a hero element)
     val scale by animateFloatAsState(
         targetValue = if (isPressed) 0.92f else 1f,
@@ -396,7 +415,7 @@ fun ExpressiveFab(
     )
 
     Surface(
-        onClick = { haptics.perform(HapticPattern.CLICK); onClick() },
+        onClick = clickWithHaptics,
         modifier = modifier
             .defaultMinSize(minWidth = 56.dp, minHeight = 56.dp)
             .graphicsLayer {
@@ -465,6 +484,10 @@ fun AnimatedExtendedFab(
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
 
+    val clickWithHaptics = remember(haptics, onClick) {
+        { haptics.perform(HapticPattern.CLICK); onClick() }
+    }
+
     // M3 Expressive SPATIAL spring for width (bouncy expand/collapse)
     val width by animateDpAsState(
         targetValue = if (expanded) 140.dp else 56.dp,
@@ -502,7 +525,7 @@ fun AnimatedExtendedFab(
     )
 
     Surface(
-        onClick = { haptics.perform(HapticPattern.CLICK); onClick() },
+        onClick = clickWithHaptics,
         modifier = modifier
             .width(width)
             .height(56.dp)

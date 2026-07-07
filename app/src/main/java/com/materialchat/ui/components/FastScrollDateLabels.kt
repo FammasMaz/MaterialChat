@@ -20,10 +20,13 @@ fun fastScrollDateLabel(updatedAtMillis: Long): String {
             DateUtils.FORMAT_ABBREV_RELATIVE
         ).toString()
         else -> {
-            val cal = Calendar.getInstance().apply { timeInMillis = updatedAtMillis }
+            // Reuse a single Calendar instance for both the target date and the
+            // current year (previously two Calendar.getInstance() allocations).
+            val cal = Calendar.getInstance()
+            val currentYear = cal.get(Calendar.YEAR)
+            cal.timeInMillis = updatedAtMillis
             val month = cal.getDisplayName(Calendar.MONTH, Calendar.SHORT, java.util.Locale.getDefault())
             val year = cal.get(Calendar.YEAR)
-            val currentYear = Calendar.getInstance().get(Calendar.YEAR)
             if (year == currentYear) {
                 "${cal.get(Calendar.DAY_OF_MONTH)} $month"
             } else {

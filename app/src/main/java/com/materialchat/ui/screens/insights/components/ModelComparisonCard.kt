@@ -93,7 +93,9 @@ fun ModelComparisonCard(
                     )
                 }
             } else {
-                val sorted = modelDurations.sortedBy { it.avgDurationMs }
+                val sorted = remember(modelDurations) {
+                    modelDurations.sortedBy { it.avgDurationMs }
+                }
                 val fastest = sorted.first()
                 val slowest = sorted.last()
                 val maxDuration = slowest.avgDurationMs

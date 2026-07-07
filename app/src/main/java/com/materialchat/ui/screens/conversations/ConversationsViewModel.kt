@@ -23,6 +23,7 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -54,21 +55,25 @@ class ConversationsViewModel @Inject constructor(
 
     // Track multiple pending deletions: conversation ID -> delete job
     private val pendingDeletions = mutableMapOf<String, Job>()
-    // Set of conversation IDs pending deletion (for UI filtering)
-    private val pendingDeleteIds = mutableSetOf<String>()
-    // Most recent deletion for undo functionality
-    private var lastDeletedConversation: Conversation? = null
+    // Active conversations observer; cancelled and relaunched on retry() to avoid stacking collectors.
+    private var observeJob: Job? = null
 
     init {
         observeConversations()
     }
+
+    // Set of conversation IDs pending deletion (for UI filtering)
+    private val pendingDeleteIds = mutableSetOf<String>()
+    // Most recent deletion for undo functionality
+    private var lastDeletedConversation: Conversation? = null
 
     /**
      * Observes conversations and provider changes to update the UI state.
      * Groups root conversations with their branches.
      */
     private fun observeConversations() {
-        viewModelScope.launch {
+        observeJob?.cancel()
+        observeJob = viewModelScope.launch {
             combine(
                 combine(
                     getConversationsUseCase.observeConversations(),
@@ -101,6 +106,7 @@ class ConversationsViewModel @Inject constructor(
                     streamingConversationIds = listPrefs.streamingIds
                 )
             }
+                .distinctUntilChanged()
                 .catch { e ->
                     _uiState.value = ConversationsUiState.Error(
                         message = e.message ?: "Failed to load conversations"
@@ -479,19 +485,23 @@ class ConversationsViewModel @Inject constructor(
         }
         val branchMap = branches.groupBy { it.parentId!! }
 
-        val groups = parentConversations.map { parent ->
+        // Build parent UI items once; reused for both the flat list and the grouped list
+        // (previously toUiItem was invoked twice per parent on every emission).
+        val parentUiItems = parentConversations.map { it.toUiItem(providers, streamingConversationIds) }
+
+        val groups = parentUiItems.mapIndexed { index, parentItem ->
+            val parent = parentConversations[index]
             val branchesForParent = branchMap[parent.id].orEmpty()
             val parentHasActiveBranch = branchesForParent.any { it.id in streamingConversationIds }
             ConversationGroupUiItem(
-                parent = parent.toUiItem(providers, streamingConversationIds)
-                    .copy(isStreaming = parent.id in streamingConversationIds || parentHasActiveBranch),
+                parent = parentItem.copy(isStreaming = parentItem.isStreaming || parentHasActiveBranch),
                 branches = branchesForParent.map { it.toUiItem(providers, streamingConversationIds) },
                 isExpanded = parent.id in expandedIds
             )
         }
 
         return ConversationDisplayData(
-            flatList = parentConversations.map { it.toUiItem(providers, streamingConversationIds) },
+            flatList = parentUiItems,
             groups = groups
         )
     }

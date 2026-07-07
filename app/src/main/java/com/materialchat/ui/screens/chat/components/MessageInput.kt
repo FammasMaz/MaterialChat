@@ -891,15 +891,19 @@ private fun AttachmentPreviewItem(
     onRemove: () -> Unit
 ) {
     val haptics = rememberHapticFeedback()
+    val context = LocalContext.current
+    val imageRequest = remember(attachment.uri, context) {
+        ImageRequest.Builder(context)
+            .data(attachment.uri)
+            .crossfade(true)
+            .build()
+    }
     Box(
         modifier = Modifier.size(72.dp)
     ) {
         // Image thumbnail
         AsyncImage(
-            model = ImageRequest.Builder(LocalContext.current)
-                .data(attachment.uri)
-                .crossfade(true)
-                .build(),
+            model = imageRequest,
             contentDescription = "Attached image",
             contentScale = ContentScale.Crop,
             modifier = Modifier

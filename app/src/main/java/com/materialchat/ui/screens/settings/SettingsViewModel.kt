@@ -27,9 +27,12 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 /**
@@ -243,15 +246,24 @@ class SettingsViewModel @Inject constructor(
                     premiumState = monetization.premiumState
                 )
             }
+                .distinctUntilChanged()
                 .catch { e ->
                     _uiState.value = SettingsUiState.Error(
                         message = e.message ?: "Failed to load settings"
                     )
                 }
                 .collect { data ->
-                    // Always fetch fresh API key status for each provider
-                    val apiKeyStatusMap = data.providers.associate { provider ->
-                        provider.id to manageProvidersUseCase.hasApiKey(provider.id)
+                    // Fresh API key status / encrypted key check / package version
+                    // touch encrypted storage and PackageManager; run them off the
+                    // main thread so preference emissions don't block the UI.
+                    val (apiKeyStatusMap, exaApiKeyConfigured, appVersion) = withContext(Dispatchers.IO) {
+                        Triple(
+                            data.providers.associate { provider ->
+                                provider.id to manageProvidersUseCase.hasApiKey(provider.id)
+                            },
+                            encryptedPreferences.getApiKey("web_search_exa") != null,
+                            updateManager.getCurrentVersion()
+                        )
                     }
 
                     val currentState = _uiState.value
@@ -286,12 +298,12 @@ class SettingsViewModel @Inject constructor(
                         alwaysShowThinking = data.alwaysShowThinking,
                         fontSizeScale = data.fontSizeScale,
                         showTokenCounter = data.showTokenCounter,
-                        appVersion = updateManager.getCurrentVersion(),
+                        appVersion = appVersion,
                         autoCheckUpdates = data.autoCheckUpdates,
                         updateState = data.updateState,
                         webSearchEnabled = data.webSearchEnabled,
                         webSearchProvider = data.webSearchProvider,
-                        exaApiKeyConfigured = encryptedPreferences.getApiKey("web_search_exa") != null,
+                        exaApiKeyConfigured = exaApiKeyConfigured,
                         searxngBaseUrl = data.searxngBaseUrl,
                         webSearchMaxResults = data.webSearchMaxResults,
                         premiumState = data.premiumState,

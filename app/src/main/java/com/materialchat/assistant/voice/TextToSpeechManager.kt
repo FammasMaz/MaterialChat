@@ -202,10 +202,13 @@ class TextToSpeechManager @Inject constructor(
      */
     private fun splitIntoSentences(text: String): List<String> {
         // Split on sentence-ending punctuation followed by whitespace
-        val sentencePattern = Regex("""(?<=[.!?])\s+""")
-        return text.split(sentencePattern)
+        return text.split(SENTENCE_SPLIT_REGEX)
             .map { it.trim() }
             .filter { it.isNotEmpty() }
+    }
+
+    private companion object {
+        val SENTENCE_SPLIT_REGEX = Regex("""(?<=[.!?])\s+""")
     }
 }
 

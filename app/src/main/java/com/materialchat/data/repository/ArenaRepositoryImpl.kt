@@ -8,7 +8,9 @@ import com.materialchat.data.mapper.toRatingDomainList
 import com.materialchat.domain.model.ArenaBattle
 import com.materialchat.domain.model.ModelRating
 import com.materialchat.domain.repository.ArenaRepository
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 
@@ -32,11 +34,11 @@ class ArenaRepositoryImpl @Inject constructor(
     }
 
     override fun getAllBattles(): Flow<List<ArenaBattle>> {
-        return arenaDao.getAllBattles().map { it.toBattleDomainList() }
+        return arenaDao.getAllBattles().map { it.toBattleDomainList() }.flowOn(Dispatchers.IO)
     }
 
     override fun getCompletedBattles(): Flow<List<ArenaBattle>> {
-        return arenaDao.getCompletedBattles().map { it.toBattleDomainList() }
+        return arenaDao.getCompletedBattles().map { it.toBattleDomainList() }.flowOn(Dispatchers.IO)
     }
 
     override suspend fun deleteBattle(battleId: String) {
@@ -53,7 +55,7 @@ class ArenaRepositoryImpl @Inject constructor(
     }
 
     override fun getAllRatings(): Flow<List<ModelRating>> {
-        return arenaDao.getAllRatings().map { it.toRatingDomainList() }
+        return arenaDao.getAllRatings().map { it.toRatingDomainList() }.flowOn(Dispatchers.IO)
     }
 
     override suspend fun getAllRatingsOnce(): List<ModelRating> {

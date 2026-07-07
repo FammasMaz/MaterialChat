@@ -36,6 +36,7 @@ class AppNotificationManager @Inject constructor(
         private const val CHAT_CHANNEL_NAME = "Chat Responses"
         private const val CHAT_CHANNEL_DESCRIPTION = "Notifications when AI responses complete in the background"
         private const val CHAT_NOTIFICATION_BASE_ID = 9_000
+        private val WHITESPACE_REGEX = Regex("\\s+")
     }
 
     private val notificationManagerCompat by lazy { NotificationManagerCompat.from(context) }
@@ -55,7 +56,7 @@ class AppNotificationManager @Inject constructor(
         ensureChannels()
 
         val contentPreview = preview
-            .replace(Regex("\\s+"), " ")
+            .replace(WHITESPACE_REGEX, " ")
             .trim()
             .take(220)
             .ifBlank { "Your AI response is ready." }

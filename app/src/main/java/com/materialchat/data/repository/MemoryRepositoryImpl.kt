@@ -18,6 +18,7 @@ import com.materialchat.domain.model.RecalledMemorySource
 import com.materialchat.domain.repository.MemoryRepository
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
@@ -42,6 +43,7 @@ class MemoryRepositoryImpl @Inject constructor(
 
     override fun observeActiveMemories(): Flow<List<Memory>> {
         return memoryDao.observeActiveMemories().map { entities -> entities.toMemoryDomainList() }
+            .flowOn(ioDispatcher)
     }
 
     override suspend fun recall(
@@ -444,7 +446,7 @@ class MemoryRepositoryImpl @Inject constructor(
 
     private fun tokenizeTerms(text: String): List<String> {
         return text.lowercase()
-            .split(Regex("[^a-z0-9]+"))
+            .split(TOKEN_SPLIT_REGEX)
             .asSequence()
             .map { it.trim() }
             .filter { it.length >= 3 || it in SHORT_MEMORY_TOKENS }
@@ -475,7 +477,7 @@ class MemoryRepositoryImpl @Inject constructor(
 
     private fun sanitizeMemoryContent(raw: String): String? {
         val compact = raw
-            .replace(Regex("\\s+"), " ")
+            .replace(MEMORY_WHITESPACE_REGEX, " ")
             .trim(' ', '-', '*', '•', ':', ';', '.', '\n', '\t')
         if (compact.length !in MIN_MEMORY_LENGTH..MAX_MEMORY_LENGTH) return null
         if (compact.count { it.isLetterOrDigit() } < MIN_NORMALIZED_LENGTH) return null
@@ -484,8 +486,8 @@ class MemoryRepositoryImpl @Inject constructor(
 
     private fun sanitizeSnippetContent(raw: String): String? {
         val compact = raw
-            .replace(Regex("```[\\s\\S]*?```"), "[code]")
-            .replace(Regex("\\s+"), " ")
+            .replace(SNIPPET_CODE_BLOCK_REGEX, "[code]")
+            .replace(MEMORY_WHITESPACE_REGEX, " ")
             .trim()
         if (compact.length !in MIN_SNIPPET_LENGTH..MAX_SNIPPET_LENGTH) return null
         if (compact.count { it.isLetterOrDigit() } < MIN_SNIPPET_ALNUM_LENGTH) return null
@@ -667,5 +669,12 @@ class MemoryRepositoryImpl @Inject constructor(
             "app", "chat", "model", "models", "make", "made", "using", "use", "need", "needs",
             "want", "wants", "memory", "memories", "remember", "thing", "stuff", "screen", "system"
         )
+
+        // Hoisted out of tokenizeTerms/sanitize* — these run thousands of times per
+        // recall pass (once per candidate + once per corpus doc); recompiling the
+        // patterns per call was the dominant allocation cost in recall.
+        val TOKEN_SPLIT_REGEX = Regex("[^a-z0-9]+")
+        val MEMORY_WHITESPACE_REGEX = Regex("\\s+")
+        val SNIPPET_CODE_BLOCK_REGEX = Regex("```[\\s\\S]*?```")
     }
 }

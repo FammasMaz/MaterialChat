@@ -7,7 +7,9 @@ import com.materialchat.data.mapper.toStepDomainList
 import com.materialchat.domain.model.Workflow
 import com.materialchat.domain.model.WorkflowStep
 import com.materialchat.domain.repository.WorkflowRepository
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -23,7 +25,7 @@ class WorkflowRepositoryImpl @Inject constructor(
                 val steps = workflowDao.getStepsForWorkflow(entity.id).toStepDomainList()
                 entity.toDomain(steps)
             }
-        }
+        }.flowOn(Dispatchers.IO)
     }
 
     override suspend fun getWorkflow(workflowId: String): Workflow? {

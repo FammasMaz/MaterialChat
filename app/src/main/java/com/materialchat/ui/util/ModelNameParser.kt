@@ -60,6 +60,13 @@ object ModelNameParser {
      */
     private val lowercaseWords = setOf("and", "or", "the", "a", "an", "for", "with", "to", "of")
 
+    // Pre-compiled regexes. Previously these were compiled per call (and per
+    // word for the version/size checks), which is wasteful when parsing runs on
+    // every conversation-list render and every model-picker item.
+    private val digitDashDigitRegex = Regex("""(\d)-(\d)""")
+    private val versionLikeRegex = Regex("""^[vV]?\d+(\.\d+)*[a-zA-Z]?$""")
+    private val sizeIndicatorRegex = Regex("""^\d+[xX]?\d*[bBmMkK]$""")
+
     /**
      * Parses a raw model identifier into a structured ParsedModelName.
      *
@@ -141,7 +148,7 @@ object ModelNameParser {
         // Replace dashes between digits with dots (e.g., "4-6" -> "4.6" for version numbers)
         // then replace remaining separators with spaces
         val spaced = rawModel
-            .replace(Regex("""(\d)-(\d)"""), "$1.$2")
+            .replace(digitDashDigitRegex, "$1.$2")
             .replace("-", " ")
             .replace("_", " ")
 
@@ -186,14 +193,14 @@ object ModelNameParser {
      * Checks if a word looks like a version number.
      */
     private fun isVersionLike(word: String): Boolean {
-        return word.matches(Regex("""^[vV]?\d+(\.\d+)*[a-zA-Z]?$"""))
+        return versionLikeRegex.matches(word)
     }
 
     /**
      * Checks if a word looks like a size indicator (e.g., "70b", "8x7b").
      */
     private fun isSizeIndicator(word: String): Boolean {
-        return word.matches(Regex("""^\d+[xX]?\d*[bBmMkK]$"""))
+        return sizeIndicatorRegex.matches(word)
     }
 
     /**

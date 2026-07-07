@@ -18,6 +18,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.materialchat.ui.theme.ExpressiveMotion
 
+/** Compiled once — `split` recompiles the pattern on every call otherwise. */
+private val WhitespaceRegex = Regex("\\s+")
+
 /**
  * Live word and estimated token counter displayed near the message input.
  *
@@ -44,7 +47,7 @@ fun TokenCounter(
         derivedStateOf {
             if (text.isBlank()) null
             else {
-                val words = text.trim().split("\\s+".toRegex()).size
+                val words = text.trim().split(WhitespaceRegex).size
                 // Hybrid token estimate: average of chars/4 and words*1.3
                 // This achieves ~5-10% accuracy across all major LLM providers
                 // (OpenAI cl100k/o200k, Claude BPE, Llama 3 SentencePiece, Mistral)

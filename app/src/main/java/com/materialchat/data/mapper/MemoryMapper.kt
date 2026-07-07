@@ -67,7 +67,10 @@ fun MemorySnippetEntity.toDomain(): MemorySnippet = MemorySnippet(
 
 fun List<MemorySnippetEntity>.toMemorySnippetDomainList(): List<MemorySnippet> = map { it.toDomain() }
 
+private val normalizedMemoryContentSplitRegex = Regex("[^a-z0-9]+")
+private val normalizedMemoryContentCollapseRegex = Regex("\\s+")
+
 fun String.normalizedMemoryContent(): String = lowercase()
-    .replace(Regex("[^a-z0-9]+"), " ")
-    .replace(Regex("\\s+"), " ")
+    .replace(normalizedMemoryContentSplitRegex, " ")
+    .replace(normalizedMemoryContentCollapseRegex, " ")
     .trim()

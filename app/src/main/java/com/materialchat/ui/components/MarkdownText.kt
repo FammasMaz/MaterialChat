@@ -31,6 +31,8 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.Stable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -127,26 +129,34 @@ fun MarkdownText(
 /**
  * Internal representation of parsed markdown content.
  */
+@Stable
 private sealed class MarkdownElement {
-    data class TextBlock(val source: String, val content: ParsedInlineContent) : MarkdownElement()
+    @Immutable
+    data class TextBlock(val source: String, val content: ParsedInlineContent, val hasListItems: Boolean) : MarkdownElement()
+    @Immutable
     data class CodeBlock(val code: String, val language: String?) : MarkdownElement()
+    @Immutable
     data class Table(
         val headers: List<String>,
         val rows: List<List<String>>,
         val alignments: List<TableAlignment>
     ) : MarkdownElement()
     data object HorizontalRule : MarkdownElement()
+    @Immutable
     data class MathBlock(val expression: String, val isDisplay: Boolean) : MarkdownElement()
+    @Immutable
     data class Blockquote(val source: String, val content: ParsedInlineContent) : MarkdownElement()
 }
 
 private enum class TableAlignment { LEFT, CENTER, RIGHT }
 
+@Immutable
 private data class ParsedInlineContent(
     val text: AnnotatedString,
     val inlineMath: List<InlineMathContent> = emptyList()
 )
 
+@Immutable
 private data class InlineMathContent(
     val id: String,
     val expression: String
@@ -165,6 +175,99 @@ private const val BATCHED_MATH_BLOCK_THRESHOLD = 2
 private val markdownParseCache = object : android.util.LruCache<MarkdownCacheKey, List<MarkdownElement>>(
     MARKDOWN_PARSE_CACHE_SIZE
 ) {}
+
+// ---- Hoisted patterns/tables (compiled once, reused across every parse) ----
+// Previously these were compiled inside hot functions on every call; regex
+// compilation is ~10-50us each and these run per line / per block during a
+// streaming reparse, so hoisting them removes the bulk of per-frame parse cost.
+
+/** Matches a bullet list item line: "- x" / "* x" (with optional leading indent). */
+private val bulletListItemPattern = Regex("^\\s*[-*]\\s+(.*)")
+/** Matches a numbered list item line: "1. x" (with optional leading indent). */
+private val numberedListItemPattern = Regex("^\\s*(\\d+)\\.\\s+(.*)")
+/** Plain numbered-list prefix check (no capture). */
+private val numberedListItemPrefixPattern = Regex("\\d+\\.\\s+.*")
+/** Matches a horizontal rule: --- / *** / ___ */
+private val horizontalRulePattern = Regex("^[-*_]{3,}$")
+/** Splits merged numbered list items ("1. a,2. b" -> separate lines). */
+private val mergedNumberedItemSplitPattern = Regex(",\\s*(?=\\*{0,2}\\d+\\.\\s)")
+/** A single table-separator cell: ":-", "-", "---:" etc. */
+private val tableSeparatorCellPattern = Regex(":?-{1,}:?")
+/** Detects a numbered list line for the justify-disable fast path. */
+private val hasListItemsNumberedPattern = Regex("\\d+\\.\\s.*")
+/** HTML path: bullet list item. */
+private val htmlBulletListItemPattern = Regex("^[-*]\\s+(.+)")
+/** HTML path: numbered list item. */
+private val htmlNumberedListItemPattern = Regex("^\\d+\\.\\s+(.+)")
+/** HTML path: <br> tag (case-insensitive). */
+private val brTagPattern = Regex("<br\\s*/?>", RegexOption.IGNORE_CASE)
+/** Streaming: an unclosed opening code fence. */
+private val unclosedCodeFencePattern = Regex("(^|\\n)```(\\w*)?\\n?")
+/** Streaming: an unclosed opening $$ display-math delimiter. */
+private val unclosedMathDelimiterPattern = Regex("(^|\\n)\\$\\$\\n?")
+/** A LaTeX command, e.g. "\\frac". */
+private val latexCommandPattern = Regex("""\\[a-zA-Z]+""")
+/** LaTeX text/atom wrappers used by inline-math preview. */
+private val latexTextWrapperPreviewPattern = Regex("""\\(text|mathrm|operatorname)\{([^}]*)\}""")
+
+/**
+ * Combined inline-formatting pattern (bold, italic, code, links, inline math,
+ * citations). Hoisted because [parseInlineFormatting] runs once per source line
+ * per text block; previously the pattern was recompiled on every call.
+ */
+private val inlineMarkdownPattern = Regex(
+    """(\*\*|__)(.*?)\1""" +
+        """|(\*|_)(?!\s)(.*?)(?!\s)\3""" +
+        """|`([^`]+)`""" +
+        """|\[([^\]]+)\]\(([^)]+)\)""" +
+        """|\\\((.+?)\\\)""" +
+        "|(?<!\\\$)\\\$(?!\\\$|\\s)([^\\\$\\n]+?)(?<!\\s)\\\$(?!\\\$|\\d)" +
+        """|(?<!\[)\[(\d{1,2})\](?!\()"""
+)
+
+/**
+ * Combined block pattern (code fences, $$...$$, \[...\], LaTeX environments).
+ * Hoisted because [parseMarkdown] runs on every new markdown chunk while
+ * streaming; previously recompiled per call.
+ */
+private val blockPattern = Regex(
+    """```(\w*)?\n?([\s\S]*?)```""" +                                                          // Code blocks (groups 1, 2)
+    "|\\\$\\\$\\n?([\\s\\S]*?)\\\$\\\$" +                                                      // Display math $$...$$ (group 3)
+    """|\\\[\n?([\s\S]*?)\\\]""" +                                                              // Display math \[...\] (group 4)
+    """|\\begin\{(equation|align|gather|aligned|gathered)\}\n?([\s\S]*?)\\end\{\5\}""",         // LaTeX environments (groups 5, 6)
+    RegexOption.MULTILINE
+)
+
+/** Code-token pattern (strings, numbers, words, operators, whitespace). */
+private val codeTokenPattern = Regex(
+    """("[^"]*"|'[^']*')""" + // Strings
+        """|(\b\d+\.?\d*\b)""" + // Numbers
+        """|(\b\w+\b)""" + // Words (potential keywords)
+        """|([^\s\w"']+)""" + // Operators and punctuation
+        """|(\s+)""" // Whitespace
+)
+/** Number literal check used while highlighting a code segment. */
+private val codeNumberLiteralPattern = Regex("""\d+\.?\d*""")
+
+
+/** LaTeX constructs that require 2D KaTeX layout (vs. Unicode fallback). */
+private val katexComplexConstructs = listOf(
+    "\\frac", "\\dfrac", "\\tfrac", "\\cfrac",     // fractions
+    "\\sqrt",                                        // square roots
+    "\\binom", "\\choose",                           // binomials
+    "\\begin{", "\\end{",                            // environments (matrix, cases, etc.)
+    "\\matrix", "\\pmatrix", "\\bmatrix", "\\vmatrix",
+    "\\overline", "\\underline",                     // over/under decorations
+    "\\overbrace", "\\underbrace",
+    "\\overset", "\\underset", "\\stackrel",         // stacked elements
+    "\\hat{", "\\vec{", "\\bar{", "\\dot{",         // accents over expressions
+    "\\ddot{", "\\tilde{", "\\widehat{", "\\widetilde{",
+    "\\left", "\\right",                             // delimiters that scale
+    "\\substack",                                    // stacked subscripts
+    "\\xleftarrow", "\\xrightarrow",                 // extensible arrows
+    "\\cancelto", "\\cancel", "\\bcancel",           // cancel marks
+    "\\boxed"                                        // boxed expressions
+)
 
 private fun cachedParseMarkdown(
     markdown: String,
@@ -224,12 +327,10 @@ private fun MarkdownContent(
             when (element) {
                 is MarkdownElement.TextBlock -> {
                     if (element.content.text.isNotEmpty()) {
-                        // Don't justify list items — preserve bullet/number indentation
-                        val hasListItems = element.content.text.text.lines().any { line ->
-                            val t = line.trimStart()
-                            t.startsWith("• ") || t.matches(Regex("\\d+\\.\\s.*"))
-                        }
-                        val effectiveStyle = if (hasListItems && style.textAlign == TextAlign.Justify) {
+                        // Don't justify list items — preserve bullet/number indentation.
+                        // hasListItems is precomputed at parse time (see parseTextWithTables)
+                        // so this branch allocates nothing per recomposition.
+                        val effectiveStyle = if (element.hasListItems && style.textAlign == TextAlign.Justify) {
                             style.copy(textAlign = TextAlign.Start)
                         } else {
                             style
@@ -485,8 +586,8 @@ private fun estimateInlineMathPlaceholder(
 
 private fun inlineMathPreview(expression: String): String {
     return expression
-        .replace(Regex("""\\(text|mathrm|operatorname)\{([^}]*)\}"""), "$2")
-        .replace(Regex("""\\[a-zA-Z]+"""), "x")
+        .replace(latexTextWrapperPreviewPattern, "$2")
+        .replace(latexCommandPattern, "x")
         .replace("{", "")
         .replace("}", "")
         .replace("^", "")
@@ -1171,14 +1272,14 @@ private fun markdownTextBlockToHtml(source: String): String {
                 closeList()
                 html.append("<h1>").append(markdownInlineToHtml(trimmed.removePrefix("# "))).append("</h1>")
             }
-            Regex("^[-*]\\s+(.+)").matches(trimmed) -> {
+            htmlBulletListItemPattern.matches(trimmed) -> {
                 ensureList("ul")
-                val item = Regex("^[-*]\\s+(.+)").find(trimmed)?.groupValues?.getOrNull(1).orEmpty()
+                val item = htmlBulletListItemPattern.find(trimmed)?.groupValues?.getOrNull(1).orEmpty()
                 html.append("<li>").append(markdownInlineToHtml(item)).append("</li>")
             }
-            Regex("^\\d+\\.\\s+(.+)").matches(trimmed) -> {
+            htmlNumberedListItemPattern.matches(trimmed) -> {
                 ensureList("ol")
-                val item = Regex("^\\d+\\.\\s+(.+)").find(trimmed)?.groupValues?.getOrNull(1).orEmpty()
+                val item = htmlNumberedListItemPattern.find(trimmed)?.groupValues?.getOrNull(1).orEmpty()
                 html.append("<li>").append(markdownInlineToHtml(item)).append("</li>")
             }
             else -> {
@@ -1599,8 +1700,12 @@ private fun TableCell(
     codeColor: Color,
     linkColor: Color
 ) {
+    val parsed = remember(text, baseColor, codeColor, linkColor) {
+        val cellText = text.toTableCellText()
+        parseInlineMarkdown(cellText, baseColor, codeColor, linkColor)
+    }
     MarkdownInlineText(
-        content = parseInlineMarkdown(text.toTableCellText(), baseColor, codeColor, linkColor),
+        content = parsed,
         style = style,
         modifier = Modifier
             .width(width)
@@ -1629,14 +1734,7 @@ private fun parseMarkdown(
 ): List<MarkdownElement> {
     val elements = mutableListOf<MarkdownElement>()
 
-    // Combined pattern for code blocks AND display math blocks
-    val blockPattern = Regex(
-        """```(\w*)?\n?([\s\S]*?)```""" +                                                          // Code blocks (groups 1, 2)
-        "|\\\$\\\$\\n?([\\s\\S]*?)\\\$\\\$" +                                                      // Display math $$...$$ (group 3)
-        """|\\\[\n?([\s\S]*?)\\\]""" +                                                              // Display math \[...\] (group 4)
-        """|\\begin\{(equation|align|gather|aligned|gathered)\}\n?([\s\S]*?)\\end\{\5\}""",         // LaTeX environments (groups 5, 6)
-        RegexOption.MULTILINE
-    )
+    // Combined pattern for code blocks AND display math blocks (hoisted to top-level `blockPattern`).
     var lastIndex = 0
 
     blockPattern.findAll(markdown).forEach { match ->
@@ -1682,9 +1780,9 @@ private fun parseMarkdown(
         val remainingText = markdown.substring(lastIndex)
         if (remainingText.isNotBlank()) {
             // Check for unclosed code block (streaming — opening ``` without closing)
-            val unclosedCodeMatch = Regex("(^|\\n)```(\\w*)?\\n?").find(remainingText)
+            val unclosedCodeMatch = unclosedCodeFencePattern.find(remainingText)
             // Check for unclosed display math (streaming — opening $$ without closing)
-            val unclosedMathMatch = Regex("(^|\\n)\\\$\\\$\\n?").find(remainingText)
+            val unclosedMathMatch = unclosedMathDelimiterPattern.find(remainingText)
 
             when {
                 unclosedCodeMatch != null -> {
@@ -1737,10 +1835,12 @@ private fun parseTextWithTables(
         if (textBuffer.isNotEmpty()) {
             val joined = textBuffer.joinToString("\n")
             if (joined.isNotBlank()) {
+                val parsedInline = parseInlineMarkdown(joined, baseColor, codeColor, linkColor)
                 elements.add(
                     MarkdownElement.TextBlock(
                         source = joined,
-                        content = parseInlineMarkdown(joined, baseColor, codeColor, linkColor)
+                        content = parsedInline,
+                        hasListItems = computeHasListItems(parsedInline.text.text)
                     )
                 )
             }
@@ -1752,7 +1852,7 @@ private fun parseTextWithTables(
         val trimmedLine = lines[i].trim()
 
         // Detect horizontal rule (---, ***, ___)
-        if (trimmedLine.matches(Regex("^[-*_]{3,}$"))) {
+        if (trimmedLine.matches(horizontalRulePattern)) {
             flushTextBuffer()
             elements.add(MarkdownElement.HorizontalRule)
             i++
@@ -1802,8 +1902,8 @@ private fun parseTextWithTables(
         } else {
             val currentTrimmed = lines[i].trimStart()
             // Split merged numbered list items (e.g., "1. a,2. b" → separate lines)
-            if (currentTrimmed.matches(Regex("\\d+\\.\\s+.*"))) {
-                lines[i].replace(Regex(",\\s*(?=\\*{0,2}\\d+\\.\\s)"), ",\n")
+            if (currentTrimmed.matches(numberedListItemPrefixPattern)) {
+                lines[i].replace(mergedNumberedItemSplitPattern, ",\n")
                     .lines().forEach { textBuffer.add(it) }
             } else if (textBuffer.isNotEmpty() && currentTrimmed.isNotEmpty()
                 && isListContinuation(currentTrimmed, textBuffer.last())) {
@@ -1829,7 +1929,7 @@ internal fun isTableRow(line: String): Boolean {
 internal fun isTableSeparator(line: String): Boolean {
     val cells = tableCells(line)
     return cells.size >= 2 && cells.all { cell ->
-        cell.trim().matches(Regex(":?-{1,}:?"))
+        cell.trim().matches(tableSeparatorCellPattern)
     }
 }
 
@@ -1894,7 +1994,7 @@ internal fun tableCells(line: String): List<String> {
 }
 
 private fun String.toTableCellText(): String {
-    return replace(Regex("<br\\s*/?>", RegexOption.IGNORE_CASE), "\n")
+    return replace(brTagPattern, "\n")
 }
 
 /**
@@ -1904,12 +2004,22 @@ private fun String.toTableCellText(): String {
 private fun isListContinuation(currentTrimmed: String, previousLine: String): Boolean {
     val prevTrimmed = previousLine.trimStart()
     val prevIsList = prevTrimmed.startsWith("- ") || prevTrimmed.startsWith("* ")
-        || prevTrimmed.matches(Regex("\\d+\\.\\s+.*"))
+        || prevTrimmed.matches(numberedListItemPrefixPattern)
     val currentIsList = currentTrimmed.startsWith("- ") || currentTrimmed.startsWith("* ")
-        || currentTrimmed.matches(Regex("\\d+\\.\\s+.*"))
-    val currentIsSpecial = currentTrimmed.startsWith("#") || currentTrimmed.matches(Regex("[-*_]{3,}"))
+        || currentTrimmed.matches(numberedListItemPrefixPattern)
+    val currentIsSpecial = currentTrimmed.startsWith("#") || currentTrimmed.matches(horizontalRulePattern)
     return prevIsList && !currentIsList && !currentIsSpecial
 }
+
+/**
+ * Precompute whether a parsed text block contains list items, so the render
+ * path doesn't re-scan (and recompile a regex) on every recomposition.
+ */
+private fun computeHasListItems(text: String): Boolean =
+    text.lines().any { line ->
+        val t = line.trimStart()
+        t.startsWith("\u2022 ") || t.matches(hasListItemsNumberedPattern)
+    }
 
 /**
  * Parse inline markdown formatting (bold, italic, code, links, headers, lists).
@@ -1980,7 +2090,7 @@ private fun AnnotatedString.Builder.parseLine(
     }
 
     // Handle bullet lists
-    val bulletMatch = Regex("^\\s*[-*]\\s+(.*)").find(line)
+    val bulletMatch = bulletListItemPattern.find(line)
     if (bulletMatch != null) {
         append("  • ")
         parseInlineFormatting(bulletMatch.groupValues[1], baseColor, codeColor, linkColor, inlineMath)
@@ -1988,7 +2098,7 @@ private fun AnnotatedString.Builder.parseLine(
     }
 
     // Handle numbered lists
-    val numberedMatch = Regex("^\\s*(\\d+)\\.\\s+(.*)").find(line)
+    val numberedMatch = numberedListItemPattern.find(line)
     if (numberedMatch != null) {
         append("  ${numberedMatch.groupValues[1]}. ")
         parseInlineFormatting(numberedMatch.groupValues[2], baseColor, codeColor, linkColor, inlineMath)
@@ -2013,17 +2123,7 @@ private fun AnnotatedString.Builder.parseInlineFormatting(
 
     // Combined pattern for all inline elements
     // Order matters: ** before *, __ before _, math before other $
-    val pattern = Regex(
-        """(\*\*|__)(.*?)\1""" + // Bold (groups 1, 2)
-        """|(\*|_)(?!\s)(.*?)(?!\s)\3""" + // Italic (groups 3, 4)
-        """|`([^`]+)`""" + // Inline code (group 5)
-        """|\[([^\]]+)\]\(([^)]+)\)""" + // Links (groups 6, 7)
-        """|\\\((.+?)\\\)""" + // Inline math \(...\) (group 8)
-        "|(?<!\\\$)\\\$(?!\\\$|\\s)([^\\\$\\n]+?)(?<!\\s)\\\$(?!\\\$|\\d)" + // Inline math $...$ (group 9)
-        """|(?<!\[)\[(\d{1,2})\](?!\()""" // Citation [N] not part of link (group 10)
-    )
-
-    val matches = pattern.findAll(text).toList()
+    val matches = inlineMarkdownPattern.findAll(text).toList()
 
     if (matches.isEmpty()) {
         withStyle(SpanStyle(color = baseColor)) {
@@ -2364,7 +2464,7 @@ private fun looksLikeInlineMath(content: String): Boolean {
     if (trimmed.all { it.isDigit() || it == '.' || it == ',' }) return false
 
     val hasMathSyntax = trimmed.any { it in "\\^_{}=+-*/<>[]()" }
-    val hasLatexCommand = Regex("""\\[a-zA-Z]+""").containsMatchIn(trimmed)
+    val hasLatexCommand = latexCommandPattern.containsMatchIn(trimmed)
     val hasMathSymbol = trimmed.any { it in "≤≥≠≈∞∑∏√∫π÷×±" }
     val compactVariable = !trimmed.any { it.isWhitespace() } &&
         trimmed.length <= 3 &&
@@ -2379,24 +2479,7 @@ private fun looksLikeInlineMath(content: String): Boolean {
  * render as Unicode text for dramatically better performance.
  */
 private fun needsKatexRendering(expression: String): Boolean {
-    val complex = listOf(
-        "\\frac", "\\dfrac", "\\tfrac", "\\cfrac",     // fractions
-        "\\sqrt",                                        // square roots
-        "\\binom", "\\choose",                           // binomials
-        "\\begin{", "\\end{",                            // environments (matrix, cases, etc.)
-        "\\matrix", "\\pmatrix", "\\bmatrix", "\\vmatrix",
-        "\\overline", "\\underline",                     // over/under decorations
-        "\\overbrace", "\\underbrace",
-        "\\overset", "\\underset", "\\stackrel",         // stacked elements
-        "\\hat{", "\\vec{", "\\bar{", "\\dot{",         // accents over expressions
-        "\\ddot{", "\\tilde{", "\\widehat{", "\\widetilde{",
-        "\\left", "\\right",                             // delimiters that scale
-        "\\substack",                                    // stacked subscripts
-        "\\xleftarrow", "\\xrightarrow",                 // extensible arrows
-        "\\cancelto", "\\cancel", "\\bcancel",           // cancel marks
-        "\\boxed",                                       // boxed expressions
-    )
-    return complex.any { expression.contains(it) }
+    return katexComplexConstructs.any { expression.contains(it) }
 }
 
 /**
@@ -2611,16 +2694,7 @@ private fun AnnotatedString.Builder.highlightCodeSegment(
 ) {
     if (segment.isEmpty()) return
 
-    // Pattern for strings, numbers, and words
-    val tokenPattern = Regex(
-        """("[^"]*"|'[^']*')""" + // Strings
-        """|(\b\d+\.?\d*\b)""" + // Numbers
-        """|(\b\w+\b)""" + // Words (potential keywords)
-        """|([^\s\w"']+)""" + // Operators and punctuation
-        """|(\s+)""" // Whitespace
-    )
-
-    tokenPattern.findAll(segment).forEach { match ->
+    codeTokenPattern.findAll(segment).forEach { match ->
         val token = match.value
 
         when {
@@ -2631,7 +2705,7 @@ private fun AnnotatedString.Builder.highlightCodeSegment(
                 }
             }
             // Number
-            token.matches(Regex("""\d+\.?\d*""")) -> {
+            token.matches(codeNumberLiteralPattern) -> {
                 withStyle(SpanStyle(color = numberColor)) {
                     append(token)
                 }

@@ -10,7 +10,7 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.materialchat.domain.model.ReasoningEffort
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 
 /**
@@ -180,7 +180,7 @@ class AppPreferences(private val context: Context) {
      */
     val systemPrompt: Flow<String> = dataStore.data.map { preferences ->
         preferences[Keys.SYSTEM_PROMPT] ?: DEFAULT_SYSTEM_PROMPT
-    }
+    }.distinctUntilChanged()
 
     /**
      * Set the system prompt.
@@ -203,7 +203,7 @@ class AppPreferences(private val context: Context) {
         } catch (e: IllegalArgumentException) {
             DEFAULT_THEME_MODE
         }
-    }
+    }.distinctUntilChanged()
 
     /**
      * Set the theme mode.
@@ -226,7 +226,7 @@ class AppPreferences(private val context: Context) {
         } catch (e: IllegalArgumentException) {
             DEFAULT_THEME_PALETTE
         }
-    }
+    }.distinctUntilChanged()
 
     /**
      * Set the static Material 3 color palette.
@@ -249,7 +249,7 @@ class AppPreferences(private val context: Context) {
         } catch (e: IllegalArgumentException) {
             DEFAULT_CHAT_BUBBLE_STYLE
         }
-    }
+    }.distinctUntilChanged()
 
     /**
      * Set the chat bubble shape family.
@@ -272,7 +272,7 @@ class AppPreferences(private val context: Context) {
         } catch (e: IllegalArgumentException) {
             DEFAULT_CONTROL_SHAPE_STYLE
         }
-    }
+    }.distinctUntilChanged()
 
     /**
      * Set the Material Expressive control shape intensity.
@@ -285,7 +285,7 @@ class AppPreferences(private val context: Context) {
 
     val mainButtonShape: Flow<ComponentButtonShape> = dataStore.data.map { preferences ->
         preferences[Keys.MAIN_BUTTON_SHAPE].toComponentButtonShape()
-    }
+    }.distinctUntilChanged()
 
     suspend fun setMainButtonShape(shape: ComponentButtonShape) {
         dataStore.edit { preferences ->
@@ -295,7 +295,7 @@ class AppPreferences(private val context: Context) {
 
     val chatButtonShape: Flow<ComponentButtonShape> = dataStore.data.map { preferences ->
         preferences[Keys.CHAT_BUTTON_SHAPE].toComponentButtonShape()
-    }
+    }.distinctUntilChanged()
 
     suspend fun setChatButtonShape(shape: ComponentButtonShape) {
         dataStore.edit { preferences ->
@@ -318,7 +318,7 @@ class AppPreferences(private val context: Context) {
      */
     val dynamicColorEnabled: Flow<Boolean> = dataStore.data.map { preferences ->
         preferences[Keys.DYNAMIC_COLOR_ENABLED] ?: DEFAULT_DYNAMIC_COLOR_ENABLED
-    }
+    }.distinctUntilChanged()
 
     /**
      * Set whether dynamic color is enabled.
@@ -336,7 +336,7 @@ class AppPreferences(private val context: Context) {
      */
     val hapticsEnabled: Flow<Boolean> = dataStore.data.map { preferences ->
         preferences[Keys.HAPTICS_ENABLED] ?: DEFAULT_HAPTICS_ENABLED
-    }
+    }.distinctUntilChanged()
 
     /**
      * Set whether haptic feedback is enabled.
@@ -349,7 +349,7 @@ class AppPreferences(private val context: Context) {
 
     val chatHapticsEnabled: Flow<Boolean> = dataStore.data.map { preferences ->
         preferences[Keys.CHAT_HAPTICS_ENABLED] ?: DEFAULT_HAPTICS_ENABLED
-    }
+    }.distinctUntilChanged()
 
     suspend fun setChatHapticsEnabled(enabled: Boolean) {
         dataStore.edit { preferences -> preferences[Keys.CHAT_HAPTICS_ENABLED] = enabled }
@@ -357,7 +357,7 @@ class AppPreferences(private val context: Context) {
 
     val navigationHapticsEnabled: Flow<Boolean> = dataStore.data.map { preferences ->
         preferences[Keys.NAVIGATION_HAPTICS_ENABLED] ?: DEFAULT_HAPTICS_ENABLED
-    }
+    }.distinctUntilChanged()
 
     suspend fun setNavigationHapticsEnabled(enabled: Boolean) {
         dataStore.edit { preferences -> preferences[Keys.NAVIGATION_HAPTICS_ENABLED] = enabled }
@@ -365,7 +365,7 @@ class AppPreferences(private val context: Context) {
 
     val listHapticsEnabled: Flow<Boolean> = dataStore.data.map { preferences ->
         preferences[Keys.LIST_HAPTICS_ENABLED] ?: DEFAULT_HAPTICS_ENABLED
-    }
+    }.distinctUntilChanged()
 
     suspend fun setListHapticsEnabled(enabled: Boolean) {
         dataStore.edit { preferences -> preferences[Keys.LIST_HAPTICS_ENABLED] = enabled }
@@ -373,7 +373,7 @@ class AppPreferences(private val context: Context) {
 
     val gestureHapticsEnabled: Flow<Boolean> = dataStore.data.map { preferences ->
         preferences[Keys.GESTURE_HAPTICS_ENABLED] ?: DEFAULT_HAPTICS_ENABLED
-    }
+    }.distinctUntilChanged()
 
     suspend fun setGestureHapticsEnabled(enabled: Boolean) {
         dataStore.edit { preferences -> preferences[Keys.GESTURE_HAPTICS_ENABLED] = enabled }
@@ -386,7 +386,7 @@ class AppPreferences(private val context: Context) {
      */
     val notificationsEnabled: Flow<Boolean> = dataStore.data.map { preferences ->
         preferences[Keys.NOTIFICATIONS_ENABLED] ?: DEFAULT_NOTIFICATIONS_ENABLED
-    }
+    }.distinctUntilChanged()
 
     /**
      * Set whether app notifications are enabled.
@@ -404,7 +404,7 @@ class AppPreferences(private val context: Context) {
      */
     val reasoningEffort: Flow<ReasoningEffort> = dataStore.data.map { preferences ->
         ReasoningEffort.fromStoredValue(preferences[Keys.REASONING_EFFORT])
-    }
+    }.distinctUntilChanged()
 
     /**
      * Set the reasoning effort setting.
@@ -422,7 +422,7 @@ class AppPreferences(private val context: Context) {
      */
     val firstLaunchComplete: Flow<Boolean> = dataStore.data.map { preferences ->
         preferences[Keys.FIRST_LAUNCH_COMPLETE] ?: false
-    }
+    }.distinctUntilChanged()
 
     /**
      * Mark first launch setup as complete.
@@ -438,14 +438,14 @@ class AppPreferences(private val context: Context) {
      */
     val onboardingComplete: Flow<Boolean> = dataStore.data.map { preferences ->
         preferences[Keys.ONBOARDING_COMPLETE] ?: false
-    }
+    }.distinctUntilChanged()
 
     /**
      * Whether the onboarding flag exists. Used to avoid showing onboarding to existing installs.
      */
     val onboardingPreferenceSet: Flow<Boolean> = dataStore.data.map { preferences ->
         preferences.contains(Keys.ONBOARDING_COMPLETE)
-    }
+    }.distinctUntilChanged()
 
     /**
      * Mark first-run onboarding as complete or pending.
@@ -464,7 +464,7 @@ class AppPreferences(private val context: Context) {
      */
     val aiGeneratedTitlesEnabled: Flow<Boolean> = dataStore.data.map { preferences ->
         preferences[Keys.AI_GENERATED_TITLES_ENABLED] ?: DEFAULT_AI_GENERATED_TITLES_ENABLED
-    }
+    }.distinctUntilChanged()
 
     /**
      * Set whether AI-generated titles are enabled.
@@ -480,7 +480,7 @@ class AppPreferences(private val context: Context) {
      */
     val preferOnDeviceTitleModel: Flow<Boolean> = dataStore.data.map { preferences ->
         preferences[Keys.PREFER_ON_DEVICE_TITLE_MODEL] ?: DEFAULT_PREFER_ON_DEVICE_TITLE_MODEL
-    }
+    }.distinctUntilChanged()
 
     suspend fun setPreferOnDeviceTitleModel(enabled: Boolean) {
         dataStore.edit { preferences ->
@@ -496,7 +496,7 @@ class AppPreferences(private val context: Context) {
      */
     val titleGenerationModel: Flow<String> = dataStore.data.map { preferences ->
         preferences[Keys.TITLE_GENERATION_MODEL] ?: ""
-    }
+    }.distinctUntilChanged()
 
     /**
      * Set the custom model for title generation.
@@ -515,7 +515,7 @@ class AppPreferences(private val context: Context) {
         preferences[Keys.PREFER_ON_DEVICE_BACKGROUND_TASKS]
             ?: preferences[Keys.PREFER_ON_DEVICE_TITLE_MODEL]
             ?: DEFAULT_PREFER_ON_DEVICE_BACKGROUND_TASKS
-    }
+    }.distinctUntilChanged()
 
     suspend fun setPreferOnDeviceBackgroundTasks(enabled: Boolean) {
         dataStore.edit { preferences ->
@@ -526,7 +526,7 @@ class AppPreferences(private val context: Context) {
 
     val memoryExtractionModel: Flow<String> = dataStore.data.map { preferences ->
         preferences[Keys.MEMORY_EXTRACTION_MODEL] ?: ""
-    }
+    }.distinctUntilChanged()
 
     suspend fun setMemoryExtractionModel(model: String) {
         dataStore.edit { preferences ->
@@ -541,7 +541,7 @@ class AppPreferences(private val context: Context) {
      */
     val defaultImageGenerationModel: Flow<String> = dataStore.data.map { preferences ->
         preferences[Keys.DEFAULT_IMAGE_GENERATION_MODEL] ?: DEFAULT_IMAGE_GENERATION_MODEL
-    }
+    }.distinctUntilChanged()
 
     /**
      * Set the default image generation model.
@@ -558,7 +558,7 @@ class AppPreferences(private val context: Context) {
     val defaultImageOutputFormat: Flow<String> = dataStore.data.map { preferences ->
         val format = preferences[Keys.DEFAULT_IMAGE_OUTPUT_FORMAT] ?: DEFAULT_IMAGE_OUTPUT_FORMAT
         format.takeIf { it in SUPPORTED_IMAGE_OUTPUT_FORMATS } ?: DEFAULT_IMAGE_OUTPUT_FORMAT
-    }
+    }.distinctUntilChanged()
 
     /**
      * Set the default image output format.
@@ -578,7 +578,7 @@ class AppPreferences(private val context: Context) {
      */
     val autoCheckUpdates: Flow<Boolean> = dataStore.data.map { preferences ->
         preferences[Keys.AUTO_CHECK_UPDATES] ?: true
-    }
+    }.distinctUntilChanged()
 
     /**
      * Set whether automatic update checking is enabled.
@@ -594,7 +594,7 @@ class AppPreferences(private val context: Context) {
      */
     val lastUpdateCheck: Flow<Long> = dataStore.data.map { preferences ->
         preferences[Keys.LAST_UPDATE_CHECK] ?: 0L
-    }
+    }.distinctUntilChanged()
 
     /**
      * Set the timestamp of the last update check.
@@ -611,7 +611,7 @@ class AppPreferences(private val context: Context) {
      */
     val skippedUpdateVersion: Flow<String> = dataStore.data.map { preferences ->
         preferences[Keys.SKIPPED_UPDATE_VERSION] ?: ""
-    }
+    }.distinctUntilChanged()
 
     /**
      * Set the version to skip (user chose to dismiss this update).
@@ -630,7 +630,7 @@ class AppPreferences(private val context: Context) {
      */
     val rememberLastModel: Flow<Boolean> = dataStore.data.map { preferences ->
         preferences[Keys.REMEMBER_LAST_MODEL] ?: DEFAULT_REMEMBER_LAST_MODEL
-    }
+    }.distinctUntilChanged()
 
     /**
      * Set whether to remember the last used model for new chats.
@@ -647,7 +647,7 @@ class AppPreferences(private val context: Context) {
      */
     val lastUsedModel: Flow<String> = dataStore.data.map { preferences ->
         preferences[Keys.LAST_USED_MODEL] ?: ""
-    }
+    }.distinctUntilChanged()
 
     /**
      * Set the last used model name.
@@ -666,7 +666,7 @@ class AppPreferences(private val context: Context) {
      */
     val assistantEnabled: Flow<Boolean> = dataStore.data.map { preferences ->
         preferences[Keys.ASSISTANT_ENABLED] ?: true
-    }
+    }.distinctUntilChanged()
 
     /**
      * Set whether the assistant is enabled.
@@ -682,7 +682,7 @@ class AppPreferences(private val context: Context) {
      */
     val assistantVoiceEnabled: Flow<Boolean> = dataStore.data.map { preferences ->
         preferences[Keys.ASSISTANT_VOICE_ENABLED] ?: true
-    }
+    }.distinctUntilChanged()
 
     /**
      * Set whether voice input is enabled for the assistant.
@@ -698,7 +698,7 @@ class AppPreferences(private val context: Context) {
      */
     val assistantTtsEnabled: Flow<Boolean> = dataStore.data.map { preferences ->
         preferences[Keys.ASSISTANT_TTS_ENABLED] ?: true
-    }
+    }.distinctUntilChanged()
 
     /**
      * Set whether text-to-speech is enabled for the assistant.
@@ -717,7 +717,7 @@ class AppPreferences(private val context: Context) {
      */
     val beautifulModelNamesEnabled: Flow<Boolean> = dataStore.data.map { preferences ->
         preferences[Keys.BEAUTIFUL_MODEL_NAMES] ?: DEFAULT_BEAUTIFUL_MODEL_NAMES
-    }
+    }.distinctUntilChanged()
 
     /**
      * Set whether beautiful model names display is enabled.
@@ -736,7 +736,7 @@ class AppPreferences(private val context: Context) {
      */
     val alwaysShowThinking: Flow<Boolean> = dataStore.data.map { preferences ->
         preferences[Keys.ALWAYS_SHOW_THINKING] ?: false
-    }
+    }.distinctUntilChanged()
 
     /**
      * Set whether thinking content is always shown expanded.
@@ -754,7 +754,7 @@ class AppPreferences(private val context: Context) {
      */
     val fontFamily: Flow<String> = dataStore.data.map { preferences ->
         preferences[Keys.FONT_FAMILY] ?: DEFAULT_FONT_FAMILY
-    }
+    }.distinctUntilChanged()
 
     /**
      * Set the font family name.
@@ -770,7 +770,7 @@ class AppPreferences(private val context: Context) {
      */
     val fontSizeScale: Flow<Float> = dataStore.data.map { preferences ->
         preferences[Keys.FONT_SIZE_SCALE]?.toFloatOrNull() ?: DEFAULT_FONT_SIZE_SCALE_VALUE
-    }
+    }.distinctUntilChanged()
 
     /**
      * Set the font size scale (continuous value).
@@ -789,7 +789,7 @@ class AppPreferences(private val context: Context) {
      */
     val showTokenCounter: Flow<Boolean> = dataStore.data.map { preferences ->
         preferences[Keys.SHOW_TOKEN_COUNTER] ?: false
-    }
+    }.distinctUntilChanged()
 
     /**
      * Set whether the token counter is shown in the message input.
@@ -816,7 +816,7 @@ class AppPreferences(private val context: Context) {
      */
     val lifetimeAdFree: Flow<Boolean> = dataStore.data.map { preferences ->
         preferences[Keys.LIFETIME_AD_FREE] ?: false
-    }
+    }.distinctUntilChanged()
 
     suspend fun setLifetimeAdFree(enabled: Boolean) {
         dataStore.edit { preferences ->
@@ -829,7 +829,7 @@ class AppPreferences(private val context: Context) {
      */
     val rewardedPremiumUntilMillis: Flow<Long> = dataStore.data.map { preferences ->
         preferences[Keys.REWARDED_PREMIUM_UNTIL] ?: 0L
-    }
+    }.distinctUntilChanged()
 
     suspend fun setRewardedPremiumUntilMillis(untilMillis: Long) {
         dataStore.edit { preferences ->
@@ -839,10 +839,13 @@ class AppPreferences(private val context: Context) {
 
     suspend fun extendRewardedPremium(durationMillis: Long): Long {
         val now = System.currentTimeMillis()
-        val currentUntil = rewardedPremiumUntilMillis.first()
-        val baseTime = maxOf(now, currentUntil)
-        val newUntil = baseTime + durationMillis
-        setRewardedPremiumUntilMillis(newUntil)
+        var newUntil = now + durationMillis
+        dataStore.edit { preferences ->
+            val currentUntil = preferences[Keys.REWARDED_PREMIUM_UNTIL] ?: 0L
+            val baseTime = maxOf(now, currentUntil)
+            newUntil = baseTime + durationMillis
+            preferences[Keys.REWARDED_PREMIUM_UNTIL] = newUntil.coerceAtLeast(0L)
+        }
         return newUntil
     }
 
@@ -853,7 +856,7 @@ class AppPreferences(private val context: Context) {
      */
     val webSearchEnabled: Flow<Boolean> = dataStore.data.map { preferences ->
         preferences[Keys.WEB_SEARCH_ENABLED] ?: false
-    }
+    }.distinctUntilChanged()
 
     /**
      * Set whether web search is enabled.
@@ -869,7 +872,7 @@ class AppPreferences(private val context: Context) {
      */
     val webSearchProvider: Flow<String> = dataStore.data.map { preferences ->
         preferences[Keys.WEB_SEARCH_PROVIDER] ?: "EXA"
-    }
+    }.distinctUntilChanged()
 
     /**
      * Set the web search provider.
@@ -885,7 +888,7 @@ class AppPreferences(private val context: Context) {
      */
     val searxngBaseUrl: Flow<String> = dataStore.data.map { preferences ->
         preferences[Keys.SEARXNG_BASE_URL] ?: DEFAULT_SEARXNG_BASE_URL
-    }
+    }.distinctUntilChanged()
 
     /**
      * Set the SearXNG base URL.
@@ -901,7 +904,7 @@ class AppPreferences(private val context: Context) {
      */
     val webSearchMaxResults: Flow<Int> = dataStore.data.map { preferences ->
         preferences[Keys.WEB_SEARCH_MAX_RESULTS]?.toIntOrNull() ?: DEFAULT_WEB_SEARCH_MAX_RESULTS
-    }
+    }.distinctUntilChanged()
 
     /**
      * Set the web search max results.

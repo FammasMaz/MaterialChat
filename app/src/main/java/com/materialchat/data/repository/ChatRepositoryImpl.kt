@@ -21,9 +21,11 @@ import com.materialchat.domain.repository.ChatRepository
 import com.materialchat.domain.repository.LocalModelRepository
 import com.materialchat.domain.util.normalizeStreamingTextBoundary
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOn
 import java.io.File
 import java.util.UUID
 import javax.inject.Inject
@@ -65,7 +67,7 @@ class ChatRepositoryImpl @Inject constructor(
                     is kotlinx.coroutines.CancellationException -> emit(StreamingState.Cancelled())
                     else -> emit(StreamingState.Error(error = exception))
                 }
-            }
+            }.flowOn(Dispatchers.IO)
         }
 
         return flow {
@@ -97,7 +99,6 @@ class ChatRepositoryImpl @Inject constructor(
             disableTools = disableTools,
             nativeWebSearch = nativeWebSearch
         ).collect { event ->
-            android.util.Log.d("ChatRepository", "Received event: $event")
             when (event) {
                 is StreamingEvent.Connected -> {
                     // Already emitted Starting state
@@ -107,7 +108,6 @@ class ChatRepositoryImpl @Inject constructor(
                     accumulatedContent.append(event.content)
                     event.thinking?.let { accumulatedThinking.append(it) }
                     val normalized = normalizedAccumulation()
-                    android.util.Log.d("ChatRepository", "Accumulated content: ${accumulatedContent.length} chars")
                     emit(StreamingState.Streaming(
                         content = normalized.content,
                         thinkingContent = normalized.thinkingContent,
@@ -117,7 +117,6 @@ class ChatRepositoryImpl @Inject constructor(
 
                 is StreamingEvent.Done -> {
                     val normalized = normalizedAccumulation()
-                    android.util.Log.d("ChatRepository", "Stream done, final content: ${accumulatedContent.length} chars")
                     emit(StreamingState.Completed(
                         finalContent = normalized.content,
                         finalThinkingContent = normalized.thinkingContent,
@@ -151,7 +150,7 @@ class ChatRepositoryImpl @Inject constructor(
                 ))
             }
         }
-    }
+    }.flowOn(Dispatchers.IO)
     }
 
     override suspend fun fetchModels(

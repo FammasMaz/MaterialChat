@@ -41,18 +41,17 @@ sealed interface BookmarksUiState {
          * Bookmarks filtered by the current search query.
          * Searches across message content, tags, notes, and category names.
          */
-        val filteredBookmarks: List<BookmarkWithMessage>
-            get() {
-                if (searchQuery.isBlank()) return bookmarks
-                val query = searchQuery.trim().lowercase()
-                return bookmarks.filter { item ->
-                    item.messageContent.lowercase().contains(query) ||
-                        item.bookmark.tags.any { it.lowercase().contains(query) } ||
-                        item.bookmark.note?.lowercase()?.contains(query) == true ||
-                        item.bookmark.category.displayName.lowercase().contains(query) ||
-                        item.conversationTitle.lowercase().contains(query)
-                }
+        val filteredBookmarks: List<BookmarkWithMessage> by lazy {
+            if (searchQuery.isBlank()) return@lazy bookmarks
+            val query = searchQuery.trim().lowercase()
+            bookmarks.filter { item ->
+                item.messageContent.lowercase().contains(query) ||
+                    item.bookmark.tags.any { it.lowercase().contains(query) } ||
+                    item.bookmark.note?.lowercase()?.contains(query) == true ||
+                    item.bookmark.category.displayName.lowercase().contains(query) ||
+                    item.conversationTitle.lowercase().contains(query)
             }
+        }
     }
 
     /**

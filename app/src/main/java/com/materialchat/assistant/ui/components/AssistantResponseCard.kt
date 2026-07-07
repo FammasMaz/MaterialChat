@@ -14,7 +14,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
@@ -111,10 +111,10 @@ fun AssistantResponseCard(
                 .weight(1f, fill = false),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            items(
+            itemsIndexed(
                 items = messages,
-                key = { "${it.role}_${it.content.hashCode()}_${messages.indexOf(it)}" }
-            ) { message ->
+                key = { index, message -> "${message.role}_$index" }
+            ) { _, message ->
                 when (message.role) {
                     MessageRole.USER -> UserQueryBubble(query = message.content)
                     MessageRole.ASSISTANT -> AssistantBubble(

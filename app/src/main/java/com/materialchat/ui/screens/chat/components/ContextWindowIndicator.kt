@@ -123,6 +123,8 @@ private fun WavyContextRing(
         animationSpec = ExpressiveMotion.Spatial.default(),
         label = "contextWindowProgress"
     )
+    // Reuse a single Path across frames — wavyArcPath otherwise allocates one per draw.
+    val path = remember { Path() }
 
     Canvas(modifier = modifier) {
         val strokeWidth = size.minDimension * 0.16f
@@ -137,6 +139,7 @@ private fun WavyContextRing(
         )
         drawPath(
             path = wavyArcPath(
+                path = path,
                 center = center,
                 radius = radius,
                 startDegrees = -92f,
@@ -150,13 +153,14 @@ private fun WavyContextRing(
 }
 
 private fun wavyArcPath(
+    path: Path,
     center: Offset,
     radius: Float,
     startDegrees: Float,
     sweepDegrees: Float,
     waveAmplitude: Float
 ): Path {
-    val path = Path()
+    path.rewind()
     val steps = 36
     for (i in 0..steps) {
         val t = i / steps.toFloat()

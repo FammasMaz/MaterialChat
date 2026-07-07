@@ -173,17 +173,17 @@ class SpeechRecognitionManager @Inject constructor(
         if (now - lastAmplitudeEmitUptimeMs < AMPLITUDE_MIN_INTERVAL_MS) return
         lastAmplitudeEmitUptimeMs = now
 
-        val currentAmplitudes = _amplitudeData.value.amplitudes.toMutableList()
-
-        for (i in 0 until currentAmplitudes.size - 1) {
-            currentAmplitudes[i] = currentAmplitudes[i + 1]
-        }
-        currentAmplitudes[currentAmplitudes.size - 1] = newAmplitude
-
+        val previous = _amplitudeData.value.amplitudes
+        val size = previous.size
         val phase = now * 0.01f
-        val variedAmplitudes = currentAmplitudes.mapIndexed { index, amplitude ->
+        // Build the shifted + varied window in a single pass. Previously this
+        // allocated a mutable copy, shifted it by hand, then mapped to a second
+        // list — two full list copies per frame at ~20 fps while listening.
+        val variedAmplitudes = ArrayList<Float>(size)
+        for (index in 0 until size) {
+            val raw = if (index < size - 1) previous[index + 1] else newAmplitude
             val variation = 0.1f * kotlin.math.sin(index * 0.5f + phase).toFloat()
-            (amplitude + variation).coerceIn(0.05f, 1f)
+            variedAmplitudes.add((raw + variation).coerceIn(0.05f, 1f))
         }
 
         _amplitudeData.value = AudioAmplitudeData(variedAmplitudes)

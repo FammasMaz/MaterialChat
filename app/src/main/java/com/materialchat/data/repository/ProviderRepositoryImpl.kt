@@ -7,7 +7,9 @@ import com.materialchat.data.mapper.toEntity
 import com.materialchat.data.mapper.toProviderDomainList
 import com.materialchat.domain.model.Provider
 import com.materialchat.domain.repository.ProviderRepository
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -27,7 +29,7 @@ class ProviderRepositoryImpl @Inject constructor(
     override fun observeProviders(): Flow<List<Provider>> {
         return providerDao.getAllProviders().map { entities ->
             entities.toProviderDomainList()
-        }
+        }.flowOn(Dispatchers.IO)
     }
 
     override suspend fun getProviders(): List<Provider> {
@@ -41,7 +43,7 @@ class ProviderRepositoryImpl @Inject constructor(
     override fun observeActiveProvider(): Flow<Provider?> {
         return providerDao.getActiveProviderFlow().map { entity ->
             entity?.toDomain()
-        }
+        }.flowOn(Dispatchers.IO)
     }
 
     override suspend fun getActiveProvider(): Provider? {

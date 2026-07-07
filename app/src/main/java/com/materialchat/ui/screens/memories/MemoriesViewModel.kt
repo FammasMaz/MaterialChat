@@ -12,6 +12,8 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+private val memoryQueryTokenizer = Regex("\\s+")
+
 @HiltViewModel
 class MemoriesViewModel @Inject constructor(
     private val memoryRepository: MemoryRepository
@@ -25,7 +27,7 @@ class MemoriesViewModel @Inject constructor(
         val filtered = if (query.isBlank()) {
             memories
         } else {
-            val tokens = query.lowercase().split(Regex("\\s+")).filter { it.isNotBlank() }
+            val tokens = query.lowercase().split(memoryQueryTokenizer).filter { it.isNotBlank() }
             memories.filter { memory ->
                 val searchable = "${memory.content} ${memory.kind.displayName}".lowercase()
                 tokens.all { token -> searchable.contains(token) }

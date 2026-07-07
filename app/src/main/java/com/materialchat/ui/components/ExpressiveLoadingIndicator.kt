@@ -120,6 +120,13 @@ fun M3ExpressiveLoadingIndicator(
         label = "shapeMorph"
     )
 
+    // Reusable scratch buffers for the morphing-shape draw path. The indicator
+    // animates continuously at 60fps while visible (every AI response), so
+    // avoiding a Path + vertex list allocation per frame matters.
+    val shapePath = remember { Path() }
+    val vertexX = remember { FloatArray(MAX_MORPH_VERTICES) }
+    val vertexY = remember { FloatArray(MAX_MORPH_VERTICES) }
+
     Box(
         modifier = modifier.size(size),
         contentAlignment = Alignment.Center
@@ -163,6 +170,9 @@ fun M3ExpressiveLoadingIndicator(
                 }
 
                 drawMorphingShape(
+                    path = shapePath,
+                    scratchX = vertexX,
+                    scratchY = vertexY,
                     centerX = centerX,
                     centerY = centerY,
                     outerRadius = radius,
@@ -178,8 +188,14 @@ fun M3ExpressiveLoadingIndicator(
 /**
  * Draws a filled morphing shape with smooth M3 Expressive cubic bezier curves.
  * Creates soft, rounded shapes like M3 "soft-burst" and "cookie" styles.
+ *
+ * The caller supplies a reusable [path] and [scratchX]/[scratchY] buffers so no
+ * Path or vertex container is allocated per frame.
  */
 private fun DrawScope.drawMorphingShape(
+    path: Path,
+    scratchX: FloatArray,
+    scratchY: FloatArray,
     centerX: Float,
     centerY: Float,
     outerRadius: Float,
@@ -187,7 +203,7 @@ private fun DrawScope.drawMorphingShape(
     points: Int,
     color: Color
 ) {
-    val path = Path()
+    path.reset()
     val innerRadius = outerRadius * innerRadiusRatio
 
     // For star shapes, we create smooth curves between outer and inner points
@@ -196,14 +212,12 @@ private fun DrawScope.drawMorphingShape(
     val totalPoints = if (isStarShape) points * 2 else points
     val angleStep = (2 * PI / totalPoints).toFloat()
 
-    // Calculate all vertex positions
-    val vertices = mutableListOf<Pair<Float, Float>>()
+    // Calculate all vertex positions into preallocated scratch buffers (no boxing).
     for (i in 0 until totalPoints) {
         val angle = (i * angleStep) - (PI / 2).toFloat()
         val r = if (isStarShape && i % 2 == 1) innerRadius else outerRadius
-        val x = centerX + r * cos(angle)
-        val y = centerY + r * sin(angle)
-        vertices.add(Pair(x, y))
+        scratchX[i] = centerX + r * cos(angle)
+        scratchY[i] = centerY + r * sin(angle)
     }
 
     // M3 Expressive: Use high smoothing for soft, rounded corners
@@ -211,28 +225,30 @@ private fun DrawScope.drawMorphingShape(
     val smoothing = if (isStarShape) 0.75f else 0.8f
 
     // Calculate midpoints for smooth curve starting
-    val firstMidX = (vertices[0].first + vertices[1].first) / 2
-    val firstMidY = (vertices[0].second + vertices[1].second) / 2
+    val firstMidX = (scratchX[0] + scratchX[1]) / 2
+    val firstMidY = (scratchY[0] + scratchY[1]) / 2
     path.moveTo(firstMidX, firstMidY)
 
     // Draw smooth curves using cubic bezier for M3 Expressive soft curves
-    for (i in vertices.indices) {
-        val current = vertices[(i + 1) % vertices.size]
-        val next = vertices[(i + 2) % vertices.size]
+    for (i in 0 until totalPoints) {
+        val curX = scratchX[(i + 1) % totalPoints]
+        val curY = scratchY[(i + 1) % totalPoints]
+        val nextX = scratchX[(i + 2) % totalPoints]
+        val nextY = scratchY[(i + 2) % totalPoints]
 
         // Current midpoint (where we are)
-        val currentMidX = (vertices[i].first + current.first) / 2
-        val currentMidY = (vertices[i].second + current.second) / 2
+        val currentMidX = (scratchX[i] + curX) / 2
+        val currentMidY = (scratchY[i] + curY) / 2
 
         // Next midpoint (where we're going)
-        val nextMidX = (current.first + next.first) / 2
-        val nextMidY = (current.second + next.second) / 2
+        val nextMidX = (curX + nextX) / 2
+        val nextMidY = (curY + nextY) / 2
 
         // Control points - lerp between midpoint and vertex for smoothness
-        val cp1x = lerp(currentMidX, current.first, smoothing)
-        val cp1y = lerp(currentMidY, current.second, smoothing)
-        val cp2x = lerp(nextMidX, current.first, smoothing)
-        val cp2y = lerp(nextMidY, current.second, smoothing)
+        val cp1x = lerp(currentMidX, curX, smoothing)
+        val cp1y = lerp(currentMidY, curY, smoothing)
+        val cp2x = lerp(nextMidX, curX, smoothing)
+        val cp2y = lerp(nextMidY, curY, smoothing)
 
         path.cubicTo(cp1x, cp1y, cp2x, cp2y, nextMidX, nextMidY)
     }
@@ -240,6 +256,11 @@ private fun DrawScope.drawMorphingShape(
     path.close()
     drawPath(path = path, color = color)
 }
+
+/**
+ * Maximum vertex count the morphing shape can produce (12-point star → 24 vertices).
+ */
+private const val MAX_MORPH_VERTICES = 24
 
 private fun lerp(start: Float, end: Float, fraction: Float): Float {
     return start + (end - start) * fraction.coerceIn(0f, 1f)

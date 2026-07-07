@@ -47,11 +47,13 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import kotlin.math.abs
 
@@ -297,14 +299,16 @@ class ChatViewModel @Inject constructor(
                             conversation.parentId != null ||
                                 conversationRepository.getBranchCount(activeConversationId.value) > 0
                         }
-                        val contextWindowUsage = buildContextWindowUsage(
-                            modelName = currentModelName,
-                            messages = filteredMessages,
-                            inputText = inputText,
-                            pendingAttachments = pendingAttachments,
-                            availableModels = availableModels,
-                            quotedMessage = (currentState as? ChatUiState.Success)?.quotedMessage
-                        )
+                        val contextWindowUsage = withContext(ioDispatcher) {
+                            buildContextWindowUsage(
+                                modelName = currentModelName,
+                                messages = filteredMessages,
+                                inputText = inputText,
+                                pendingAttachments = pendingAttachments,
+                                availableModels = availableModels,
+                                quotedMessage = (currentState as? ChatUiState.Success)?.quotedMessage
+                            )
+                        }
 
                         _uiState.value = ChatUiState.Success(
                             conversationId = activeConversationId.value,
@@ -402,6 +406,7 @@ class ChatViewModel @Inject constructor(
                 appPreferences.hapticsEnabled,
                 appPreferences.chatHapticsEnabled
             ) { globalEnabled, chatEnabled -> globalEnabled && chatEnabled }
+                .distinctUntilChanged()
                 .collect { enabled ->
                     currentHapticsEnabled = enabled
                     val currentState = _uiState.value

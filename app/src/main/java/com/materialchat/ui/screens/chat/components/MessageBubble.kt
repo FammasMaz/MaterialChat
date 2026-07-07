@@ -29,6 +29,7 @@ import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -74,6 +75,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -121,6 +123,11 @@ import com.materialchat.ui.theme.LocalChatBubbleStyle
 import com.materialchat.ui.theme.MessageBubbleShapes
 import com.materialchat.util.GeneratedImageActions
 import kotlinx.coroutines.launch
+
+/** Shared lenient JSON instance — avoids rebuilding a parser per message. */
+private val LenientJson = kotlinx.serialization.json.Json {
+    ignoreUnknownKeys = true
+}
 
 /**
  * A chat message bubble component following Material 3 Expressive design.
@@ -190,14 +197,13 @@ fun MessageBubble(
 
     // Swipe-to-quote state (spring physics for gesture)
     val swipeOffset = remember { Animatable(0f) }
-    val swipeThreshold = with(density) { 72.dp.toPx() }
-    val maxSwipe = with(density) { 96.dp.toPx() }
+    val swipeThreshold = remember(density) { with(density) { 72.dp.toPx() } }
+    val maxSwipe = remember(density) { with(density) { 96.dp.toPx() } }
     // Keep the quote gesture on a narrow edge strip so horizontal children
     // (notably Markdown tables/code blocks) can reliably claim side-to-side drags.
-    val swipeActivationEdge = with(density) { 12.dp.toPx() }
+    val swipeActivationEdge = remember(density) { with(density) { 12.dp.toPx() } }
     var hasTriggeredSwipeHaptic by remember { mutableStateOf(false) }
     var swipeGestureWidthPx by remember { mutableIntStateOf(0) }
-    val swipeProgress = (swipeOffset.value / swipeThreshold).coerceIn(0f, 1f)
 
     // Double-tap bookmark burst state
     var bookmarkBurstTrigger by remember { mutableIntStateOf(0) }
@@ -216,9 +222,7 @@ fun MessageBubble(
         } else {
             message.webSearchMetadata?.let { json ->
                 try {
-                    kotlinx.serialization.json.Json {
-                        ignoreUnknownKeys = true
-                    }.decodeFromString<com.materialchat.domain.model.WebSearchMetadata>(json)
+                    LenientJson.decodeFromString<com.materialchat.domain.model.WebSearchMetadata>(json)
                 } catch (_: Exception) {
                     null
                 }
@@ -232,9 +236,7 @@ fun MessageBubble(
         } else {
             message.memoryMetadata?.let { json ->
                 try {
-                    kotlinx.serialization.json.Json {
-                        ignoreUnknownKeys = true
-                    }.decodeFromString<MemoryMessageMetadata>(json)
+                    LenientJson.decodeFromString<MemoryMessageMetadata>(json)
                 } catch (_: Exception) {
                     null
                 }
@@ -252,21 +254,14 @@ fun MessageBubble(
         modifier = modifier.fillMaxWidth(),
         contentAlignment = alignment
     ) {
-        // Swipe-to-quote reply icon (appears behind the bubble during swipe)
-        if (onQuoteMessage != null && swipeOffset.value > 8f) {
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.Reply,
-                contentDescription = "Quote reply",
-                modifier = Modifier
-                    .align(if (isUser) Alignment.CenterEnd else Alignment.CenterStart)
-                    .padding(horizontal = 8.dp)
-                    .size(24.dp)
-                    .graphicsLayer {
-                        alpha = swipeProgress
-                        scaleX = 0.6f + (0.4f * swipeProgress)
-                        scaleY = 0.6f + (0.4f * swipeProgress)
-                    },
-                tint = MaterialTheme.colorScheme.primary.copy(alpha = swipeProgress)
+        // Swipe-to-quote reply icon (appears behind the bubble during swipe).
+        // Isolated into its own composable so the per-frame swipeOffset reads do
+        // not force the whole MessageBubble tree to recompose during the drag.
+        if (onQuoteMessage != null) {
+            SwipeReplyIcon(
+                swipeOffset = swipeOffset,
+                swipeThreshold = swipeThreshold,
+                isUser = isUser
             )
         }
 
@@ -663,6 +658,36 @@ fun MessageBubble(
 }
 
 /**
+ * Reply icon shown behind the bubble while swiping to quote.
+ * Reads `swipeOffset` locally so only this composable recomposes per swipe
+ * frame — the parent MessageBubble stays inert during the drag.
+ */
+@Composable
+private fun BoxScope.SwipeReplyIcon(
+    swipeOffset: Animatable<Float, *>,
+    swipeThreshold: Float,
+    isUser: Boolean
+) {
+    val visible by remember { derivedStateOf { swipeOffset.value > 8f } }
+    if (!visible) return
+    val swipeProgress = (swipeOffset.value / swipeThreshold).coerceIn(0f, 1f)
+    Icon(
+        imageVector = Icons.AutoMirrored.Filled.Reply,
+        contentDescription = "Quote reply",
+        modifier = Modifier
+            .align(if (isUser) Alignment.CenterEnd else Alignment.CenterStart)
+            .padding(horizontal = 8.dp)
+            .size(24.dp)
+            .graphicsLayer {
+                alpha = swipeProgress
+                scaleX = 0.6f + (0.4f * swipeProgress)
+                scaleY = 0.6f + (0.4f * swipeProgress)
+            },
+        tint = MaterialTheme.colorScheme.primary.copy(alpha = swipeProgress)
+    )
+}
+
+/**
  * Message content text component.
  * Uses SmoothStreamingText for streaming assistant messages to normalize
  * patchy token delivery into fluid word-by-word reveal with per-word haptics.
@@ -681,11 +706,14 @@ private fun MessageContent(
     val displayContent = content.ifEmpty { "" }
     // Use chat-specific font size from user preferences (CompositionLocal)
     val chatFontSizeScale = com.materialchat.ui.theme.LocalChatFontSizeScale.current
-    val chatStyle = MaterialTheme.typography.bodyLarge.copy(
-        fontSize = MaterialTheme.typography.bodyLarge.fontSize * chatFontSizeScale,
-        lineHeight = MaterialTheme.typography.bodyLarge.lineHeight * chatFontSizeScale,
-        textAlign = TextAlign.Start
-    )
+    val bodyLarge = MaterialTheme.typography.bodyLarge
+    val chatStyle = remember(chatFontSizeScale, bodyLarge) {
+        bodyLarge.copy(
+            fontSize = bodyLarge.fontSize * chatFontSizeScale,
+            lineHeight = bodyLarge.lineHeight * chatFontSizeScale,
+            textAlign = TextAlign.Start
+        )
+    }
 
     if (isAssistant && displayContent.isNotEmpty()) {
         SmoothStreamingText(
@@ -698,7 +726,9 @@ private fun MessageContent(
         )
     } else if (displayContent.isNotEmpty()) {
         // Parse and render quoted content visually for user messages
-        val (quotedLines, bodyLines) = parseQuotedContent(displayContent)
+        val (quotedLines, bodyLines) = remember(displayContent) {
+            parseQuotedContent(displayContent)
+        }
 
         if (quotedLines.isNotEmpty()) {
             // Render visual quote block with accent bar

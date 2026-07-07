@@ -7,7 +7,9 @@ import com.materialchat.data.mapper.toEntity
 import com.materialchat.domain.model.Bookmark
 import com.materialchat.domain.model.BookmarkCategory
 import com.materialchat.domain.repository.BookmarkRepository
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.serialization.json.Json
 import javax.inject.Inject
@@ -25,14 +27,14 @@ class BookmarkRepositoryImpl @Inject constructor(
     private val json = Json { ignoreUnknownKeys = true }
 
     override fun observeAllBookmarks(): Flow<List<Bookmark>> =
-        bookmarkDao.getAllBookmarks().map { it.toBookmarkDomainList() }
+        bookmarkDao.getAllBookmarks().map { it.toBookmarkDomainList() }.flowOn(Dispatchers.IO)
 
     override fun observeBookmarksByCategory(category: BookmarkCategory): Flow<List<Bookmark>> =
         bookmarkDao.getBookmarksByCategory(category.name.lowercase())
-            .map { it.toBookmarkDomainList() }
+            .map { it.toBookmarkDomainList() }.flowOn(Dispatchers.IO)
 
     override fun observeBookmarksByTag(tag: String): Flow<List<Bookmark>> =
-        bookmarkDao.getBookmarksByTag(tag).map { it.toBookmarkDomainList() }
+        bookmarkDao.getBookmarksByTag(tag).map { it.toBookmarkDomainList() }.flowOn(Dispatchers.IO)
 
     override fun isMessageBookmarkedFlow(messageId: String): Flow<Boolean> =
         bookmarkDao.isMessageBookmarkedFlow(messageId)

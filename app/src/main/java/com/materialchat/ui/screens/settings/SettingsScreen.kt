@@ -303,6 +303,91 @@ fun SettingsScreen(
         }
     }
 
+    // Hoist callback lambdas out of recomposition. Each only depends on stable captures
+    // (viewModel / context / launchers / remembered state), so remembering them lets every
+    // downstream item composable skip when its own slice of uiState is unchanged.
+    val onAddProvider = remember(viewModel) { { viewModel.showAddProviderSheet() } }
+    val onEditProvider = remember(viewModel) { { provider: Provider -> viewModel.editProvider(provider) } }
+    val onDeleteProvider = remember(viewModel) { { provider: Provider -> viewModel.showDeleteConfirmation(provider) } }
+    val onSetActiveProvider = remember(viewModel) { { id: String -> viewModel.setActiveProvider(id) } }
+    val onTestConnection = remember(viewModel) { { id: String -> viewModel.testConnection(id) } }
+    val onSystemPromptChange = remember(viewModel) { { prompt: String -> viewModel.updateSystemPrompt(prompt) } }
+    val onThemeModeChange = remember(viewModel) { { mode: AppPreferences.ThemeMode -> viewModel.updateThemeMode(mode) } }
+    val onThemePaletteChange = remember(viewModel) { { palette: AppPreferences.ThemePalette -> viewModel.updateThemePalette(palette) } }
+    val onChatBubbleStyleChange = remember(viewModel) { { style: AppPreferences.ChatBubbleStyle -> viewModel.updateChatBubbleStyle(style) } }
+    val onControlShapeStyleChange = remember(viewModel) { { style: AppPreferences.ControlShapeStyle -> viewModel.updateControlShapeStyle(style) } }
+    val onDynamicColorChange = remember(viewModel) { { enabled: Boolean -> viewModel.updateDynamicColorEnabled(enabled) } }
+    val onHapticsChange = remember(viewModel) { { enabled: Boolean -> viewModel.updateHapticsEnabled(enabled) } }
+    val onFontSizeScaleChange = remember(viewModel) { { scale: Float -> viewModel.updateFontSizeScale(scale) } }
+    val onNotificationsChange = remember(context, notificationPermissionLauncher, viewModel) {
+        { enabled: Boolean ->
+            if (enabled && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                val hasPermission = ContextCompat.checkSelfPermission(
+                    context,
+                    Manifest.permission.POST_NOTIFICATIONS
+                ) == PackageManager.PERMISSION_GRANTED
+
+                if (hasPermission) {
+                    viewModel.updateNotificationsEnabled(true)
+                } else {
+                    notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                }
+            } else {
+                viewModel.updateNotificationsEnabled(enabled)
+            }
+        }
+    }
+    val onBeautifulModelNamesChange = remember(viewModel) { { enabled: Boolean -> viewModel.updateBeautifulModelNamesEnabled(enabled) } }
+    val onAiGeneratedTitlesChange = remember(viewModel) { { enabled: Boolean -> viewModel.updateAiGeneratedTitlesEnabled(enabled) } }
+    val onPreferOnDeviceTitleModelChange = remember(viewModel) { { enabled: Boolean -> viewModel.updatePreferOnDeviceTitleModel(enabled) } }
+    val onTitleGenerationModelChange = remember(viewModel) { { model: String -> viewModel.updateTitleGenerationModel(model) } }
+    val onLoadTitleGenerationModels = remember(viewModel) { { viewModel.loadTitleGenerationModels(force = true) } }
+    val onDefaultImageGenerationModelChange = remember(viewModel) { { model: String -> viewModel.updateDefaultImageGenerationModel(model) } }
+    val onDefaultImageOutputFormatChange = remember(viewModel) { { format: String -> viewModel.updateDefaultImageOutputFormat(format) } }
+    val onRememberLastModelChange = remember(viewModel) { { enabled: Boolean -> viewModel.updateRememberLastModelEnabled(enabled) } }
+    val onAlwaysShowThinkingChange = remember(viewModel) { { enabled: Boolean -> viewModel.updateAlwaysShowThinking(enabled) } }
+    val onShowTokenCounterChange = remember(viewModel) { { enabled: Boolean -> viewModel.updateShowTokenCounter(enabled) } }
+    val onAutoCheckUpdatesChange = remember(viewModel) { { enabled: Boolean -> viewModel.updateAutoCheckUpdates(enabled) } }
+    val onCheckForUpdates = remember(viewModel) { { viewModel.checkForUpdates() } }
+    val onDownloadUpdate = remember(viewModel) { { update: AppUpdate -> viewModel.downloadUpdate(update) } }
+    val onInstallUpdate = remember(viewModel) { { viewModel.installUpdate() } }
+    val onCancelDownload = remember(viewModel) { { viewModel.cancelDownload() } }
+    val onSkipVersion = remember(viewModel) { { viewModel.skipVersion() } }
+    val onRetry = remember(viewModel) { { viewModel.retry() } }
+    val onAssistantEnabledChange = remember(viewModel) { { enabled: Boolean -> viewModel.updateAssistantEnabled(enabled) } }
+    val onAssistantVoiceChange = remember(viewModel) { { enabled: Boolean -> viewModel.updateAssistantVoiceEnabled(enabled) } }
+    val onAssistantTtsChange = remember(viewModel) { { enabled: Boolean -> viewModel.updateAssistantTtsEnabled(enabled) } }
+    val onWebSearchEnabledChange = remember(viewModel) { { enabled: Boolean -> viewModel.updateWebSearchEnabled(enabled) } }
+    val onWebSearchProviderChange = remember(viewModel) { { provider: String -> viewModel.updateWebSearchProvider(provider) } }
+    val onExaApiKeyChange = remember(viewModel) { { key: String -> viewModel.updateExaApiKey(key) } }
+    val onSearxngBaseUrlChange = remember(viewModel) { { url: String -> viewModel.updateSearxngBaseUrl(url) } }
+    val onWebSearchMaxResultsChange = remember(viewModel) { { results: Int -> viewModel.updateWebSearchMaxResults(results) } }
+    val onPurchaseRemoveAds = remember(context, coroutineScope, snackbarHostState, viewModel) {
+        {
+            context.findActivity()?.let { activity ->
+                viewModel.purchaseRemoveAds(activity)
+            } ?: coroutineScope.launch {
+                snackbarHostState.showSnackbar("Could not open Google Play Billing")
+            }
+            Unit
+        }
+    }
+    val onWatchRewardedAd = remember(context, coroutineScope, snackbarHostState, viewModel) {
+        {
+            context.findActivity()?.let { activity ->
+                viewModel.watchRewardedAd(activity)
+            } ?: coroutineScope.launch {
+                snackbarHostState.showSnackbar("Could not show rewarded ad")
+            }
+            Unit
+        }
+    }
+    val onRestorePurchases = remember(viewModel) { { viewModel.restorePurchases() } }
+    val onCreateBackup = remember { { showCreateBackupDialog = true } }
+    val onRestoreBackup = remember(restoreBackupLauncher) {
+        { restoreBackupLauncher.launch(arrayOf("application/octet-stream", "*/*")) }
+    }
+
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
 
     Scaffold(
@@ -340,78 +425,51 @@ fun SettingsScreen(
         SettingsContent(
             uiState = uiState,
             paddingValues = paddingValues,
-            onAddProvider = { viewModel.showAddProviderSheet() },
-            onEditProvider = { viewModel.editProvider(it) },
-            onDeleteProvider = { viewModel.showDeleteConfirmation(it) },
-            onSetActiveProvider = { viewModel.setActiveProvider(it) },
-            onTestConnection = { viewModel.testConnection(it) },
-            onSystemPromptChange = { viewModel.updateSystemPrompt(it) },
-            onThemeModeChange = { viewModel.updateThemeMode(it) },
-            onThemePaletteChange = { viewModel.updateThemePalette(it) },
-            onChatBubbleStyleChange = { viewModel.updateChatBubbleStyle(it) },
-            onControlShapeStyleChange = { viewModel.updateControlShapeStyle(it) },
-            onDynamicColorChange = { viewModel.updateDynamicColorEnabled(it) },
-            onHapticsChange = { viewModel.updateHapticsEnabled(it) },
-            onFontSizeScaleChange = { viewModel.updateFontSizeScale(it) },
-            onNotificationsChange = { enabled ->
-                if (enabled && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                    val hasPermission = ContextCompat.checkSelfPermission(
-                        context,
-                        Manifest.permission.POST_NOTIFICATIONS
-                    ) == PackageManager.PERMISSION_GRANTED
-
-                    if (hasPermission) {
-                        viewModel.updateNotificationsEnabled(true)
-                    } else {
-                        notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-                    }
-                } else {
-                    viewModel.updateNotificationsEnabled(enabled)
-                }
-            },
-            onBeautifulModelNamesChange = { viewModel.updateBeautifulModelNamesEnabled(it) },
-            onAiGeneratedTitlesChange = { viewModel.updateAiGeneratedTitlesEnabled(it) },
-            onPreferOnDeviceTitleModelChange = { viewModel.updatePreferOnDeviceTitleModel(it) },
-            onTitleGenerationModelChange = { viewModel.updateTitleGenerationModel(it) },
+            onAddProvider = onAddProvider,
+            onEditProvider = onEditProvider,
+            onDeleteProvider = onDeleteProvider,
+            onSetActiveProvider = onSetActiveProvider,
+            onTestConnection = onTestConnection,
+            onSystemPromptChange = onSystemPromptChange,
+            onThemeModeChange = onThemeModeChange,
+            onThemePaletteChange = onThemePaletteChange,
+            onChatBubbleStyleChange = onChatBubbleStyleChange,
+            onControlShapeStyleChange = onControlShapeStyleChange,
+            onDynamicColorChange = onDynamicColorChange,
+            onHapticsChange = onHapticsChange,
+            onFontSizeScaleChange = onFontSizeScaleChange,
+            onNotificationsChange = onNotificationsChange,
+            onBeautifulModelNamesChange = onBeautifulModelNamesChange,
+            onAiGeneratedTitlesChange = onAiGeneratedTitlesChange,
+            onPreferOnDeviceTitleModelChange = onPreferOnDeviceTitleModelChange,
+            onTitleGenerationModelChange = onTitleGenerationModelChange,
             titleModelPickerState = titleModelPickerState,
-            onLoadTitleGenerationModels = { viewModel.loadTitleGenerationModels(force = true) },
-            onDefaultImageGenerationModelChange = { viewModel.updateDefaultImageGenerationModel(it) },
-            onDefaultImageOutputFormatChange = { viewModel.updateDefaultImageOutputFormat(it) },
-            onRememberLastModelChange = { viewModel.updateRememberLastModelEnabled(it) },
-            onAlwaysShowThinkingChange = { viewModel.updateAlwaysShowThinking(it) },
-            onShowTokenCounterChange = { viewModel.updateShowTokenCounter(it) },
-            onAutoCheckUpdatesChange = { viewModel.updateAutoCheckUpdates(it) },
-            onCheckForUpdates = { viewModel.checkForUpdates() },
-            onDownloadUpdate = { viewModel.downloadUpdate(it) },
-            onInstallUpdate = { viewModel.installUpdate() },
-            onCancelDownload = { viewModel.cancelDownload() },
-            onSkipVersion = { viewModel.skipVersion() },
-            onRetry = { viewModel.retry() },
-            onAssistantEnabledChange = { viewModel.updateAssistantEnabled(it) },
-            onAssistantVoiceChange = { viewModel.updateAssistantVoiceEnabled(it) },
-            onAssistantTtsChange = { viewModel.updateAssistantTtsEnabled(it) },
-            onWebSearchEnabledChange = { viewModel.updateWebSearchEnabled(it) },
-            onWebSearchProviderChange = { viewModel.updateWebSearchProvider(it) },
-            onExaApiKeyChange = { viewModel.updateExaApiKey(it) },
-            onSearxngBaseUrlChange = { viewModel.updateSearxngBaseUrl(it) },
-            onWebSearchMaxResultsChange = { viewModel.updateWebSearchMaxResults(it) },
-            onPurchaseRemoveAds = {
-                context.findActivity()?.let { activity ->
-                    viewModel.purchaseRemoveAds(activity)
-                } ?: coroutineScope.launch {
-                    snackbarHostState.showSnackbar("Could not open Google Play Billing")
-                }
-            },
-            onWatchRewardedAd = {
-                context.findActivity()?.let { activity ->
-                    viewModel.watchRewardedAd(activity)
-                } ?: coroutineScope.launch {
-                    snackbarHostState.showSnackbar("Could not show rewarded ad")
-                }
-            },
-            onRestorePurchases = { viewModel.restorePurchases() },
-            onCreateBackup = { showCreateBackupDialog = true },
-            onRestoreBackup = { restoreBackupLauncher.launch(arrayOf("application/octet-stream", "*/*")) },
+            onLoadTitleGenerationModels = onLoadTitleGenerationModels,
+            onDefaultImageGenerationModelChange = onDefaultImageGenerationModelChange,
+            onDefaultImageOutputFormatChange = onDefaultImageOutputFormatChange,
+            onRememberLastModelChange = onRememberLastModelChange,
+            onAlwaysShowThinkingChange = onAlwaysShowThinkingChange,
+            onShowTokenCounterChange = onShowTokenCounterChange,
+            onAutoCheckUpdatesChange = onAutoCheckUpdatesChange,
+            onCheckForUpdates = onCheckForUpdates,
+            onDownloadUpdate = onDownloadUpdate,
+            onInstallUpdate = onInstallUpdate,
+            onCancelDownload = onCancelDownload,
+            onSkipVersion = onSkipVersion,
+            onRetry = onRetry,
+            onAssistantEnabledChange = onAssistantEnabledChange,
+            onAssistantVoiceChange = onAssistantVoiceChange,
+            onAssistantTtsChange = onAssistantTtsChange,
+            onWebSearchEnabledChange = onWebSearchEnabledChange,
+            onWebSearchProviderChange = onWebSearchProviderChange,
+            onExaApiKeyChange = onExaApiKeyChange,
+            onSearxngBaseUrlChange = onSearxngBaseUrlChange,
+            onWebSearchMaxResultsChange = onWebSearchMaxResultsChange,
+            onPurchaseRemoveAds = onPurchaseRemoveAds,
+            onWatchRewardedAd = onWatchRewardedAd,
+            onRestorePurchases = onRestorePurchases,
+            onCreateBackup = onCreateBackup,
+            onRestoreBackup = onRestoreBackup,
             onNavigateToInteractionSettings = onNavigateToInteractionSettings,
             onNavigateToModelAssignments = onNavigateToModelAssignments,
             onNavigateToOnDeviceModels = onNavigateToOnDeviceModels,
@@ -1646,7 +1704,7 @@ private fun ColorPaletteSelector(
                 contentPadding = PaddingValues(horizontal = 16.dp),
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                items(AppPreferences.ThemePalette.entries) { palette ->
+                items(AppPreferences.ThemePalette.entries, key = { it }) { palette ->
                     val selected = selectedPalette == palette
                     Surface(
                         onClick = {
@@ -1747,7 +1805,7 @@ private fun ChatBubbleStyleSelector(
                 contentPadding = PaddingValues(horizontal = 16.dp),
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                items(AppPreferences.ChatBubbleStyle.entries) { style ->
+                items(AppPreferences.ChatBubbleStyle.entries, key = { it }) { style ->
                     val selected = selectedStyle == style
                     Surface(
                         onClick = {
@@ -1851,7 +1909,7 @@ private fun ControlShapeStyleSelector(
                 contentPadding = PaddingValues(horizontal = 16.dp),
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                items(AppPreferences.ControlShapeStyle.entries) { style ->
+                items(AppPreferences.ControlShapeStyle.entries, key = { it }) { style ->
                     val selected = selectedStyle == style
                     Surface(
                         onClick = {

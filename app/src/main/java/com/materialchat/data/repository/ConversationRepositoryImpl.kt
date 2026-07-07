@@ -16,7 +16,10 @@ import com.materialchat.domain.model.MessageRole
 import com.materialchat.domain.model.SearchQuery
 import com.materialchat.domain.model.SearchResult
 import com.materialchat.domain.repository.ConversationRepository
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.decodeFromString
@@ -45,7 +48,7 @@ class ConversationRepositoryImpl @Inject constructor(
     override fun observeConversations(): Flow<List<Conversation>> {
         return conversationDao.getAllConversations().map { entities ->
             entities.toConversationDomainList()
-        }
+        }.flowOn(Dispatchers.IO)
     }
 
     override suspend fun getConversation(conversationId: String): Conversation? {
@@ -55,7 +58,7 @@ class ConversationRepositoryImpl @Inject constructor(
     override fun observeConversation(conversationId: String): Flow<Conversation?> {
         return conversationDao.getConversationByIdFlow(conversationId).map { entity ->
             entity?.toDomain()
-        }
+        }.flowOn(Dispatchers.IO)
     }
 
     override suspend fun createConversation(conversation: Conversation): String {
@@ -79,7 +82,7 @@ class ConversationRepositoryImpl @Inject constructor(
     override fun observeArchivedConversations(): Flow<List<Conversation>> {
         return conversationDao.getArchivedConversations().map { entities ->
             entities.toConversationDomainList()
-        }
+        }.flowOn(Dispatchers.IO)
     }
 
     override suspend fun archiveConversation(conversationId: String) {
@@ -164,7 +167,7 @@ class ConversationRepositoryImpl @Inject constructor(
     override fun observeMessages(conversationId: String): Flow<List<Message>> {
         return messageDao.getMessagesForConversation(conversationId).map { entities ->
             entities.toMessageDomainList()
-        }
+        }.flowOn(Dispatchers.IO)
     }
 
     override suspend fun getMessages(conversationId: String): List<Message> {
@@ -173,6 +176,8 @@ class ConversationRepositoryImpl @Inject constructor(
 
     override fun observeStreamingConversationIds(): Flow<Set<String>> {
         return messageDao.observeStreamingConversationIds().map { ids -> ids.toSet() }
+            .distinctUntilChanged()
+            .flowOn(Dispatchers.IO)
     }
 
     override fun observeGeneratedImages(): Flow<List<GeneratedImage>> {
@@ -197,7 +202,7 @@ class ConversationRepositoryImpl @Inject constructor(
                     )
                 }
             }
-        }
+        }.flowOn(Dispatchers.IO)
     }
 
     override suspend fun addMessage(message: Message): String {
@@ -437,13 +442,13 @@ class ConversationRepositoryImpl @Inject constructor(
     override fun observeRootConversations(): Flow<List<Conversation>> {
         return conversationDao.getRootConversations().map { entities ->
             entities.toConversationDomainList()
-        }
+        }.flowOn(Dispatchers.IO)
     }
 
     override fun observeBranches(parentId: String): Flow<List<Conversation>> {
         return conversationDao.getBranchesForConversation(parentId).map { entities ->
             entities.toConversationDomainList()
-        }
+        }.flowOn(Dispatchers.IO)
     }
 
     override suspend fun getBranches(parentId: String): List<Conversation> {
@@ -459,7 +464,7 @@ class ConversationRepositoryImpl @Inject constructor(
     override fun observeSiblingBranches(parentId: String, branchSourceMessageId: String): Flow<List<Conversation>> {
         return conversationDao.getSiblingBranches(parentId, branchSourceMessageId).map { entities ->
             entities.toConversationDomainList()
-        }
+        }.flowOn(Dispatchers.IO)
     }
 
     override suspend fun getSiblingBranches(parentId: String, branchSourceMessageId: String): List<Conversation> {
