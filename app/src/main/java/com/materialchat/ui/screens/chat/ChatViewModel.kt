@@ -209,7 +209,7 @@ class ChatViewModel @Inject constructor(
                         } else {
                             emptyList()
                         }
-                        val streamingState = if (isSameConversation) {
+                        val streamingStateAtCollect = if (isSameConversation) {
                             currentState.streamingState
                         } else {
                             StreamingState.Idle
@@ -252,7 +252,7 @@ class ChatViewModel @Inject constructor(
                                 // Clear the flag once the message is actually gone from DB
                                 if (filtered.size == messages.size) {
                                     // Message was already deleted from DB, clear flag
-                                } else if (streamingState !is StreamingState.Idle) {
+                                } else if (streamingStateAtCollect !is StreamingState.Idle) {
                                     // Keep filtering while streaming
                                 } else {
                                     regeneratingMessageId = null
@@ -308,6 +308,19 @@ class ChatViewModel @Inject constructor(
                                 availableModels = availableModels,
                                 quotedMessage = (currentState as? ChatUiState.Success)?.quotedMessage
                             )
+                        }
+
+                        // Re-read streaming state after any suspension — a message DB emission can
+                        // be processed while streaming is still active, then complete before we
+                        // assign UI state (regression from moving context-window work off Main).
+                        val latestState = _uiState.value
+                        val streamingState = when {
+                            latestState is ChatUiState.Success &&
+                                latestState.conversationId == activeConversationId.value ->
+                                latestState.streamingState
+                            isSameConversation && currentState is ChatUiState.Success ->
+                                currentState.streamingState
+                            else -> StreamingState.Idle
                         }
 
                         _uiState.value = ChatUiState.Success(
