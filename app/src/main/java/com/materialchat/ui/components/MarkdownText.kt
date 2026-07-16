@@ -724,7 +724,9 @@ private fun MathBlockView(
     backgroundColor: Color,
     isStreaming: Boolean
 ) {
-    if (isStreaming || !needsKatexRendering(expression)) {
+    // Keep the same renderer for streaming and settled messages so equations do not
+    // jump from monospace/Unicode fallback into KaTeX after the stream ends.
+    if (!needsKatexRendering(expression)) {
         NativeMathBlockView(
             expression = expression,
             backgroundColor = backgroundColor
@@ -808,6 +810,12 @@ private fun NativeMathBlockView(
         }
     }
     val scrollState = rememberScrollState()
+    // Match bodyLarge (not monospace) so simple math never changes typeface mid-chat.
+    val mathStyle = MaterialTheme.typography.bodyLarge.copy(
+        color = textColor,
+        fontStyle = FontStyle.Italic,
+        textAlign = TextAlign.Center
+    )
 
     Box(
         modifier = Modifier
@@ -819,12 +827,7 @@ private fun NativeMathBlockView(
         SelectionContainer(modifier = Modifier.align(Alignment.Center)) {
             Text(
                 text = rendered,
-                style = MaterialTheme.typography.bodyLarge.copy(
-                    color = textColor,
-                    fontFamily = FontFamily.Monospace,
-                    fontStyle = FontStyle.Italic,
-                    textAlign = TextAlign.Center
-                ),
+                style = mathStyle,
                 modifier = Modifier
                     .horizontalScroll(scrollState)
                     .padding(horizontal = 12.dp, vertical = 8.dp),
@@ -1062,7 +1065,7 @@ private fun buildMarkdownMathDocumentHtml(
                 color: $textColor;
                 overflow-x: hidden;
                 overflow-y: hidden;
-                font-family: sans-serif;
+                font-family: -apple-system, BlinkMacSystemFont, 'Roboto', 'Noto Sans', sans-serif;
                 font-size: ${fontSizePx}px;
                 line-height: ${lineHeightPx / fontSizePx};
             }
@@ -1455,7 +1458,11 @@ private fun buildMathHtml(
                 -webkit-overflow-scrolling: touch;
                 ${if (isDisplay) "text-align: center;" else "display: flex; align-items: flex-end;"}
             }
-            .katex { color: $fgColor; font-size: ${fontScale}em; }
+            body, .katex {
+                color: $fgColor;
+                font-family: -apple-system, BlinkMacSystemFont, 'Roboto', 'Noto Sans', sans-serif;
+            }
+            .katex { font-size: ${fontScale}em; }
             .katex-display {
                 margin: 0;
                 overflow: visible;
@@ -1516,8 +1523,11 @@ private fun buildInlineMathHtml(
                 color: $fgColor;
                 display: inline-block;
             }
-            .katex {
+            body, .katex {
                 color: $fgColor;
+                font-family: -apple-system, BlinkMacSystemFont, 'Roboto', 'Noto Sans', sans-serif;
+            }
+            .katex {
                 font-size: ${fontScale}em;
                 line-height: 1;
             }

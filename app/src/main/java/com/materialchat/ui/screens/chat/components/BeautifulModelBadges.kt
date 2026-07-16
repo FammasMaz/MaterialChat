@@ -354,12 +354,11 @@ private fun ProviderFilterBadge(
         label = "providerBadgeScale"
     )
 
-    // M3 Expressive: Effects spring for color (no bounce)
+    // Keep a solid primary container so the badge never flashes empty/transparent.
     val containerColor by animateColorAsState(
         targetValue = when {
-            isFiltering -> MaterialTheme.colorScheme.primaryContainer
-            isDropdownExpanded -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.85f)
-            else -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f)
+            isFiltering || isDropdownExpanded -> MaterialTheme.colorScheme.primaryContainer
+            else -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.88f)
         },
         animationSpec = M3Springs.DefaultEffects,
         label = "providerContainerColor"
@@ -656,12 +655,12 @@ private fun ModelPickerBadge(
         label = "modelBadgeScale"
     )
 
-    // M3 Expressive: Effects spring for color (no bounce)
+    // Always use secondaryContainer so the model pill never loses its filled bubble.
     val containerColor by animateColorAsState(
         targetValue = if (isPickerExpanded) {
             MaterialTheme.colorScheme.secondaryContainer
         } else {
-            MaterialTheme.colorScheme.surfaceContainerHighest
+            MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.78f)
         },
         animationSpec = M3Springs.DefaultEffects,
         label = "modelContainerColor"
@@ -669,13 +668,9 @@ private fun ModelPickerBadge(
 
     val contentColor by animateColorAsState(
         targetValue = if (!isStreaming) {
-            if (isPickerExpanded) {
-                MaterialTheme.colorScheme.onSecondaryContainer
-            } else {
-                MaterialTheme.colorScheme.onSurfaceVariant
-            }
+            MaterialTheme.colorScheme.onSecondaryContainer
         } else {
-            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+            MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.6f)
         },
         animationSpec = M3Springs.DefaultEffects,
         label = "modelContentColor"

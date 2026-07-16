@@ -69,7 +69,10 @@ class ExtractMemoriesUseCase @Inject constructor(
             emptyList()
         }
 
-        val fallbackCandidates = if (llmCandidates.isEmpty()) {
+        // Heuristics are a last resort only when the user did not explicitly ask to
+        // remember something and the model extracted nothing. They are intentionally
+        // conservative so casual chat does not pollute long-term memory.
+        val fallbackCandidates = if (explicitCandidates.isEmpty() && llmCandidates.isEmpty()) {
             heuristicCandidates(
                 conversationId = conversationId,
                 sourceMessageId = sourceMessageId,
@@ -80,6 +83,13 @@ class ExtractMemoriesUseCase @Inject constructor(
         }
 
         val candidates = (explicitCandidates + llmCandidates + fallbackCandidates)
+            .mapNotNull { candidate ->
+                val cleaned = sanitizeMemoryCandidate(candidate.content) ?: return@mapNotNull null
+                if (!isDurableMemoryCandidate(cleaned, candidate.kind, candidate.confidence)) {
+                    return@mapNotNull null
+                }
+                candidate.copy(content = cleaned)
+            }
             .distinctBy { it.content.normalizedCandidateKey() }
             .take(MAX_EXTRACTED_MEMORIES)
         return memoryRepository.saveCandidates(candidates)
@@ -242,17 +252,54 @@ Extract only durable memories that will help future chats.
         userContent: String
     ): List<MemoryCandidate> {
         val compact = sanitizeForExtraction(userContent)
-        if (compact.length !in 12..260) return emptyList()
+        if (compact.length !in 16..180) return emptyList()
+        if (QUESTION_REGEX.containsMatchIn(compact)) return emptyList()
+        if (TRANSIENT_REGEX.containsMatchIn(compact)) return emptyList()
+        if (!FIRST_PERSON_REGEX.containsMatchIn(compact)) return emptyList()
         val kind = classifyMemory(compact).takeUnless { it == MemoryKind.OTHER } ?: return emptyList()
+        // Require a strong first-person durable claim, not a one-off task request.
+        if (!isDurableMemoryCandidate(compact, kind, 0.68f)) return emptyList()
         return listOf(
             MemoryCandidate(
                 content = compact,
                 kind = kind,
-                confidence = 0.62f,
+                confidence = 0.68f,
                 sourceConversationId = conversationId,
                 sourceMessageId = sourceMessageId
             )
         )
+    }
+
+    private fun sanitizeMemoryCandidate(content: String): String? {
+        val compact = sanitizeForExtraction(content)
+            .trim(' ', '.', '!', '?', ':', ';', '-', '*', '•')
+        if (compact.length !in 8..220) return null
+        if (QUESTION_REGEX.containsMatchIn(compact)) return null
+        if (TRANSIENT_REGEX.containsMatchIn(compact)) return null
+        return compact.replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() }
+    }
+
+    private fun isDurableMemoryCandidate(
+        content: String,
+        kind: MemoryKind,
+        confidence: Float
+    ): Boolean {
+        if (confidence < 0.55f) return false
+        if (kind == MemoryKind.OTHER && confidence < 0.8f) return false
+        if (QUESTION_REGEX.containsMatchIn(content)) return false
+        if (TRANSIENT_REGEX.containsMatchIn(content)) return false
+        // Reject generic short phrases that are not facts/preferences.
+        val tokenCount = content.split(Regex("\\s+")).count { it.any(Char::isLetterOrDigit) }
+        if (tokenCount < 3) return false
+        return when (kind) {
+            MemoryKind.USER_PREFERENCE,
+            MemoryKind.PERSONAL_FACT,
+            MemoryKind.PROJECT_FACT,
+            MemoryKind.LONG_TERM_GOAL,
+            MemoryKind.INSTRUCTION,
+            MemoryKind.RELATIONSHIP -> true
+            MemoryKind.OTHER -> FIRST_PERSON_REGEX.containsMatchIn(content)
+        }
     }
 
     private fun classifyMemory(content: String): MemoryKind {
@@ -269,8 +316,15 @@ Extract only durable memories that will help future chats.
 
     private fun shouldAttemptModelExtraction(userContent: String, assistantResponse: String): Boolean {
         if (assistantResponse.isBlank()) return false
-        if (userContent.length < 12) return false
+        if (userContent.length < 18) return false
         if (userContent.length > MAX_USER_EXTRACTION_CHARS) return false
+        // Skip pure troubleshooting / one-off questions — they almost never yield durable memory.
+        if (QUESTION_REGEX.containsMatchIn(userContent) && !FIRST_PERSON_REGEX.containsMatchIn(userContent)) {
+            return false
+        }
+        if (TRANSIENT_REGEX.containsMatchIn(userContent) && !FIRST_PERSON_REGEX.containsMatchIn(userContent)) {
+            return false
+        }
         return true
     }
 
@@ -320,21 +374,39 @@ Extract only durable memories that will help future chats.
 You are MaterialChat's private passive memory filter. Return strict JSON only:
 {"memories":[{"content":"...","kind":"USER_PREFERENCE|PERSONAL_FACT|PROJECT_FACT|LONG_TERM_GOAL|INSTRUCTION|RELATIONSHIP|OTHER","confidence":0.0}]}
 
-Use the cheapest/lightest reasoning possible. Save only durable, user-confirmed facts/preferences/goals/instructions that will likely matter in future chats.
-Do not save secrets, credentials, API keys, private tokens, temporary debugging details, one-off questions, or assistant claims.
-Use the user's wording when possible. Keep each memory under 220 characters. Return {"memories":[]} when nothing is worth saving.
+Use the cheapest/lightest reasoning possible.
+Save ONLY durable, user-confirmed facts that will still matter weeks later:
+- stable preferences ("I prefer dark mode")
+- personal identity facts (name, role, city, devices)
+- ongoing projects and long-term goals
+- standing instructions for how the assistant should behave
+- important relationships the user volunteers
+
+NEVER save:
+- secrets, credentials, API keys, tokens, passwords
+- one-off debugging/troubleshooting chatter
+- temporary task details, error logs, stack traces
+- questions, greetings, or assistant claims
+- speculative or low-confidence guesses
+- anything that would be irrelevant in a different conversation tomorrow
+
+If unsure, return {"memories":[]}. Prefer zero memories over noisy ones.
+Use the user's wording when possible. Keep each memory under 180 characters.
         """
 
         val EXPLICIT_MEMORY_REGEX = Regex(
             "\\b(?:please\\s+)?(?:remember|keep in mind|note|save)(?:\\s+(?:that|this|to))?[:\\s]+([^.!?\\n]+(?:[.!?](?!\\s*(?:and|also)\\b))?)",
             RegexOption.IGNORE_CASE
         )
-        val PREFERENCE_REGEX = Regex("\\b(i prefer|i like|i don't like|i hate|my preference|please use|please don't)\\b", RegexOption.IGNORE_CASE)
+        val PREFERENCE_REGEX = Regex("\\b(i prefer|i like|i don't like|i hate|my preference|please always use|please don't)\\b", RegexOption.IGNORE_CASE)
         val INSTRUCTION_REGEX = Regex("\\b(always|never|remember to|from now on|call me|address me|use .* style)\\b", RegexOption.IGNORE_CASE)
-        val GOAL_REGEX = Regex("\\b(i want to|i'm trying to|my goal|we need to|i plan to)\\b", RegexOption.IGNORE_CASE)
+        val GOAL_REGEX = Regex("\\b(i want to|i'm trying to|my goal|i plan to)\\b", RegexOption.IGNORE_CASE)
         val PROJECT_REGEX = Regex("\\b(my app|my project|we are building|i am building|i'm building|project is called|app is called)\\b", RegexOption.IGNORE_CASE)
-        val RELATIONSHIP_REGEX = Regex("\\b(my wife|my husband|my partner|my girlfriend|my boyfriend|my gf|my bf|my spouse|my fiancee?|my fianc[eé]e?|girlfriend|boyfriend|partner|spouse|fiancee?|fianc[eé]e?|my friend|my son|my daughter|my manager|my team)\\b", RegexOption.IGNORE_CASE)
+        val RELATIONSHIP_REGEX = Regex("\\b(my wife|my husband|my partner|my girlfriend|my boyfriend|my gf|my bf|my spouse|my fiancee?|my fianc[eé]e?|my friend|my son|my daughter|my manager|my team)\\b", RegexOption.IGNORE_CASE)
         val PERSONAL_REGEX = Regex("\\b(my name is|i live|i work|i study|my role|my job|i am a|i'm a)\\b", RegexOption.IGNORE_CASE)
+        val FIRST_PERSON_REGEX = Regex("\\b(i|i'm|i am|my|me|we|our)\\b", RegexOption.IGNORE_CASE)
+        val QUESTION_REGEX = Regex("(^|\\s)(what|why|how|when|where|which|who|can you|could you|would you|should i|do you|is there|are there)\\b|\\?$", RegexOption.IGNORE_CASE)
+        val TRANSIENT_REGEX = Regex("\\b(fix this|debug|crash|stack trace|error|exception|bug|compile|build failed|nullpointer|room migration|logcat|traceback|this time|right now|for now|temporarily)\\b", RegexOption.IGNORE_CASE)
         val SENSITIVE_REGEX = Regex("\\b(api key|password|secret|token|private key|credit card|ssn|social security)\\b", RegexOption.IGNORE_CASE)
     }
 }

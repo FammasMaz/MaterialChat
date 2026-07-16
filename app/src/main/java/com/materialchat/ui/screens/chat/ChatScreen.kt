@@ -873,8 +873,9 @@ private fun MessageList(
             modifier = Modifier.fillMaxSize(),
             state = listState,
             contentPadding = PaddingValues(
+                // Symmetric insets so bubble tonal edges are never clipped unevenly.
                 start = 16.dp,
-                end = 28.dp,
+                end = 16.dp,
                 top = 8.dp,
                 bottom = 8.dp
             ),

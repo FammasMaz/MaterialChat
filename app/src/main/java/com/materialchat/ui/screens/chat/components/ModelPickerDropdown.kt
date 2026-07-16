@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
@@ -28,6 +29,7 @@ import androidx.compose.material3.DropdownMenuItem
 import com.materialchat.ui.theme.CustomShapes
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
@@ -132,12 +134,12 @@ private fun ModelButton(
     interactionSource: MutableInteractionSource,
     onClick: () -> Unit
 ) {
-    // M3 Expressive: Pill-shaped container with tertiary color for model selection
+    // Always keep a filled container color so the pill never drops to transparent/surface.
     val containerColor by animateColorAsState(
         targetValue = if (isExpanded) {
             MaterialTheme.colorScheme.secondaryContainer
         } else {
-            MaterialTheme.colorScheme.surfaceContainerHighest
+            MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.72f)
         },
         animationSpec = spring(
             dampingRatio = Spring.DampingRatioNoBouncy,
@@ -147,13 +149,9 @@ private fun ModelButton(
     )
     val contentColor by animateColorAsState(
         targetValue = if (isEnabled) {
-            if (isExpanded) {
-                MaterialTheme.colorScheme.onSecondaryContainer
-            } else {
-                MaterialTheme.colorScheme.onSurfaceVariant
-            }
+            MaterialTheme.colorScheme.onSecondaryContainer
         } else {
-            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+            MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.6f)
         },
         animationSpec = spring(
             dampingRatio = Spring.DampingRatioNoBouncy,
@@ -162,20 +160,21 @@ private fun ModelButton(
         label = "modelButtonContentColor"
     )
 
-    Box(
+    Surface(
+        onClick = onClick,
+        enabled = isEnabled,
+        shape = RoundedCornerShape(999.dp),
+        color = containerColor,
+        contentColor = contentColor,
+        tonalElevation = 0.dp,
+        shadowElevation = 0.dp,
+        interactionSource = interactionSource,
         modifier = Modifier
             .scale(scale)
-            .clip(RoundedCornerShape(999.dp)) // Fully rounded pill shape
-            .background(containerColor)
-            .clickable(
-                interactionSource = interactionSource,
-                indication = ripple(bounded = true),
-                enabled = isEnabled,
-                onClick = onClick
-            )
-            .padding(horizontal = 10.dp, vertical = 4.dp)
+            .defaultMinSize(minHeight = 32.dp)
     ) {
         Row(
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(

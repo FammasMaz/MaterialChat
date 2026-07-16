@@ -2,11 +2,11 @@ package com.materialchat.ui.screens.chat.components
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.expandVertically
@@ -161,11 +161,6 @@ fun MessageInput(
     val keyboardController = LocalSoftwareKeyboardController.current
     var imageActionMenuExpanded by remember { mutableStateOf(false) }
     val chatButtonShape = LocalChatButtonShape.current
-    val neighborPush by animateDpAsState(
-        targetValue = if (imageActionMenuExpanded) 6.dp else 0.dp,
-        animationSpec = ExpressiveMotion.Spatial.playful(),
-        label = "chatInputNeighborPush"
-    )
 
     // Auto-focus after shared element animation completes for new chats
     // Delay allows the FAB-to-input morph animation to finish smoothly
@@ -276,18 +271,17 @@ fun MessageInput(
                 )
             }
 
-            // Fusion mode toggle - M3 Expressive merge icon with badge
-            Box(modifier = Modifier.offset(x = neighborPush)) {
-                FusionModeToggle(
-                    isEnabled = fusionEnabled,
-                    modelCount = fusionModelCount,
-                    enabled = !isStreaming,
-                    onClick = {
-                        haptics.perform(HapticPattern.CLICK, hapticsEnabled)
-                        onFusionToggle()
-                    }
-                )
-            }
+            // Fusion mode toggle - M3 Expressive merge icon with badge.
+            // Menu is a Popup, so do not shove neighbors sideways when the plus opens.
+            FusionModeToggle(
+                isEnabled = fusionEnabled,
+                modelCount = fusionModelCount,
+                enabled = !isStreaming,
+                onClick = {
+                    haptics.perform(HapticPattern.CLICK, hapticsEnabled)
+                    onFusionToggle()
+                }
+            )
 
             // Text input pill - shared element for FAB morph
             val sharedTransitionScope = LocalSharedTransitionScope.current
@@ -303,31 +297,28 @@ fun MessageInput(
                 .weight(1f)
                 .defaultMinSize(minHeight = 48.dp)
             
-            // Only apply shared element when navigating forward (new chat)
-            // Skip for existing chats to avoid predictive back gesture issues
+            // Container morph only for brand-new chats (empty thread). Existing chats
+            // skip it so predictive-back does not fight the shared bounds transition.
             val pillModifier = if (shouldAutoFocus && sharedTransitionScope != null && animatedVisibilityScope != null && sharedContentState != null) {
                 with(sharedTransitionScope) {
                     basePillModifier
-                        .sharedElement(
+                        .sharedBounds(
                             sharedContentState = sharedContentState,
                             animatedVisibilityScope = animatedVisibilityScope,
-                            boundsTransform = { _, _ ->
-                                spring(
-                                    dampingRatio = 0.65f,
-                                    stiffness = 340f
-                                )
-                            }
+                            boundsTransform = { _, _ -> ExpressiveMotion.Spatial.sharedElement() },
+                            resizeMode = SharedTransitionScope.ResizeMode.RemeasureToBounds
                         )
                 }
             } else {
                 basePillModifier
             }
-            
+
             Surface(
                 modifier = pillModifier,
                 shape = CustomShapes.MessageInputContainer,
                 color = MaterialTheme.colorScheme.surfaceContainerHighest,
-                tonalElevation = 0.dp,
+                // Match FAB elevation so the morph does not pop flat after landing.
+                tonalElevation = 3.dp,
                 shadowElevation = 0.dp
             ) {
                 BasicTextField(

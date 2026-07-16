@@ -55,6 +55,8 @@ class MemoryRepositoryImpl @Inject constructor(
         val contextTokens = tokenize(conversationContext)
         val intents = classifyRecallIntents(query)
         if (queryTokens.isEmpty() && contextTokens.isEmpty() && intents.isEmpty()) return@withContext emptyList()
+        // Passive recall must be picky: only inject memories when lexical evidence is strong
+        // or the user is explicitly asking about memory/preferences/personal facts.
         val minimumScore = if (intents.isEmpty()) MIN_PASSIVE_RECALL_SCORE else MIN_INTENT_RECALL_SCORE
         val memories = getMemoryRecallCandidates(queryTokens, contextTokens)
         val memoryCorpus = CorpusStats.from(memories.map { tokenizeTerms(it.content) })
@@ -65,6 +67,9 @@ class MemoryRepositoryImpl @Inject constructor(
                 if (score >= minimumScore) RecalledMemory(memory, score) else null
             }
             .sortedForRecall()
+            .let { ranked ->
+                if (intents.isEmpty()) ranked.take(MAX_PASSIVE_EXTRACTED_MEMORIES) else ranked
+            }
 
         val recalledSnippets = if (shouldRecallVerbatimSnippets(query)) {
             val snippetMinimumScore = if (intents.isEmpty()) {
@@ -207,9 +212,15 @@ class MemoryRepositoryImpl @Inject constructor(
 
         if (queryOverlap.isEmpty() && !intentOnlyMatch) return 0.0
         if (!intentOnlyMatch && !hasStrongEnoughLexicalMatch(memory, queryOverlap, hasRecallIntent)) return 0.0
+        // Intent-only (no token overlap) is reserved for explicit memory questions, not casual chat.
+        if (intentOnlyMatch && !generalRecall && !kindMatchesIntent) return 0.0
 
         val rankingBoosts = rankingBoosts(memory, kindMatchesIntent, generalRecall, hasRecallIntent)
-        if (intentOnlyMatch) return INTENT_ONLY_BASE_SCORE + rankingBoosts
+        if (intentOnlyMatch) {
+            // Require high confidence for intent-only so low-quality memories stay quiet.
+            if (memory.confidence < MIN_INTENT_ONLY_CONFIDENCE) return 0.0
+            return INTENT_ONLY_BASE_SCORE + rankingBoosts
+        }
 
         val queryBm25 = bm25Score(queryTokens, memoryTerms, corpus)
         val contextBm25 = bm25Score(contextTokens, memoryTerms, corpus) * CONTEXT_BM25_WEIGHT
@@ -527,10 +538,12 @@ class MemoryRepositoryImpl @Inject constructor(
         const val MAX_SNIPPET_SEARCH_POOL = 1200
         const val MAX_RECALL_SEARCH_TERMS = 4
         const val MAX_RECALLED_SNIPPETS = 2
-        const val MIN_PASSIVE_RECALL_SCORE = 0.48
-        const val MIN_INTENT_RECALL_SCORE = 0.46
-        const val MIN_SNIPPET_PASSIVE_RECALL_SCORE = 0.34
-        const val MIN_SNIPPET_INTENT_RECALL_SCORE = 0.34
+        const val MIN_PASSIVE_RECALL_SCORE = 0.58
+        const val MIN_INTENT_RECALL_SCORE = 0.50
+        const val MIN_SNIPPET_PASSIVE_RECALL_SCORE = 0.42
+        const val MIN_SNIPPET_INTENT_RECALL_SCORE = 0.38
+        const val MIN_INTENT_ONLY_CONFIDENCE = 0.72f
+        const val MAX_PASSIVE_EXTRACTED_MEMORIES = 2
         const val BM25_K1 = 1.2
         const val BM25_B = 0.75
         const val BM25_NORMALIZER = 1.2
@@ -541,7 +554,7 @@ class MemoryRepositoryImpl @Inject constructor(
         const val CONTEXT_OVERLAP_BOOST = 0.025
         const val MAX_QUERY_OVERLAP_BOOST = 0.22
         const val MAX_CONTEXT_OVERLAP_BOOST = 0.08
-        const val INTENT_ONLY_BASE_SCORE = 0.34
+        const val INTENT_ONLY_BASE_SCORE = 0.42
         const val MAX_SAVE_CANDIDATES = 5
         const val MAX_SAVE_SNIPPETS = 2
         const val MIN_MEMORY_LENGTH = 12

@@ -341,10 +341,14 @@ fun MessageBubble(
                 Surface(
                     shape = bubbleStyle.shape,
                     color = bubbleStyle.backgroundColor,
+                    // M3 Expressive: prefer tonal elevation. Hard drop shadows clip against
+                    // LazyColumn edges and look cut off under rounded bubbles.
                     tonalElevation = if (isUser) 2.dp else 1.dp,
-                    shadowElevation = if (isUser) 1.dp else 0.dp,
+                    shadowElevation = 0.dp,
                     modifier = Modifier
                         .widthIn(min = 40.dp, max = bubbleStyle.maxWidth)
+                        // Keep a little air around the bubble so tonal edges never kiss the list clip.
+                        .padding(horizontal = 2.dp, vertical = 1.dp)
                         .animateContentSize(
                             // Streaming responses retarget this animation many times per second.
                             // Use a critically-damped spring and top alignment so the bubble can

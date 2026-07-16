@@ -1,6 +1,7 @@
 package com.materialchat.ui.navigation
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.core.animateDpAsState
@@ -120,15 +121,16 @@ fun MaterialChatNavBar(
             // Shared element transition: FAB morphs into MessageInput text field
             val sharedTransitionScope = LocalSharedTransitionScope.current
             val animatedVisibilityScope = LocalAnimatedVisibilityScope.current
+            // sharedBounds (not sharedElement): FAB icon and input field are different
+            // content; container morph is the M3 Expressive hero moment for new chat.
             val fabModifier = if (sharedTransitionScope != null && animatedVisibilityScope != null) {
                 with(sharedTransitionScope) {
                     Modifier
-                        .sharedElement(
+                        .sharedBounds(
                             sharedContentState = rememberSharedContentState(key = SHARED_ELEMENT_FAB_TO_INPUT),
                             animatedVisibilityScope = animatedVisibilityScope,
-                            boundsTransform = { _, _ ->
-                                spring(dampingRatio = 0.7f, stiffness = 500f)
-                            }
+                            boundsTransform = { _, _ -> ExpressiveMotion.Spatial.sharedElement() },
+                            resizeMode = SharedTransitionScope.ResizeMode.RemeasureToBounds
                         )
                         .graphicsLayer {
                             scaleX = fabScale
