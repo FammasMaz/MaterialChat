@@ -135,7 +135,7 @@ private fun ActionButton(
             Icon(
                 imageVector = item.icon,
                 contentDescription = item.contentDescription,
-                modifier = Modifier.size(if (emphasized) 20.dp else 18.dp),
+                modifier = Modifier.size(20.dp),
                 tint = contentColor
             )
         }
@@ -194,4 +194,78 @@ fun CompactMessageActions(
         onBranch = onBranch,
         onRedoWithModel = onRedoWithModel
     )
+}
+
+/**
+ * A pressable 44dp icon button that matches [MessageActions]' visual language,
+ * used for toggles like the generation-stats pill (active state highlights).
+ */
+@Composable
+fun MessageToggleButton(
+    icon: ImageVector,
+    contentDescription: String,
+    active: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val haptics = rememberHapticFeedback()
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.94f else 1f,
+        animationSpec = ExpressiveMotion.Spatial.scale(),
+        label = "messageToggleScale"
+    )
+    val radius by animateDpAsState(
+        targetValue = if (isPressed) 16.dp else 22.dp,
+        animationSpec = ExpressiveMotion.Spatial.shapeMorph(),
+        label = "messageToggleRadius"
+    )
+    val containerColor by animateColorAsState(
+        targetValue = if (active) {
+            MaterialTheme.colorScheme.secondaryContainer
+        } else {
+            MaterialTheme.colorScheme.surfaceContainerHigh
+        },
+        animationSpec = ExpressiveMotion.Effects.color(),
+        label = "messageToggleContainer"
+    )
+    val contentColor by animateColorAsState(
+        targetValue = if (active) {
+            MaterialTheme.colorScheme.onSecondaryContainer
+        } else {
+            MaterialTheme.colorScheme.onSurfaceVariant
+        },
+        animationSpec = ExpressiveMotion.Effects.color(),
+        label = "messageToggleContent"
+    )
+
+    Surface(
+        onClick = {
+            haptics.perform(HapticPattern.CLICK)
+            onClick()
+        },
+        modifier = modifier
+            .size(44.dp)
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            },
+        shape = RoundedCornerShape(radius),
+        color = containerColor,
+        contentColor = contentColor,
+        tonalElevation = 0.dp,
+        shadowElevation = 0.dp,
+        interactionSource = interactionSource
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            Icon(
+                imageVector = icon,
+                contentDescription = contentDescription,
+                modifier = Modifier.size(20.dp),
+                tint = contentColor
+            )
+        }
+    }
 }

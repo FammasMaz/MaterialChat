@@ -17,6 +17,7 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
+import kotlinx.coroutines.delay
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.clickable
@@ -75,6 +76,8 @@ import androidx.compose.material3.ripple
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.animation.core.tween
+import com.materialchat.ui.screens.chat.components.MessageToggleButton
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -545,37 +548,72 @@ fun MessageBubble(
                     )
                 }
 
-                // Generation speed pill — last response + average, whisper-quiet styling
-                messageItem.generationStats?.let { stats ->
-                    if (stats.lastTps != null || stats.lastTtftMs != null) {
-                        Row(
-                            modifier = Modifier.padding(start = 4.dp, bottom = 2.dp),
-                            horizontalArrangement = Arrangement.spacedBy(6.dp),
-                            verticalAlignment = Alignment.CenterVertically
+                // Generation speed pill: pops in when streaming completes, holds a
+                // few seconds, then collapses into the bolt toggle in the action
+                // row below. Tapping the bolt re-expands it.
+                var statsExpanded by remember(message.id) { mutableStateOf(false) }
+                var statsSeen by remember(message.id) { mutableStateOf(false) }
+                val hasStats = messageItem.generationStats != null &&
+                        (messageItem.generationStats.lastTps != null ||
+                                messageItem.generationStats.lastTtftMs != null)
+
+                LaunchedEffect(message.id, message.isStreaming) {
+                    if (!message.isStreaming && hasStats && !statsSeen && !statsExpanded) {
+                        statsSeen = true
+                        statsExpanded = true
+                    }
+                }
+                LaunchedEffect(statsExpanded) {
+                    if (statsExpanded) {
+                        delay(3_500)
+                        statsExpanded = false
+                    }
+                }
+
+                AnimatedVisibility(
+                    visible = statsExpanded && hasStats,
+                    enter = expandVertically(
+                        animationSpec = spring(dampingRatio = 0.8f, stiffness = 380f)
+                    ) + fadeIn(),
+                    exit = shrinkVertically(
+                        animationSpec = tween(180)
+                    ) + fadeOut(tween(140))
+                ) {
+                    messageItem.generationStats?.let { stats ->
+                        Surface(
+                            shape = RoundedCornerShape(50),
+                            color = MaterialTheme.colorScheme.secondaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                            tonalElevation = 0.dp,
+                            shadowElevation = 0.dp,
+                            modifier = Modifier.padding(start = 4.dp, bottom = 6.dp)
                         ) {
-                            val statColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.55f)
-                            Icon(
-                                imageVector = Icons.Outlined.Bolt,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f),
-                                modifier = Modifier.size(12.dp)
-                            )
-                            val tpsText = stats.lastTps?.let { "%.0f tok/s".format(it) } ?: "—"
-                            Text(text = tpsText, style = MaterialTheme.typography.labelSmall, color = statColor)
-
-                            stats.lastTtftMs?.let { ttft ->
-                                Text("·", style = MaterialTheme.typography.labelSmall, color = statColor)
-                                val ttftText = if (ttft < 1000) "%d ms".format(ttft) else "%.1f s".format(ttft / 1000.0)
-                                Text(text = "TTFT $ttftText", style = MaterialTheme.typography.labelSmall, color = statColor)
-                            }
-
-                            if (stats.avgTps != null) {
-                                Text("·", style = MaterialTheme.typography.labelSmall, color = statColor)
-                                Text(
-                                    text = "avg %.0f".format(stats.avgTps),
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = statColor
+                            Row(
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                                horizontalArrangement = Arrangement.spacedBy(5.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Outlined.Bolt,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(14.dp)
                                 )
+                                val tpsText = stats.lastTps?.let { "%.0f tok/s".format(it) } ?: "—"
+                                Text(text = tpsText, style = MaterialTheme.typography.labelSmall)
+                                stats.lastTtftMs?.let { ttft ->
+                                    val ttftText = if (ttft < 1000) "%d ms".format(ttft)
+                                                   else "%.1f s".format(ttft / 1000.0)
+                                    Text("·", style = MaterialTheme.typography.labelSmall)
+                                    Text(text = "TTFT $ttftText", style = MaterialTheme.typography.labelSmall)
+                                }
+                                if (stats.avgTps != null) {
+                                    Text("·", style = MaterialTheme.typography.labelSmall)
+                                    Text(
+                                        text = "avg %.0f".format(stats.avgTps),
+                                        style = MaterialTheme.typography.labelSmall
+                                    )
+                                }
                             }
                         }
                     }
@@ -586,10 +624,10 @@ fun MessageBubble(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Action buttons (including bookmark)
+                    // Action buttons (including bookmark and stats toggle)
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
                         if (messageItem.showActions) {
                             MessageActions(
@@ -601,6 +639,16 @@ fun MessageBubble(
                                 onRegenerate = onRegenerate,
                                 onBranch = onBranch,
                                 onRedoWithModel = onRedoWithModel
+                            )
+                        }
+
+                        // Stats toggle — re-opens the generation-speed pill
+                        if (hasStats) {
+                            MessageToggleButton(
+                                icon = Icons.Outlined.Bolt,
+                                contentDescription = "Response speed",
+                                active = statsExpanded,
+                                onClick = { statsExpanded = !statsExpanded }
                             )
                         }
 
