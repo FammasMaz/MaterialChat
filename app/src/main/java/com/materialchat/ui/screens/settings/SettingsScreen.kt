@@ -93,9 +93,11 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.SuggestionChipDefaults
 import com.materialchat.ui.components.ExpressiveSwitch
+import com.materialchat.ui.components.M3ExpressiveCircularProgress
 import androidx.compose.material3.Text
 import com.materialchat.ui.components.ExpressiveButtonStyle
 import androidx.compose.material3.TopAppBarDefaults
+import kotlin.math.roundToInt
 import kotlinx.coroutines.Dispatchers
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -2068,6 +2070,9 @@ private fun FontSizeSelector(
     selectedScale: Float,
     onScaleSelected: (Float) -> Unit
 ) {
+    val haptics = rememberHapticFeedback()
+    var lastSegment by remember { mutableStateOf(-1) }
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
@@ -2123,10 +2128,19 @@ private fun FontSizeSelector(
                 )
             }
 
-            // M3 Slider with discrete steps at the preset sizes
+            // M3 Slider with discrete steps at the preset sizes.
+            // SEGMENT_TICK fires when the thumb snaps to a new stop — the
+            // classic expressive slider feel (12 stops across the range).
             Slider(
                 value = selectedScale,
-                onValueChange = { onScaleSelected(it) },
+                onValueChange = {
+                    val segment = ((it - 0.85f) / 0.55f * 11f).roundToInt()
+                    if (segment != lastSegment) {
+                        lastSegment = segment
+                        haptics.perform(HapticPattern.SEGMENT_TICK)
+                    }
+                    onScaleSelected(it)
+                },
                 valueRange = 0.85f..1.4f,
                 steps = 10,
                 modifier = Modifier.fillMaxWidth(),
@@ -2737,8 +2751,9 @@ private fun TitleGenerationModelField(
                     enabled = !pickerState.isLoading
                 ) {
                     if (pickerState.isLoading) {
-                        CircularProgressIndicator(
+                        M3ExpressiveCircularProgress(
                             modifier = Modifier.size(18.dp),
+                            size = 18.dp,
                             strokeWidth = 2.dp
                         )
                     } else {
@@ -2848,8 +2863,9 @@ private fun TitleGenerationModelField(
                                 DropdownMenuItem(
                                     text = {
                                         Row(verticalAlignment = Alignment.CenterVertically) {
-                                            CircularProgressIndicator(
+                                            M3ExpressiveCircularProgress(
                                                 modifier = Modifier.size(16.dp),
+                                                size = 16.dp,
                                                 strokeWidth = 2.dp
                                             )
                                             Spacer(modifier = Modifier.width(12.dp))
@@ -3921,7 +3937,9 @@ private fun WebSearchSection(
                 if (webSearchProvider != "NATIVE") {
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    // Max results slider
+                    // Max results slider with per-stop tick haptics
+                    val maxResultsHaptics = rememberHapticFeedback()
+                    var lastMaxResults by remember { mutableStateOf(-1) }
                     Text(
                         text = "Max Results: $webSearchMaxResults",
                         style = MaterialTheme.typography.labelMedium,
@@ -3929,7 +3947,14 @@ private fun WebSearchSection(
                     )
                     Slider(
                         value = webSearchMaxResults.toFloat(),
-                        onValueChange = { onWebSearchMaxResultsChange(it.toInt()) },
+                        onValueChange = {
+                            val stop = it.roundToInt()
+                            if (stop != lastMaxResults) {
+                                lastMaxResults = stop
+                                maxResultsHaptics.perform(HapticPattern.SEGMENT_TICK)
+                            }
+                            onWebSearchMaxResultsChange(stop)
+                        },
                         valueRange = 3f..10f,
                         steps = 6,
                         modifier = Modifier.fillMaxWidth(),

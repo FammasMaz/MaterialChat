@@ -47,6 +47,8 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
+import com.materialchat.ui.components.HapticPattern
+import com.materialchat.ui.components.rememberHapticFeedback
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -87,12 +89,14 @@ fun ExpressiveFastScrollBar(
     dragLabelMinWidth: Dp = 112.dp,
     dragLabelMaxWidth: Dp = 200.dp,
     dragLabelMinHeight: Dp = 56.dp,
-    dragLabelGap: Dp = 12.dp
+    dragLabelGap: Dp = 12.dp,
+    hapticsEnabled: Boolean = true
 ) {
     var isPressed by remember { mutableStateOf(false) }
     var isDragging by remember { mutableStateOf(false) }
     var dragProgress by remember { mutableFloatStateOf(-1f) }
     var pendingScrollIndex by remember { mutableIntStateOf(-1) }
+    val scrollHaptics = rememberHapticFeedback()
     var retainedDragLabel by remember { mutableStateOf<String?>(null) }
     val displayedProgress = remember { Animatable(0f) }
     var synced by remember { mutableStateOf(false) }
@@ -314,6 +318,7 @@ fun ExpressiveFastScrollBar(
                     detectDragGestures(
                         onDragStart = { offset ->
                             isDragging = true
+                            scrollHaptics.perform(HapticPattern.GESTURE_START, hapticsEnabled)
                             val stats = metrics()
                             val handleY = displayedProgress.value * stats.scrollableHeightPx
                             val onHandle = offset.y in handleY..(handleY + minHeightPx)
@@ -328,6 +333,7 @@ fun ExpressiveFastScrollBar(
                         },
                         onDragEnd = {
                             isDragging = false
+                            scrollHaptics.perform(HapticPattern.GESTURE_END, hapticsEnabled)
                             dragProgress = -1f
                             pendingScrollIndex = -1
                         },
@@ -339,6 +345,12 @@ fun ExpressiveFastScrollBar(
                         onDrag = { change, _ ->
                             change.consume()
                             updateProgressFromTouch(change.position.y, grabOffset)
+                            // Tick when the drag crosses into a new list item —
+                            // same SEGMENT_TICK language as fling-scroll haptics.
+                            if (pendingScrollIndex != -1 && listState.firstVisibleItemIndex != pendingScrollIndex) {
+                                pendingScrollIndex = listState.firstVisibleItemIndex
+                                scrollHaptics.perform(HapticPattern.SEGMENT_TICK, hapticsEnabled)
+                            }
                         }
                     )
                 }

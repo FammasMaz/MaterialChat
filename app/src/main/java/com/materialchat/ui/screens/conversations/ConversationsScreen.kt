@@ -1280,6 +1280,7 @@ private fun ConversationList(
             dragLabelMinWidth = 124.dp,
             dragLabelMaxWidth = 228.dp,
             dragLabelMinHeight = 64.dp,
+            hapticsEnabled = hapticsEnabled,
             modifier = Modifier
                 .align(Alignment.CenterEnd)
                 .padding(top = 16.dp, bottom = 88.dp, end = 2.dp)
@@ -1363,6 +1364,7 @@ private fun GroupedConversationList(
             dragLabelMinWidth = 124.dp,
             dragLabelMaxWidth = 228.dp,
             dragLabelMinHeight = 64.dp,
+            hapticsEnabled = hapticsEnabled,
             modifier = Modifier
                 .align(Alignment.CenterEnd)
                 .padding(top = 16.dp, bottom = 88.dp, end = 2.dp)
