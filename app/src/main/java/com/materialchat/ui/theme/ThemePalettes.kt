@@ -27,6 +27,9 @@ object MaterialChatThemePalettes {
             AppPreferences.ThemePalette.ROSE -> if (darkTheme) roseDark else roseLight
             AppPreferences.ThemePalette.AMBER -> if (darkTheme) amberDark else amberLight
             AppPreferences.ThemePalette.GRAPHITE -> if (darkTheme) graphiteDark else graphiteLight
+            AppPreferences.ThemePalette.COSMIC -> if (darkTheme) cosmicDark else cosmicLight
+            AppPreferences.ThemePalette.FLAMINGO -> if (darkTheme) flamingoDark else flamingoLight
+            AppPreferences.ThemePalette.CITRUS -> if (darkTheme) citrusDark else citrusLight
         }
     }
 
@@ -39,6 +42,9 @@ object MaterialChatThemePalettes {
             AppPreferences.ThemePalette.ROSE -> Color(0xFF9C405C)
             AppPreferences.ThemePalette.AMBER -> Color(0xFF795900)
             AppPreferences.ThemePalette.GRAPHITE -> Color(0xFF5F5E66)
+            AppPreferences.ThemePalette.COSMIC -> Color(0xFF4B3DE8)
+            AppPreferences.ThemePalette.FLAMINGO -> Color(0xFFB02E56)
+            AppPreferences.ThemePalette.CITRUS -> Color(0xFF6D7100)
         }
     }
 
@@ -51,6 +57,9 @@ object MaterialChatThemePalettes {
             AppPreferences.ThemePalette.ROSE -> Color(0xFF7B5260)
             AppPreferences.ThemePalette.AMBER -> Color(0xFF735B2E)
             AppPreferences.ThemePalette.GRAPHITE -> Color(0xFF5E5E68)
+            AppPreferences.ThemePalette.COSMIC -> Color(0xFF00A6C8)
+            AppPreferences.ThemePalette.FLAMINGO -> Color(0xFFFF7FA9)
+            AppPreferences.ThemePalette.CITRUS -> Color(0xFF9DA514)
         }
     }
 
@@ -262,6 +271,99 @@ object MaterialChatThemePalettes {
         onTertiary = Color(0xFF3B2A37),
         tertiaryContainer = Color(0xFF53404F),
         onTertiaryContainer = Color(0xFFF4DCEB)
+    )
+
+    // COSMIC — electric indigo with hot-magenta and cyan accents (M3E poster energy)
+    private val cosmicLight = materialLightScheme(
+        primary = Color(0xFF4B3DE8),
+        onPrimary = Color.White,
+        primaryContainer = Color(0xFFE2DEFF),
+        onPrimaryContainer = Color(0xFF160A78),
+        secondary = Color(0xAA2F96),
+        onSecondary = Color.White,
+        secondaryContainer = Color(0xFFFFD6F1),
+        onSecondaryContainer = Color(0xFF3A0032),
+        tertiary = Color(0xFF00687A),
+        onTertiary = Color.White,
+        tertiaryContainer = Color(0xFFB1ECFF),
+        onTertiaryContainer = Color(0xFF001F28)
+    )
+
+    private val cosmicDark = materialDarkScheme(
+        primary = Color(0xFFC3BEFF),
+        onPrimary = Color(0xFF240096),
+        primaryContainer = Color(0xFF3A2BC9),
+        onPrimaryContainer = Color(0xFFE2DEFF),
+        secondary = Color(0xFFFFACE5),
+        onSecondary = Color(0xFF5D0B51),
+        secondaryContainer = Color(0xFF802779),
+        onSecondaryContainer = Color(0xFFFFD6F1),
+        tertiary = Color(0xFF7FD0E6),
+        onTertiary = Color(0xFF003543),
+        tertiaryContainer = Color(0xFF004D60),
+        onTertiaryContainer = Color(0xFFB1ECFF)
+    )
+
+    // FLAMINGO — raspberry pink with teal counterpoint
+    private val flamingoLight = materialLightScheme(
+        primary = Color(0xFFB02E56),
+        onPrimary = Color.White,
+        primaryContainer = Color(0xFFFFD9DF),
+        onPrimaryContainer = Color(0xFF3F0020),
+        secondary = Color(0xFF74565F),
+        onSecondary = Color.White,
+        secondaryContainer = Color(0xFFFFDCE4),
+        onSecondaryContainer = Color(0xFF2B151C),
+        tertiary = Color(0xFF00696D),
+        onTertiary = Color.White,
+        tertiaryContainer = Color(0xFF9CF1F3),
+        onTertiaryContainer = Color(0xFF002022)
+    )
+
+    private val flamingoDark = materialDarkScheme(
+        primary = Color(0xFFFFB1C2),
+        onPrimary = Color(0xFF65002D),
+        primaryContainer = Color(0xFF8C1543),
+        onPrimaryContainer = Color(0xFFFFD9DF),
+        secondary = Color(0xFFE3BDC6),
+        onSecondary = Color(0xFF432932),
+        secondaryContainer = Color(0xFF5B3F48),
+        onSecondaryContainer = Color(0xFFFFDCE4),
+        tertiary = Color(0xFF80D4D7),
+        onTertiary = Color(0xFF003738),
+        tertiaryContainer = Color(0xFF004F52),
+        onTertiaryContainer = Color(0xFF9CF1F3)
+    )
+
+    // CITRUS — acid lime with deep-green contrast
+    private val citrusLight = materialLightScheme(
+        primary = Color(0xFF6D7100),
+        onPrimary = Color.White,
+        primaryContainer = Color(0xFFE6E86C),
+        onPrimaryContainer = Color(0xFF202200),
+        secondary = Color(0xFF606043),
+        onSecondary = Color.White,
+        secondaryContainer = Color(0xFFE6E4BF),
+        onSecondaryContainer = Color(0xFF1C1D05),
+        tertiary = Color(0xFF256E49),
+        onTertiary = Color.White,
+        tertiaryContainer = Color(0xFFAAF6C7),
+        onTertiaryContainer = Color(0xFF002110)
+    )
+
+    private val citrusDark = materialDarkScheme(
+        primary = Color(0xFFCBCB4B),
+        onPrimary = Color(0xFF333800),
+        primaryContainer = Color(0xFF4B5000),
+        onPrimaryContainer = Color(0xFFE6E86C),
+        secondary = Color(0xFFCAC8A5),
+        onSecondary = Color(0xFF31321A),
+        secondaryContainer = Color(0xFF48492F),
+        onSecondaryContainer = Color(0xFFE6E4BF),
+        tertiary = Color(0xFF8ED9AB),
+        onTertiary = Color(0xFF00391F),
+        tertiaryContainer = Color(0xFF085233),
+        onTertiaryContainer = Color(0xFFAAF6C7)
     )
 }
 
