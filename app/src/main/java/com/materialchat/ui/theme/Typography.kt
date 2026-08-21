@@ -55,11 +55,21 @@ val availableFonts = listOf(
     AppFont("Work Sans", "Work Sans"),
     AppFont("DM Sans", "DM Sans"),
     AppFont("Nunito", "Nunito"),
-    AppFont("Montserrat", "Montserrat")
+    AppFont("Montserrat", "Montserrat"),
+    // Expressive display faces — chunky geometric/poster voices per M3E
+    AppFont("Outfit", "Outfit"),
+    AppFont("Sora", "Sora"),
+    AppFont("Space Grotesk", "Space Grotesk"),
+    AppFont("Bricolage Grotesque", "Bricolage Grotesque"),
+    AppFont("Plus Jakarta Sans", "Plus Jakarta Sans"),
+    AppFont("Urbanist", "Urbanist"),
+    AppFont("Rubik", "Rubik"),
+    AppFont("Manrope", "Manrope")
 )
 
 /**
  * Creates a FontFamily from a Google Font name with all required weights.
+ * Loads up to Black so display/headline tiers can hit true M3E poster weight.
  */
 fun createFontFamily(googleFontName: String): FontFamily {
     val googleFont = GoogleFont(googleFontName)
@@ -68,7 +78,9 @@ fun createFontFamily(googleFontName: String): FontFamily {
         Font(googleFont = googleFont, fontProvider = fontProvider, weight = FontWeight.Normal),
         Font(googleFont = googleFont, fontProvider = fontProvider, weight = FontWeight.Medium),
         Font(googleFont = googleFont, fontProvider = fontProvider, weight = FontWeight.SemiBold),
-        Font(googleFont = googleFont, fontProvider = fontProvider, weight = FontWeight.Bold)
+        Font(googleFont = googleFont, fontProvider = fontProvider, weight = FontWeight.Bold),
+        Font(googleFont = googleFont, fontProvider = fontProvider, weight = FontWeight.ExtraBold),
+        Font(googleFont = googleFont, fontProvider = fontProvider, weight = FontWeight.Black)
     )
 }
 
@@ -166,7 +178,7 @@ fun buildTypography(
     // Display - Extra large, impactful text
     displayLarge = TextStyle(
         fontFamily = MaterialChatExpressiveTitleFontFamily,
-        fontWeight = FontWeight.Bold,
+        fontWeight = FontWeight.ExtraBold,
         fontSize = (57 * sizeScale).sp,
         lineHeight = (60 * sizeScale).sp,
         letterSpacing = (-0.35).sp,
@@ -174,7 +186,7 @@ fun buildTypography(
     ),
     displayMedium = TextStyle(
         fontFamily = MaterialChatExpressiveTitleFontFamily,
-        fontWeight = FontWeight.Bold,
+        fontWeight = FontWeight.ExtraBold,
         fontSize = (45 * sizeScale).sp,
         lineHeight = (48 * sizeScale).sp,
         letterSpacing = (-0.25).sp,
@@ -182,7 +194,7 @@ fun buildTypography(
     ),
     displaySmall = TextStyle(
         fontFamily = MaterialChatExpressiveTitleFontFamily,
-        fontWeight = FontWeight.Bold,
+        fontWeight = FontWeight.ExtraBold,
         fontSize = (36 * sizeScale).sp,
         lineHeight = (40 * sizeScale).sp,
         letterSpacing = (-0.15).sp,
@@ -192,7 +204,7 @@ fun buildTypography(
     // Headline - Section headers, app bar titles
     headlineLarge = TextStyle(
         fontFamily = MaterialChatExpressiveTitleFontFamily,
-        fontWeight = FontWeight.Bold,
+        fontWeight = FontWeight.ExtraBold,
         fontSize = (32 * sizeScale).sp,
         lineHeight = (38 * sizeScale).sp,
         letterSpacing = (-0.1).sp,
@@ -200,7 +212,7 @@ fun buildTypography(
     ),
     headlineMedium = TextStyle(
         fontFamily = MaterialChatExpressiveTitleFontFamily,
-        fontWeight = FontWeight.Bold,
+        fontWeight = FontWeight.ExtraBold,
         fontSize = (28 * sizeScale).sp,
         lineHeight = (34 * sizeScale).sp,
         letterSpacing = 0.sp,

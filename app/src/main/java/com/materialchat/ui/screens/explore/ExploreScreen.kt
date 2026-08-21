@@ -2,8 +2,14 @@ package com.materialchat.ui.screens.explore
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.background
@@ -19,6 +25,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
@@ -37,7 +44,10 @@ import androidx.compose.material.icons.filled.NorthEast
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialShapes
+import androidx.compose.material3.toShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -184,10 +194,10 @@ fun ExploreScreen(
                 item(span = { GridItemSpan(maxLineSpan) }) {
                     Text(
                         text = "Create and organize",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.ExtraBold,
                         color = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier.padding(top = 6.dp, bottom = 2.dp)
+                        modifier = Modifier.padding(top = 8.dp, bottom = 2.dp)
                     )
                 }
 
@@ -203,6 +213,7 @@ fun ExploreScreen(
     }
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun ArenaHeroCard(onClick: () -> Unit) {
     val haptics = rememberHapticFeedback()
@@ -211,6 +222,18 @@ private fun ArenaHeroCard(onClick: () -> Unit) {
 
     // Physical 3D tilt: the card leans subtly with the hand holding the phone.
     val tilt = rememberDeviceTilt(maxDegrees = 10f)
+
+    // M3E hero art: the backdrop shape slowly rotates — alive even at rest.
+    val heroRotation = rememberInfiniteTransition(label = "heroShapeRotation")
+    val burstRotation by heroRotation.animateFloat(
+        initialValue = 0f,
+        targetValue = 360f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 48_000, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "burstRotation"
+    )
 
     val scale by animateFloatAsState(
         targetValue = if (isPressed) 0.98f else 1f,
@@ -231,70 +254,101 @@ private fun ArenaHeroCard(onClick: () -> Unit) {
         ),
         modifier = Modifier
             .fillMaxWidth()
-            .height(184.dp)
+            .height(196.dp)
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
                 // Perspective tilt from device orientation. Damped so it reads
-                // as depth, never as a gimmick; rotationX positive = top tips away.
+                // as depth, never as a gimmick.
                 val tiltScale = if (isPressed) 0.4f else 1f
                 rotationX = -tilt.value.pitch * 0.45f * tiltScale
                 rotationY = tilt.value.roll * 0.45f * tiltScale
                 cameraDistance = 24f * density
             }
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    Brush.linearGradient(
-                        colors = listOf(
-                            MaterialTheme.colorScheme.primaryContainer,
-                            MaterialTheme.colorScheme.tertiaryContainer
-                        )
+        Box(modifier = Modifier.fillMaxSize()) {
+            // Layered M3E shape art: giant soft burst bleeding off the top-right,
+            // rotating almost imperceptibly so the card feels alive at rest.
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .offset(x = 46.dp, y = (-58).dp)
+                    .size(210.dp)
+                    .graphicsLayer { rotationZ = burstRotation }
+                    .background(
+                        color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.72f),
+                        shape = MaterialShapes.SoftBurst.toShape()
                     )
-                )
-                .padding(22.dp)
-        ) {
+            )
+            // Cookie accent anchored bottom-right, counter-weighting the burst.
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .offset(x = 26.dp, y = 30.dp)
+                    .size(96.dp)
+                    .background(
+                        color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.85f),
+                        shape = MaterialShapes.Cookie9Sided.toShape()
+                    )
+            )
+            // Clover tucked bottom-left for depth without noise.
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .offset(x = (-24).dp, y = 26.dp)
+                    .size(120.dp)
+                    .graphicsLayer { alpha = 0.45f }
+                    .background(
+                        color = MaterialTheme.colorScheme.primary,
+                        shape = MaterialShapes.Clover8Leaf.toShape()
+                    )
+            )
+
             Column(
-                modifier = Modifier.align(Alignment.CenterStart),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
+                modifier = Modifier
+                    .align(Alignment.CenterStart)
+                    .padding(22.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 Surface(
                     shape = CircleShape,
-                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.38f),
-                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                    color = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary
                 ) {
                     Icon(
                         imageVector = Icons.Filled.EmojiEvents,
                         contentDescription = null,
-                        modifier = Modifier.padding(12.dp).size(30.dp)
+                        modifier = Modifier.padding(10.dp).size(22.dp)
                     )
                 }
                 Text(
                     text = "Arena",
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.displaySmall,
+                    fontWeight = FontWeight.ExtraBold,
                     color = MaterialTheme.colorScheme.onPrimaryContainer
                 )
                 Text(
                     text = "Compare models head-to-head and vote on the better answer.",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.78f),
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.82f),
                     maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.fillMaxWidth(0.62f)
                 )
             }
             Surface(
                 shape = CircleShape,
-                color = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.onPrimary,
-                modifier = Modifier.align(Alignment.TopEnd)
+                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                contentColor = MaterialTheme.colorScheme.primaryContainer,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(16.dp)
             ) {
                 Icon(
                     imageVector = Icons.Filled.NorthEast,
                     contentDescription = null,
-                    modifier = Modifier.padding(10.dp).size(20.dp)
+                    modifier = Modifier.padding(9.dp).size(18.dp)
                 )
             }
         }
