@@ -19,6 +19,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.EmojiEvents
+import androidx.compose.material3.LinearWavyProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
@@ -223,11 +225,12 @@ private fun LeaderboardItem(
 
                 if (rating.totalBattles > 0) {
                     Spacer(modifier = Modifier.height(6.dp))
-                    LinearProgressIndicator(
+                    @OptIn(ExperimentalMaterial3ExpressiveApi::class)
+                    LinearWavyProgressIndicator(
                         progress = { (rating.winRate / 100.0).toFloat() },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(4.dp),
+                            .height(8.dp),
                         color = contentColor.copy(alpha = 0.6f),
                         trackColor = contentColor.copy(alpha = 0.12f)
                     )

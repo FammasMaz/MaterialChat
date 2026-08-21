@@ -60,6 +60,7 @@ import com.materialchat.ui.components.ExpressiveButtonStyle
 import com.materialchat.ui.components.ExpressiveFilledIconButton
 import com.materialchat.ui.components.ExpressiveScreenBackdrop
 import com.materialchat.ui.components.ExpressiveSwitch
+import com.materialchat.ui.components.M3ExpressiveCircularProgress
 import com.materialchat.ui.components.ExpressiveTopBarTitle
 import com.materialchat.ui.theme.CustomShapes
 
@@ -432,7 +433,7 @@ private fun TaskAssignmentCard(
             verticalAlignment = Alignment.CenterVertically
         ) {
             if (pickerState.isLoading) {
-                CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                M3ExpressiveCircularProgress(modifier = Modifier.size(20.dp), size = 20.dp, strokeWidth = 2.dp)
                 Spacer(modifier = Modifier.width(8.dp))
             }
             Text(

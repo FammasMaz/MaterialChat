@@ -33,6 +33,7 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import com.materialchat.ui.components.M3ExpressiveCircularProgress
 import com.materialchat.ui.theme.CustomShapes
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -485,10 +486,10 @@ private fun ProviderFilterBadge(
                     DropdownMenuItem(
                         text = {
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                CircularProgressIndicator(
+                                M3ExpressiveCircularProgress(
                                     modifier = Modifier.size(16.dp),
-                                    strokeWidth = 2.dp,
-                                    color = MaterialTheme.colorScheme.primary
+                                    size = 16.dp,
+                                    strokeWidth = 2.dp
                                 )
                                 Spacer(modifier = Modifier.width(12.dp))
                                 Text(
@@ -759,10 +760,10 @@ private fun ModelPickerBadge(
                     DropdownMenuItem(
                         text = {
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                CircularProgressIndicator(
+                                M3ExpressiveCircularProgress(
                                     modifier = Modifier.size(16.dp),
-                                    strokeWidth = 2.dp,
-                                    color = MaterialTheme.colorScheme.primary
+                                    size = 16.dp,
+                                    strokeWidth = 2.dp
                                 )
                                 Spacer(modifier = Modifier.width(12.dp))
                                 Text(

@@ -28,6 +28,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.materialchat.ui.components.M3ExpressiveCircularProgress
 import com.materialchat.domain.model.StreamingState
 
 /**
@@ -167,8 +168,9 @@ private fun ResponsePanel(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        CircularProgressIndicator(
+                        M3ExpressiveCircularProgress(
                             modifier = Modifier.size(16.dp),
+                            size = 16.dp,
                             strokeWidth = 2.dp,
                             color = contentColor
                         )
