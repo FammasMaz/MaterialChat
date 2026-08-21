@@ -25,7 +25,6 @@ import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
@@ -39,7 +38,10 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.materialchat.data.local.preferences.AppPreferences
 import com.materialchat.ui.components.ExpressiveFilledIconButton
+import com.materialchat.ui.components.ExpressiveSwitch
 import com.materialchat.ui.components.ExpressiveTopBarTitle
+import com.materialchat.ui.components.HapticPattern
+import com.materialchat.ui.components.rememberHapticFeedback
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -118,11 +120,12 @@ fun InteractionSettingsScreen(
             item {
                 SettingsMotionCard(
                     title = "Motion mechanics",
-                    description = "Chat image actions now softly push nearby controls instead of moving alone.",
+                    description = "Feel each haptic pattern before you commit to it.",
                     icon = Icons.Filled.Gesture
                 ) {
+                    HapticPatternDemoRow()
                     Text(
-                        text = "More button clusters will pick this up over time as they are migrated to the shared expressive controls.",
+                        text = "Chat image actions softly push nearby controls instead of moving alone, and expressive controls share one spring language across the app.",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -178,7 +181,40 @@ private fun HapticToggleRow(
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(title, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface)
-        Switch(checked = enabled, onCheckedChange = onToggle)
+        ExpressiveSwitch(checked = enabled, onCheckedChange = onToggle)
+    }
+}
+
+/**
+ * Live demo of the haptic vocabulary: tap a chip to feel the exact pattern
+ * that interaction family produces. A settings screen about touch should be
+ * tangible, not just descriptive.
+ */
+@Composable
+private fun HapticPatternDemoRow() {
+    val haptics = rememberHapticFeedback()
+    val demos = listOf(
+        "Click" to HapticPattern.CLICK,
+        "Confirm" to HapticPattern.CONFIRM,
+        "Reject" to HapticPattern.REJECT,
+        "Emphasis" to HapticPattern.EMPHASIS,
+        "Toggle" to HapticPattern.TOGGLE
+    )
+    FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        demos.forEach { (label, pattern) ->
+            FilterChip(
+                selected = false,
+                onClick = { haptics.perform(pattern) },
+                label = { Text(label) },
+                colors = FilterChipDefaults.filterChipColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    labelColor = MaterialTheme.colorScheme.onSurface
+                )
+            )
+        }
     }
 }
 
@@ -190,6 +226,7 @@ private fun ShapeSelector(
     onShapeSelected: (AppPreferences.ComponentButtonShape) -> Unit
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        val haptics = rememberHapticFeedback()
         Text(title, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurface)
         FlowRow(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -198,7 +235,10 @@ private fun ShapeSelector(
             AppPreferences.ComponentButtonShape.entries.forEach { shape ->
                 FilterChip(
                     selected = selectedShape == shape,
-                    onClick = { onShapeSelected(shape) },
+                    onClick = {
+                        haptics.perform(HapticPattern.SEGMENT_TICK)
+                        onShapeSelected(shape)
+                    },
                     label = { Text(shape.prettyName()) },
                     colors = FilterChipDefaults.filterChipColors(
                         selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,

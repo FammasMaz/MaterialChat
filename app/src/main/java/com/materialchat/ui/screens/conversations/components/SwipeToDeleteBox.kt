@@ -85,6 +85,9 @@ fun SwipeToDeleteBox(
 ) {
     val density = LocalDensity.current
     val haptics = rememberHapticFeedback()
+    // The dedicated "Gestures and swipes" preference gates the gesture-family
+    // patterns; the list-level flag still governs plain taps/reveals.
+    val gestureHapticsEnabled = com.materialchat.ui.theme.LocalGestureHapticsEnabled.current && hapticsEnabled
 
     var offsetX by remember { mutableFloatStateOf(0f) }
     var containerWidthPx by remember { mutableFloatStateOf(0f) }
@@ -135,7 +138,7 @@ fun SwipeToDeleteBox(
 
     LaunchedEffect(leftProgress > 0.55f, deleteProgress >= 1f) {
         if (deleteProgress >= 1f && !hasTriggeredDeleteHaptic) {
-            haptics.perform(HapticPattern.SWIPE_THRESHOLD, hapticsEnabled)
+            haptics.perform(HapticPattern.SWIPE_THRESHOLD, gestureHapticsEnabled)
             hasTriggeredDeleteHaptic = true
         } else if (leftProgress > 0.55f && !hasTriggeredRevealHaptic) {
             haptics.perform(HapticPattern.SEGMENT_TICK, hapticsEnabled)
@@ -270,7 +273,7 @@ fun SwipeToDeleteBox(
                         iconScale = iconScale,
                         emphasized = deleteProgress > 0.35f,
                         onClick = {
-                            haptics.perform(HapticPattern.SWIPE_THRESHOLD, hapticsEnabled)
+                            haptics.perform(HapticPattern.SWIPE_THRESHOLD, gestureHapticsEnabled)
                             closeActions()
                             onDelete()
                         }
@@ -324,14 +327,14 @@ fun SwipeToDeleteBox(
                         onDragStart = {
                             isDragging = true
                             offsetX = if (isOpen) -actionRevealPx else animatedOffsetX
-                            haptics.perform(HapticPattern.GESTURE_START, hapticsEnabled)
+                            haptics.perform(HapticPattern.GESTURE_START, gestureHapticsEnabled)
                         },
                         onDragEnd = {
                             isDragging = false
-                            haptics.perform(HapticPattern.GESTURE_END, hapticsEnabled)
+                            haptics.perform(HapticPattern.GESTURE_END, gestureHapticsEnabled)
                             when {
                                 offsetX <= -deleteThresholdPx -> {
-                                    haptics.perform(HapticPattern.CONFIRM, hapticsEnabled)
+                                    haptics.perform(HapticPattern.CONFIRM, gestureHapticsEnabled)
                                     closeActions()
                                     onDelete()
                                 }
