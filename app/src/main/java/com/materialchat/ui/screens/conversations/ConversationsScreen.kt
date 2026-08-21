@@ -56,6 +56,7 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialShapes
+import com.materialchat.ui.components.rememberDeviceTilt
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.toShape
 import androidx.compose.material3.OutlinedTextField
@@ -472,6 +473,9 @@ private fun ConversationsTopBar(
     val secondaryColor = MaterialTheme.colorScheme.secondary
     val onSurfaceColor = MaterialTheme.colorScheme.onSurface
 
+    // Physical tilt drives layered parallax so the art answers your hand.
+    val tiltPose = rememberDeviceTilt(maxDegrees = 10f)
+
     val density = LocalDensity.current
     val haptics = rememberHapticFeedback()
     SideEffect {
@@ -577,6 +581,10 @@ private fun ConversationsTopBar(
                             .offset(x = 14.dp, y = (-18).dp)
                             .size(92.dp)
                             .graphicsLayer {
+                val tilt = tiltPose.value
+                translationX = tilt.roll * -1.0f
+                translationY = tilt.pitch * -0.5f
+                rotationZ = rotationZ + (tilt.roll * 0.35f)
                                 rotationZ = gearLarge
                                 scaleX = popGearLarge.value
                                 scaleY = popGearLarge.value
@@ -593,6 +601,10 @@ private fun ConversationsTopBar(
                             .offset(x = 74.dp, y = 40.dp)
                             .size(48.dp)
                             .graphicsLayer {
+                val tilt = tiltPose.value
+                translationX = tilt.roll * -1.7f
+                translationY = tilt.pitch * -0.9f
+                rotationZ = rotationZ + (tilt.roll * 0.55f)
                                 rotationZ = gearSmall
                                 scaleX = popGearSmall.value
                                 scaleY = popGearSmall.value
@@ -609,6 +621,9 @@ private fun ConversationsTopBar(
                             .offset(x = (-16).dp, y = (-6).dp)
                             .size(78.dp)
                             .graphicsLayer {
+                val tilt = tiltPose.value
+                translationX = tilt.roll * 1.4f
+                translationY = tilt.pitch * 0.7f
                                 rotationZ = burstSpin
                                 scaleX = burstBreath * popBurst.value
                                 scaleY = burstBreath * popBurst.value
@@ -625,6 +640,9 @@ private fun ConversationsTopBar(
                             .offset(x = (-26).dp, y = (-10).dp)
                             .size(54.dp)
                             .graphicsLayer {
+                val tilt = tiltPose.value
+                translationX = tilt.roll * -0.8f
+                translationY = tilt.pitch * -0.4f
                                 rotationZ = sunnySpin
                                 scaleX = popSunny.value
                                 scaleY = popSunny.value
@@ -642,6 +660,9 @@ private fun ConversationsTopBar(
                             .offset(x = (orbitDrift * 34).dp + 46.dp, y = 2.dp)
                             .size(30.dp)
                             .graphicsLayer {
+                val tilt = tiltPose.value
+                translationX = tilt.roll * -1.6f
+                translationY = tilt.pitch * -0.8f
                                 rotationZ = orbitDrift * 24f
                                 scaleX = popOrbit.value
                                 scaleY = popOrbit.value
@@ -658,6 +679,9 @@ private fun ConversationsTopBar(
                             .offset(x = (-58).dp, y = (flowerDrift * 12).dp + (-4).dp)
                             .size(36.dp)
                             .graphicsLayer {
+                val tilt = tiltPose.value
+                translationX = tilt.roll * 1.5f
+                translationY = tilt.pitch * 0.75f
                                 rotationZ = flowerDrift * 30f
                                 scaleX = popOrbit.value
                                 scaleY = popOrbit.value
@@ -673,7 +697,11 @@ private fun ConversationsTopBar(
                             .align(Alignment.CenterStart)
                             .offset(x = (flowerDrift * 26).dp + 118.dp, y = (orbitDrift * 6).dp + 14.dp)
                             .size(16.dp)
-                            .graphicsLayer { scaleX = popOrbit.value; scaleY = popOrbit.value }
+                            .graphicsLayer {
+                val tilt = tiltPose.value
+                translationX = tilt.roll * -2.0f
+                translationY = tilt.pitch * -1.0f
+                scaleX = popOrbit.value; scaleY = popOrbit.value }
                             .background(
                                 color = tertiaryColor.copy(alpha = 0.20f),
                                 shape = MaterialShapes.Pill.toShape()
@@ -686,6 +714,9 @@ private fun ConversationsTopBar(
                             .offset(x = 96.dp, y = (cloverBob * 4).dp + 4.dp)
                             .size(34.dp)
                             .graphicsLayer {
+                val tilt = tiltPose.value
+                translationX = tilt.roll * 2.2f
+                translationY = tilt.pitch * 1.1f
                                 rotationZ = cloverBob * 12f
                                 scaleX = popClover.value
                                 scaleY = popClover.value

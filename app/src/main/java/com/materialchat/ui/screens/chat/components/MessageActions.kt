@@ -1,6 +1,13 @@
 package com.materialchat.ui.screens.chat.components
 
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.spring
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.outlined.Bolt
+import androidx.compose.material3.Text
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -197,14 +204,15 @@ fun CompactMessageActions(
 }
 
 /**
- * A pressable 44dp icon button that matches [MessageActions]' visual language,
- * used for toggles like the generation-stats pill (active state highlights).
+ * A single element that morphs between a compact 44dp bolt button and an
+ * expanded stats pill in place — used for response speed after streaming.
  */
 @Composable
-fun MessageToggleButton(
-    icon: ImageVector,
-    contentDescription: String,
-    active: Boolean,
+fun StatsPillButton(
+    expanded: Boolean,
+    tpsText: String?,
+    ttftText: String?,
+    avgText: String?,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -215,30 +223,25 @@ fun MessageToggleButton(
     val scale by animateFloatAsState(
         targetValue = if (isPressed) 0.94f else 1f,
         animationSpec = ExpressiveMotion.Spatial.scale(),
-        label = "messageToggleScale"
-    )
-    val radius by animateDpAsState(
-        targetValue = if (isPressed) 16.dp else 22.dp,
-        animationSpec = ExpressiveMotion.Spatial.shapeMorph(),
-        label = "messageToggleRadius"
+        label = "statsPillScale"
     )
     val containerColor by animateColorAsState(
-        targetValue = if (active) {
+        targetValue = if (expanded) {
             MaterialTheme.colorScheme.secondaryContainer
         } else {
             MaterialTheme.colorScheme.surfaceContainerHigh
         },
         animationSpec = ExpressiveMotion.Effects.color(),
-        label = "messageToggleContainer"
+        label = "statsPillContainer"
     )
     val contentColor by animateColorAsState(
-        targetValue = if (active) {
+        targetValue = if (expanded) {
             MaterialTheme.colorScheme.onSecondaryContainer
         } else {
             MaterialTheme.colorScheme.onSurfaceVariant
         },
         animationSpec = ExpressiveMotion.Effects.color(),
-        label = "messageToggleContent"
+        label = "statsPillContent"
     )
 
     Surface(
@@ -247,25 +250,52 @@ fun MessageToggleButton(
             onClick()
         },
         modifier = modifier
-            .size(44.dp)
+            .size(height = 44.dp, width = 44.dp)
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
             },
-        shape = RoundedCornerShape(radius),
+        shape = RoundedCornerShape(percent = 50),
         color = containerColor,
         contentColor = contentColor,
         tonalElevation = 0.dp,
         shadowElevation = 0.dp,
         interactionSource = interactionSource
     ) {
-        Box(contentAlignment = Alignment.Center) {
+        Row(
+            modifier = Modifier
+                .animateContentSize(
+                    animationSpec = spring(dampingRatio = 0.85f, stiffness = 300f)
+                )
+                .padding(horizontal = if (expanded) 14.dp else 0.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(5.dp)
+        ) {
             Icon(
-                imageVector = icon,
-                contentDescription = contentDescription,
+                imageVector = Icons.Outlined.Bolt,
+                contentDescription = if (expanded) "Hide response speed"
+                                     else "Response speed",
                 modifier = Modifier.size(20.dp),
                 tint = contentColor
             )
+            AnimatedVisibility(visible = expanded) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(5.dp)
+                ) {
+                    if (tpsText != null) {
+                        Text(text = tpsText, style = MaterialTheme.typography.labelSmall)
+                    }
+                    if (ttftText != null) {
+                        Text("·", style = MaterialTheme.typography.labelSmall)
+                        Text(text = "TTFT $ttftText", style = MaterialTheme.typography.labelSmall)
+                    }
+                    if (avgText != null) {
+                        Text("·", style = MaterialTheme.typography.labelSmall)
+                        Text(text = "avg $avgText", style = MaterialTheme.typography.labelSmall)
+                    }
+                }
+            }
         }
     }
 }

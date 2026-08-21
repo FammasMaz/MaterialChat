@@ -77,7 +77,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.animation.core.tween
-import com.materialchat.ui.screens.chat.components.MessageToggleButton
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -570,55 +569,6 @@ fun MessageBubble(
                     }
                 }
 
-                AnimatedVisibility(
-                    visible = statsExpanded && hasStats,
-                    enter = expandVertically(
-                        animationSpec = spring(dampingRatio = 0.8f, stiffness = 380f)
-                    ) + fadeIn(),
-                    exit = shrinkVertically(
-                        animationSpec = tween(180)
-                    ) + fadeOut(tween(140))
-                ) {
-                    messageItem.generationStats?.let { stats ->
-                        Surface(
-                            shape = RoundedCornerShape(50),
-                            color = MaterialTheme.colorScheme.secondaryContainer,
-                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                            tonalElevation = 0.dp,
-                            shadowElevation = 0.dp,
-                            modifier = Modifier.padding(start = 4.dp, bottom = 6.dp)
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                                horizontalArrangement = Arrangement.spacedBy(5.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Outlined.Bolt,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(14.dp)
-                                )
-                                val tpsText = stats.lastTps?.let { "%.0f tok/s".format(it) } ?: "—"
-                                Text(text = tpsText, style = MaterialTheme.typography.labelSmall)
-                                stats.lastTtftMs?.let { ttft ->
-                                    val ttftText = if (ttft < 1000) "%d ms".format(ttft)
-                                                   else "%.1f s".format(ttft / 1000.0)
-                                    Text("·", style = MaterialTheme.typography.labelSmall)
-                                    Text(text = "TTFT $ttftText", style = MaterialTheme.typography.labelSmall)
-                                }
-                                if (stats.avgTps != null) {
-                                    Text("·", style = MaterialTheme.typography.labelSmall)
-                                    Text(
-                                        text = "avg %.0f".format(stats.avgTps),
-                                        style = MaterialTheme.typography.labelSmall
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -642,12 +592,16 @@ fun MessageBubble(
                             )
                         }
 
-                        // Stats toggle — re-opens the generation-speed pill
+                        // Speed stats — one element morphing between button and pill
                         if (hasStats) {
-                            MessageToggleButton(
-                                icon = Icons.Outlined.Bolt,
-                                contentDescription = "Response speed",
-                                active = statsExpanded,
+                            val st = messageItem.generationStats
+                            StatsPillButton(
+                                expanded = statsExpanded,
+                                tpsText = st.lastTps?.let { "%.0f tok/s".format(it) },
+                                ttftText = st.lastTtftMs?.let {
+                                    if (it < 1000) "%d ms".format(it) else "%.1f s".format(it / 1000.0)
+                                },
+                                avgText = st.avgTps?.let { "%.0f".format(it) },
                                 onClick = { statsExpanded = !statsExpanded }
                             )
                         }
