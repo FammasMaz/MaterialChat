@@ -37,6 +37,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.materialchat.domain.model.BookmarkCategory
+import com.materialchat.ui.components.HapticPattern
+import com.materialchat.ui.components.rememberHapticFeedback
 import com.materialchat.ui.screens.bookmarks.BookmarkWithMessage
 
 /**
@@ -61,6 +63,7 @@ fun BookmarkCard(
 ) {
     val bookmark = bookmarkWithMessage.bookmark
     val categoryIcon = getCategoryIcon(bookmark.category)
+    val haptics = rememberHapticFeedback()
 
     Surface(
         modifier = modifier.fillMaxWidth(),
@@ -183,7 +186,10 @@ fun BookmarkCard(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     IconButton(
-                        onClick = onNavigateToConversation,
+                        onClick = {
+                            haptics.perform(HapticPattern.CLICK)
+                            onNavigateToConversation()
+                        },
                         modifier = Modifier.size(48.dp)
                     ) {
                         Icon(
@@ -194,7 +200,10 @@ fun BookmarkCard(
                         )
                     }
                     IconButton(
-                        onClick = onDelete,
+                        onClick = {
+                            haptics.perform(HapticPattern.CONFIRM)
+                            onDelete()
+                        },
                         modifier = Modifier.size(48.dp)
                     ) {
                         Icon(

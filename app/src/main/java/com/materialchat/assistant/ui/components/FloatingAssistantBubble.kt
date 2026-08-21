@@ -30,6 +30,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.materialchat.ui.components.HapticPattern
+import com.materialchat.ui.components.rememberHapticFeedback
+import com.materialchat.ui.theme.LocalNavigationHapticsEnabled
 import com.materialchat.ui.theme.ExpressiveMotion
 
 /**
@@ -54,6 +57,8 @@ fun FloatingAssistantBubble(
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
+    val haptics = rememberHapticFeedback()
+    val navigationHapticsEnabled = LocalNavigationHapticsEnabled.current
 
     // M3 Expressive shape morphing: circle → rounded square on press
     val cornerRadius by animateDpAsState(
@@ -77,7 +82,10 @@ fun FloatingAssistantBubble(
     )
 
     Surface(
-        onClick = onClick,
+        onClick = {
+            haptics.perform(HapticPattern.CLICK, navigationHapticsEnabled)
+            onClick()
+        },
         modifier = modifier
             .size(currentSize)
             .graphicsLayer {

@@ -1,7 +1,10 @@
 package com.materialchat.ui.screens.arena.components
 
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -19,17 +22,21 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.unit.dp
 import com.materialchat.domain.model.ArenaVote
+import com.materialchat.ui.components.HapticPattern
+import com.materialchat.ui.components.rememberHapticFeedback
 import com.materialchat.ui.theme.ExpressiveMotion
 
 /**
  * Voting bar with 4 buttons: Left Wins, Right Wins, Tie, Both Bad.
  *
- * Appears after both models complete their responses. Uses M3 Expressive
- * spring animations for press feedback.
+ * Appears after both models complete their responses. M3 Expressive press
+ * feedback: bouncy scale + corner shape morph, and a CONFIRM haptic when a
+ * vote is cast — voting is a deliberate hero action, not a silent click.
  *
  * @param onVote Callback when a vote is cast
  * @param enabled Whether voting is allowed
@@ -42,6 +49,8 @@ fun ArenaVotingBar(
     voted: Boolean = false,
     modifier: Modifier = Modifier
 ) {
+    val haptics = rememberHapticFeedback()
+
     Row(
         modifier = modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -49,36 +58,48 @@ fun ArenaVotingBar(
         VoteButton(
             label = "A Wins",
             icon = { Icon(Icons.Filled.ThumbUp, contentDescription = "Model A wins") },
-            onClick = { onVote(ArenaVote.LEFT) },
+            onClick = {
+                haptics.perform(HapticPattern.CONFIRM)
+                onVote(ArenaVote.LEFT)
+            },
             enabled = enabled && !voted,
-            containerColor = VoteColor.LEFT,
+            container = VoteColor.LEFT,
             modifier = Modifier.weight(1f)
         )
 
         VoteButton(
             label = "B Wins",
             icon = { Icon(Icons.Filled.ThumbUp, contentDescription = "Model B wins") },
-            onClick = { onVote(ArenaVote.RIGHT) },
+            onClick = {
+                haptics.perform(HapticPattern.CONFIRM)
+                onVote(ArenaVote.RIGHT)
+            },
             enabled = enabled && !voted,
-            containerColor = VoteColor.RIGHT,
+            container = VoteColor.RIGHT,
             modifier = Modifier.weight(1f)
         )
 
         VoteButton(
             label = "Tie",
             icon = null,
-            onClick = { onVote(ArenaVote.TIE) },
+            onClick = {
+                haptics.perform(HapticPattern.CONFIRM)
+                onVote(ArenaVote.TIE)
+            },
             enabled = enabled && !voted,
-            containerColor = VoteColor.TIE,
+            container = VoteColor.TIE,
             modifier = Modifier.weight(1f)
         )
 
         VoteButton(
             label = "Both Bad",
             icon = { Icon(Icons.Filled.ThumbDown, contentDescription = "Both bad") },
-            onClick = { onVote(ArenaVote.BOTH_BAD) },
+            onClick = {
+                haptics.perform(HapticPattern.REJECT)
+                onVote(ArenaVote.BOTH_BAD)
+            },
             enabled = enabled && !voted,
-            containerColor = VoteColor.BAD,
+            container = VoteColor.BAD,
             modifier = Modifier.weight(1f)
         )
     }
@@ -92,34 +113,53 @@ private fun VoteButton(
     icon: @Composable (() -> Unit)?,
     onClick: () -> Unit,
     enabled: Boolean,
-    containerColor: VoteColor,
+    container: VoteColor,
     modifier: Modifier = Modifier
 ) {
-    val colors = when (containerColor) {
-        VoteColor.LEFT -> ButtonDefaults.buttonColors(
-            containerColor = MaterialTheme.colorScheme.primaryContainer,
-            contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-        )
-        VoteColor.RIGHT -> ButtonDefaults.buttonColors(
-            containerColor = MaterialTheme.colorScheme.tertiaryContainer,
-            contentColor = MaterialTheme.colorScheme.onTertiaryContainer
-        )
-        VoteColor.TIE -> ButtonDefaults.buttonColors(
-            containerColor = MaterialTheme.colorScheme.secondaryContainer,
-            contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-        )
-        VoteColor.BAD -> ButtonDefaults.buttonColors(
-            containerColor = MaterialTheme.colorScheme.errorContainer,
-            contentColor = MaterialTheme.colorScheme.onErrorContainer
-        )
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+
+    // M3 Expressive SPATIAL spring: bouncy scale feedback on press
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed && enabled) 0.93f else 1f,
+        animationSpec = ExpressiveMotion.Spatial.scale(),
+        label = "voteScale"
+    )
+
+    // Shape morph: rounded pills compress their corners while pressed
+    val cornerRadius by animateDpAsState(
+        targetValue = if (isPressed) 14.dp else 24.dp,
+        animationSpec = ExpressiveMotion.Spatial.shapeMorph(),
+        label = "voteCorner"
+    )
+
+    val containerColor = when (container) {
+        VoteColor.LEFT -> MaterialTheme.colorScheme.primaryContainer
+        VoteColor.RIGHT -> MaterialTheme.colorScheme.tertiaryContainer
+        VoteColor.TIE -> MaterialTheme.colorScheme.secondaryContainer
+        VoteColor.BAD -> MaterialTheme.colorScheme.errorContainer
+    }
+    val contentColor = when (container) {
+        VoteColor.LEFT -> MaterialTheme.colorScheme.onPrimaryContainer
+        VoteColor.RIGHT -> MaterialTheme.colorScheme.onTertiaryContainer
+        VoteColor.TIE -> MaterialTheme.colorScheme.onSecondaryContainer
+        VoteColor.BAD -> MaterialTheme.colorScheme.onErrorContainer
     }
 
     Button(
         onClick = onClick,
         enabled = enabled,
-        shape = RoundedCornerShape(28.dp),
-        colors = colors,
-        modifier = modifier.height(48.dp)
+        shape = RoundedCornerShape(cornerRadius),
+        colors = ButtonDefaults.buttonColors(
+            containerColor = animateColorAsState(
+                targetValue = containerColor,
+                animationSpec = ExpressiveMotion.Effects.color(),
+                label = "voteContainer"
+            ).value,
+            contentColor = contentColor
+        ),
+        interactionSource = interactionSource,
+        modifier = modifier.height(48.dp).scale(scale)
     ) {
         if (icon != null) {
             icon()

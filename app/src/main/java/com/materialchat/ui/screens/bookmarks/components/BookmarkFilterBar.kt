@@ -26,6 +26,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.materialchat.domain.model.BookmarkCategory
+import com.materialchat.ui.components.HapticPattern
+import com.materialchat.ui.components.rememberHapticFeedback
 
 /**
  * Horizontal filter bar for the Knowledge Base screen.
@@ -54,6 +56,7 @@ fun BookmarkFilterBar(
     modifier: Modifier = Modifier
 ) {
     Column(modifier = modifier) {
+        val haptics = rememberHapticFeedback()
         // Category chips row
         Row(
             modifier = Modifier
@@ -81,6 +84,7 @@ fun BookmarkFilterBar(
                 FilterChip(
                     selected = isSelected,
                     onClick = {
+                        haptics.perform(HapticPattern.SEGMENT_TICK)
                         if (isSelected) {
                             onCategorySelected(null) // Deselect
                         } else {
@@ -137,6 +141,7 @@ fun BookmarkFilterBar(
                     FilterChip(
                         selected = isSelected,
                         onClick = {
+                            haptics.perform(HapticPattern.SEGMENT_TICK)
                             if (isSelected) {
                                 onTagSelected(null) // Deselect
                             } else {

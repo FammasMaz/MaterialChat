@@ -40,6 +40,8 @@ import androidx.compose.ui.unit.dp
 import com.materialchat.assistant.voice.AudioAmplitudeData
 import com.materialchat.assistant.voice.VoiceState
 import com.materialchat.ui.components.ExpressiveFilledIconButton
+import com.materialchat.ui.components.HapticPattern
+import com.materialchat.ui.components.rememberHapticFeedback
 import com.materialchat.ui.theme.ExpressiveMotion
 
 /**
@@ -254,6 +256,7 @@ private fun ActionButton(
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
+    val haptics = rememberHapticFeedback()
 
     val buttonColor by animateColorAsState(
         targetValue = if (hasText) {
@@ -292,8 +295,10 @@ private fun ActionButton(
     Surface(
         onClick = {
             if (hasText) {
+                haptics.perform(HapticPattern.CLICK)
                 onSendClick()
             } else {
+                haptics.perform(HapticPattern.MORPH_TRANSITION)
                 onVoiceClick()
             }
         },

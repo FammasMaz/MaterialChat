@@ -164,7 +164,8 @@ fun MaterialChatNavBar(
                         }
 
                         if (releasedBeforeTimeout == null) {
-                            // Long press detected — fire callback
+                            // Long press detected — fire callback with LONG_PRESS haptic
+                            haptics.perform(HapticPattern.LONG_PRESS, navigationHapticsEnabled)
                             onNewChatLongPress()
                             // Consume remaining events at Initial pass to prevent FAB onClick
                             while (true) {
