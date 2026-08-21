@@ -134,14 +134,14 @@ abstract class MaterialChatDatabase : RoomDatabase() {
         }
 
         /**
-         * Migration from version 5 to 6: Add duration columns to messages table.
+         * Migration from version 20 to 21: Add generation metrics columns.
          */
         private val MIGRATION_20_21 = object : Migration(20, 21) {
-        override fun migrate(db: SupportSQLiteDatabase) {
-            db.execSQL("ALTER TABLE messages ADD COLUMN first_token_latency_ms INTEGER DEFAULT NULL")
-            db.execSQL("ALTER TABLE messages ADD COLUMN generated_token_count INTEGER DEFAULT NULL")
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE messages ADD COLUMN first_token_latency_ms INTEGER DEFAULT NULL")
+                db.execSQL("ALTER TABLE messages ADD COLUMN generated_token_count INTEGER DEFAULT NULL")
+            }
         }
-    }
 
         private val MIGRATION_5_6 = object : Migration(5, 6) {
             override fun migrate(db: SupportSQLiteDatabase) {
@@ -519,7 +519,8 @@ abstract class MaterialChatDatabase : RoomDatabase() {
             MIGRATION_16_17,
             MIGRATION_17_18,
             MIGRATION_18_19,
-            MIGRATION_19_20
+            MIGRATION_19_20,
+            MIGRATION_20_21
         )
 
         /**
@@ -539,8 +540,7 @@ abstract class MaterialChatDatabase : RoomDatabase() {
                 MaterialChatDatabase::class.java,
                 DATABASE_NAME
             )
-                .addMigrations(*MIGRATIONS, MIGRATION_20_21
-            )
+                .addMigrations(*MIGRATIONS)
                 .fallbackToDestructiveMigrationOnDowngrade()
                 .build()
         }
