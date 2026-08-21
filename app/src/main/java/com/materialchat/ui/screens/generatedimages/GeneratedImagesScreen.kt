@@ -55,6 +55,8 @@ import com.materialchat.ui.components.ExpressiveContentSurface
 import com.materialchat.ui.components.ExpressiveEmptyState
 import com.materialchat.ui.components.ExpressiveFilledIconButton
 import com.materialchat.ui.components.ExpressiveTopBarTitle
+import com.materialchat.ui.components.HapticPattern
+import com.materialchat.ui.components.rememberHapticFeedback
 import com.materialchat.util.GeneratedImageActions
 import kotlinx.coroutines.launch
 import java.text.DateFormat
@@ -239,8 +241,12 @@ private fun ImageActionButton(
     label: String,
     onClick: () -> Unit
 ) {
+    val haptics = rememberHapticFeedback()
     Surface(
-        onClick = onClick,
+        onClick = {
+            haptics.perform(HapticPattern.CLICK)
+            onClick()
+        },
         shape = RoundedCornerShape(999.dp),
         color = MaterialTheme.colorScheme.secondaryContainer,
         contentColor = MaterialTheme.colorScheme.onSecondaryContainer

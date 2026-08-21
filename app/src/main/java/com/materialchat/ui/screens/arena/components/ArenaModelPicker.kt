@@ -27,6 +27,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.materialchat.ui.components.HapticPattern
+import com.materialchat.ui.components.rememberHapticFeedback
 import com.materialchat.domain.model.AiModel
 import com.materialchat.domain.model.Provider
 
@@ -129,12 +131,13 @@ private fun ProviderDropdown(
     enabled: Boolean,
     modifier: Modifier = Modifier
 ) {
+    val haptics = rememberHapticFeedback()
     var expanded by remember { mutableStateOf(false) }
     val selectedProvider = providers.find { it.id == selectedProviderId }
 
     FilterChip(
         selected = selectedProvider != null,
-        onClick = { if (enabled) expanded = true },
+        onClick = { if (enabled) { haptics.perform(HapticPattern.CLICK); expanded = true } },
         label = {
             Text(
                 text = selectedProvider?.name ?: "Provider",
@@ -162,6 +165,7 @@ private fun ProviderDropdown(
             DropdownMenuItem(
                 text = { Text(provider.name) },
                 onClick = {
+                    haptics.perform(HapticPattern.SEGMENT_TICK)
                     onProviderSelected(provider.id)
                     expanded = false
                 }
@@ -179,12 +183,13 @@ private fun ModelDropdown(
     placeholder: String,
     modifier: Modifier = Modifier
 ) {
+    val haptics = rememberHapticFeedback()
     var expanded by remember { mutableStateOf(false) }
     val selectedModel = models.find { it.id == selectedModelName }
 
     FilterChip(
         selected = selectedModel != null,
-        onClick = { if (enabled && models.isNotEmpty()) expanded = true },
+        onClick = { if (enabled && models.isNotEmpty()) { haptics.perform(HapticPattern.CLICK); expanded = true } },
         label = {
             Text(
                 text = selectedModel?.name ?: placeholder,
@@ -222,6 +227,7 @@ private fun ModelDropdown(
                     )
                 },
                 onClick = {
+                    haptics.perform(HapticPattern.SEGMENT_TICK)
                     onModelSelected(model)
                     expanded = false
                 }

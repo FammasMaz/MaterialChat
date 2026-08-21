@@ -22,6 +22,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
+import com.materialchat.ui.components.HapticPattern
+import com.materialchat.ui.components.rememberHapticFeedback
 
 /**
  * Prompt text field for the arena screen.
@@ -72,8 +74,12 @@ fun ArenaPromptInput(
 
         Spacer(modifier = Modifier.width(8.dp))
 
+        val haptics = rememberHapticFeedback()
         IconButton(
-            onClick = onSend,
+            onClick = {
+                haptics.perform(HapticPattern.CLICK)
+                onSend()
+            },
             enabled = canSend,
             colors = IconButtonDefaults.filledIconButtonColors(
                 containerColor = MaterialTheme.colorScheme.primary,

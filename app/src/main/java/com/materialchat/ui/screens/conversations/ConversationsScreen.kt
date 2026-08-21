@@ -313,6 +313,7 @@ fun ConversationsScreen(
 
     // Rename dialog
     if (showRenameDialog && renameConversation != null) {
+        val dialogHaptics = rememberHapticFeedback()
         AlertDialog(
             onDismissRequest = {
                 showRenameDialog = false
@@ -331,6 +332,7 @@ fun ConversationsScreen(
                     Spacer(modifier = Modifier.height(8.dp))
                     TextButton(
                         onClick = {
+                            dialogHaptics.perform(HapticPattern.CLICK)
                             renameConversation?.let { conv ->
                                 viewModel.retryTitleGeneration(conv)
                             }
@@ -342,6 +344,7 @@ fun ConversationsScreen(
                     }
                     TextButton(
                         onClick = {
+                            dialogHaptics.perform(HapticPattern.CONFIRM)
                             renameConversation?.let { conv ->
                                 viewModel.deleteConversation(conv)
                             }
@@ -355,6 +358,7 @@ fun ConversationsScreen(
                     if (conv != null) {
                         TextButton(
                             onClick = {
+                                dialogHaptics.perform(HapticPattern.CLICK)
                                 if (conv.isArchived) {
                                     viewModel.unarchiveConversation(conv)
                                 } else {
@@ -375,6 +379,7 @@ fun ConversationsScreen(
             confirmButton = {
                 TextButton(
                     onClick = {
+                        dialogHaptics.perform(HapticPattern.CLICK)
                         renameConversation?.let { conv ->
                             if (renameText.isNotBlank()) {
                                 viewModel.renameConversation(conv.id, renameText.trim())
@@ -390,6 +395,7 @@ fun ConversationsScreen(
             dismissButton = {
                 TextButton(
                     onClick = {
+                        dialogHaptics.perform(HapticPattern.CLICK)
                         showRenameDialog = false
                         renameConversation = null
                     }
