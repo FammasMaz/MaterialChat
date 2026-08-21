@@ -57,6 +57,7 @@ import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialShapes
 import com.materialchat.ui.components.rememberDeviceTilt
+import com.materialchat.ui.components.rememberShakeEnergy
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.toShape
 import androidx.compose.material3.OutlinedTextField
@@ -475,6 +476,7 @@ private fun ConversationsTopBar(
 
     // Physical tilt drives layered parallax so the art answers your hand.
     val tiltPose = rememberDeviceTilt(maxDegrees = 10f)
+    val shakeEnergy = rememberShakeEnergy()
 
     val density = LocalDensity.current
     val haptics = rememberHapticFeedback()
@@ -584,7 +586,9 @@ private fun ConversationsTopBar(
                 val tilt = tiltPose.value
                 translationX = tilt.roll * -1.0f
                 translationY = tilt.pitch * -0.5f
-                rotationZ = rotationZ + (tilt.roll * 0.35f)
+                translationX += kotlin.math.sin(shakeEnergy.value * 19f + 0.0f) * shakeEnergy.value * 14f
+                rotationZ += kotlin.math.sin(shakeEnergy.value * 27f + 0.0f) * shakeEnergy.value * 9f
+                                rotationZ = rotationZ + (tilt.roll * 0.35f)
                                 rotationZ = gearLarge
                                 scaleX = popGearLarge.value
                                 scaleY = popGearLarge.value
@@ -604,7 +608,9 @@ private fun ConversationsTopBar(
                 val tilt = tiltPose.value
                 translationX = tilt.roll * -1.7f
                 translationY = tilt.pitch * -0.9f
-                rotationZ = rotationZ + (tilt.roll * 0.55f)
+                translationX += kotlin.math.sin(shakeEnergy.value * 19f + 1.3f) * shakeEnergy.value * 14f
+                rotationZ += kotlin.math.sin(shakeEnergy.value * 27f + 2.6f) * shakeEnergy.value * 9f
+                                rotationZ = rotationZ + (tilt.roll * 0.55f)
                                 rotationZ = gearSmall
                                 scaleX = popGearSmall.value
                                 scaleY = popGearSmall.value
@@ -624,7 +630,9 @@ private fun ConversationsTopBar(
                 val tilt = tiltPose.value
                 translationX = tilt.roll * 1.4f
                 translationY = tilt.pitch * 0.7f
-                                rotationZ = burstSpin
+                translationX += kotlin.math.sin(shakeEnergy.value * 19f + 2.1f) * shakeEnergy.value * 14f
+                rotationZ += kotlin.math.sin(shakeEnergy.value * 27f + 4.2f) * shakeEnergy.value * 9f
+                                                rotationZ = burstSpin
                                 scaleX = burstBreath * popBurst.value
                                 scaleY = burstBreath * popBurst.value
                             }
@@ -643,7 +651,9 @@ private fun ConversationsTopBar(
                 val tilt = tiltPose.value
                 translationX = tilt.roll * -0.8f
                 translationY = tilt.pitch * -0.4f
-                                rotationZ = sunnySpin
+                translationX += kotlin.math.sin(shakeEnergy.value * 19f + 2.9f) * shakeEnergy.value * 14f
+                rotationZ += kotlin.math.sin(shakeEnergy.value * 27f + 5.8f) * shakeEnergy.value * 9f
+                                                rotationZ = sunnySpin
                                 scaleX = popSunny.value
                                 scaleY = popSunny.value
                             }
@@ -663,7 +673,9 @@ private fun ConversationsTopBar(
                 val tilt = tiltPose.value
                 translationX = tilt.roll * -1.6f
                 translationY = tilt.pitch * -0.8f
-                                rotationZ = orbitDrift * 24f
+                translationX += kotlin.math.sin(shakeEnergy.value * 19f + 3.7f) * shakeEnergy.value * 14f
+                rotationZ += kotlin.math.sin(shakeEnergy.value * 27f + 7.4f) * shakeEnergy.value * 9f
+                                                rotationZ = orbitDrift * 24f
                                 scaleX = popOrbit.value
                                 scaleY = popOrbit.value
                             }
@@ -682,7 +694,9 @@ private fun ConversationsTopBar(
                 val tilt = tiltPose.value
                 translationX = tilt.roll * 1.5f
                 translationY = tilt.pitch * 0.75f
-                                rotationZ = flowerDrift * 30f
+                translationX += kotlin.math.sin(shakeEnergy.value * 19f + 4.4f) * shakeEnergy.value * 14f
+                rotationZ += kotlin.math.sin(shakeEnergy.value * 27f + 8.8f) * shakeEnergy.value * 9f
+                                                rotationZ = flowerDrift * 30f
                                 scaleX = popOrbit.value
                                 scaleY = popOrbit.value
                             }
@@ -701,7 +715,9 @@ private fun ConversationsTopBar(
                 val tilt = tiltPose.value
                 translationX = tilt.roll * -2.0f
                 translationY = tilt.pitch * -1.0f
-                scaleX = popOrbit.value; scaleY = popOrbit.value }
+                translationX += kotlin.math.sin(shakeEnergy.value * 19f + 5.2f) * shakeEnergy.value * 14f
+                rotationZ += kotlin.math.sin(shakeEnergy.value * 27f + 10.4f) * shakeEnergy.value * 9f
+                                scaleX = popOrbit.value; scaleY = popOrbit.value }
                             .background(
                                 color = tertiaryColor.copy(alpha = 0.20f),
                                 shape = MaterialShapes.Pill.toShape()
@@ -717,7 +733,9 @@ private fun ConversationsTopBar(
                 val tilt = tiltPose.value
                 translationX = tilt.roll * 2.2f
                 translationY = tilt.pitch * 1.1f
-                                rotationZ = cloverBob * 12f
+                translationX += kotlin.math.sin(shakeEnergy.value * 19f + 6.1f) * shakeEnergy.value * 14f
+                rotationZ += kotlin.math.sin(shakeEnergy.value * 27f + 12.2f) * shakeEnergy.value * 9f
+                                                rotationZ = cloverBob * 12f
                                 scaleX = popClover.value
                                 scaleY = popClover.value
                             }
