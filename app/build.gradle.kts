@@ -45,6 +45,10 @@ android {
     namespace = "com.materialchat"
     compileSdk = 36
 
+    testOptions {
+        unitTests.isReturnDefaultValues = true
+    }
+
     defaultConfig {
         applicationId = "com.materialchat"
         minSdk = 26

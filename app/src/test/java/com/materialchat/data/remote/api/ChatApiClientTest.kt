@@ -57,6 +57,23 @@ class ChatApiClientTest {
         assertTrue(body.contains("\"reasoning_effort\":\"high\""))
     }
 
+    @Test
+    fun `OpenAI simple completion carries max reasoning effort`() = runTest {
+        val capturedBodies = mutableListOf<String>()
+        val apiClient = ChatApiClient(okHttpClient = capturingClient(capturedBodies))
+
+        val result = apiClient.generateSimpleCompletion(
+            provider = openAiProvider(),
+            prompt = "Generate a title",
+            model = "gpt-5.6",
+            apiKey = "test-key",
+            reasoningEffort = ReasoningEffort.MAX
+        )
+
+        assertTrue(result.isSuccess)
+        assertTrue(capturedBodies.single().contains("\"reasoning_effort\":\"max\""))
+    }
+
     private fun capturingClient(capturedBodies: MutableList<String>): OkHttpClient {
         return OkHttpClient.Builder()
             .addInterceptor { chain ->

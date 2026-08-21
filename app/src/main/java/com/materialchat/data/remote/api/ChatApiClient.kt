@@ -1555,6 +1555,7 @@ class ChatApiClient(
                         ReasoningEffort.MEDIUM -> put("thinkingBudget", 8192)
                         ReasoningEffort.HIGH -> put("thinkingBudget", 24576)
                         ReasoningEffort.XHIGH -> put("thinkingBudget", 32768)
+                        ReasoningEffort.MAX -> put("thinkingBudget", 32768)
                     }
                 })
             })
@@ -1576,6 +1577,11 @@ class ChatApiClient(
         onEvent: (StreamingEvent) -> Unit
     ) {
         var currentEvent: String? = null
+        // Reasoning reconciliation state. Some Codex/GPT-5.x streams only expose
+        // the full raw thinking on the terminal reasoning item instead of
+        // streaming it as deltas — without tracking what was already emitted we
+        // would show only the headline-style summaries.
+        val state = CodexReasoningState()
         reader.lineSequence().forEach { rawLine ->
             if (cancelled.get()) return
             val line = rawLine.trim()
@@ -1587,14 +1593,25 @@ class ChatApiClient(
                         onEvent(StreamingEvent.Done())
                         return
                     }
-                    parseCodexData(data, currentEvent)?.let(onEvent)
+                    parseCodexData(data, currentEvent, state)?.let(onEvent)
                 }
             }
         }
         if (!cancelled.get()) onEvent(StreamingEvent.Done())
     }
 
-    private fun parseCodexData(data: String, eventName: String?): StreamingEvent? {
+    /** Accumulators for reasoning text already emitted to the UI. */
+    private class CodexReasoningState {
+        var rawText = ""
+        val emittedSummaryParts = mutableListOf<String>()
+        val pendingSummaryFragments = mutableMapOf<String, String>()
+    }
+
+    private fun parseCodexData(
+        data: String,
+        eventName: String?,
+        state: CodexReasoningState
+    ): StreamingEvent? {
         return runCatching {
             val obj = json.parseToJsonElement(data).jsonObject
             val type = obj.string("type") ?: eventName
@@ -1605,14 +1622,145 @@ class ChatApiClient(
                     ?.takeIf { it.string("type") == "output_text" }
                     ?.string("text")?.takeIf { it.isNotEmpty() }
                     ?.let { StreamingEvent.Content(content = it) }
-                "response.reasoning_summary_text.delta",
+                // Summary parts are buffered until their done event so section
+                // boundaries survive and empty sentinel parts are dropped.
+                "response.reasoning_summary_text.delta" -> {
+                    val key = reasoningPartKey(obj)
+                    val delta = obj.string("delta").orEmpty()
+                    if (delta.isNotEmpty() || key != null) {
+                        if (key != null) {
+                            state.pendingSummaryFragments[key] =
+                                (state.pendingSummaryFragments[key].orEmpty()) + delta
+                        } else {
+                            state.pendingSummaryFragments[""] =
+                                (state.pendingSummaryFragments[""].orEmpty()) + delta
+                        }
+                    }
+                    null
+                }
+                "response.reasoning_summary_text.done" -> {
+                    val key = reasoningPartKey(obj) ?: ""
+                    val buffered = state.pendingSummaryFragments.remove(key).orEmpty()
+                    val finalText = mergePrefixFragment(buffered, obj.string("text") ?: buffered)
+                    emitCodexSummaryPart(state, finalText)
+                }
                 "response.reasoning_text.delta" -> obj.string("delta")?.takeIf { it.isNotEmpty() }
-                    ?.let { StreamingEvent.Content(content = "", thinking = it) }
-                "response.completed" -> StreamingEvent.Done()
+                    ?.let {
+                        state.rawText += it
+                        StreamingEvent.Content(content = "", thinking = it)
+                    }
+                "response.output_item.done" -> reconcileCodexReasoningItem(
+                    obj["item"]?.jsonObject, state
+                )
+                "response.completed" -> {
+                    val reconciled = obj["response"]?.jsonObject?.get("output")?.jsonArray
+                        .orEmpty()
+                        .mapNotNull { element ->
+                            runCatching { element.jsonObject }.getOrNull()
+                                ?.takeIf { it.string("type") == "reasoning" }
+                        }
+                        .mapNotNull { item ->
+                            (reconcileCodexReasoningItem(item, state) as? StreamingEvent.Content)
+                                ?.thinking
+                        }
+                        .joinToString("")
+                    if (reconciled.isNotEmpty()) {
+                        StreamingEvent.Content(content = "", thinking = reconciled)
+                    } else {
+                        null
+                    }
+                }
                 "error" -> StreamingEvent.Error(obj.string("message") ?: data)
                 else -> null
             }
         }.getOrNull()
+    }
+
+    private fun reasoningPartKey(obj: JsonObject): String? {
+        val outputIndex = obj["output_index"]?.jsonPrimitive?.contentOrNull
+        val summaryIndex = obj["summary_index"]?.jsonPrimitive?.contentOrNull
+        if (outputIndex == null && summaryIndex == null) return null
+        return "$outputIndex:$summaryIndex"
+    }
+
+    /** Emits one completed summary part, dropping empty placeholder parts. */
+    private fun emitCodexSummaryPart(state: CodexReasoningState, partText: String): StreamingEvent? {
+        val rendered = renderSummaryPart(partText) ?: return null
+        state.emittedSummaryParts.add(rendered)
+        val separator = if (state.emittedSummaryParts.size > 1) "\n\n" else ""
+        return StreamingEvent.Content(content = "", thinking = separator + rendered)
+    }
+
+    /** Strips whitespace and empty `<!-- -->` sentinels from a summary part. */
+    private fun renderSummaryPart(partText: String): String? {
+        val trimmed = partText.trim()
+        if (trimmed.isEmpty() || EMPTY_SUMMARY_PART_REGEX.matches(trimmed)) return null
+        return trimmed
+    }
+
+    /**
+     * Emits any reasoning text present in a completed reasoning item that the
+     * delta events did not already stream. Prefers raw `content` parts over
+     * headline-style `summary` parts so the full thinking is preserved.
+     */
+    private fun reconcileCodexReasoningItem(
+        item: JsonObject?,
+        state: CodexReasoningState
+    ): StreamingEvent? {
+        if (item?.string("type") != "reasoning") return null
+
+        val contentParts = item["content"]?.jsonArray?.mapNotNull { partElement ->
+            runCatching { partElement.jsonObject }.getOrNull()?.string("text")
+        }.orEmpty().filter { it.isNotBlank() }
+        if (contentParts.isNotEmpty()) {
+            val fullText = contentParts.joinToString("\n\n")
+            val missing = missingSuffix(state.rawText, fullText) ?: return null
+            // Separate raw thinking from any streamed summaries for readability.
+            val needsSeparator = state.rawText.isEmpty() && state.emittedSummaryParts.isNotEmpty()
+            state.rawText = if (missing == fullText) fullText else state.rawText + missing
+            val delta = if (needsSeparator) "\n\n" + missing else missing
+            return StreamingEvent.Content(content = "", thinking = delta)
+        }
+
+        val summaryParts = item["summary"]?.jsonArray?.mapNotNull { partElement ->
+            runCatching { partElement.jsonObject }.getOrNull()?.string("text")
+        }.orEmpty().filter { it.isNotBlank() }
+        var emitted: String? = null
+        for (part in summaryParts) {
+            val rendered = renderSummaryPart(part) ?: continue
+            if (state.emittedSummaryParts.any { it == rendered || it.startsWith(rendered) || rendered.startsWith(it) }) {
+                continue
+            }
+            state.emittedSummaryParts.add(rendered)
+            val separator = if (state.emittedSummaryParts.size > 1) "\n\n" else ""
+            emitted = (emitted.orEmpty()) + separator + rendered
+        }
+        return emitted?.takeIf { it.isNotEmpty() }
+            ?.let { StreamingEvent.Content(content = "", thinking = it) }
+    }
+
+    /** Returns [fragment] when it extends [existing], otherwise the merged text. */
+    private fun mergePrefixFragment(existing: String, fragment: String): String {
+        if (fragment.isEmpty()) return existing
+        if (existing.isEmpty()) return fragment
+        if (fragment == existing) return existing
+        if (fragment.startsWith(existing)) return fragment
+        if (existing.startsWith(fragment)) return existing
+        return existing + fragment
+    }
+
+    /**
+     * Returns the portion of [complete] that extends beyond [emitted] when one
+     * is a prefix of the other; null when nothing new would be added. Falls back
+     * to appending with a separator when the texts diverge so no thinking is lost.
+     */
+    private fun missingSuffix(emitted: String, complete: String): String? {
+        if (complete.isEmpty()) return null
+        if (emitted.isEmpty()) return complete
+        if (complete == emitted) return null
+        if (complete.startsWith(emitted)) return complete.substring(emitted.length)
+        if (emitted.startsWith(complete)) return null
+        return "\n\n" + complete
     }
 
     private fun processAntigravityStream(
@@ -1862,6 +2010,9 @@ class ChatApiClient(
         private val CODEX_IMAGE_OUTPUT_FORMATS = setOf("png", "jpeg", "webp")
         private const val ANTIGRAVITY_USER_AGENT = "antigravity/1.23.2 darwin/arm64"
         private const val ANTIGRAVITY_FALLBACK_PROJECT_ID = "rising-fact-p41fc"
+
+        /** Matches Codex summary parts that only contain an empty-part sentinel. */
+        private val EMPTY_SUMMARY_PART_REGEX = Regex("\\s*(?:\\*\\*[^*\\r\\n]+\\*\\*\\s*)?<!--\\s*-->\\s*")
 
         /**
          * Creates a default OkHttpClient configured for streaming.

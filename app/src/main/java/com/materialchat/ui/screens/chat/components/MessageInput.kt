@@ -678,6 +678,7 @@ private fun ReasoningEffortSelector(
         ReasoningEffort.MEDIUM -> MaterialTheme.colorScheme.secondaryContainer
         ReasoningEffort.HIGH -> MaterialTheme.colorScheme.primaryContainer
         ReasoningEffort.XHIGH -> MaterialTheme.colorScheme.primaryContainer
+        ReasoningEffort.MAX -> MaterialTheme.colorScheme.primaryContainer
     }
     val containerColor by animateColorAsState(
         targetValue = if (isPressed) {
@@ -695,6 +696,7 @@ private fun ReasoningEffortSelector(
         ReasoningEffort.MEDIUM -> MaterialTheme.colorScheme.onSecondaryContainer
         ReasoningEffort.HIGH -> MaterialTheme.colorScheme.onPrimaryContainer
         ReasoningEffort.XHIGH -> MaterialTheme.colorScheme.onPrimaryContainer
+        ReasoningEffort.MAX -> MaterialTheme.colorScheme.onPrimaryContainer
     }
 
     Box(modifier = modifier) {

@@ -11,7 +11,8 @@ enum class ReasoningEffort(
     LOW("low", "Low"),
     MEDIUM("medium", "Medium"),
     HIGH("high", "High"),
-    XHIGH("xhigh", "Extra High");
+    XHIGH("xhigh", "Extra High"),
+    MAX("max", "Max");
 
     val enablesThinking: Boolean
         get() = this != NONE

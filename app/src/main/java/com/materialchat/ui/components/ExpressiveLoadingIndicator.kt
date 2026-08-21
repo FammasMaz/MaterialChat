@@ -606,6 +606,7 @@ fun MorphingSendButton(
         ReasoningEffort.MEDIUM -> MaterialTheme.colorScheme.secondary
         ReasoningEffort.HIGH -> MaterialTheme.colorScheme.primary
         ReasoningEffort.XHIGH -> MaterialTheme.colorScheme.error
+        ReasoningEffort.MAX -> MaterialTheme.colorScheme.error
     }
 
     // Indicator size varies slightly based on effort (more effort = slightly larger)
@@ -615,6 +616,7 @@ fun MorphingSendButton(
         ReasoningEffort.MEDIUM -> 24.dp
         ReasoningEffort.HIGH -> 26.dp
         ReasoningEffort.XHIGH -> 28.dp
+        ReasoningEffort.MAX -> 30.dp
     }
 
     // M3 Expressive spring-based alpha transitions
