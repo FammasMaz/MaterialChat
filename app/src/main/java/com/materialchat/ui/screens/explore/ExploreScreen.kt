@@ -59,6 +59,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.materialchat.ui.components.ExpressiveTopBarTitle
+import com.materialchat.ui.components.HapticPattern
+import com.materialchat.ui.components.rememberDeviceTilt
+import com.materialchat.ui.components.rememberHapticFeedback
 import com.materialchat.ui.theme.ExpressiveMotion
 import kotlinx.coroutines.delay
 
@@ -202,8 +205,13 @@ fun ExploreScreen(
 
 @Composable
 private fun ArenaHeroCard(onClick: () -> Unit) {
+    val haptics = rememberHapticFeedback()
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
+
+    // Physical 3D tilt: the card leans subtly with the hand holding the phone.
+    val tilt = rememberDeviceTilt(maxDegrees = 10f)
+
     val scale by animateFloatAsState(
         targetValue = if (isPressed) 0.98f else 1f,
         animationSpec = ExpressiveMotion.Spatial.scale(),
@@ -211,7 +219,10 @@ private fun ArenaHeroCard(onClick: () -> Unit) {
     )
 
     ElevatedCard(
-        onClick = onClick,
+        onClick = {
+            haptics.perform(HapticPattern.CLICK)
+            onClick()
+        },
         interactionSource = interactionSource,
         shape = RoundedCornerShape(32.dp),
         elevation = CardDefaults.elevatedCardElevation(defaultElevation = 4.dp),
@@ -224,6 +235,12 @@ private fun ArenaHeroCard(onClick: () -> Unit) {
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
+                // Perspective tilt from device orientation. Damped so it reads
+                // as depth, never as a gimmick; rotationX positive = top tips away.
+                val tiltScale = if (isPressed) 0.4f else 1f
+                rotationX = -tilt.value.pitch * 0.45f * tiltScale
+                rotationY = tilt.value.roll * 0.45f * tiltScale
+                cameraDistance = 24f * density
             }
     ) {
         Box(
@@ -314,6 +331,7 @@ private fun StaggeredFeatureCard(index: Int, feature: ExploreFeature) {
 
 @Composable
 private fun ExploreFeatureCard(feature: ExploreFeature, modifier: Modifier = Modifier) {
+    val haptics = rememberHapticFeedback()
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
     val scale by animateFloatAsState(
@@ -324,7 +342,10 @@ private fun ExploreFeatureCard(feature: ExploreFeature, modifier: Modifier = Mod
     val colors = feature.colors()
 
     ElevatedCard(
-        onClick = feature.onClick,
+        onClick = {
+            haptics.perform(HapticPattern.CLICK)
+            feature.onClick()
+        },
         interactionSource = interactionSource,
         shape = RoundedCornerShape(if (feature.isWide) 28.dp else 24.dp),
         colors = CardDefaults.elevatedCardColors(containerColor = colors.first),

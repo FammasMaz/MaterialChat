@@ -1,7 +1,11 @@
 package com.materialchat.ui.screens.personas.components
 
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -27,13 +31,19 @@ import androidx.compose.material3.SuggestionChip
 import androidx.compose.material3.SuggestionChipDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.materialchat.domain.model.Persona
+import com.materialchat.ui.components.HapticPattern
+import com.materialchat.ui.components.rememberHapticFeedback
+import com.materialchat.ui.theme.ExpressiveMotion
 import kotlin.math.absoluteValue
 
 /**
@@ -63,12 +73,34 @@ fun PersonaCard(
     modifier: Modifier = Modifier
 ) {
     val accentColor = personaColor(persona)
+    val haptics = rememberHapticFeedback()
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+
+    // M3 Expressive press feedback: bouncy scale + corner shape morph
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.96f else 1f,
+        animationSpec = ExpressiveMotion.Spatial.scale(),
+        label = "personaCardScale"
+    )
+    val cornerRadius by animateDpAsState(
+        targetValue = if (isPressed) 18.dp else 24.dp,
+        animationSpec = ExpressiveMotion.Spatial.shapeMorph(),
+        label = "personaCardCorner"
+    )
 
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick),
-        shape = RoundedCornerShape(24.dp),
+            .scale(scale)
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null
+            ) {
+                haptics.perform(HapticPattern.CLICK)
+                onClick()
+            },
+        shape = RoundedCornerShape(cornerRadius),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerLow
         ),
@@ -101,7 +133,10 @@ fun PersonaCard(
 
                 if (onDelete != null) {
                     IconButton(
-                        onClick = onDelete,
+                        onClick = {
+                            haptics.perform(HapticPattern.CONFIRM)
+                            onDelete()
+                        },
                         modifier = Modifier.size(48.dp)
                     ) {
                         Icon(
