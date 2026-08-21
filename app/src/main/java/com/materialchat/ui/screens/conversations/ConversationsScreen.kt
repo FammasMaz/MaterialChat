@@ -462,14 +462,15 @@ private fun ConversationsTopBar(
         label = "suffixAlpha"
     )
 
-    // M3 Expressive shape art — layered MaterialShapes with continuous motion.
-    // A gear pair (cookie family) counter-rotates like meshing cogs, a soft
-    // burst breathes against their direction, and a clover bobs on a sine.
-    // Everything pops in staggered, fades early on collapse, and leaves
-    // composition entirely once the bar is collapsed (battery-safe).
+    // M3 Expressive shape art — a dense, layered composition that fills the bar.
+    // Two meshing gears counter-rotate, a burst breathes against them, an orbit
+    // trio drifts across the middle, and a clover bobs by the title. Motion is
+    // deliberately visible (fast enough to notice, slow enough to stay calm).
     val decorAlpha = (1f - collapseFraction * 2.5f).coerceIn(0f, 1f)
     val primaryColor = MaterialTheme.colorScheme.primary
     val tertiaryColor = MaterialTheme.colorScheme.tertiary
+    val secondaryColor = MaterialTheme.colorScheme.secondary
+    val onSurfaceColor = MaterialTheme.colorScheme.onSurface
 
     val density = LocalDensity.current
     val haptics = rememberHapticFeedback()
@@ -498,34 +499,50 @@ private fun ConversationsTopBar(
                 val gearLarge by gears.animateFloat(
                     initialValue = 0f,
                     targetValue = 360f,
-                    animationSpec = infiniteRepeatable(tween(26_000, easing = LinearEasing)),
+                    animationSpec = infiniteRepeatable(tween(16_000, easing = LinearEasing)),
                     label = "gearLarge"
                 )
                 val gearSmall by gears.animateFloat(
                     initialValue = 360f,
                     targetValue = 0f,
-                    animationSpec = infiniteRepeatable(tween(17_500, easing = LinearEasing)),
+                    animationSpec = infiniteRepeatable(tween(9_500, easing = LinearEasing)),
                     label = "gearSmall"
                 )
                 val burstSpin by gears.animateFloat(
                     initialValue = 0f,
                     targetValue = -360f,
-                    animationSpec = infiniteRepeatable(tween(42_000, easing = LinearEasing)),
+                    animationSpec = infiniteRepeatable(tween(30_000, easing = LinearEasing)),
                     label = "burstSpin"
                 )
                 val burstBreath by gears.animateFloat(
-                    initialValue = 0.94f,
-                    targetValue = 1.06f,
-                    animationSpec = infiniteRepeatable(
-                        tween(4_200), RepeatMode.Reverse
-                    ),
+                    initialValue = 0.92f,
+                    targetValue = 1.08f,
+                    animationSpec = infiniteRepeatable(tween(3_400), RepeatMode.Reverse),
                     label = "burstBreath"
                 )
                 val cloverBob by gears.animateFloat(
                     initialValue = -1f,
                     targetValue = 1f,
-                    animationSpec = infiniteRepeatable(tween(5_600), RepeatMode.Reverse),
+                    animationSpec = infiniteRepeatable(tween(4_000), RepeatMode.Reverse),
                     label = "cloverBob"
+                )
+                val sunnySpin by gears.animateFloat(
+                    initialValue = 360f,
+                    targetValue = 0f,
+                    animationSpec = infiniteRepeatable(tween(22_000, easing = LinearEasing)),
+                    label = "sunnySpin"
+                )
+                val orbitDrift by gears.animateFloat(
+                    initialValue = -1f,
+                    targetValue = 1f,
+                    animationSpec = infiniteRepeatable(tween(7_500), RepeatMode.Reverse),
+                    label = "orbitDrift"
+                )
+                val flowerDrift by gears.animateFloat(
+                    initialValue = 1f,
+                    targetValue = -1f,
+                    animationSpec = infiniteRepeatable(tween(9_200), RepeatMode.Reverse),
+                    label = "flowerDrift"
                 )
 
                 // Staggered spring pop-in
@@ -537,49 +554,51 @@ private fun ConversationsTopBar(
                     val anim = remember(delayMs, stiffness) { Animatable(0f) }
                     LaunchedEffect(anim, delayMs, stiffness) {
                         delay(delayMs)
-                        anim.animateTo(1f, spring(dampingRatio = 0.55f, stiffness = stiffness))
+                        anim.animateTo(1f, spring(dampingRatio = 0.5f, stiffness = stiffness))
                     }
                     return anim
                 }
-                val popGearLarge = entrance(0L, 120f)
-                val popGearSmall = entrance(120L, 140f)
-                val popBurst = entrance(240L, 100f)
-                val popClover = entrance(340L, 160f)
+                val popGearLarge = entrance(0L, 140f)
+                val popGearSmall = entrance(110L, 160f)
+                val popBurst = entrance(220L, 120f)
+                val popClover = entrance(320L, 180f)
+                val popSunny = entrance(420L, 150f)
+                val popOrbit = entrance(520L, 170f)
 
                 Box(
                     modifier = Modifier
                         .matchParentSize()
                         .graphicsLayer { alpha = decorAlpha }
                 ) {
-                    // Gear A — large cookie, bleeds off the top-right edge
+                    // Gear A — large cookie bleeding off the top-right edge
                     Box(
                         modifier = Modifier
                             .align(Alignment.TopEnd)
-                            .offset(x = 18.dp, y = (-16).dp)
-                            .size(88.dp)
+                            .offset(x = 14.dp, y = (-18).dp)
+                            .size(92.dp)
                             .graphicsLayer {
                                 rotationZ = gearLarge
                                 scaleX = popGearLarge.value
                                 scaleY = popGearLarge.value
                             }
                             .background(
-                                color = primaryColor.copy(alpha = 0.13f),
+                                color = primaryColor.copy(alpha = 0.20f),
                                 shape = MaterialShapes.Cookie12Sided.toShape()
                             )
                     )
-                    // Gear B — small cookie meshed into gear A's teeth, spinning opposite
+                    // Gear B — small cookie meshed into A's teeth, spinning opposite
                     Box(
                         modifier = Modifier
                             .align(Alignment.TopEnd)
-                            .offset(x = 78.dp, y = 44.dp)
-                            .size(46.dp)
+                            .offset(x = 74.dp, y = 40.dp)
+                            .size(48.dp)
                             .graphicsLayer {
                                 rotationZ = gearSmall
                                 scaleX = popGearSmall.value
                                 scaleY = popGearSmall.value
                             }
                             .background(
-                                color = tertiaryColor.copy(alpha = 0.15f),
+                                color = tertiaryColor.copy(alpha = 0.22f),
                                 shape = MaterialShapes.Cookie6Sided.toShape()
                             )
                     )
@@ -587,52 +606,98 @@ private fun ConversationsTopBar(
                     Box(
                         modifier = Modifier
                             .align(Alignment.TopStart)
-                            .offset(x = (-14).dp, y = 8.dp)
-                            .size(72.dp)
+                            .offset(x = (-16).dp, y = (-6).dp)
+                            .size(78.dp)
                             .graphicsLayer {
                                 rotationZ = burstSpin
                                 scaleX = burstBreath * popBurst.value
                                 scaleY = burstBreath * popBurst.value
                             }
                             .background(
-                                color = tertiaryColor.copy(alpha = 0.11f),
+                                color = tertiaryColor.copy(alpha = 0.16f),
                                 shape = MaterialShapes.SoftBurst.toShape()
                             )
                     )
-                    // Clover — bobs gently under the title zone
+                    // Sunny — half off the left edge at mid height, slow roll
                     Box(
                         modifier = Modifier
                             .align(Alignment.CenterStart)
-                            .offset(x = 64.dp, y = (cloverBob * 5).dp + 6.dp)
-                            .size(38.dp)
+                            .offset(x = (-26).dp, y = (-10).dp)
+                            .size(54.dp)
                             .graphicsLayer {
-                                rotationZ = cloverBob * 10f
+                                rotationZ = sunnySpin
+                                scaleX = popSunny.value
+                                scaleY = popSunny.value
+                            }
+                            .background(
+                                color = secondaryColor.copy(alpha = 0.18f),
+                                shape = MaterialShapes.Sunny.toShape()
+                            )
+                    )
+                    // Orbit trio across the middle so the center never sits empty:
+                    // a pill-soft puff drifting right of the title zone...
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.Center)
+                            .offset(x = (orbitDrift * 34).dp + 46.dp, y = 2.dp)
+                            .size(30.dp)
+                            .graphicsLayer {
+                                rotationZ = orbitDrift * 24f
+                                scaleX = popOrbit.value
+                                scaleY = popOrbit.value
+                            }
+                            .background(
+                                color = primaryColor.copy(alpha = 0.15f),
+                                shape = MaterialShapes.Puffy.toShape()
+                            )
+                    )
+                    // ...a flower drifting the opposite way near center-right...
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.CenterEnd)
+                            .offset(x = (-58).dp, y = (flowerDrift * 12).dp + (-4).dp)
+                            .size(36.dp)
+                            .graphicsLayer {
+                                rotationZ = flowerDrift * 30f
+                                scaleX = popOrbit.value
+                                scaleY = popOrbit.value
+                            }
+                            .background(
+                                color = onSurfaceColor.copy(alpha = 0.10f),
+                                shape = MaterialShapes.Flower.toShape()
+                            )
+                    )
+                    // ...and a tiny echo dot riding between them.
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.CenterStart)
+                            .offset(x = (flowerDrift * 26).dp + 118.dp, y = (orbitDrift * 6).dp + 14.dp)
+                            .size(16.dp)
+                            .graphicsLayer { scaleX = popOrbit.value; scaleY = popOrbit.value }
+                            .background(
+                                color = tertiaryColor.copy(alpha = 0.20f),
+                                shape = MaterialShapes.Pill.toShape()
+                            )
+                    )
+                    // Clover — bobs gently just above the title baseline
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.BottomStart)
+                            .offset(x = 96.dp, y = (cloverBob * 4).dp + 4.dp)
+                            .size(34.dp)
+                            .graphicsLayer {
+                                rotationZ = cloverBob * 12f
                                 scaleX = popClover.value
                                 scaleY = popClover.value
                             }
                             .background(
-                                color = primaryColor.copy(alpha = 0.10f),
+                                color = primaryColor.copy(alpha = 0.13f),
                                 shape = MaterialShapes.Clover4Leaf.toShape()
-                            )
-                    )
-                    // Tiny puffy dot accent drifting near center-right
-                    Box(
-                        modifier = Modifier
-                            .align(Alignment.CenterEnd)
-                            .offset(x = (-96).dp, y = (-6).dp)
-                            .size(22.dp)
-                            .graphicsLayer {
-                                rotationZ = -gearSmall * 2f
-                                scaleX = popBurst.value
-                                scaleY = popBurst.value
-                            }
-                            .background(
-                                color = MaterialTheme.colorScheme.secondary.copy(alpha = 0.14f),
-                                shape = MaterialShapes.Puffy.toShape()
                             )
                     )
                 }
             }
+
 
             // Title row - aligned to bottom left with fixed padding
             Row(
