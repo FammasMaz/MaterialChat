@@ -241,6 +241,10 @@ class ConversationRepositoryImpl @Inject constructor(
         messageDao.updateDurations(messageId, thinkingDurationMs, totalDurationMs)
     }
 
+    override suspend fun updateGenerationMetrics(messageId: String, firstTokenLatencyMs: Long?, generatedTokenCount: Int?) {
+        messageDao.updateGenerationMetrics(messageId, firstTokenLatencyMs, generatedTokenCount)
+    }
+
     override suspend fun deleteMessage(messageId: String) {
         messageDao.deleteById(messageId)
     }

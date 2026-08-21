@@ -56,6 +56,12 @@ data class MessageEntity(
     @ColumnInfo(name = "total_duration_ms")
     val totalDurationMs: Long? = null,
 
+    @ColumnInfo(name = "first_token_latency_ms")
+    val firstTokenLatencyMs: Long? = null,
+
+    @ColumnInfo(name = "generated_token_count")
+    val generatedTokenCount: Int? = null,
+
     @ColumnInfo(name = "model_name")
     val modelName: String? = null,
 

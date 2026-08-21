@@ -54,7 +54,7 @@ import com.materialchat.data.local.database.entity.WorkflowStepEntity
         MemoryEntity::class,
         MemorySnippetEntity::class
     ],
-    version = 20,
+    version = 21,
     exportSchema = true
 )
 abstract class MaterialChatDatabase : RoomDatabase() {
@@ -136,6 +136,13 @@ abstract class MaterialChatDatabase : RoomDatabase() {
         /**
          * Migration from version 5 to 6: Add duration columns to messages table.
          */
+        private val MIGRATION_20_21 = object : Migration(20, 21) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE messages ADD COLUMN first_token_latency_ms INTEGER DEFAULT NULL")
+            db.execSQL("ALTER TABLE messages ADD COLUMN generated_token_count INTEGER DEFAULT NULL")
+        }
+    }
+
         private val MIGRATION_5_6 = object : Migration(5, 6) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE messages ADD COLUMN thinking_duration_ms INTEGER DEFAULT NULL")
@@ -532,7 +539,8 @@ abstract class MaterialChatDatabase : RoomDatabase() {
                 MaterialChatDatabase::class.java,
                 DATABASE_NAME
             )
-                .addMigrations(*MIGRATIONS)
+                .addMigrations(*MIGRATIONS, MIGRATION_20_21
+            )
                 .fallbackToDestructiveMigrationOnDowngrade()
                 .build()
         }

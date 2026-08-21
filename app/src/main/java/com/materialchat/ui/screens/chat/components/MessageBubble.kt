@@ -59,6 +59,7 @@ import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.outlined.Bolt
 import androidx.compose.material.icons.outlined.BookmarkBorder
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.ErrorOutline
@@ -542,6 +543,42 @@ fun MessageBubble(
                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
                         modifier = Modifier.padding(start = 4.dp, bottom = 2.dp)
                     )
+                }
+
+                // Generation speed pill — last response + average, whisper-quiet styling
+                messageItem.generationStats?.let { stats ->
+                    if (stats.lastTps != null || stats.lastTtftMs != null) {
+                        Row(
+                            modifier = Modifier.padding(start = 4.dp, bottom = 2.dp),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            val statColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.55f)
+                            Icon(
+                                imageVector = Icons.Outlined.Bolt,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f),
+                                modifier = Modifier.size(12.dp)
+                            )
+                            val tpsText = stats.lastTps?.let { "%.0f tok/s".format(it) } ?: "—"
+                            Text(text = tpsText, style = MaterialTheme.typography.labelSmall, color = statColor)
+
+                            stats.lastTtftMs?.let { ttft ->
+                                Text("·", style = MaterialTheme.typography.labelSmall, color = statColor)
+                                val ttftText = if (ttft < 1000) "%d ms".format(ttft) else "%.1f s".format(ttft / 1000.0)
+                                Text(text = "TTFT $ttftText", style = MaterialTheme.typography.labelSmall, color = statColor)
+                            }
+
+                            if (stats.avgTps != null) {
+                                Text("·", style = MaterialTheme.typography.labelSmall, color = statColor)
+                                Text(
+                                    text = "avg %.0f".format(stats.avgTps),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = statColor
+                                )
+                            }
+                        }
+                    }
                 }
 
                 Row(

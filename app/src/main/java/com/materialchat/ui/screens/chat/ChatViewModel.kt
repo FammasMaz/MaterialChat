@@ -267,6 +267,30 @@ class ChatViewModel @Inject constructor(
                             it.role == MessageRole.ASSISTANT
                         }
 
+                        // Generation speed stats: last response + conversation average
+                        val statsHolder = if (lastAssistantIndex >= 0) {
+                            val completed = filteredMessages.filter {
+                                it.role == MessageRole.ASSISTANT &&
+                                    it.generatedTokenCount != null && it.firstTokenLatencyMs != null &&
+                                    it.totalDurationMs != null
+                            }
+                            fun tpsOf(m: com.materialchat.domain.model.Message): Double? {
+                                val gen = m.totalDurationMs!! - (m.firstTokenLatencyMs ?: 0L)
+                                return if (gen > 0) m.generatedTokenCount!! * 1000.0 / gen else null
+                            }
+                            val last = completed.lastOrNull()
+                            GenerationStatLine(
+                                lastTps = last?.let(::tpsOf),
+                                lastTtftMs = last?.firstTokenLatencyMs,
+                                avgTps = completed.mapNotNull(::tpsOf).takeIf { it.size >= 2 }
+                                    ?.average(),
+                                avgTtftMs = completed.mapNotNull { it.firstTokenLatencyMs }
+                                    .takeIf { it.size >= 2 }?.average()?.toLong()
+                            )
+                        } else {
+                            null
+                        }
+
                         val messageItems = filteredMessages.mapIndexed { index, message ->
                             val isSiblingTarget = index == lastAssistantIndex &&
                                     message.role == MessageRole.ASSISTANT
@@ -274,6 +298,9 @@ class ChatViewModel @Inject constructor(
                                 message = message,
                                 isLastAssistantMessage = index == lastAssistantIndex &&
                                         message.role == MessageRole.ASSISTANT,
+                                generationStats = if (index == lastAssistantIndex &&
+                                    message.role == MessageRole.ASSISTANT && !message.isStreaming
+                                ) statsHolder else null,
                                 showActions = message.role == MessageRole.ASSISTANT ||
                                         message.role == MessageRole.USER,
                                 groupPosition = resolveGroupPosition(filteredMessages, index),

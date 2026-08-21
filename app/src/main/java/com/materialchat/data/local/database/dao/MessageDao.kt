@@ -148,6 +148,9 @@ interface MessageDao {
     @Query("UPDATE messages SET thinking_duration_ms = :thinkingDurationMs, total_duration_ms = :totalDurationMs WHERE id = :messageId")
     suspend fun updateDurations(messageId: String, thinkingDurationMs: Long?, totalDurationMs: Long?)
 
+    @Query("UPDATE messages SET first_token_latency_ms = :firstTokenLatencyMs, generated_token_count = :generatedTokenCount WHERE id = :messageId")
+    suspend fun updateGenerationMetrics(messageId: String, firstTokenLatencyMs: Long?, generatedTokenCount: Int?)
+
     /**
      * Check if any messages are currently streaming in a conversation.
      */

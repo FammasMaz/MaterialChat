@@ -199,6 +199,11 @@ interface ConversationRepository {
     suspend fun updateMessageDurations(messageId: String, thinkingDurationMs: Long?, totalDurationMs: Long?)
 
     /**
+     * Persists streaming generation metrics for an assistant message.
+     */
+    suspend fun updateGenerationMetrics(messageId: String, firstTokenLatencyMs: Long?, generatedTokenCount: Int?)
+
+    /**
      * Deletes a message.
      *
      * @param messageId The ID of the message to delete

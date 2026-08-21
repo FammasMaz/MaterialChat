@@ -24,6 +24,8 @@ data class Message(
     val isStreaming: Boolean = false,
     val thinkingDurationMs: Long? = null,
     val totalDurationMs: Long? = null,
+    val firstTokenLatencyMs: Long? = null,
+    val generatedTokenCount: Int? = null,
     val modelName: String? = null,
     val fusionMetadata: String? = null,
     val webSearchMetadata: String? = null,

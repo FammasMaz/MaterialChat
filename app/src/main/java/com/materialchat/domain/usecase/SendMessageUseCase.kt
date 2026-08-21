@@ -23,6 +23,7 @@ import com.materialchat.domain.repository.PersonaRepository
 import com.materialchat.domain.repository.ProviderRepository
 import com.materialchat.domain.repository.WebSearchRepository
 import com.materialchat.domain.util.TaskModelAssignmentCodec
+import com.materialchat.ui.screens.chat.ContextWindowEstimator
 import com.materialchat.notifications.ImageGenerationForegroundService
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
@@ -383,6 +384,16 @@ class SendMessageUseCase @Inject constructor(
                             )
                         }
                         conversationRepository.updateMessageDurations(assistantMessageId, thinkingDurationMs, totalDurationMs)
+                    // Persist generation metrics for the speed pill (skip image-gen path).
+                    if (imageToolPrompt == null) {
+                        val ttftMs = firstContentAtMs?.let { it - streamStartTime }
+                        val tokens = ContextWindowEstimator.estimateTokens(completedContent)
+                        conversationRepository.updateGenerationMetrics(
+                            messageId = assistantMessageId,
+                            firstTokenLatencyMs = ttftMs,
+                            generatedTokenCount = if (tokens > 0) tokens else null
+                        )
+                    }
                     } else {
                         accumulatedContent = completedContent
                         contentUpdater.persistFinal(completedContent, state.finalThinkingContent)
@@ -396,6 +407,16 @@ class SendMessageUseCase @Inject constructor(
                         }
                         conversationRepository.setMessageStreaming(assistantMessageId, false)
                         conversationRepository.updateMessageDurations(assistantMessageId, thinkingDurationMs, totalDurationMs)
+                    // Persist generation metrics for the speed pill (skip image-gen path).
+                    if (imageToolPrompt == null) {
+                        val ttftMs = firstContentAtMs?.let { it - streamStartTime }
+                        val tokens = ContextWindowEstimator.estimateTokens(completedContent)
+                        conversationRepository.updateGenerationMetrics(
+                            messageId = assistantMessageId,
+                            firstTokenLatencyMs = ttftMs,
+                            generatedTokenCount = if (tokens > 0) tokens else null
+                        )
+                    }
 
                         if (!conversation.isEphemeral && !memoryExtractionScheduled && completedContent.isNotBlank()) {
                             memoryExtractionScheduled = true

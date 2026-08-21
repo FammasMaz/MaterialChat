@@ -117,9 +117,25 @@ sealed interface ChatUiState {
  * @property showActions Whether to show action buttons for this message
  * @property siblingInfo Sibling navigation info for redo-with-model branches
  */
+/**
+ * Compact generation-speed stats for the last assistant response.
+ *
+ * @param lastTps Tokens/second of the most recent completed response
+ * @param lastTtftMs Time-to-first-token of that response, in ms
+ * @param avgTps Session/conversation average tokens-per-second (null if <2 samples)
+ * @param avgTtftMs Average TTFT in ms (null if <2 samples)
+ */
+data class GenerationStatLine(
+    val lastTps: Double?,
+    val lastTtftMs: Long?,
+    val avgTps: Double?,
+    val avgTtftMs: Long?
+)
+
 data class MessageUiItem(
     val message: Message,
     val isLastAssistantMessage: Boolean = false,
+    val generationStats: GenerationStatLine? = null,
     val showActions: Boolean = false,
     val groupPosition: MessageGroupPosition = MessageGroupPosition.Single,
     val siblingInfo: SiblingInfo? = null,
