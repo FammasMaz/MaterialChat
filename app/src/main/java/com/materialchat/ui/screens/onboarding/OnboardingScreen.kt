@@ -47,6 +47,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -54,6 +55,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.materialchat.ui.components.M3ExpressiveInlineLoading
+import com.materialchat.ui.components.rememberDeviceTilt
 import com.materialchat.ui.theme.CustomShapes
 import com.materialchat.ui.theme.ExpressiveMotion
 import com.materialchat.ui.theme.MaterialChatExpressiveTitleFontFamily
@@ -96,17 +98,31 @@ private fun OnboardingContent(
         modifier = Modifier.fillMaxSize(),
         color = MaterialTheme.colorScheme.surfaceContainer
     ) {
+        // Physical hand motion: decorative shapes drift with device tilt
+        // (top shape follows, bottom one counter-drifts) for a layered,
+        // "alive in your hand" M3 Expressive parallax.
+        val tilt = rememberDeviceTilt()
+        val parallax = 2.4f
+
         Box(modifier = Modifier.fillMaxSize()) {
             DecorativeTonalShape(
                 modifier = Modifier
                     .align(Alignment.TopEnd)
-                    .padding(top = 28.dp, end = 20.dp),
+                    .padding(top = 28.dp, end = 20.dp)
+                    .graphicsLayer {
+                        translationX = -tilt.value.roll * parallax
+                        translationY = tilt.value.pitch * parallax
+                    },
                 containerColor = MaterialTheme.colorScheme.tertiaryContainer
             )
             DecorativeTonalShape(
                 modifier = Modifier
                     .align(Alignment.BottomStart)
-                    .padding(start = 18.dp, bottom = 40.dp),
+                    .padding(start = 18.dp, bottom = 40.dp)
+                    .graphicsLayer {
+                        translationX = tilt.value.roll * parallax * 0.6f
+                        translationY = -tilt.value.pitch * parallax * 0.6f
+                    },
                 containerColor = MaterialTheme.colorScheme.secondaryContainer
             )
 
