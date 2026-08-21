@@ -4,7 +4,14 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.AnimationVector1D
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -13,6 +20,7 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -47,7 +55,9 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.LoadingIndicator
+import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.toShape
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Snackbar
@@ -452,33 +462,11 @@ private fun ConversationsTopBar(
         label = "suffixAlpha"
     )
 
-    // Per-session randomized illustration — different layout every time
-    val rng = remember { List(20) { Random.nextFloat() } }
-
-    // M3 Expressive staggered entrance: each element group animates in sequence
-    // Spatial springs (can bounce) for scale/position, with increasing bounciness
-    val curveProgress = remember { Animatable(0f) }
-    val bubbleProgress = remember { Animatable(0f) }
-    val dotProgress = remember { Animatable(0f) }
-    val sparkleProgress = remember { Animatable(0f) }
-    LaunchedEffect(Unit) {
-        launch {
-            curveProgress.animateTo(1f, spring(dampingRatio = 0.7f, stiffness = 80f))
-        }
-        launch {
-            delay(150)
-            bubbleProgress.animateTo(1f, spring(dampingRatio = 0.55f, stiffness = 100f))
-        }
-        launch {
-            delay(300)
-            dotProgress.animateTo(1f, spring(dampingRatio = 0.5f, stiffness = 140f))
-        }
-        launch {
-            delay(420)
-            sparkleProgress.animateTo(1f, spring(dampingRatio = 0.45f, stiffness = 160f))
-        }
-    }
-    // Decorative elements fade out early as bar collapses
+    // M3 Expressive shape art — layered MaterialShapes with continuous motion.
+    // A gear pair (cookie family) counter-rotates like meshing cogs, a soft
+    // burst breathes against their direction, and a clover bobs on a sine.
+    // Everything pops in staggered, fades early on collapse, and leaves
+    // composition entirely once the bar is collapsed (battery-safe).
     val decorAlpha = (1f - collapseFraction * 2.5f).coerceIn(0f, 1f)
     val primaryColor = MaterialTheme.colorScheme.primary
     val tertiaryColor = MaterialTheme.colorScheme.tertiary
@@ -504,139 +492,145 @@ private fun ConversationsTopBar(
         ) {
             val baseBottomPadding = 12.dp
 
-            // M3 Expressive decorative line illustration
-            // Randomized layout + staggered spring entrance animation
-            Canvas(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .graphicsLayer { alpha = decorAlpha }
-            ) {
-                val w = size.width
-                val h = size.height
+            if (decorAlpha > 0f) {
+                // Continuous motion engines
+                val gears = rememberInfiniteTransition(label = "bannerGears")
+                val gearLarge by gears.animateFloat(
+                    initialValue = 0f,
+                    targetValue = 360f,
+                    animationSpec = infiniteRepeatable(tween(26_000, easing = LinearEasing)),
+                    label = "gearLarge"
+                )
+                val gearSmall by gears.animateFloat(
+                    initialValue = 360f,
+                    targetValue = 0f,
+                    animationSpec = infiniteRepeatable(tween(17_500, easing = LinearEasing)),
+                    label = "gearSmall"
+                )
+                val burstSpin by gears.animateFloat(
+                    initialValue = 0f,
+                    targetValue = -360f,
+                    animationSpec = infiniteRepeatable(tween(42_000, easing = LinearEasing)),
+                    label = "burstSpin"
+                )
+                val burstBreath by gears.animateFloat(
+                    initialValue = 0.94f,
+                    targetValue = 1.06f,
+                    animationSpec = infiniteRepeatable(
+                        tween(4_200), RepeatMode.Reverse
+                    ),
+                    label = "burstBreath"
+                )
+                val cloverBob by gears.animateFloat(
+                    initialValue = -1f,
+                    targetValue = 1f,
+                    animationSpec = infiniteRepeatable(tween(5_600), RepeatMode.Reverse),
+                    label = "cloverBob"
+                )
 
-                // === Flowing curves — drift in from right, fade in ===
-                val cp = curveProgress.value
-                if (cp > 0.01f) {
-                    val drift = (1f - cp) * 40f.dp.toPx()
-
-                    val curve1 = Path().apply {
-                        moveTo(-drift, h * (0.12f + rng[0] * 0.15f) + drift * 0.3f)
-                        cubicTo(
-                            w * (0.18f + rng[1] * 0.10f), h * (rng[2] * 0.30f) + drift * 0.2f,
-                            w * (0.45f + rng[3] * 0.10f), h * (0.15f + rng[4] * 0.35f) + drift * 0.1f,
-                            w * (0.80f + rng[5] * 0.15f) + drift, h * (0.05f + rng[6] * 0.20f)
-                        )
+                // Staggered spring pop-in
+                @Composable
+                fun entrance(
+                    delayMs: Long,
+                    stiffness: Float
+                ): Animatable<Float, AnimationVector1D> {
+                    val anim = remember(delayMs, stiffness) { Animatable(0f) }
+                    LaunchedEffect(anim, delayMs, stiffness) {
+                        delay(delayMs)
+                        anim.animateTo(1f, spring(dampingRatio = 0.55f, stiffness = stiffness))
                     }
-                    drawPath(
-                        curve1,
-                        primaryColor.copy(alpha = 0.12f * cp),
-                        style = Stroke(1.8f.dp.toPx(), cap = StrokeCap.Round)
-                    )
-
-                    val curve2 = Path().apply {
-                        moveTo(w * (0.05f + rng[7] * 0.12f) - drift, h * (0.30f + rng[8] * 0.15f) + drift * 0.2f)
-                        cubicTo(
-                            w * (0.30f + rng[9] * 0.15f), h * (0.08f + rng[10] * 0.20f) + drift * 0.15f,
-                            w * (0.58f + rng[11] * 0.12f), h * (0.35f + rng[12] * 0.20f) + drift * 0.1f,
-                            w * 1.05f + drift, h * (0.15f + rng[13] * 0.15f)
-                        )
-                    }
-                    drawPath(
-                        curve2,
-                        tertiaryColor.copy(alpha = 0.09f * cp),
-                        style = Stroke(1.4f.dp.toPx(), cap = StrokeCap.Round)
-                    )
-
-                    val curve3 = Path().apply {
-                        moveTo(w * (0.20f + rng[14] * 0.12f) - drift * 0.5f, h * (0.05f + rng[15] * 0.12f) + drift * 0.4f)
-                        cubicTo(
-                            w * (0.42f + rng[16] * 0.10f), h * (0.20f + rng[17] * 0.20f) + drift * 0.2f,
-                            w * (0.68f + rng[18] * 0.10f), h * (rng[19] * 0.15f) + drift * 0.1f,
-                            w * 1.10f + drift * 0.5f, h * (0.22f + rng[0] * 0.15f)
-                        )
-                    }
-                    drawPath(
-                        curve3,
-                        primaryColor.copy(alpha = 0.06f * cp),
-                        style = Stroke(1f.dp.toPx(), cap = StrokeCap.Round)
-                    )
+                    return anim
                 }
+                val popGearLarge = entrance(0L, 120f)
+                val popGearSmall = entrance(120L, 140f)
+                val popBurst = entrance(240L, 100f)
+                val popClover = entrance(340L, 160f)
 
-                // === Chat bubble outlines — scale up from center with bounce ===
-                val bp = bubbleProgress.value
-                if (bp > 0.01f) {
-                    val b1cx = w * (0.58f + rng[1] * 0.15f)
-                    val b1cy = h * (0.10f + rng[2] * 0.10f)
-                    val b1w = w * (0.14f + rng[3] * 0.06f) * bp
-                    val b1h = h * (0.18f + rng[4] * 0.08f) * bp
-                    drawRoundRect(
-                        color = primaryColor.copy(alpha = 0.09f * bp),
-                        topLeft = Offset(b1cx - b1w / 2f, b1cy - b1h / 2f + (1f - bp) * 10f.dp.toPx()),
-                        size = Size(b1w, b1h),
-                        cornerRadius = CornerRadius(10f.dp.toPx() * bp),
-                        style = Stroke(1.3f.dp.toPx())
+                Box(
+                    modifier = Modifier
+                        .matchParentSize()
+                        .graphicsLayer { alpha = decorAlpha }
+                ) {
+                    // Gear A — large cookie, bleeds off the top-right edge
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .offset(x = 18.dp, y = (-16).dp)
+                            .size(88.dp)
+                            .graphicsLayer {
+                                rotationZ = gearLarge
+                                scaleX = popGearLarge.value
+                                scaleY = popGearLarge.value
+                            }
+                            .background(
+                                color = primaryColor.copy(alpha = 0.13f),
+                                shape = MaterialShapes.Cookie12Sided.toShape()
+                            )
                     )
-
-                    val b2cx = w * (0.74f + rng[5] * 0.14f)
-                    val b2cy = h * (0.26f + rng[6] * 0.10f)
-                    val b2w = w * (0.10f + rng[7] * 0.05f) * bp
-                    val b2h = h * (0.14f + rng[8] * 0.06f) * bp
-                    drawRoundRect(
-                        color = tertiaryColor.copy(alpha = 0.07f * bp),
-                        topLeft = Offset(b2cx - b2w / 2f, b2cy - b2h / 2f + (1f - bp) * 8f.dp.toPx()),
-                        size = Size(b2w, b2h),
-                        cornerRadius = CornerRadius(8f.dp.toPx() * bp),
-                        style = Stroke(1f.dp.toPx())
+                    // Gear B — small cookie meshed into gear A's teeth, spinning opposite
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .offset(x = 78.dp, y = 44.dp)
+                            .size(46.dp)
+                            .graphicsLayer {
+                                rotationZ = gearSmall
+                                scaleX = popGearSmall.value
+                                scaleY = popGearSmall.value
+                            }
+                            .background(
+                                color = tertiaryColor.copy(alpha = 0.15f),
+                                shape = MaterialShapes.Cookie6Sided.toShape()
+                            )
                     )
-                }
-
-                // === Dots — pop in with bouncy radius scale ===
-                val dotProg = dotProgress.value
-                if (dotProg > 0.01f) {
-                    val dots = listOf(
-                        Triple(0.48f + rng[9] * 0.10f, 0.08f + rng[10] * 0.10f, 3f + rng[11] * 2f),
-                        Triple(0.68f + rng[12] * 0.10f, 0.38f + rng[13] * 0.10f, 3.5f + rng[14] * 2f),
-                        Triple(0.30f + rng[15] * 0.12f, 0.24f + rng[16] * 0.10f, 2f + rng[17] * 1.5f),
-                        Triple(0.84f + rng[18] * 0.08f, 0.10f + rng[19] * 0.08f, 2.5f + rng[0] * 1.5f),
-                        Triple(0.14f + rng[1] * 0.10f, 0.12f + rng[2] * 0.10f, 4f + rng[3] * 2f)
+                    // Soft burst — breathes and spins against the gear pair
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.TopStart)
+                            .offset(x = (-14).dp, y = 8.dp)
+                            .size(72.dp)
+                            .graphicsLayer {
+                                rotationZ = burstSpin
+                                scaleX = burstBreath * popBurst.value
+                                scaleY = burstBreath * popBurst.value
+                            }
+                            .background(
+                                color = tertiaryColor.copy(alpha = 0.11f),
+                                shape = MaterialShapes.SoftBurst.toShape()
+                            )
                     )
-                    dots.forEachIndexed { i, (dx, dy, dr) ->
-                        val color = if (i % 2 == 0) primaryColor else tertiaryColor
-                        drawCircle(
-                            color = color.copy(alpha = (0.08f + rng[(i + 4) % 20] * 0.08f) * dotProg),
-                            radius = dr.dp.toPx() * dotProg,
-                            center = Offset(w * dx, h * dy + (1f - dotProg) * 12f.dp.toPx())
-                        )
-                    }
-                }
-
-                // === Sparkle crosses — arms grow outward with bounce ===
-                val sp = sparkleProgress.value
-                if (sp > 0.01f) {
-                    val sparkles = listOf(
-                        Triple(0.52f + rng[5] * 0.12f, 0.28f + rng[6] * 0.12f, 5f + rng[7] * 2f),
-                        Triple(0.80f + rng[8] * 0.10f, 0.06f + rng[9] * 0.08f, 3.5f + rng[10] * 2f)
+                    // Clover — bobs gently under the title zone
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.CenterStart)
+                            .offset(x = 64.dp, y = (cloverBob * 5).dp + 6.dp)
+                            .size(38.dp)
+                            .graphicsLayer {
+                                rotationZ = cloverBob * 10f
+                                scaleX = popClover.value
+                                scaleY = popClover.value
+                            }
+                            .background(
+                                color = primaryColor.copy(alpha = 0.10f),
+                                shape = MaterialShapes.Clover4Leaf.toShape()
+                            )
                     )
-                    sparkles.forEachIndexed { i, (sx, sy, sa) ->
-                        val color = if (i == 0) primaryColor else tertiaryColor
-                        val cx = w * sx
-                        val cy = h * sy
-                        val arm = sa.dp.toPx() * sp
-                        drawLine(
-                            color.copy(alpha = 0.13f * sp),
-                            start = Offset(cx - arm, cy),
-                            end = Offset(cx + arm, cy),
-                            strokeWidth = 1f.dp.toPx(),
-                            cap = StrokeCap.Round
-                        )
-                        drawLine(
-                            color.copy(alpha = 0.13f * sp),
-                            start = Offset(cx, cy - arm),
-                            end = Offset(cx, cy + arm),
-                            strokeWidth = 1f.dp.toPx(),
-                            cap = StrokeCap.Round
-                        )
-                    }
+                    // Tiny puffy dot accent drifting near center-right
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.CenterEnd)
+                            .offset(x = (-96).dp, y = (-6).dp)
+                            .size(22.dp)
+                            .graphicsLayer {
+                                rotationZ = -gearSmall * 2f
+                                scaleX = popBurst.value
+                                scaleY = popBurst.value
+                            }
+                            .background(
+                                color = MaterialTheme.colorScheme.secondary.copy(alpha = 0.14f),
+                                shape = MaterialShapes.Puffy.toShape()
+                            )
+                    )
                 }
             }
 
