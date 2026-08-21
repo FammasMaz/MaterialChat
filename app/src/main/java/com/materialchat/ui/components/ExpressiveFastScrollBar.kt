@@ -96,6 +96,7 @@ fun ExpressiveFastScrollBar(
     var isDragging by remember { mutableStateOf(false) }
     var dragProgress by remember { mutableFloatStateOf(-1f) }
     var pendingScrollIndex by remember { mutableIntStateOf(-1) }
+    var lastTickIndex by remember { mutableIntStateOf(-1) }
     val scrollHaptics = rememberHapticFeedback()
     var retainedDragLabel by remember { mutableStateOf<String?>(null) }
     val displayedProgress = remember { Animatable(0f) }
@@ -319,6 +320,7 @@ fun ExpressiveFastScrollBar(
                         onDragStart = { offset ->
                             isDragging = true
                             scrollHaptics.perform(HapticPattern.GESTURE_START, hapticsEnabled)
+                            lastTickIndex = -1
                             val stats = metrics()
                             val handleY = displayedProgress.value * stats.scrollableHeightPx
                             val onHandle = offset.y in handleY..(handleY + minHeightPx)
@@ -336,19 +338,23 @@ fun ExpressiveFastScrollBar(
                             scrollHaptics.perform(HapticPattern.GESTURE_END, hapticsEnabled)
                             dragProgress = -1f
                             pendingScrollIndex = -1
+                            lastTickIndex = -1
                         },
                         onDragCancel = {
                             isDragging = false
                             dragProgress = -1f
                             pendingScrollIndex = -1
+                            lastTickIndex = -1
                         },
                         onDrag = { change, _ ->
                             change.consume()
                             updateProgressFromTouch(change.position.y, grabOffset)
-                            // Tick when the drag crosses into a new list item —
-                            // same SEGMENT_TICK language as fling-scroll haptics.
-                            if (pendingScrollIndex != -1 && listState.firstVisibleItemIndex != pendingScrollIndex) {
-                                pendingScrollIndex = listState.firstVisibleItemIndex
+                            // Tick when the finger's TARGET index moves to a new item.
+                            // IMPORTANT: never write pendingScrollIndex here — it is
+                            // the async scrollToItem target; overwriting it with the
+                            // live position fights the scroll and freezes the label.
+                            if (pendingScrollIndex != lastTickIndex) {
+                                lastTickIndex = pendingScrollIndex
                                 scrollHaptics.perform(HapticPattern.SEGMENT_TICK, hapticsEnabled)
                             }
                         }
