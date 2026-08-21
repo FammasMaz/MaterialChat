@@ -286,7 +286,11 @@ class SendMessageUseCase @Inject constructor(
                 is StreamingState.Streaming -> {
                     accumulatedContent = state.content
                     accumulatedThinking = state.thinkingContent
-                    if (firstContentAtMs == null && state.content.isNotEmpty()) {
+                    // First token of ANY kind counts: thinking deltas stream visibly,
+                    // so time-to-first-token must start there, not at prose content.
+                    if (firstContentAtMs == null &&
+                        (state.content.isNotEmpty() || !state.thinkingContent.isNullOrEmpty())
+                    ) {
                         firstContentAtMs = System.currentTimeMillis()
                     }
                     // Track when thinking ends (first time we get content while thinking exists)
@@ -387,7 +391,8 @@ class SendMessageUseCase @Inject constructor(
                     // Persist generation metrics for the speed pill (skip image-gen path).
                     if (imageToolPrompt == null) {
                         val ttftMs = firstContentAtMs?.let { it - streamStartTime }
-                        val tokens = ContextWindowEstimator.estimateTokens(completedContent)
+                        val tokens = ContextWindowEstimator.estimateTokens(completedContent) +
+                                ContextWindowEstimator.estimateTokens(accumulatedThinking ?: "")
                         conversationRepository.updateGenerationMetrics(
                             messageId = assistantMessageId,
                             firstTokenLatencyMs = ttftMs,
@@ -410,7 +415,8 @@ class SendMessageUseCase @Inject constructor(
                     // Persist generation metrics for the speed pill (skip image-gen path).
                     if (imageToolPrompt == null) {
                         val ttftMs = firstContentAtMs?.let { it - streamStartTime }
-                        val tokens = ContextWindowEstimator.estimateTokens(completedContent)
+                        val tokens = ContextWindowEstimator.estimateTokens(completedContent) +
+                                ContextWindowEstimator.estimateTokens(accumulatedThinking ?: "")
                         conversationRepository.updateGenerationMetrics(
                             messageId = assistantMessageId,
                             firstTokenLatencyMs = ttftMs,

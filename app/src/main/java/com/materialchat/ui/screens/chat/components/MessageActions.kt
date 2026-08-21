@@ -4,7 +4,9 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.spring
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.outlined.Bolt
 import androidx.compose.material3.Text
@@ -250,7 +252,8 @@ fun StatsPillButton(
             onClick()
         },
         modifier = modifier
-            .size(height = 44.dp, width = 44.dp)
+            .height(44.dp)
+            .defaultMinSize(minWidth = 44.dp)
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
@@ -269,7 +272,7 @@ fun StatsPillButton(
                 )
                 .padding(horizontal = if (expanded) 14.dp else 0.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(5.dp)
+            horizontalArrangement = Arrangement.spacedBy(5.dp, Alignment.CenterHorizontally)
         ) {
             Icon(
                 imageVector = Icons.Outlined.Bolt,
