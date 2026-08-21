@@ -4,9 +4,12 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.materialchat.di.IoDispatcher
 import com.materialchat.domain.model.AiModel
-import com.materialchat.domain.model.ArenaVote
+import com.materialchat.domain.model.InsightsTimeRange
 import com.materialchat.domain.model.StreamingState
+import com.materialchat.domain.usecase.ArenaContenderSpec
+import com.materialchat.domain.usecase.ArenaVerdict
 import com.materialchat.domain.usecase.GetArenaLeaderboardUseCase
+import com.materialchat.domain.usecase.GetConversationInsightsUseCase
 import com.materialchat.domain.usecase.ManageProvidersUseCase
 import com.materialchat.domain.usecase.RunArenaBattleUseCase
 import com.materialchat.domain.usecase.VoteArenaBattleUseCase
@@ -19,15 +22,25 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 /**
+ * Codenames shown during the blind phase. Stable per contender slot so cards
+ * keep their identity while the scramble animates through the pool.
+ */
+private val CODENAMES = listOf(
+    "Aurora", "Borealis", "Comet", "Drift", "Ember",
+    "Flux", "Gale", "Halcyon", "Ion", "Juno"
+)
+
+/**
  * ViewModel for the Arena screen.
  *
- * Manages model selection, battle execution, voting, and leaderboard navigation.
+ * Manages blind N-model battles: contenders are picked from usage-ranked
+ * model lists, stream anonymously under codenames, and are revealed only
+ * after the user votes.
  */
 @HiltViewModel
 class ArenaViewModel @Inject constructor(
@@ -35,6 +48,7 @@ class ArenaViewModel @Inject constructor(
     private val runArenaBattleUseCase: RunArenaBattleUseCase,
     private val voteArenaBattleUseCase: VoteArenaBattleUseCase,
     private val getArenaLeaderboardUseCase: GetArenaLeaderboardUseCase,
+    private val getConversationInsightsUseCase: GetConversationInsightsUseCase,
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) : ViewModel() {
 
@@ -51,27 +65,38 @@ class ArenaViewModel @Inject constructor(
     }
 
     /**
-     * Loads available providers and sets initial selections.
+     * Loads available providers, personal model-usage ranking, and defaults.
      */
     private fun loadProviders() {
         viewModelScope.launch {
             try {
                 val providers = manageProvidersUseCase.getProviders()
                 if (providers.isEmpty()) {
-                    _uiState.value = ArenaUiState.Error("No providers configured. Add a provider in Settings first.")
+                    _uiState.value = ArenaUiState.Error(
+                        "No providers configured. Add a provider in Settings first."
+                    )
                     return@launch
                 }
 
                 val activeProvider = manageProvidersUseCase.getActiveProvider()
                 val defaultProviderId = activeProvider?.id ?: providers.first().id
 
+                // Most-used models first, from the user's own chat history.
+                val usageRanking = try {
+                    getConversationInsightsUseCase(InsightsTimeRange.ALL_TIME)
+                        .modelUsage
+                        .sortedByDescending { it.count }
+                        .map { it.modelName }
+                } catch (_: Exception) {
+                    emptyList()
+                }
+
                 _uiState.value = ArenaUiState.Ready(
                     providers = providers,
-                    leftProviderId = defaultProviderId,
-                    rightProviderId = defaultProviderId
+                    usageRanking = usageRanking,
+                    pickerProviderId = defaultProviderId
                 )
 
-                // Auto-load models for the default provider
                 loadModelsForProvider(defaultProviderId)
             } catch (e: Exception) {
                 _uiState.value = ArenaUiState.Error(
@@ -88,7 +113,6 @@ class ArenaViewModel @Inject constructor(
         val currentState = _uiState.value
         if (currentState !is ArenaUiState.Ready) return
 
-        // Skip if already loaded
         if (currentState.availableModels.containsKey(providerId)) return
 
         _uiState.update { state ->
@@ -130,51 +154,48 @@ class ArenaViewModel @Inject constructor(
     }
 
     /**
-     * Selects the left provider and loads its models.
+     * Switches which provider's models the picker browses.
      */
-    fun selectLeftProvider(providerId: String) {
+    fun setPickerProvider(providerId: String) {
         _uiState.update { state ->
-            if (state is ArenaUiState.Ready) {
-                state.copy(leftProviderId = providerId, leftModelName = null)
-            } else state
+            if (state is ArenaUiState.Ready) state.copy(pickerProviderId = providerId)
+            else state
         }
         loadModelsForProvider(providerId)
     }
 
     /**
-     * Selects the right provider and loads its models.
+     * Toggles a model in/out of the battle roster (max 4 entrants).
      */
-    fun selectRightProvider(providerId: String) {
+    fun toggleContender(model: AiModel, providerId: String) {
         _uiState.update { state ->
-            if (state is ArenaUiState.Ready) {
-                state.copy(rightProviderId = providerId, rightModelName = null)
-            } else state
-        }
-        loadModelsForProvider(providerId)
-    }
+            if (state !is ArenaUiState.Ready) return@update state
 
-    /**
-     * Selects the left model.
-     */
-    fun selectLeftModel(model: AiModel) {
-        _uiState.update { state ->
-            if (state is ArenaUiState.Ready) state.copy(leftModelName = model.id)
-            else state
-        }
-    }
-
-    /**
-     * Selects the right model.
-     */
-    fun selectRightModel(model: AiModel) {
-        _uiState.update { state ->
-            if (state is ArenaUiState.Ready) state.copy(rightModelName = model.id)
-            else state
+            val existing = state.contenders.firstOrNull { it.modelName == model.id }
+            if (existing != null) {
+                if (state.isBattleRunning) return@update state
+                state.copy(
+                    contenders = state.contenders
+                        .filterNot { it.modelName == model.id }
+                        .mapIndexed { index, c -> c.copy(slot = index) }
+                )
+            } else {
+                if (state.contenders.size >= MAX_CONTENDERS) return@update state
+                val slot = state.contenders.size
+                state.copy(
+                    contenders = state.contenders + ContenderUi(
+                        slot = slot,
+                        providerId = providerId,
+                        modelName = model.id,
+                        codename = CODENAMES[slot % CODENAMES.size]
+                    )
+                )
+            }
         }
     }
 
     /**
-     * Starts a battle between the two selected models.
+     * Starts an N-model battle.
      */
     fun startBattle() {
         val currentState = _uiState.value
@@ -182,18 +203,18 @@ class ArenaViewModel @Inject constructor(
         if (!currentState.canStartBattle) return
 
         val prompt = currentState.prompt.trim()
-        val leftModel = currentState.leftModelName!!
-        val leftProvider = currentState.leftProviderId!!
-        val rightModel = currentState.rightModelName!!
-        val rightProvider = currentState.rightProviderId!!
+        val specs = currentState.contenders.map {
+            ArenaContenderSpec(it.providerId, it.modelName)
+        }
 
-        // Reset streaming states
         _uiState.update { state ->
             if (state is ArenaUiState.Ready) {
                 state.copy(
-                    leftStreamingState = StreamingState.Starting,
-                    rightStreamingState = StreamingState.Starting,
+                    contenders = state.contenders.map {
+                        it.copy(streamState = StreamingState.Starting)
+                    },
                     voted = false,
+                    revealed = false,
                     battleId = null
                 )
             } else state
@@ -203,16 +224,16 @@ class ArenaViewModel @Inject constructor(
             try {
                 runArenaBattleUseCase(
                     prompt = prompt,
-                    leftModelName = leftModel,
-                    leftProviderId = leftProvider,
-                    rightModelName = rightModel,
-                    rightProviderId = rightProvider
+                    contenders = specs
                 ).collect { progress ->
                     _uiState.update { state ->
                         if (state is ArenaUiState.Ready) {
                             state.copy(
-                                leftStreamingState = progress.leftState,
-                                rightStreamingState = progress.rightState,
+                                contenders = state.contenders.mapIndexed { slot, contender ->
+                                    contender.copy(
+                                        streamState = progress.states.getOrElse(slot) { contender.streamState }
+                                    )
+                                },
                                 battleId = progress.battleId
                             )
                         } else state
@@ -221,14 +242,13 @@ class ArenaViewModel @Inject constructor(
 
                 _events.emit(ArenaEvent.BattleComplete)
             } catch (e: Exception) {
-                _events.emit(ArenaEvent.ShowSnackbar(
-                    "Battle failed: ${e.message}"
-                ))
+                _events.emit(ArenaEvent.ShowSnackbar("Battle failed: ${e.message}"))
                 _uiState.update { state ->
                     if (state is ArenaUiState.Ready) {
                         state.copy(
-                            leftStreamingState = StreamingState.Idle,
-                            rightStreamingState = StreamingState.Idle,
+                            contenders = state.contenders.map {
+                                it.copy(streamState = StreamingState.Idle)
+                            },
                             battleId = null
                         )
                     } else state
@@ -238,15 +258,13 @@ class ArenaViewModel @Inject constructor(
     }
 
     /**
-     * Votes on the current battle and updates ELO ratings.
+     * Votes on the current battle; names reveal once the vote is recorded.
      */
-    fun vote(vote: ArenaVote) {
+    fun vote(verdict: ArenaVerdict) {
         val currentState = _uiState.value
         if (currentState !is ArenaUiState.Ready) return
-        if (currentState.battleId == null) return
+        val battleId = currentState.battleId ?: return
         if (currentState.voted) return
-
-        val battleId = currentState.battleId
 
         _uiState.update { state ->
             if (state is ArenaUiState.Ready) state.copy(voted = true)
@@ -255,13 +273,14 @@ class ArenaViewModel @Inject constructor(
 
         viewModelScope.launch {
             try {
-                voteArenaBattleUseCase(battleId, vote)
-                _events.emit(ArenaEvent.ShowSnackbar("Vote recorded!"))
+                voteArenaBattleUseCase(battleId, verdict)
+                _uiState.update { state ->
+                    if (state is ArenaUiState.Ready) state.copy(revealed = true)
+                    else state
+                }
+                _events.emit(ArenaEvent.ShowSnackbar("Vote recorded — identities revealed!"))
             } catch (e: Exception) {
-                _events.emit(ArenaEvent.ShowSnackbar(
-                    "Failed to record vote: ${e.message}"
-                ))
-                // Revert voted state on error
+                _events.emit(ArenaEvent.ShowSnackbar("Vote failed: ${e.message}"))
                 _uiState.update { state ->
                     if (state is ArenaUiState.Ready) state.copy(voted = false)
                     else state
@@ -271,27 +290,22 @@ class ArenaViewModel @Inject constructor(
     }
 
     /**
-     * Resets the arena for a new battle.
+     * Resets the arena for another round with the current roster.
      */
     fun newBattle() {
-        battleJob?.cancel()
-        battleJob = null
-
         _uiState.update { state ->
             if (state is ArenaUiState.Ready) {
                 state.copy(
-                    prompt = "",
-                    leftStreamingState = StreamingState.Idle,
-                    rightStreamingState = StreamingState.Idle,
+                    contenders = state.contenders.map { it.copy(streamState = StreamingState.Idle) },
                     battleId = null,
-                    voted = false
+                    voted = false,
+                    revealed = false
                 )
             } else state
         }
     }
 
-    override fun onCleared() {
-        super.onCleared()
-        battleJob?.cancel()
+    companion object {
+        const val MAX_CONTENDERS = 4
     }
 }

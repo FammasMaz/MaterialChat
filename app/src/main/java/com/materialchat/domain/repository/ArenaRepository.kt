@@ -1,6 +1,7 @@
 package com.materialchat.domain.repository
 
 import com.materialchat.domain.model.ArenaBattle
+import com.materialchat.domain.model.ContenderResult
 import com.materialchat.domain.model.ModelRating
 import kotlinx.coroutines.flow.Flow
 
@@ -53,6 +54,27 @@ interface ArenaRepository {
      * @param battleId The ID of the battle to delete
      */
     suspend fun deleteBattle(battleId: String)
+
+    /**
+     * Replaces all contender rows for a battle (one per slot).
+     */
+    suspend fun replaceContenders(battleId: String, contenders: List<ContenderResult>)
+
+    /**
+     * Persists one contender's settled result.
+     */
+    suspend fun updateContenderResult(
+        battleId: String,
+        slot: Int,
+        response: String,
+        thinkingContent: String?,
+        durationMs: Long?
+    )
+
+    /**
+     * Returns all contenders for a battle ordered by slot.
+     */
+    suspend fun getContenders(battleId: String): List<ContenderResult>
 
     // ========== Rating Operations ==========
 

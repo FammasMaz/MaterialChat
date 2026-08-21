@@ -1,8 +1,10 @@
 package com.materialchat.data.mapper
 
 import com.materialchat.data.local.database.entity.ArenaBattleEntity
+import com.materialchat.data.local.database.entity.ArenaContenderEntity
 import com.materialchat.data.local.database.entity.ModelRatingEntity
 import com.materialchat.domain.model.ArenaBattle
+import com.materialchat.domain.model.ContenderResult
 import com.materialchat.domain.model.ModelRating
 
 // ============================================================================
@@ -88,3 +90,16 @@ fun ModelRating.toEntity(): ModelRatingEntity = ModelRatingEntity(
  * Converts a list of [ModelRatingEntity] to a list of [ModelRating] domain models.
  */
 fun List<ModelRatingEntity>.toRatingDomainList(): List<ModelRating> = map { it.toDomain() }
+
+// ============================================================================
+// ArenaContender Mappers
+// ============================================================================
+
+fun ArenaContenderEntity.toResult(): ContenderResult = ContenderResult(
+    slot = slot,
+    modelName = modelName,
+    providerId = providerId,
+    response = response,
+    thinkingContent = thinkingContent,
+    durationMs = durationMs
+)

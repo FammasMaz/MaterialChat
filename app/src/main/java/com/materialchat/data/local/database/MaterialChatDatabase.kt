@@ -15,6 +15,7 @@ import com.materialchat.data.local.database.dao.PersonaDao
 import com.materialchat.data.local.database.dao.ProviderDao
 import com.materialchat.data.local.database.dao.WorkflowDao
 import com.materialchat.data.local.database.entity.ArenaBattleEntity
+import com.materialchat.data.local.database.entity.ArenaContenderEntity
 import com.materialchat.data.local.database.entity.BookmarkEntity
 import com.materialchat.data.local.database.entity.ConversationEntity
 import com.materialchat.data.local.database.entity.MessageEntity
@@ -46,6 +47,7 @@ import com.materialchat.data.local.database.entity.WorkflowStepEntity
         ConversationEntity::class,
         MessageEntity::class,
         ArenaBattleEntity::class,
+        ArenaContenderEntity::class,
         ModelRatingEntity::class,
         PersonaEntity::class,
         BookmarkEntity::class,
@@ -54,7 +56,7 @@ import com.materialchat.data.local.database.entity.WorkflowStepEntity
         MemoryEntity::class,
         MemorySnippetEntity::class
     ],
-    version = 21,
+    version = 22,
     exportSchema = true
 )
 abstract class MaterialChatDatabase : RoomDatabase() {
@@ -136,6 +138,34 @@ abstract class MaterialChatDatabase : RoomDatabase() {
         /**
          * Migration from version 20 to 21: Add generation metrics columns.
          */
+    private val MIGRATION_21_22 = object : Migration(21, 22) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                """CREATE TABLE IF NOT EXISTS arena_contenders (
+                    id TEXT NOT NULL PRIMARY KEY,
+                    battle_id TEXT NOT NULL,
+                    slot INTEGER NOT NULL,
+                    model_name TEXT NOT NULL,
+                    provider_id TEXT,
+                    response TEXT NOT NULL,
+                    thinking_content TEXT,
+                    duration_ms INTEGER,
+                    FOREIGN KEY(battle_id) REFERENCES arena_battles(id) ON DELETE CASCADE
+                )"""
+            )
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_arena_contenders_battle_id ON arena_contenders(battle_id)")
+            // Backfill legacy two-model battles into slots 0/1.
+            db.execSQL(
+                """INSERT INTO arena_contenders (id, battle_id, slot, model_name, provider_id, response, thinking_content, duration_ms)
+                   SELECT left_model_name || '-' || id, id, 0, left_model_name, left_provider_id, left_response, left_thinking_content, left_duration_ms FROM arena_battles"""
+            )
+            db.execSQL(
+                """INSERT INTO arena_contenders (id, battle_id, slot, model_name, provider_id, response, thinking_content, duration_ms)
+                   SELECT right_model_name || '-' || id, id, 1, right_model_name, right_provider_id, right_response, right_thinking_content, right_duration_ms FROM arena_battles"""
+            )
+        }
+    }
+
         private val MIGRATION_20_21 = object : Migration(20, 21) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE messages ADD COLUMN first_token_latency_ms INTEGER DEFAULT NULL")
@@ -520,7 +550,8 @@ abstract class MaterialChatDatabase : RoomDatabase() {
             MIGRATION_17_18,
             MIGRATION_18_19,
             MIGRATION_19_20,
-            MIGRATION_20_21
+            MIGRATION_20_21,
+            MIGRATION_21_22
         )
 
         /**

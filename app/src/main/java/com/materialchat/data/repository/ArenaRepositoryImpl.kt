@@ -1,13 +1,16 @@
 package com.materialchat.data.repository
 
 import com.materialchat.data.local.database.dao.ArenaDao
+import com.materialchat.data.local.database.entity.ArenaContenderEntity
 import com.materialchat.data.mapper.toBattleDomainList
 import com.materialchat.data.mapper.toDomain
+import com.materialchat.data.mapper.toResult
 import com.materialchat.data.mapper.toEntity
 import com.materialchat.data.mapper.toRatingDomainList
 import com.materialchat.domain.model.ArenaBattle
 import com.materialchat.domain.model.ModelRating
 import com.materialchat.domain.repository.ArenaRepository
+import com.materialchat.domain.model.ContenderResult
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOn
@@ -64,5 +67,36 @@ class ArenaRepositoryImpl @Inject constructor(
 
     override suspend fun getRating(modelName: String): ModelRating? {
         return arenaDao.getRatingByModel(modelName)?.toDomain()
+    }
+
+    override suspend fun replaceContenders(battleId: String, contenders: List<ContenderResult>) {
+        arenaDao.insertContenders(
+            contenders.map { result ->
+                ArenaContenderEntity(
+                    id = "$battleId-slot-${result.slot}",
+                    battleId = battleId,
+                    slot = result.slot,
+                    modelName = result.modelName,
+                    providerId = result.providerId,
+                    response = result.response,
+                    thinkingContent = result.thinkingContent,
+                    durationMs = result.durationMs
+                )
+            }
+        )
+    }
+
+    override suspend fun updateContenderResult(
+        battleId: String,
+        slot: Int,
+        response: String,
+        thinkingContent: String?,
+        durationMs: Long?
+    ) {
+        arenaDao.updateContenderResult("$battleId-slot-$slot", response, thinkingContent, durationMs)
+    }
+
+    override suspend fun getContenders(battleId: String): List<ContenderResult> {
+        return arenaDao.getContenders(battleId).map { it.toResult() }
     }
 }

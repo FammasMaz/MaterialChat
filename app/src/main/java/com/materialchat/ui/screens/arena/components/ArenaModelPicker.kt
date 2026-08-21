@@ -2,18 +2,19 @@ package com.materialchat.ui.screens.arena.components
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ArrowDropDown
+import androidx.compose.material.icons.outlined.Check
+import androidx.compose.material3.AssistChip
+import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import com.materialchat.ui.theme.CustomShapes
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
@@ -27,211 +28,129 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.materialchat.ui.components.HapticPattern
-import com.materialchat.ui.components.rememberHapticFeedback
 import com.materialchat.domain.model.AiModel
+import com.materialchat.ui.screens.arena.ContenderUi
 import com.materialchat.domain.model.Provider
 
 /**
- * Dual model picker for the arena screen.
+ * Blind-battle roster picker.
  *
- * Shows two side-by-side dropdowns for selecting provider and model
- * for each panel of the arena battle.
- *
- * @param providers Available providers
- * @param leftProviderId Currently selected left provider ID
- * @param rightProviderId Currently selected right provider ID
- * @param leftModelName Currently selected left model name
- * @param rightModelName Currently selected right model name
- * @param leftModels Models available for the left provider
- * @param rightModels Models available for the right provider
- * @param onLeftProviderSelected Callback when left provider changes
- * @param onRightProviderSelected Callback when right provider changes
- * @param onLeftModelSelected Callback when left model changes
- * @param onRightModelSelected Callback when right model changes
- * @param enabled Whether the dropdowns are interactive
- * @param isLoadingModels Whether models are currently loading
+ * One provider dropdown browses models; tapping a model chip toggles it into
+ * the battle roster (2–4 entrants). Models the user chats with most appear
+ * first, ranked from personal usage history. Selected chips show their slot
+ * codename so entrants feel like mystery fighters, not config entries.
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun ArenaModelPicker(
     providers: List<Provider>,
-    leftProviderId: String?,
-    rightProviderId: String?,
-    leftModelName: String?,
-    rightModelName: String?,
-    leftModels: List<AiModel>,
-    rightModels: List<AiModel>,
-    onLeftProviderSelected: (String) -> Unit,
-    onRightProviderSelected: (String) -> Unit,
-    onLeftModelSelected: (AiModel) -> Unit,
-    onRightModelSelected: (AiModel) -> Unit,
+    pickerProviderId: String?,
+    pickerModels: List<AiModel>,
+    selectedContenders: List<ContenderUi>,
+    usageRanking: List<String>,
+    onProviderSelected: (String) -> Unit,
+    onToggleContender: (AiModel) -> Unit,
     enabled: Boolean = true,
     isLoadingModels: Boolean = false,
     modifier: Modifier = Modifier
 ) {
-    Row(
-        modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        // Left panel picker
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = "Model A",
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onPrimaryContainer
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            ProviderDropdown(
-                providers = providers,
-                selectedProviderId = leftProviderId,
-                onProviderSelected = onLeftProviderSelected,
-                enabled = enabled
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            ModelDropdown(
-                models = leftModels,
-                selectedModelName = leftModelName,
-                onModelSelected = onLeftModelSelected,
-                enabled = enabled && !isLoadingModels,
-                placeholder = if (isLoadingModels) "Loading..." else "Select model"
-            )
-        }
+    var providerMenuOpen by remember { mutableStateOf(false) }
+    val providerName = providers.firstOrNull { it.id == pickerProviderId }?.name
+        ?: "Choose provider"
 
-        // Right panel picker
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = "Model B",
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onTertiaryContainer
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            ProviderDropdown(
-                providers = providers,
-                selectedProviderId = rightProviderId,
-                onProviderSelected = onRightProviderSelected,
-                enabled = enabled
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            ModelDropdown(
-                models = rightModels,
-                selectedModelName = rightModelName,
-                onModelSelected = onRightModelSelected,
-                enabled = enabled && !isLoadingModels,
-                placeholder = if (isLoadingModels) "Loading..." else "Select model"
-            )
-        }
-    }
-}
+    Column(modifier = modifier.fillMaxWidth()) {
+        Text(
+            text = "Fighters",
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
 
-@Composable
-private fun ProviderDropdown(
-    providers: List<Provider>,
-    selectedProviderId: String?,
-    onProviderSelected: (String) -> Unit,
-    enabled: Boolean,
-    modifier: Modifier = Modifier
-) {
-    val haptics = rememberHapticFeedback()
-    var expanded by remember { mutableStateOf(false) }
-    val selectedProvider = providers.find { it.id == selectedProviderId }
-
-    FilterChip(
-        selected = selectedProvider != null,
-        onClick = { if (enabled) { haptics.perform(HapticPattern.CLICK); expanded = true } },
-        label = {
-            Text(
-                text = selectedProvider?.name ?: "Provider",
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-        },
-        trailingIcon = {
-            Icon(
-                imageVector = Icons.Outlined.ArrowDropDown,
-                contentDescription = null
-            )
-        },
-        enabled = enabled,
-        shape = RoundedCornerShape(24.dp),
-        modifier = modifier.fillMaxWidth()
-    )
-
-    DropdownMenu(
-        expanded = expanded,
-        onDismissRequest = { expanded = false },
-        shape = CustomShapes.ModelPicker
-    ) {
-        providers.forEach { provider ->
-            DropdownMenuItem(
-                text = { Text(provider.name) },
-                onClick = {
-                    haptics.perform(HapticPattern.SEGMENT_TICK)
-                    onProviderSelected(provider.id)
-                    expanded = false
-                }
-            )
-        }
-    }
-}
-
-@Composable
-private fun ModelDropdown(
-    models: List<AiModel>,
-    selectedModelName: String?,
-    onModelSelected: (AiModel) -> Unit,
-    enabled: Boolean,
-    placeholder: String,
-    modifier: Modifier = Modifier
-) {
-    val haptics = rememberHapticFeedback()
-    var expanded by remember { mutableStateOf(false) }
-    val selectedModel = models.find { it.id == selectedModelName }
-
-    FilterChip(
-        selected = selectedModel != null,
-        onClick = { if (enabled && models.isNotEmpty()) { haptics.perform(HapticPattern.CLICK); expanded = true } },
-        label = {
-            Text(
-                text = selectedModel?.name ?: placeholder,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-        },
-        trailingIcon = {
-            Icon(
-                imageVector = Icons.Outlined.ArrowDropDown,
-                contentDescription = null
-            )
-        },
-        enabled = enabled,
-        shape = RoundedCornerShape(24.dp),
-        colors = FilterChipDefaults.filterChipColors(
-            selectedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
-            selectedLabelColor = MaterialTheme.colorScheme.onSecondaryContainer
-        ),
-        modifier = modifier.fillMaxWidth()
-    )
-
-    DropdownMenu(
-        expanded = expanded,
-        onDismissRequest = { expanded = false },
-        shape = CustomShapes.ModelPicker
-    ) {
-        models.forEach { model ->
-            DropdownMenuItem(
-                text = {
-                    Text(
-                        text = model.name,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
+        // Provider selector + selected-roster summary
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 6.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            AssistChip(
+                onClick = { if (enabled) providerMenuOpen = true },
+                label = {
+                    Text(providerName, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 },
-                onClick = {
-                    haptics.perform(HapticPattern.SEGMENT_TICK)
-                    onModelSelected(model)
-                    expanded = false
-                }
+                trailingIcon = { Icon(Icons.Outlined.ArrowDropDown, contentDescription = null) },
+                colors = AssistChipDefaults.assistChipColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+                )
             )
+
+            if (selectedContenders.isNotEmpty()) {
+                Text(
+                    text = "${selectedContenders.size} in the ring" +
+                            if (selectedContenders.size < 2) " — pick at least 2" else "",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                    modifier = Modifier.padding(vertical = 10.dp)
+                )
+            }
+        }
+
+        DropdownMenu(
+            expanded = providerMenuOpen,
+            onDismissRequest = { providerMenuOpen = false }
+        ) {
+            providers.forEach { provider ->
+                DropdownMenuItem(
+                    text = { Text(provider.name) },
+                    onClick = {
+                        providerMenuOpen = false
+                        onProviderSelected(provider.id)
+                    }
+                )
+            }
+        }
+
+        if (isLoadingModels && pickerModels.isEmpty()) {
+            Text(
+                text = "Loading models…",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                modifier = Modifier.padding(top = 10.dp)
+            )
+        }
+
+        // Model chips — usage-ranked, toggle to enter/leave the ring.
+        FlowRow(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            val sorted = pickerModels.sortedByDescending { model ->
+                val rank = usageRanking.indexOf(model.id)
+                if (rank == -1) Int.MAX_VALUE else rank
+            }
+            sorted.forEach { model ->
+                val contender = selectedContenders.firstOrNull { it.modelName == model.id }
+                FilterChip(
+                    selected = contender != null,
+                    onClick = { if (enabled || contender != null) onToggleContender(model) },
+                    label = {
+                        Text(
+                            text = if (contender != null) "${contender.codename} · ${model.id}"
+                                   else model.id,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    },
+                    leadingIcon = if (contender != null) {
+                        { Icon(Icons.Outlined.Check, contentDescription = null) }
+                    } else null,
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                        selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                )
+            }
         }
     }
 }

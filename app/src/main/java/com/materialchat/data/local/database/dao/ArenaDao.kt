@@ -7,6 +7,7 @@ import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
 import com.materialchat.data.local.database.entity.ArenaBattleEntity
+import com.materialchat.data.local.database.entity.ArenaContenderEntity
 import com.materialchat.data.local.database.entity.ModelRatingEntity
 import kotlinx.coroutines.flow.Flow
 
@@ -43,6 +44,26 @@ interface ArenaDao {
 
     @Query("SELECT COUNT(*) FROM arena_battles")
     suspend fun getBattleCount(): Int
+
+
+    // ========== Contender Operations ==========
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertContenders(contenders: List<ArenaContenderEntity>)
+
+    @Query("SELECT * FROM arena_contenders WHERE battle_id = :battleId ORDER BY slot ASC")
+    suspend fun getContenders(battleId: String): List<ArenaContenderEntity>
+
+    @Query("SELECT COUNT(*) FROM arena_contenders WHERE battle_id = :battleId")
+    suspend fun getContenderCount(battleId: String): Int
+
+    @Query("UPDATE arena_contenders SET response = :response, thinking_content = :thinkingContent, duration_ms = :durationMs WHERE id = :contenderId")
+    suspend fun updateContenderResult(contenderId: String, response: String, thinkingContent: String?, durationMs: Long?)
+
+    @Query("""
+        UPDATE arena_battles SET winner = 'SLOT_' || :slot WHERE id = :battleId
+    """)
+    suspend fun setWinnerSlot(battleId: String, slot: Int)
 
     // ========== Rating Operations ==========
 

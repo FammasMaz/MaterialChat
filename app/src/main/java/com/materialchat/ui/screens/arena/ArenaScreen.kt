@@ -192,10 +192,10 @@ fun ArenaScreen(
                 ArenaReadyContent(
                     state = state,
                     onPromptChanged = viewModel::updatePrompt,
-                    onLeftProviderSelected = viewModel::selectLeftProvider,
-                    onRightProviderSelected = viewModel::selectRightProvider,
-                    onLeftModelSelected = viewModel::selectLeftModel,
-                    onRightModelSelected = viewModel::selectRightModel,
+                    onProviderSelected = viewModel::setPickerProvider,
+                    onToggleContender = { model ->
+                        viewModel.toggleContender(model, state.pickerProviderId ?: "")
+                    },
                     onStartBattle = viewModel::startBattle,
                     onVote = viewModel::vote,
                     onNewBattle = viewModel::newBattle,
@@ -211,15 +211,14 @@ fun ArenaScreen(
 private fun ArenaReadyContent(
     state: ArenaUiState.Ready,
     onPromptChanged: (String) -> Unit,
-    onLeftProviderSelected: (String) -> Unit,
-    onRightProviderSelected: (String) -> Unit,
-    onLeftModelSelected: (com.materialchat.domain.model.AiModel) -> Unit,
-    onRightModelSelected: (com.materialchat.domain.model.AiModel) -> Unit,
+    onProviderSelected: (String) -> Unit,
+    onToggleContender: (com.materialchat.domain.model.AiModel) -> Unit,
     onStartBattle: () -> Unit,
-    onVote: (com.materialchat.domain.model.ArenaVote) -> Unit,
+    onVote: (com.materialchat.domain.usecase.ArenaVerdict) -> Unit,
     onNewBattle: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val realNamesBySlot = state.contenders.associate { it.slot to it.modelName }
     val haptics = rememberHapticFeedback()
 
     Column(
@@ -240,16 +239,12 @@ private fun ArenaReadyContent(
         // Model picker
         ArenaModelPicker(
             providers = state.providers,
-            leftProviderId = state.leftProviderId,
-            rightProviderId = state.rightProviderId,
-            leftModelName = state.leftModelName,
-            rightModelName = state.rightModelName,
-            leftModels = state.leftModels,
-            rightModels = state.rightModels,
-            onLeftProviderSelected = onLeftProviderSelected,
-            onRightProviderSelected = onRightProviderSelected,
-            onLeftModelSelected = onLeftModelSelected,
-            onRightModelSelected = onRightModelSelected,
+            pickerProviderId = state.pickerProviderId,
+            pickerModels = state.pickerModels,
+            selectedContenders = state.contenders,
+            usageRanking = state.usageRanking,
+            onProviderSelected = onProviderSelected,
+            onToggleContender = onToggleContender,
             enabled = !state.isBattleRunning,
             isLoadingModels = state.isLoadingModels
         )
@@ -275,13 +270,10 @@ private fun ArenaReadyContent(
             exit = fadeOut() + slideOutVertically()
         ) {
             ArenaBattleView(
-                leftModelName = state.leftModelName ?: "Model A",
-                rightModelName = state.rightModelName ?: "Model B",
-                leftContent = state.leftContent,
-                rightContent = state.rightContent,
-                leftStreamingState = state.leftStreamingState,
-                rightStreamingState = state.rightStreamingState,
-                modifier = Modifier.height(400.dp)
+                contenders = state.contenders,
+                revealed = state.revealed,
+                realNamesBySlot = realNamesBySlot,
+                modifier = Modifier.height(420.dp)
             )
         }
 
@@ -297,19 +289,10 @@ private fun ArenaReadyContent(
             exit = fadeOut()
         ) {
             Column {
-                if (!state.voted) {
-                    Text(
-                        text = "Which response is better?",
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier.padding(vertical = 4.dp)
-                    )
-                }
-
                 ArenaVotingBar(
-                    onVote = onVote,
-                    enabled = state.isBattleComplete,
-                    voted = state.voted
+                    contenders = state.contenders,
+                    voted = state.voted,
+                    onVote = onVote
                 )
 
                 // New battle button after voting

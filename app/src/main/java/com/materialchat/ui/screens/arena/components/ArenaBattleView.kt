@@ -1,206 +1,239 @@
 package com.materialchat.ui.screens.arena.components
 
-import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.core.spring
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.materialchat.ui.components.M3ExpressiveCircularProgress
 import com.materialchat.domain.model.StreamingState
+import com.materialchat.ui.components.MarkdownText
+import com.materialchat.ui.screens.arena.ContenderUi
+import com.materialchat.ui.components.M3ExpressiveCircularProgress
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 
 /**
- * Split-screen battle view displaying both model responses side by side.
+ * Blind N-model battle pager: one full-screen card per contender, swipeable.
  *
- * Uses primaryContainer for the left panel, tertiaryContainer for the right panel,
- * and errorContainer for the VS badge. Panels animate their content size with
- * M3 Expressive spring physics.
- *
- * @param leftModelName Display name for the left model
- * @param rightModelName Display name for the right model
- * @param leftContent Accumulated text from the left model
- * @param rightContent Accumulated text from the right model
- * @param leftStreamingState Streaming state for the left model
- * @param rightStreamingState Streaming state for the right model
+ * While the blind phase is active each card shows only a codename with a
+ * scramble shimmer; markdown renders throughout. Names appear after reveal.
  */
 @Composable
 fun ArenaBattleView(
-    leftModelName: String,
-    rightModelName: String,
-    leftContent: String,
-    rightContent: String,
-    leftStreamingState: StreamingState,
-    rightStreamingState: StreamingState,
+    contenders: List<ContenderUi>,
+    revealed: Boolean,
+    realNamesBySlot: Map<Int, String>,
     modifier: Modifier = Modifier
 ) {
-    Box(modifier = modifier.fillMaxWidth()) {
-        Row(
+    if (contenders.isEmpty()) return
+
+    val pagerState = rememberPagerState(pageCount = { contenders.size })
+
+    Column(modifier = modifier.fillMaxWidth()) {
+        HorizontalPager(
+            state = pagerState,
             modifier = Modifier
                 .fillMaxWidth()
-                .height(IntrinsicSize.Max),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            // Left panel (Model A) - primaryContainer
-            ResponsePanel(
-                modelName = leftModelName,
-                content = leftContent,
-                streamingState = leftStreamingState,
-                containerColor = PanelSide.LEFT,
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxHeight()
-            )
-
-            // Right panel (Model B) - tertiaryContainer
-            ResponsePanel(
-                modelName = rightModelName,
-                content = rightContent,
-                streamingState = rightStreamingState,
-                containerColor = PanelSide.RIGHT,
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxHeight()
+                .weight(1f)
+        ) { page ->
+            val contender = contenders.getOrNull(page) ?: return@HorizontalPager
+            BattleCard(
+                contender = contender,
+                revealed = revealed,
+                realName = realNamesBySlot[contender.slot],
+                accentContainer = if (page % 2 == 0) {
+                    MaterialTheme.colorScheme.primaryContainer
+                } else {
+                    MaterialTheme.colorScheme.tertiaryContainer
+                },
+                accentOnContainer = if (page % 2 == 0) {
+                    MaterialTheme.colorScheme.onPrimaryContainer
+                } else {
+                    MaterialTheme.colorScheme.onTertiaryContainer
+                }
             )
         }
 
-        // VS badge centered between panels
-        Surface(
-            shape = RoundedCornerShape(20.dp),
-            color = MaterialTheme.colorScheme.errorContainer,
-            contentColor = MaterialTheme.colorScheme.onErrorContainer,
-            shadowElevation = 4.dp,
-            modifier = Modifier.align(Alignment.Center)
+        // Page indicator dots
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 8.dp),
+            horizontalArrangement = Arrangement.Center
         ) {
-            Text(
-                text = "VS",
-                style = MaterialTheme.typography.labelLarge,
-                fontWeight = FontWeight.ExtraBold,
-                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
-            )
+            repeat(contenders.size) { index ->
+                val selected = pagerState.currentPage == index
+                Surface(
+                    shape = CircleShape,
+                    color = if (selected) MaterialTheme.colorScheme.primary
+                            else MaterialTheme.colorScheme.surfaceContainerHighest,
+                    modifier = Modifier
+                        .padding(horizontal = 4.dp)
+                        .size(width = if (selected) 20.dp else 8.dp, height = 8.dp)
+                ) {}
+            }
+        }
+        Spacer(Modifier.height(4.dp))
+        Text(
+            text = "Swipe for other responses →",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+            modifier = Modifier
+                .fillMaxWidth()
+                .alpha(if (pagerState.pageCount > 1) 1f else 0f),
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+        )
+    }
+}
+
+/**
+ * One anonymous response card: codename header (scrambling while streaming),
+ * full markdown body, per-card streaming indicator.
+ */
+@Composable
+private fun BattleCard(
+    contender: ContenderUi,
+    revealed: Boolean,
+    realName: String?,
+    accentContainer: androidx.compose.ui.graphics.Color,
+    accentOnContainer: androidx.compose.ui.graphics.Color
+) {
+    Surface(
+        shape = RoundedCornerShape(24.dp),
+        color = accentContainer,
+        contentColor = accentOnContainer,
+        tonalElevation = 0.dp,
+        shadowElevation = 0.dp,
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = 4.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp)
+        ) {
+            // Header: codename during blind phase, real name after reveal.
+            AnimatedContent(
+                targetState = revealed,
+                transitionSpec = {
+                    (fadeIn(tween(350)) + slideInHorizontally(tween(350)) { it / 3 })
+                        .togetherWith(fadeOut(tween(200)))
+                },
+                label = "arenaReveal"
+            ) { isRevealed ->
+                Column {
+                    Text(
+                        text = if (isRevealed) realName ?: contender.codename
+                               else scrambleWhileStreaming(contender, isRevealed),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    if (isRevealed && realName != null) {
+                        Text(
+                            text = "was ${contender.codename}",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = accentOnContainer.copy(alpha = 0.65f)
+                        )
+                    }
+                }
+            }
+
+            if (!contender.isFinished && contender.streamState is StreamingState.Streaming ||
+                contender.streamState is StreamingState.Starting
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    modifier = Modifier.padding(top = 2.dp)
+                ) {
+                    M3ExpressiveCircularProgress(modifier = Modifier.size(14.dp))
+                    Text(
+                        text = "thinking…",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = accentOnContainer.copy(alpha = 0.6f)
+                    )
+                }
+            }
+
+            Spacer(Modifier.height(10.dp))
+
+            when (contender.streamState) {
+                is StreamingState.Error -> Text(
+                    text = contender.content,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.error
+                )
+                else -> MarkdownText(
+                    markdown = contender.content.ifEmpty { "…" },
+                    textColor = accentOnContainer,
+                    isStreaming = contender.streamState is StreamingState.Streaming,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
         }
     }
 }
 
-private enum class PanelSide { LEFT, RIGHT }
-
+/**
+ * Codename display that shuffles through the name pool while its model is
+ * still streaming — the "mixup" effect. Freezes once finished or revealed.
+ */
 @Composable
-private fun ResponsePanel(
-    modelName: String,
-    content: String,
-    streamingState: StreamingState,
-    containerColor: PanelSide,
-    modifier: Modifier = Modifier
-) {
-    val backgroundColor = when (containerColor) {
-        PanelSide.LEFT -> MaterialTheme.colorScheme.primaryContainer
-        PanelSide.RIGHT -> MaterialTheme.colorScheme.tertiaryContainer
+private fun scrambleWhileStreaming(
+    contender: ContenderUi,
+    revealed: Boolean
+): String {
+    var display by remember(contender.slot) {
+        mutableStateOf(contender.codename)
     }
-    val contentColor = when (containerColor) {
-        PanelSide.LEFT -> MaterialTheme.colorScheme.onPrimaryContainer
-        PanelSide.RIGHT -> MaterialTheme.colorScheme.onTertiaryContainer
-    }
+    val animating = !revealed &&
+            (contender.streamState is StreamingState.Streaming ||
+                    contender.streamState is StreamingState.Starting)
 
-    val isLoading = streamingState is StreamingState.Starting
-    val isStreaming = streamingState is StreamingState.Streaming
-    val isComplete = streamingState is StreamingState.Completed
-    val isError = streamingState is StreamingState.Error
-    val isIdle = streamingState is StreamingState.Idle
-
-    Surface(
-        shape = RoundedCornerShape(28.dp),
-        color = backgroundColor,
-        contentColor = contentColor,
-        modifier = modifier
-    ) {
-        Column(
-            modifier = Modifier
-                .padding(16.dp)
-                .animateContentSize(
-                    animationSpec = spring(
-                        dampingRatio = 0.7f,
-                        stiffness = 300f
-                    )
-                )
-        ) {
-            // Model name header
-            Text(
-                text = modelName,
-                style = MaterialTheme.typography.labelMedium,
-                fontWeight = FontWeight.Bold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            when {
-                isIdle -> {
-                    Text(
-                        text = "Waiting for prompt...",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = contentColor.copy(alpha = 0.6f)
-                    )
-                }
-                isLoading -> {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        M3ExpressiveCircularProgress(
-                            modifier = Modifier.size(16.dp),
-                            size = 16.dp,
-                            strokeWidth = 2.dp,
-                            color = contentColor
-                        )
-                        Text(
-                            text = "Thinking...",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = contentColor.copy(alpha = 0.8f)
-                        )
-                    }
-                }
-                isStreaming || isComplete -> {
-                    Column(
-                        modifier = Modifier
-                            .weight(1f, fill = false)
-                            .verticalScroll(rememberScrollState())
-                    ) {
-                        Text(
-                            text = content,
-                            style = MaterialTheme.typography.bodySmall
-                        )
-                    }
-                }
-                isError -> {
-                    Text(
-                        text = content.ifBlank { "An error occurred" },
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.error
-                    )
-                }
-            }
+    LaunchedEffect(contender.slot, animating) {
+        if (!animating) {
+            display = contender.codename
+            return@LaunchedEffect
+        }
+        val pool = listOf("Aurora", "Borealis", "Comet", "Drift", "Ember", "Flux")
+        var i = contender.slot
+        while (isActive) {
+            i = (i + 1) % pool.size
+            display = pool[i]
+            delay(700L)
         }
     }
+    return display
 }
