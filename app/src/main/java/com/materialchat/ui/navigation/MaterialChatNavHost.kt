@@ -73,332 +73,332 @@ fun MaterialChatNavHost(
     startDestination: String = Screen.startDestination
 ) {
     // SharedTransitionScope provided by parent (MaterialChatApp) for FAB-to-Input morph
-            NavHost(
-            navController = navController,
-            startDestination = startDestination,
-            modifier = modifier,
-            // M3 Expressive: Spatial spring for slide + Effects spring for fade
-            enterTransition = {
-                fadeIn(
-                    animationSpec = spring(
-                        dampingRatio = 1.0f,  // Effects - no bounce for opacity
-                        stiffness = 400f
-                    )
-                ) + slideIntoContainer(
-                    towards = AnimatedContentTransitionScope.SlideDirection.Start,
-                    animationSpec = spring(
-                        dampingRatio = 0.8f,  // Spatial - subtle bounce
-                        stiffness = 300f
-                    )
+    NavHost(
+        navController = navController,
+        startDestination = startDestination,
+        modifier = modifier,
+        // M3 Expressive: Spatial spring for slide + Effects spring for fade
+        enterTransition = {
+            fadeIn(
+                animationSpec = spring(
+                    dampingRatio = 1.0f,  // Effects - no bounce for opacity
+                    stiffness = 400f
                 )
-            },
-            exitTransition = {
-                fadeOut(
-                    animationSpec = spring(
-                        dampingRatio = 1.0f,  // Effects - no bounce
-                        stiffness = 400f
-                    )
-                ) + slideOutOfContainer(
-                    towards = AnimatedContentTransitionScope.SlideDirection.Start,
-                    animationSpec = spring(
-                        dampingRatio = 1.0f,  // Smooth exit
-                        stiffness = 300f
-                    ),
-                    targetOffset = { it / 4 }  // Subtle parallax effect
+            ) + slideIntoContainer(
+                towards = AnimatedContentTransitionScope.SlideDirection.Start,
+                animationSpec = spring(
+                    dampingRatio = 0.8f,  // Spatial - subtle bounce
+                    stiffness = 300f
                 )
-            },
-            popEnterTransition = {
-                fadeIn(
-                    animationSpec = spring(
-                        dampingRatio = 1.0f,
-                        stiffness = 400f
-                    )
-                ) + slideIntoContainer(
-                    towards = AnimatedContentTransitionScope.SlideDirection.End,
-                    animationSpec = spring(
-                        dampingRatio = 0.8f,  // Spatial - subtle bounce
-                        stiffness = 300f
-                    )
+            )
+        },
+        exitTransition = {
+            fadeOut(
+                animationSpec = spring(
+                    dampingRatio = 1.0f,  // Effects - no bounce
+                    stiffness = 400f
                 )
-            },
-            popExitTransition = {
-                fadeOut(
-                    animationSpec = spring(
-                        dampingRatio = 1.0f,
-                        stiffness = 400f
-                    )
-                ) + slideOutOfContainer(
-                    towards = AnimatedContentTransitionScope.SlideDirection.End,
-                    animationSpec = spring(
-                        dampingRatio = 1.0f,
-                        stiffness = 300f
-                    ),
-                    targetOffset = { it / 4 }
+            ) + slideOutOfContainer(
+                towards = AnimatedContentTransitionScope.SlideDirection.Start,
+                animationSpec = spring(
+                    dampingRatio = 1.0f,  // Smooth exit
+                    stiffness = 300f
+                ),
+                targetOffset = { it / 4 }  // Subtle parallax effect
+            )
+        },
+        popEnterTransition = {
+            fadeIn(
+                animationSpec = spring(
+                    dampingRatio = 1.0f,
+                    stiffness = 400f
                 )
-            }
-        ) {
-            composable(route = Screen.Onboarding.route) {
-                OnboardingScreen(
-                    onComplete = {
-                        navController.navigate(Screen.Conversations.route) {
-                            popUpTo(Screen.Onboarding.route) { inclusive = true }
-                            launchSingleTop = true
-                        }
-                    },
-                    onOpenProviderSettings = {
-                        navController.navigate(Screen.Settings.route) {
-                            popUpTo(Screen.Onboarding.route) { inclusive = true }
-                            launchSingleTop = true
-                        }
+            ) + slideIntoContainer(
+                towards = AnimatedContentTransitionScope.SlideDirection.End,
+                animationSpec = spring(
+                    dampingRatio = 0.8f,  // Spatial - subtle bounce
+                    stiffness = 300f
+                )
+            )
+        },
+        popExitTransition = {
+            fadeOut(
+                animationSpec = spring(
+                    dampingRatio = 1.0f,
+                    stiffness = 400f
+                )
+            ) + slideOutOfContainer(
+                towards = AnimatedContentTransitionScope.SlideDirection.End,
+                animationSpec = spring(
+                    dampingRatio = 1.0f,
+                    stiffness = 300f
+                ),
+                targetOffset = { it / 4 }
+            )
+        }
+    ) {
+        composable(route = Screen.Onboarding.route) {
+            OnboardingScreen(
+                onComplete = {
+                    navController.navigate(Screen.Conversations.route) {
+                        popUpTo(Screen.Onboarding.route) { inclusive = true }
+                        launchSingleTop = true
                     }
-                )
-            }
-
-            // Conversations list screen (home)
-            composable(route = Screen.Conversations.route) {
-                CompositionLocalProvider(
-                    LocalAnimatedVisibilityScope provides this@composable
-                ) {
-                    ConversationsScreen(
-                        onNavigateToChat = { conversationId ->
-                            navController.navigate(Screen.Chat.createRoute(conversationId))
-                        },
-                        onNavigateToSettings = {
-                            navController.navigate(Screen.Settings.route)
-                        }
-                    )
+                },
+                onOpenProviderSettings = {
+                    navController.navigate(Screen.Settings.route) {
+                        popUpTo(Screen.Onboarding.route) { inclusive = true }
+                        launchSingleTop = true
+                    }
                 }
-            }
+            )
+        }
 
-            // Chat screen with conversation ID argument
-            composable(
-                route = Screen.Chat.route,
-                arguments = listOf(
-                    navArgument(Screen.Chat.ARG_CONVERSATION_ID) {
-                        type = NavType.StringType
-                    },
-                    navArgument(Screen.Chat.ARG_AUTO_SEND) {
-                        type = NavType.BoolType
-                        defaultValue = false
-                    },
-                    navArgument(Screen.Chat.ARG_OVERRIDE_MODEL) {
-                        type = NavType.StringType
-                        nullable = true
-                        defaultValue = null
-                    }
-                )
-            ) { backStackEntry ->
-                val conversationId = backStackEntry.arguments?.getString(Screen.Chat.ARG_CONVERSATION_ID)
-                    ?: return@composable
-
-                CompositionLocalProvider(
-                    LocalAnimatedVisibilityScope provides this@composable
-                ) {
-                    ChatScreen(
-                        onNavigateBack = { navController.popBackStack() },
-                        onNavigateToBranch = { newId, autoSend, overrideModel ->
-                            navController.popBackStack()
-                            navController.navigate(Screen.Chat.createRoute(newId, autoSend, overrideModel))
-                        },
-                        onNavigateToCanvas = { artifact ->
-                            val artifactData = "${artifact.type.name}:::${artifact.language ?: ""}:::${artifact.code}"
-                            navController.navigate(Screen.Canvas.createRoute(artifactData))
-                        },
-                        onNavigateToMindMap = { conversationId ->
-                            navController.navigate(Screen.MindMap.createRoute(conversationId))
-                        }
-                    )
-                }
-            }
-
-            // Settings screen
-            composable(route = Screen.Settings.route) {
-                SettingsScreen(
-                    onNavigateToInteractionSettings = {
-                        navController.navigate(Screen.InteractionSettings.route)
-                    },
-                    onNavigateToModelAssignments = {
-                        navController.navigate(Screen.ModelAssignments.route)
-                    },
-                    onNavigateToOnDeviceModels = {
-                        navController.navigate(Screen.OnDeviceModels.route)
-                    },
-                    onNavigateToMemories = {
-                        navController.navigate(Screen.Memories.route)
-                    }
-                )
-            }
-
-            composable(route = Screen.InteractionSettings.route) {
-                InteractionSettingsScreen(
-                    onNavigateBack = { navController.popBackStack() }
-                )
-            }
-
-            composable(route = Screen.OnDeviceModels.route) {
-                OnDeviceModelsScreen(
-                    onNavigateBack = { navController.popBackStack() }
-                )
-            }
-
-            composable(route = Screen.ModelAssignments.route) {
-                ModelAssignmentsScreen(
-                    onNavigateBack = { navController.popBackStack() }
-                )
-            }
-
-            // Arena mode screen
-            composable(route = Screen.Arena.route) {
-                ArenaScreen(
-                    onNavigateBack = { navController.popBackStack() },
-                    onNavigateToLeaderboard = {
-                        navController.navigate(Screen.ArenaLeaderboard.route)
-                    }
-                )
-            }
-
-            // Arena leaderboard screen
-            composable(route = Screen.ArenaLeaderboard.route) {
-                ArenaLeaderboard(
-                    onNavigateBack = { navController.popBackStack() }
-                )
-            }
-
-            // Insights dashboard screen
-            composable(route = Screen.Insights.route) {
-                InsightsScreen(
-                    onNavigateBack = { navController.popBackStack() }
-                )
-            }
-
-            // Persona studio screen
-            composable(route = Screen.PersonaStudio.route) {
-                PersonaStudioScreen(
-                    onNavigateBack = { navController.popBackStack() }
-                )
-            }
-
-            // Bookmarks knowledge base screen
-            composable(route = Screen.Bookmarks.route) {
-                BookmarksScreen(
-                    onNavigateBack = { navController.popBackStack() },
-                    onNavigateToConversation = { conversationId ->
+        // Conversations list screen (home)
+        composable(route = Screen.Conversations.route) {
+            CompositionLocalProvider(
+                LocalAnimatedVisibilityScope provides this@composable
+            ) {
+                ConversationsScreen(
+                    onNavigateToChat = { conversationId ->
                         navController.navigate(Screen.Chat.createRoute(conversationId))
+                    },
+                    onNavigateToSettings = {
+                        navController.navigate(Screen.Settings.route)
                     }
                 )
             }
+        }
 
-            composable(route = Screen.Memories.route) {
-                MemoriesScreen(
-                    onNavigateBack = { navController.popBackStack() }
-                )
-            }
+        // Chat screen with conversation ID argument
+        composable(
+            route = Screen.Chat.route,
+            arguments = listOf(
+                navArgument(Screen.Chat.ARG_CONVERSATION_ID) {
+                    type = NavType.StringType
+                },
+                navArgument(Screen.Chat.ARG_AUTO_SEND) {
+                    type = NavType.BoolType
+                    defaultValue = false
+                },
+                navArgument(Screen.Chat.ARG_OVERRIDE_MODEL) {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                }
+            )
+        ) { backStackEntry ->
+            val conversationId = backStackEntry.arguments?.getString(Screen.Chat.ARG_CONVERSATION_ID)
+                ?: return@composable
 
-            // Smart Canvas screen for rendering live artifacts
-            composable(
-                route = Screen.Canvas.route,
-                arguments = listOf(
-                    navArgument(Screen.Canvas.ARG_ARTIFACT_DATA) {
-                        type = NavType.StringType
-                    }
-                )
+            CompositionLocalProvider(
+                LocalAnimatedVisibilityScope provides this@composable
             ) {
-                SmartCanvasScreen(
-                    onNavigateBack = { navController.popBackStack() }
-                )
-            }
-
-            // Mind Map screen for conversation branch visualization
-            composable(
-                route = Screen.MindMap.route,
-                arguments = listOf(
-                    navArgument(Screen.MindMap.ARG_CONVERSATION_ID) {
-                        type = NavType.StringType
-                    }
-                )
-            ) {
-                MindMapScreen(
+                ChatScreen(
                     onNavigateBack = { navController.popBackStack() },
-                    onNavigateToConversation = { conversationId ->
+                    onNavigateToBranch = { newId, autoSend, overrideModel ->
                         navController.popBackStack()
-                        navController.navigate(Screen.Chat.createRoute(conversationId))
+                        navController.navigate(Screen.Chat.createRoute(newId, autoSend, overrideModel))
+                    },
+                    onNavigateToCanvas = { artifact ->
+                        val artifactData = "${artifact.type.name}:::${artifact.language ?: ""}:::${artifact.code}"
+                        navController.navigate(Screen.Canvas.createRoute(artifactData))
+                    },
+                    onNavigateToMindMap = { conversationId ->
+                        navController.navigate(Screen.MindMap.createRoute(conversationId))
                     }
                 )
             }
+        }
 
-            // Workflows list screen
-            composable(route = Screen.Workflows.route) {
-                WorkflowsScreen(
-                    onNavigateBack = { navController.popBackStack() },
-                    onNavigateToBuilder = { workflowId ->
-                        navController.navigate(Screen.WorkflowBuilder.createRoute(workflowId))
-                    },
-                    onNavigateToExecution = { workflowId ->
-                        navController.navigate(Screen.WorkflowExecution.createRoute(workflowId))
-                    }
-                )
-            }
+        // Settings screen
+        composable(route = Screen.Settings.route) {
+            SettingsScreen(
+                onNavigateToInteractionSettings = {
+                    navController.navigate(Screen.InteractionSettings.route)
+                },
+                onNavigateToModelAssignments = {
+                    navController.navigate(Screen.ModelAssignments.route)
+                },
+                onNavigateToOnDeviceModels = {
+                    navController.navigate(Screen.OnDeviceModels.route)
+                },
+                onNavigateToMemories = {
+                    navController.navigate(Screen.Memories.route)
+                }
+            )
+        }
 
-            // Workflow builder screen
-            composable(
-                route = Screen.WorkflowBuilder.route,
-                arguments = listOf(
-                    navArgument(Screen.WorkflowBuilder.ARG_WORKFLOW_ID) {
-                        type = NavType.StringType
-                    }
-                )
-            ) {
-                WorkflowBuilderScreen(
-                    onNavigateBack = { navController.popBackStack() }
-                )
-            }
+        composable(route = Screen.InteractionSettings.route) {
+            InteractionSettingsScreen(
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
 
-            // Workflow execution screen
-            composable(
-                route = Screen.WorkflowExecution.route,
-                arguments = listOf(
-                    navArgument(Screen.WorkflowExecution.ARG_WORKFLOW_ID) {
-                        type = NavType.StringType
-                    }
-                )
-            ) {
-                WorkflowExecutionScreen(
-                    onNavigateBack = { navController.popBackStack() }
-                )
-            }
+        composable(route = Screen.OnDeviceModels.route) {
+            OnDeviceModelsScreen(
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
 
-            // Generated image library
-            composable(route = Screen.GeneratedImages.route) {
-                GeneratedImagesScreen(
-                    onNavigateBack = { navController.popBackStack() },
-                    onNavigateToConversation = { conversationId ->
-                        navController.navigate(Screen.Chat.createRoute(conversationId))
-                    }
-                )
-            }
+        composable(route = Screen.ModelAssignments.route) {
+            ModelAssignmentsScreen(
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
 
-            // Explore hub screen
-            composable(route = Screen.Explore.route) {
-                ExploreScreen(
-                    onNavigateToArena = {
-                        navController.navigate(Screen.Arena.route)
-                    },
-                    onNavigateToInsights = {
-                        navController.navigate(Screen.Insights.route)
-                    },
-                    onNavigateToBookmarks = {
-                        navController.navigate(Screen.Bookmarks.route)
-                    },
-                    onNavigateToGeneratedImages = {
-                        navController.navigate(Screen.GeneratedImages.route)
-                    },
-                    onNavigateToWorkflows = {
-                        navController.navigate(Screen.Workflows.route)
-                    },
-                    onNavigateToPersonas = {
-                        navController.navigate(Screen.PersonaStudio.route)
-                    }
-                )
-            }
+        // Arena mode screen
+        composable(route = Screen.Arena.route) {
+            ArenaScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToLeaderboard = {
+                    navController.navigate(Screen.ArenaLeaderboard.route)
+                }
+            )
+        }
+
+        // Arena leaderboard screen
+        composable(route = Screen.ArenaLeaderboard.route) {
+            ArenaLeaderboard(
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        // Insights dashboard screen
+        composable(route = Screen.Insights.route) {
+            InsightsScreen(
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        // Persona studio screen
+        composable(route = Screen.PersonaStudio.route) {
+            PersonaStudioScreen(
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        // Bookmarks knowledge base screen
+        composable(route = Screen.Bookmarks.route) {
+            BookmarksScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToConversation = { conversationId ->
+                    navController.navigate(Screen.Chat.createRoute(conversationId))
+                }
+            )
+        }
+
+        composable(route = Screen.Memories.route) {
+            MemoriesScreen(
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        // Smart Canvas screen for rendering live artifacts
+        composable(
+            route = Screen.Canvas.route,
+            arguments = listOf(
+                navArgument(Screen.Canvas.ARG_ARTIFACT_DATA) {
+                    type = NavType.StringType
+                }
+            )
+        ) {
+            SmartCanvasScreen(
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        // Mind Map screen for conversation branch visualization
+        composable(
+            route = Screen.MindMap.route,
+            arguments = listOf(
+                navArgument(Screen.MindMap.ARG_CONVERSATION_ID) {
+                    type = NavType.StringType
+                }
+            )
+        ) {
+            MindMapScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToConversation = { conversationId ->
+                    navController.popBackStack()
+                    navController.navigate(Screen.Chat.createRoute(conversationId))
+                }
+            )
+        }
+
+        // Workflows list screen
+        composable(route = Screen.Workflows.route) {
+            WorkflowsScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToBuilder = { workflowId ->
+                    navController.navigate(Screen.WorkflowBuilder.createRoute(workflowId))
+                },
+                onNavigateToExecution = { workflowId ->
+                    navController.navigate(Screen.WorkflowExecution.createRoute(workflowId))
+                }
+            )
+        }
+
+        // Workflow builder screen
+        composable(
+            route = Screen.WorkflowBuilder.route,
+            arguments = listOf(
+                navArgument(Screen.WorkflowBuilder.ARG_WORKFLOW_ID) {
+                    type = NavType.StringType
+                }
+            )
+        ) {
+            WorkflowBuilderScreen(
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        // Workflow execution screen
+        composable(
+            route = Screen.WorkflowExecution.route,
+            arguments = listOf(
+                navArgument(Screen.WorkflowExecution.ARG_WORKFLOW_ID) {
+                    type = NavType.StringType
+                }
+            )
+        ) {
+            WorkflowExecutionScreen(
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        // Generated image library
+        composable(route = Screen.GeneratedImages.route) {
+            GeneratedImagesScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToConversation = { conversationId ->
+                    navController.navigate(Screen.Chat.createRoute(conversationId))
+                }
+            )
+        }
+
+        // Explore hub screen
+        composable(route = Screen.Explore.route) {
+            ExploreScreen(
+                onNavigateToArena = {
+                    navController.navigate(Screen.Arena.route)
+                },
+                onNavigateToInsights = {
+                    navController.navigate(Screen.Insights.route)
+                },
+                onNavigateToBookmarks = {
+                    navController.navigate(Screen.Bookmarks.route)
+                },
+                onNavigateToGeneratedImages = {
+                    navController.navigate(Screen.GeneratedImages.route)
+                },
+                onNavigateToWorkflows = {
+                    navController.navigate(Screen.Workflows.route)
+                },
+                onNavigateToPersonas = {
+                    navController.navigate(Screen.PersonaStudio.route)
+                }
+            )
+        }
         }
 }
