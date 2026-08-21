@@ -72,8 +72,6 @@ class AppPreferences(private val context: Context) {
         val BEAUTIFUL_MODEL_NAMES = booleanPreferencesKey("beautiful_model_names")
         val ALWAYS_SHOW_THINKING = booleanPreferencesKey("always_show_thinking")
         val SHOW_TOKEN_COUNTER = booleanPreferencesKey("show_token_counter")
-        // Font settings
-        val FONT_FAMILY = stringPreferencesKey("font_family")
         val FONT_SIZE_SCALE = stringPreferencesKey("font_size_scale")
         // Web search settings
         val WEB_SEARCH_ENABLED = booleanPreferencesKey("web_search_enabled")
@@ -169,7 +167,6 @@ class AppPreferences(private val context: Context) {
         )
         val SUPPORTED_IMAGE_OUTPUT_FORMATS = listOf("png", "jpeg", "webp")
         const val DEFAULT_BEAUTIFUL_MODEL_NAMES = true
-        const val DEFAULT_FONT_FAMILY = "Roboto Flex"
         const val DEFAULT_FONT_SIZE_SCALE = "Default"
         const val DEFAULT_FONT_SIZE_SCALE_VALUE = 1.0f
         const val DEFAULT_SEARXNG_BASE_URL = "https://searx.be"
@@ -747,24 +744,6 @@ class AppPreferences(private val context: Context) {
     suspend fun setAlwaysShowThinking(enabled: Boolean) {
         dataStore.edit { preferences ->
             preferences[Keys.ALWAYS_SHOW_THINKING] = enabled
-        }
-    }
-
-    // ========== Font Settings ==========
-
-    /**
-     * Get the selected font family name as a Flow.
-     */
-    val fontFamily: Flow<String> = dataStore.data.map { preferences ->
-        preferences[Keys.FONT_FAMILY] ?: DEFAULT_FONT_FAMILY
-    }.distinctUntilChanged()
-
-    /**
-     * Set the font family name.
-     */
-    suspend fun setFontFamily(fontFamily: String) {
-        dataStore.edit { preferences ->
-            preferences[Keys.FONT_FAMILY] = fontFamily
         }
     }
 

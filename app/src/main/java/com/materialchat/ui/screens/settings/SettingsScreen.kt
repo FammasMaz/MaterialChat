@@ -20,8 +20,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -39,7 +37,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.outlined.AutoAwesome
@@ -119,7 +116,6 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -141,8 +137,6 @@ import com.materialchat.ui.screens.settings.components.SystemPromptField
 import com.materialchat.ui.components.HapticPattern
 import com.materialchat.ui.components.rememberHapticFeedback
 import com.materialchat.ui.theme.CustomShapes
-import com.materialchat.ui.theme.availableFonts
-import com.materialchat.ui.theme.fontFamilyFromName
 import com.materialchat.ui.theme.MaterialChatThemePalettes
 
 /**
@@ -327,7 +321,6 @@ fun SettingsScreen(
     val onDynamicColorChange = remember(viewModel) { { enabled: Boolean -> viewModel.updateDynamicColorEnabled(enabled) } }
     val onHapticsChange = remember(viewModel) { { enabled: Boolean -> viewModel.updateHapticsEnabled(enabled) } }
     val onFontSizeScaleChange = remember(viewModel) { { scale: Float -> viewModel.updateFontSizeScale(scale) } }
-    val onFontFamilyChange = remember(viewModel) { { name: String -> viewModel.updateFontFamily(name) } }
     val onNotificationsChange = remember(context, notificationPermissionLauncher, viewModel) {
         { enabled: Boolean ->
             if (enabled && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -447,7 +440,6 @@ fun SettingsScreen(
             onDynamicColorChange = onDynamicColorChange,
             onHapticsChange = onHapticsChange,
             onFontSizeScaleChange = onFontSizeScaleChange,
-            onFontFamilyChange = onFontFamilyChange,
             onNotificationsChange = onNotificationsChange,
             onBeautifulModelNamesChange = onBeautifulModelNamesChange,
             onAiGeneratedTitlesChange = onAiGeneratedTitlesChange,
@@ -643,7 +635,6 @@ private fun SettingsContent(
     onDynamicColorChange: (Boolean) -> Unit,
     onHapticsChange: (Boolean) -> Unit,
     onFontSizeScaleChange: (Float) -> Unit,
-    onFontFamilyChange: (String) -> Unit,
     onNotificationsChange: (Boolean) -> Unit,
     onBeautifulModelNamesChange: (Boolean) -> Unit,
     onAiGeneratedTitlesChange: (Boolean) -> Unit,
@@ -716,7 +707,6 @@ private fun SettingsContent(
                     onDynamicColorChange = onDynamicColorChange,
                     onHapticsChange = onHapticsChange,
                     onFontSizeScaleChange = onFontSizeScaleChange,
-                    onFontFamilyChange = onFontFamilyChange,
                     onNotificationsChange = onNotificationsChange,
                     onBeautifulModelNamesChange = onBeautifulModelNamesChange,
                     onAiGeneratedTitlesChange = onAiGeneratedTitlesChange,
@@ -795,7 +785,6 @@ private fun SuccessContent(
     onDynamicColorChange: (Boolean) -> Unit,
     onHapticsChange: (Boolean) -> Unit,
     onFontSizeScaleChange: (Float) -> Unit,
-    onFontFamilyChange: (String) -> Unit,
     onNotificationsChange: (Boolean) -> Unit,
     onBeautifulModelNamesChange: (Boolean) -> Unit,
     onAiGeneratedTitlesChange: (Boolean) -> Unit,
@@ -953,14 +942,6 @@ private fun SuccessContent(
                     onToggle = onDynamicColorChange
                 )
             }
-        }
-
-        // App Font picker (M3E: each option previews in its own typeface)
-        item {
-            AppFontSelector(
-                selectedFont = uiState.fontFamily,
-                onFontSelected = onFontFamilyChange
-            )
         }
 
         // Font Size Selector
@@ -2080,91 +2061,6 @@ private fun DynamicColorToggle(
                 checked = enabled,
                 onCheckedChange = onToggle
             )
-        }
-    }
-}
-
-@Composable
-private fun AppFontSelector(
-    selectedFont: String,
-    onFontSelected: (String) -> Unit
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-        ),
-        shape = RoundedCornerShape(24.dp)
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    imageVector = Icons.Outlined.AutoAwesome,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(24.dp)
-                )
-                Spacer(modifier = Modifier.width(12.dp))
-                Column {
-                    Text(
-                        text = "App Font",
-                        style = MaterialTheme.typography.titleSmall,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    Text(
-                        text = "Expressive typefaces, previewed in their own voice",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-
-            @OptIn(ExperimentalLayoutApi::class)
-            FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                availableFonts.forEach { font ->
-                    val selected = font.name == selectedFont
-                    // Preview each chip's label in the actual target typeface.
-                    val previewFamily = remember(font.googleFontName) {
-                        fontFamilyFromName(font.name)
-                    }
-                    Surface(
-                        onClick = { onFontSelected(font.name) },
-                        shape = RoundedCornerShape(14.dp),
-                        color = if (selected) MaterialTheme.colorScheme.primaryContainer
-                        else MaterialTheme.colorScheme.surfaceContainerHigh,
-                        contentColor = if (selected) MaterialTheme.colorScheme.onPrimaryContainer
-                        else MaterialTheme.colorScheme.onSurface
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            Text(
-                                text = font.name,
-                                fontFamily = previewFamily,
-                                fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
-                                style = MaterialTheme.typography.labelLarge
-                            )
-                            if (selected) {
-                                Icon(
-                                    imageVector = Icons.Filled.Check,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(14.dp)
-                                )
-                            }
-                        }
-                    }
-                }
-            }
         }
     }
 }

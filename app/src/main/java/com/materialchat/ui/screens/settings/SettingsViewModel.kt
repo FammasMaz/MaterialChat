@@ -130,19 +130,18 @@ class SettingsViewModel @Inject constructor(
                     appPreferences.systemPrompt,
                     appPreferences.themeMode,
                     combine(
-                appPreferences.dynamicColorEnabled,
-                appPreferences.themePalette,
-                appPreferences.chatBubbleStyle,
-                appPreferences.controlShapeStyle,
-                appPreferences.fontFamily
-            ) {dynamicColorEnabled, themePalette, chatBubbleStyle, controlShapeStyle, fontFamily ->
+                        appPreferences.dynamicColorEnabled,
+                        appPreferences.themePalette,
+                        appPreferences.chatBubbleStyle,
+                        appPreferences.controlShapeStyle
+                    ) { dynamicColorEnabled, themePalette, chatBubbleStyle, controlShapeStyle ->
                         AppearancePrefs(
                             dynamicColorEnabled,
                             themePalette,
                             chatBubbleStyle,
-                            controlShapeStyle,
-                            fontFamily
-                        )},
+                            controlShapeStyle
+                        )
+                    },
                     combine(
                         combine(
                             appPreferences.hapticsEnabled,
@@ -197,7 +196,6 @@ class SettingsViewModel @Inject constructor(
                         themePalette = appearancePrefs.themePalette,
                         chatBubbleStyle = appearancePrefs.chatBubbleStyle,
                         controlShapeStyle = appearancePrefs.controlShapeStyle,
-                        fontFamily = appearancePrefs.fontFamily,
                         hapticsEnabled = toggles.haptics,
                         notificationsEnabled = toggles.notifications,
                         aiGeneratedTitlesEnabled = toggles.aiTitles,
@@ -283,7 +281,6 @@ class SettingsViewModel @Inject constructor(
                         themePalette = data.themePalette,
                         chatBubbleStyle = data.chatBubbleStyle,
                         controlShapeStyle = data.controlShapeStyle,
-                        fontFamily = data.fontFamily,
                         dynamicColorEnabled = data.dynamicColorEnabled,
                         isDynamicColorSupported = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S,
                         hapticsEnabled = data.hapticsEnabled,
@@ -859,19 +856,6 @@ class SettingsViewModel @Inject constructor(
     /**
      * Updates the static Material 3 palette.
      */
-    /**
-     * Updates the app-wide font family (persisted by name).
-     */
-    fun updateFontFamily(name: String) {
-        viewModelScope.launch {
-            try {
-                appPreferences.setFontFamily(name)
-            } catch (e: Exception) {
-                _events.emit(SettingsEvent.ShowSnackbar(message = "Failed to save font"))
-            }
-        }
-    }
-
     fun updateThemePalette(palette: AppPreferences.ThemePalette) {
         viewModelScope.launch {
             try {
@@ -1357,7 +1341,6 @@ class SettingsViewModel @Inject constructor(
         val themePalette: AppPreferences.ThemePalette,
         val chatBubbleStyle: AppPreferences.ChatBubbleStyle,
         val controlShapeStyle: AppPreferences.ControlShapeStyle,
-        val fontFamily: String,
         val hapticsEnabled: Boolean,
         val notificationsEnabled: Boolean,
         val aiGeneratedTitlesEnabled: Boolean,
@@ -1389,8 +1372,7 @@ class SettingsViewModel @Inject constructor(
         val dynamicColorEnabled: Boolean,
         val themePalette: AppPreferences.ThemePalette,
         val chatBubbleStyle: AppPreferences.ChatBubbleStyle,
-        val controlShapeStyle: AppPreferences.ControlShapeStyle,
-        val fontFamily: String
+        val controlShapeStyle: AppPreferences.ControlShapeStyle
     )
 
     /**
