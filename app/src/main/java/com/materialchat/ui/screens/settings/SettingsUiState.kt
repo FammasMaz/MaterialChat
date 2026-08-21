@@ -61,6 +61,7 @@ sealed interface SettingsUiState {
         val updateState: UpdateState = UpdateState.Idle,
         // Font settings
         val fontSizeScale: Float = AppPreferences.DEFAULT_FONT_SIZE_SCALE_VALUE,
+        val fontFamily: String = "Roboto Flex",
         // Assistant settings
         val assistantEnabled: Boolean = true,
         val assistantVoiceEnabled: Boolean = true,

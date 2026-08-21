@@ -56,6 +56,7 @@ import com.materialchat.ui.navigation.MaterialChatNavHost
 import com.materialchat.ui.navigation.Screen
 import com.materialchat.ui.navigation.TopLevelTab
 import com.materialchat.ui.screens.personas.components.PersonaPickerSheet
+import com.materialchat.ui.theme.fontFamilyFromName
 import com.materialchat.ui.theme.MaterialChatTheme
 import com.materialchat.ui.theme.LocalChatFontSizeScale
 import com.materialchat.ui.theme.isDynamicColorSupported
@@ -155,6 +156,10 @@ class MainActivity : ComponentActivity() {
             val chatFontSizeScale by appPreferences.fontSizeScale.collectAsState(
                 initial = AppPreferences.DEFAULT_FONT_SIZE_SCALE_VALUE
             )
+            val appFontName by appPreferences.fontFamily.collectAsState(
+                initial = "Roboto Flex"
+            )
+            val appFontFamily = remember(appFontName) { fontFamilyFromName(appFontName) }
 
             MaterialChatTheme(
                 themeMode = themeMode,
@@ -164,6 +169,7 @@ class MainActivity : ComponentActivity() {
                 controlShapeStyle = controlShapeStyle,
                 mainButtonShape = mainButtonShape,
                 chatButtonShape = chatButtonShape,
+                appFontFamily = appFontFamily,
                 navigationHapticsEnabled = hapticsEnabled && navigationHapticsEnabled,
                 gestureHapticsEnabled = hapticsEnabled && gestureHapticsEnabled
             ) {

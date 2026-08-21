@@ -12,6 +12,8 @@ import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.staticCompositionLocalOf
@@ -141,6 +143,7 @@ fun MaterialChatTheme(
     controlShapeStyle: AppPreferences.ControlShapeStyle = AppPreferences.DEFAULT_CONTROL_SHAPE_STYLE,
     mainButtonShape: AppPreferences.ComponentButtonShape = AppPreferences.DEFAULT_COMPONENT_BUTTON_SHAPE,
     chatButtonShape: AppPreferences.ComponentButtonShape = AppPreferences.DEFAULT_COMPONENT_BUTTON_SHAPE,
+    appFontFamily: FontFamily = MaterialChatRoundedFontFamily,
     navigationHapticsEnabled: Boolean = true,
     gestureHapticsEnabled: Boolean = true,
     content: @Composable () -> Unit
@@ -190,9 +193,13 @@ fun MaterialChatTheme(
         LocalNavigationHapticsEnabled provides navigationHapticsEnabled,
         LocalGestureHapticsEnabled provides gestureHapticsEnabled
     ) {
+        // Rebuild typography when the user picks a different app font.
+        val typography = remember(appFontFamily) {
+            buildTypography(fontFamily = appFontFamily)
+        }
         MaterialTheme(
             colorScheme = colorScheme,
-            typography = MaterialChatTypography,
+            typography = typography,
             shapes = MaterialChatShapes,
             motionScheme = MotionScheme.expressive(),
             content = content

@@ -145,20 +145,30 @@ val MaterialChatRoundedFontFamily = FontFamily(
 )
 
 @OptIn(ExperimentalTextApi::class)
-val MaterialChatExpressiveTitleFontFamily = FontFamily(
-    ResourceFont(
-        resId = R.font.gflex_variable,
-        weight = FontWeight.Bold,
-        variationSettings = FontVariation.Settings(
-            FontVariation.weight(FontWeight.Bold.weight),
-            FontVariation.width(92f),
-            FontVariation.Setting("ROND", RoundedAxis),
-            FontVariation.Setting("XTRA", ExpressiveTitleXtraAxis),
-            FontVariation.Setting("YOPQ", ExpressiveTitleYopqAxis),
-            FontVariation.Setting("YTLC", ExpressiveTitleYtlcAxis)
-        )
-    )
-)
+val MaterialChatExpressiveTitleFontFamily: FontFamily = createFontFamily(BRICOLAGE)
+
+/**
+ * Distinctive M3E display voice for headlines. Bricolage Grotesque at heavy
+ * weights has the poster energy the Expressive update calls for.
+ */
+const val BRICOLAGE = "Bricolage Grotesque"
+
+/**
+ * Resolves a user-selected font name (see [availableFonts]) to a cached
+ * FontFamily, so the same Google font isn't rebuilt per recomposition.
+ */
+private val fontFamilyCache = mutableMapOf<String, FontFamily>()
+
+fun fontFamilyFromName(name: String): FontFamily =
+    fontFamilyCache.getOrPut(name) {
+        val match = availableFonts.firstOrNull { it.name == name }
+        if (match == null || match.googleFontName == "Roboto Flex") {
+            // Default body font keeps its tuned variable-axis version.
+            MaterialChatRoundedFontFamily
+        } else {
+            createFontFamily(match.googleFontName)
+        }
+    }
 
 /**
  * Fallback to system default if bundled fonts fail to load.
