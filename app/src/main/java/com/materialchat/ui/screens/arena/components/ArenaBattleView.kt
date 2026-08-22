@@ -10,6 +10,9 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -41,7 +44,6 @@ import androidx.compose.ui.unit.dp
 import com.materialchat.domain.model.StreamingState
 import com.materialchat.ui.components.MarkdownText
 import com.materialchat.ui.screens.arena.ContenderUi
-import com.materialchat.ui.components.M3ExpressiveCircularProgress
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 
@@ -142,8 +144,15 @@ private fun BattleCard(
             .padding(horizontal = 4.dp)
     ) {
         Column(
-            modifier = Modifier.padding(16.dp)
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp)
         ) {
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .verticalScroll(rememberScrollState())
+            ) {
             // Header: codename during blind phase, real name after reveal.
             AnimatedContent(
                 targetState = revealed,
@@ -170,37 +179,21 @@ private fun BattleCard(
                 }
             }
 
-            if (!contender.isFinished && contender.streamState is StreamingState.Streaming ||
-                contender.streamState is StreamingState.Starting
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    modifier = Modifier.padding(top = 2.dp)
-                ) {
-                    M3ExpressiveCircularProgress(modifier = Modifier.size(14.dp))
-                    Text(
-                        text = "thinking…",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = accentOnContainer.copy(alpha = 0.6f)
-                    )
-                }
-            }
-
             Spacer(Modifier.height(10.dp))
 
             when (contender.streamState) {
-                is StreamingState.Error -> Text(
-                    text = contender.content,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.error
-                )
-                else -> MarkdownText(
-                    markdown = contender.content.ifEmpty { "…" },
-                    textColor = accentOnContainer,
-                    isStreaming = contender.streamState is StreamingState.Streaming,
-                    modifier = Modifier.fillMaxWidth()
-                )
+                    is StreamingState.Error -> Text(
+                        text = contender.content,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                    else -> MarkdownText(
+                        markdown = contender.content.ifEmpty { "…" },
+                        textColor = accentOnContainer,
+                        isStreaming = contender.streamState is StreamingState.Streaming,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
             }
         }
     }
@@ -227,7 +220,7 @@ private fun scrambleWhileStreaming(
             display = contender.codename
             return@LaunchedEffect
         }
-        val pool = listOf("Aurora", "Borealis", "Comet", "Drift", "Ember", "Flux")
+        val pool = listOf("Aurora", "Borealis", "Comet", "Drift", "Ember", "Flux", "Gale", "Halcyon", "Ion", "Juno")
         var i = contender.slot
         while (isActive) {
             i = (i + 1) % pool.size

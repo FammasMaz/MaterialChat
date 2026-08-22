@@ -207,11 +207,18 @@ class ArenaViewModel @Inject constructor(
             ArenaContenderSpec(it.providerId, it.modelName)
         }
 
+        // Re-anonymize EVERY run: fresh random codenames so identities can
+        // never be correlated across battles via a remembered name.
+        val freshNames = CODENAMES.shuffled()
+
         _uiState.update { state ->
             if (state is ArenaUiState.Ready) {
                 state.copy(
-                    contenders = state.contenders.map {
-                        it.copy(streamState = StreamingState.Starting)
+                    contenders = state.contenders.mapIndexed { index, contender ->
+                        contender.copy(
+                            codename = freshNames[index % freshNames.size],
+                            streamState = StreamingState.Starting
+                        )
                     },
                     voted = false,
                     revealed = false,
@@ -293,10 +300,16 @@ class ArenaViewModel @Inject constructor(
      * Resets the arena for another round with the current roster.
      */
     fun newBattle() {
+        val freshNames = CODENAMES.shuffled()
         _uiState.update { state ->
             if (state is ArenaUiState.Ready) {
                 state.copy(
-                    contenders = state.contenders.map { it.copy(streamState = StreamingState.Idle) },
+                    contenders = state.contenders.mapIndexed { index, contender ->
+                        contender.copy(
+                            codename = freshNames[index % freshNames.size],
+                            streamState = StreamingState.Idle
+                        )
+                    },
                     battleId = null,
                     voted = false,
                     revealed = false
