@@ -3,6 +3,9 @@ package com.materialchat.ui.screens.chat.components
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.Row
@@ -10,6 +13,7 @@ import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.outlined.Bolt
 import androidx.compose.material3.Text
+import androidx.compose.ui.unit.dp
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -228,13 +232,6 @@ fun StatsPillButton(
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
 
-    val expandSpec = spring<Dp>(dampingRatio = 0.85f, stiffness = 300f)
-    val horizontalPadding by animateDpAsState(
-        targetValue = if (expanded) 14.dp else 0.dp,
-        animationSpec = expandSpec,
-        label = "statsPillPadding"
- )
-
     val scale by animateFloatAsState(
         targetValue = if (isPressed) 0.94f else 1f,
         animationSpec = ExpressiveMotion.Spatial.scale(),
@@ -283,7 +280,7 @@ fun StatsPillButton(
                 .animateContentSize(
                     animationSpec = spring(dampingRatio = 0.85f, stiffness = 300f)
                 )
-                .padding(horizontal = horizontalPadding),
+                .padding(horizontal = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(5.dp, Alignment.CenterHorizontally)
         ) {
@@ -294,7 +291,11 @@ fun StatsPillButton(
                 modifier = Modifier.size(20.dp),
                 tint = contentColor
             )
-            AnimatedVisibility(visible = expanded) {
+            AnimatedVisibility(
+                visible = expanded,
+                enter = fadeIn(animationSpec = spring(stiffness = Spring.StiffnessMediumLow)),
+                exit = fadeOut(animationSpec = spring(stiffness = Spring.StiffnessMediumLow))
+            ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(5.dp)

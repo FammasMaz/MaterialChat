@@ -14,6 +14,8 @@ import androidx.core.app.ServiceCompat
 import com.materialchat.R
 
 class ImageGenerationForegroundService : Service() {
+    private var isForeground = false
+
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onCreate() {
@@ -22,6 +24,23 @@ class ImageGenerationForegroundService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        val action = intent?.action
+        if (action == ACTION_STOP) {
+            if (!isForeground) {
+                // To satisfy Android's startForegroundService contract and avoid ForegroundServiceDidNotStartInTimeException,
+                // we must call startForeground at least once before stopping the service.
+                ServiceCompat.startForeground(
+                    this,
+                    NOTIFICATION_ID,
+                    buildNotification("MaterialChat", "Finished"),
+                    ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
+                )
+                isForeground = true
+            }
+            stopSelf()
+            return START_NOT_STICKY
+        }
+
         val title = intent?.getStringExtra(EXTRA_TITLE) ?: "MaterialChat is working"
         val text = intent?.getStringExtra(EXTRA_TEXT) ?: "Keeping the request active in the background."
         ServiceCompat.startForeground(
@@ -30,6 +49,7 @@ class ImageGenerationForegroundService : Service() {
             buildNotification(title, text),
             ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
         )
+        isForeground = true
         return START_STICKY
     }
 
@@ -69,6 +89,8 @@ class ImageGenerationForegroundService : Service() {
         private const val NOTIFICATION_ID = 12_401
         private const val EXTRA_TITLE = "extra_title"
         private const val EXTRA_TEXT = "extra_text"
+        private const val ACTION_START = "com.materialchat.action.START"
+        private const val ACTION_STOP = "com.materialchat.action.STOP"
 
         fun startImage(context: Context, modelName: String) {
             start(
@@ -87,12 +109,22 @@ class ImageGenerationForegroundService : Service() {
         }
 
         fun stop(context: Context) {
-            context.stopService(Intent(context, ImageGenerationForegroundService::class.java))
+            runCatching {
+                val intent = Intent(context, ImageGenerationForegroundService::class.java).apply {
+                    action = ACTION_STOP
+                }
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    context.startForegroundService(intent)
+                } else {
+                    context.stopService(Intent(context, ImageGenerationForegroundService::class.java))
+                }
+            }
         }
 
         private fun start(context: Context, title: String, text: String) {
             runCatching {
                 val intent = Intent(context, ImageGenerationForegroundService::class.java).apply {
+                    action = ACTION_START
                     putExtra(EXTRA_TITLE, title)
                     putExtra(EXTRA_TEXT, text)
                 }
