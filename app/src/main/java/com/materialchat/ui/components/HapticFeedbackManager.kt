@@ -172,7 +172,7 @@ class HapticFeedbackManager(
     @get:RequiresApi(Build.VERSION_CODES.R)
     private val clickComposition: VibrationEffect by lazy {
         VibrationEffect.startComposition()
-            .addPrimitive(VibrationEffect.Composition.PRIMITIVE_CLICK, 0.7f)
+            .addPrimitive(VibrationEffect.Composition.PRIMITIVE_CLICK, 0.9f)
             .compose()
     }
     @get:RequiresApi(Build.VERSION_CODES.R)
@@ -184,15 +184,15 @@ class HapticFeedbackManager(
     @get:RequiresApi(Build.VERSION_CODES.R)
     private val confirmComposition: VibrationEffect by lazy {
         VibrationEffect.startComposition()
-            .addPrimitive(VibrationEffect.Composition.PRIMITIVE_QUICK_RISE, 0.5f)
-            .addPrimitive(VibrationEffect.Composition.PRIMITIVE_TICK, 0.8f, 50)
+            .addPrimitive(VibrationEffect.Composition.PRIMITIVE_QUICK_RISE, 0.7f)
+            .addPrimitive(VibrationEffect.Composition.PRIMITIVE_TICK, 1.0f, 50)
             .compose()
     }
     @get:RequiresApi(Build.VERSION_CODES.R)
     private val rejectComposition: VibrationEffect by lazy {
         VibrationEffect.startComposition()
-            .addPrimitive(VibrationEffect.Composition.PRIMITIVE_CLICK, 0.7f)
-            .addPrimitive(VibrationEffect.Composition.PRIMITIVE_CLICK, 0.9f, 60)
+            .addPrimitive(VibrationEffect.Composition.PRIMITIVE_CLICK, 0.9f)
+            .addPrimitive(VibrationEffect.Composition.PRIMITIVE_CLICK, 1.0f, 60)
             .compose()
     }
     @get:RequiresApi(Build.VERSION_CODES.R)
@@ -205,38 +205,32 @@ class HapticFeedbackManager(
     @get:RequiresApi(Build.VERSION_CODES.R)
     private val gestureStartComposition: VibrationEffect by lazy {
         VibrationEffect.startComposition()
-            .addPrimitive(VibrationEffect.Composition.PRIMITIVE_SLOW_RISE, 0.4f)
+            .addPrimitive(VibrationEffect.Composition.PRIMITIVE_SLOW_RISE, 0.55f)
             .compose()
     }
     @get:RequiresApi(Build.VERSION_CODES.R)
     private val gestureEndComposition: VibrationEffect by lazy {
         VibrationEffect.startComposition()
-            .addPrimitive(VibrationEffect.Composition.PRIMITIVE_QUICK_FALL, 0.5f)
-            .compose()
-    }
-    @get:RequiresApi(Build.VERSION_CODES.R)
-    private val segmentTickLowComposition: VibrationEffect by lazy {
-        VibrationEffect.startComposition()
-            .addPrimitive(VibrationEffect.Composition.PRIMITIVE_LOW_TICK, 0.3f)
+            .addPrimitive(VibrationEffect.Composition.PRIMITIVE_QUICK_FALL, 0.7f)
             .compose()
     }
     @get:RequiresApi(Build.VERSION_CODES.R)
     private val segmentTickComposition: VibrationEffect by lazy {
         VibrationEffect.startComposition()
-            .addPrimitive(VibrationEffect.Composition.PRIMITIVE_TICK, 0.2f)
+            .addPrimitive(VibrationEffect.Composition.PRIMITIVE_TICK, 0.6f)
             .compose()
     }
     @get:RequiresApi(Build.VERSION_CODES.R)
     private val keyboardTapComposition: VibrationEffect by lazy {
         VibrationEffect.startComposition()
-            .addPrimitive(VibrationEffect.Composition.PRIMITIVE_TICK, 0.4f)
+            .addPrimitive(VibrationEffect.Composition.PRIMITIVE_TICK, 0.65f)
             .compose()
     }
     @get:RequiresApi(Build.VERSION_CODES.R)
     private val toggleComposition: VibrationEffect by lazy {
         VibrationEffect.startComposition()
-            .addPrimitive(VibrationEffect.Composition.PRIMITIVE_CLICK, 0.6f)
-            .addPrimitive(VibrationEffect.Composition.PRIMITIVE_TICK, 0.3f, 30)
+            .addPrimitive(VibrationEffect.Composition.PRIMITIVE_CLICK, 0.85f)
+            .addPrimitive(VibrationEffect.Composition.PRIMITIVE_TICK, 0.5f, 30)
             .compose()
     }
     @get:RequiresApi(Build.VERSION_CODES.R)
@@ -254,19 +248,19 @@ class HapticFeedbackManager(
     @get:RequiresApi(Build.VERSION_CODES.R)
     private val contentTickComposition: VibrationEffect by lazy {
         VibrationEffect.startComposition()
-            .addPrimitive(VibrationEffect.Composition.PRIMITIVE_TICK, 0.4f)
+            .addPrimitive(VibrationEffect.Composition.PRIMITIVE_TICK, 0.65f)
             .compose()
     }
     @get:RequiresApi(Build.VERSION_CODES.R)
     private val morphTransitionComposition: VibrationEffect by lazy {
         VibrationEffect.startComposition()
-            .addPrimitive(VibrationEffect.Composition.PRIMITIVE_QUICK_RISE, 0.3f)
+            .addPrimitive(VibrationEffect.Composition.PRIMITIVE_QUICK_RISE, 0.5f)
             .compose()
     }
     @get:RequiresApi(Build.VERSION_CODES.R)
     private val morphTransitionTickComposition: VibrationEffect by lazy {
         VibrationEffect.startComposition()
-            .addPrimitive(VibrationEffect.Composition.PRIMITIVE_TICK, 0.25f)
+            .addPrimitive(VibrationEffect.Composition.PRIMITIVE_TICK, 0.4f)
             .compose()
     }
 
@@ -537,17 +531,13 @@ class HapticFeedbackManager(
     }
 
     /**
-     * Very light tick for scrolling through segments/items.
-     * Uses PRIMITIVE_LOW_TICK for the subtlest feedback.
+     * Crisp tick for scrolling through segments/items.
+     * PRIMITIVE_TICK at solid amplitude so each scroll step reads as a distinct,
+     * clicky detent rather than a soft murmur (was LOW_TICK 0.3 - too soft).
      */
     private fun performSegmentTick() {
         when {
-            // API 31+: Use LOW_TICK for very subtle feedback
-            Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
-                supportedPrimitives.contains(VibrationEffect.Composition.PRIMITIVE_LOW_TICK) -> {
-                vibrator?.vibrate(segmentTickLowComposition)
-            }
-            // API 30+: Use regular TICK at low intensity
+            // API 30+: Use TICK at firm intensity for crisp scroll detents
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.R &&
                 supportedPrimitives.contains(VibrationEffect.Composition.PRIMITIVE_TICK) -> {
                 vibrator?.vibrate(segmentTickComposition)
