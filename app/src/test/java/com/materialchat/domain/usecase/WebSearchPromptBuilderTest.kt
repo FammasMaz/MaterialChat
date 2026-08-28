@@ -25,4 +25,12 @@ class WebSearchPromptBuilderTest {
         assertFalse(shouldUseWebSearchForQuery("what is the Pythagorean theorem?"))
         assertFalse(shouldUseWebSearchForQuery("write a friendly email draft"))
     }
+
+    @Test
+    fun `acknowledgement gate only filters pure small talk`() {
+        assertTrue(isAcknowledgementQuery("thanks"))
+        assertTrue(isAcknowledgementQuery("Got it!"))
+        assertFalse(isAcknowledgementQuery("who won the game last night"))
+        assertFalse(isAcknowledgementQuery("what is the Pythagorean theorem?"))
+    }
 }

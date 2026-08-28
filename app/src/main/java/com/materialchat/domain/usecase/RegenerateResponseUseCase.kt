@@ -12,6 +12,7 @@ import com.materialchat.domain.repository.PersonaRepository
 import com.materialchat.domain.repository.ProviderRepository
 import com.materialchat.domain.repository.WebSearchRepository
 import com.materialchat.notifications.ImageGenerationForegroundService
+import com.materialchat.ui.screens.chat.ContextWindowEstimator
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.Flow
@@ -119,6 +120,10 @@ class RegenerateResponseUseCase @Inject constructor(
         var hasError = false
         val streamStartTime = System.currentTimeMillis()
         var thinkingEndTime: Long? = null
+        // First token of ANY kind (thinking deltas included) starts the TTFT clock,
+        // matching SendMessageUseCase so redo'd responses report speed stats too.
+        var firstContentAtMs: Long? = null
+        var accumulatedThinking: String? = null
         val contentUpdater = StreamingMessageContentUpdater(
             conversationRepository = conversationRepository,
             messageId = assistantMessageId
@@ -140,6 +145,14 @@ class RegenerateResponseUseCase @Inject constructor(
                 is StreamingState.Streaming -> {
                     // Coalesce Room writes so each token does not invalidate the whole chat list.
                     contentUpdater.onStreaming(state.content, state.thinkingContent)
+                    if (firstContentAtMs == null &&
+                        (state.content.isNotEmpty() || !state.thinkingContent.isNullOrEmpty())
+                    ) {
+                        firstContentAtMs = System.currentTimeMillis()
+                    }
+                    if (!state.thinkingContent.isNullOrEmpty()) {
+                        accumulatedThinking = state.thinkingContent
+                    }
                     // Track when thinking ends
                     if (thinkingEndTime == null && state.content.isNotEmpty() && !state.thinkingContent.isNullOrEmpty()) {
                         thinkingEndTime = System.currentTimeMillis()
@@ -194,6 +207,17 @@ class RegenerateResponseUseCase @Inject constructor(
                         (thinkingEndTime ?: System.currentTimeMillis()) - streamStartTime
                     } else null
                     conversationRepository.updateMessageDurations(assistantMessageId, thinkingDurationMs, totalDurationMs)
+
+                    // Persist generation metrics for the speed pill (same contract as
+                    // SendMessageUseCase so regenerated responses report TPS/TTFT too).
+                    val ttftMs = firstContentAtMs?.let { it - streamStartTime }
+                    val tokens = ContextWindowEstimator.estimateTokens(completedContent) +
+                            ContextWindowEstimator.estimateTokens(accumulatedThinking ?: "")
+                    conversationRepository.updateGenerationMetrics(
+                        messageId = assistantMessageId,
+                        firstTokenLatencyMs = ttftMs,
+                        generatedTokenCount = if (tokens > 0) tokens else null
+                    )
 
                 }
                 else -> { /* Ignore other states */ }

@@ -556,7 +556,11 @@ fun MessageBubble(
                         (messageItem.generationStats.lastTps != null ||
                                 messageItem.generationStats.lastTtftMs != null)
 
-                LaunchedEffect(message.id, message.isStreaming) {
+                // Key on hasStats too: metrics are persisted right after the
+                // streaming flag flips (separate Room writes), so stats can
+                // arrive one emission AFTER isStreaming=false. Without this
+                // key the one-shot auto-expand never sees them.
+                LaunchedEffect(message.id, message.isStreaming, hasStats) {
                     if (!message.isStreaming && hasStats && !statsSeen && !statsExpanded) {
                         statsSeen = true
                         statsExpanded = true
@@ -598,10 +602,9 @@ fun MessageBubble(
                             StatsPillButton(
                                 expanded = statsExpanded,
                                 tpsText = st.lastTps?.let { "%.0f tok/s".format(it) },
-                                ttftText = st.lastTtftMs?.let {
-                                    if (it < 1000) "%d ms".format(it) else "%.1f s".format(it / 1000.0)
-                                },
-                                avgText = st.avgTps?.let { "%.0f".format(it) },
+                                ttftText = st.lastTtftMs?.let(::formatSpeedMs),
+                                avgText = st.avgTps?.let { "avg %.0f".format(it) },
+                                totalText = message.totalDurationMs?.let(::formatSpeedMs),
                                 onClick = { statsExpanded = !statsExpanded }
                             )
                         }
@@ -1003,6 +1006,18 @@ private fun formatDuration(ms: Long?): String {
             val seconds = totalSeconds % 60
             if (seconds == 0L) "${minutes}m" else "${minutes}m ${seconds}s"
         }
+    }
+}
+
+/**
+ * Compact, unit-consistent speed/duration text for the stats pill:
+ * "0.3s", "1.2s", "42s", "1m 05s" — no stray spaces between value and unit.
+ */
+private fun formatSpeedMs(ms: Long): String {
+    return when {
+        ms < 10_000 -> "%.1fs".format(ms / 1000.0)
+        ms < 60_000 -> "${ms / 1000}s"
+        else -> formatDuration(ms).ifBlank { "${ms / 1000}s" }
     }
 }
 

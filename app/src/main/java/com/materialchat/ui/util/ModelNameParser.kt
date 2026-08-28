@@ -70,6 +70,11 @@ object ModelNameParser {
     /**
      * Parses a raw model identifier into a structured ParsedModelName.
      *
+     * Every "/" is parsed: the first segment is the provider, the LAST segment
+     * is the model. This keeps multi-segment identifiers like
+     * "proxy/openai/gpt-5.5" or "org/sub/model" from leaking raw slashes into
+     * the provider/model pills.
+     *
      * @param rawModelName The raw model identifier (e.g., "antigravity/claude-opus-4.5")
      * @return A ParsedModelName with formatted provider and model names
      */
@@ -84,12 +89,12 @@ object ModelNameParser {
             )
         }
 
-        val parts = rawModelName.split("/", limit = 2)
+        val segments = rawModelName.split("/").map { it.trim() }.filter { it.isNotEmpty() }
 
-        return if (parts.size == 2) {
-            // Has provider/model format
-            val rawProvider = parts[0]
-            val rawModel = parts[1]
+        return if (segments.size >= 2) {
+            // Provider/model format (with any number of intermediate segments)
+            val rawProvider = segments.first()
+            val rawModel = segments.last()
 
             val formattedProvider = formatProviderName(rawProvider)
             val formattedModel = formatModelName(rawModel)

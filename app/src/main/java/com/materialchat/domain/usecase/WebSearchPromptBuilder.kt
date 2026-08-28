@@ -29,7 +29,12 @@ internal suspend fun resolveWebSearchPromptContext(
         ?.trim()
         .orEmpty()
 
-    if (searchQuery.isBlank() || !shouldUseWebSearchForQuery(searchQuery)) {
+    // The toggle is explicit user intent: when web search is enabled, always
+    // search. Only skip blank/acknowledgement queries ("thanks", "ok") where
+    // there is nothing to look up. The old keyword-pattern gate silently
+    // skipped searches for queries it did not recognise, which is why sources
+    // stopped appearing in the carousel.
+    if (searchQuery.isBlank() || isAcknowledgementQuery(searchQuery)) {
         return WebSearchPromptContext(systemPrompt = basePrompt)
     }
 
@@ -54,13 +59,23 @@ internal suspend fun resolveWebSearchPromptContext(
     )
 }
 
+/**
+ * True when the query is pure small talk / acknowledgement ("thanks", "ok")
+ * where a web search could not help. Kept as the ONLY gate on explicit
+ * web-search turns.
+ */
+internal fun isAcknowledgementQuery(query: String): Boolean {
+    return ACKNOWLEDGEMENT_QUERY.matches(query.trim().lowercase())
+}
+
+/**
+ * Legacy heuristic kept for callers that want a best-effort guess of whether
+ * a query needs the web. Not used to gate explicitly-enabled searches.
+ */
 internal fun shouldUseWebSearchForQuery(query: String): Boolean {
-    val normalized = query.trim()
-    if (normalized.isBlank()) return false
+    if (isAcknowledgementQuery(query)) return false
 
-    val lower = normalized.lowercase()
-    if (ACKNOWLEDGEMENT_QUERY.matches(lower)) return false
-
+    val lower = query.trim().lowercase()
     return WEB_SEARCH_TRIGGER_PATTERNS.any { it.containsMatchIn(lower) }
 }
 

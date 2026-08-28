@@ -196,6 +196,12 @@ class ArenaViewModel @Inject constructor(
 
     /**
      * Starts an N-model battle.
+     *
+     * Card order is re-shuffled every run so the roster order can never reveal
+     * which card belongs to which model, and responses are held in a buffer:
+     * every card shows the same loading animation until ALL contenders have
+     * finished, then every answer is released together. Faster models gain no
+     * visible head start and streaming cadence cannot identify a card.
      */
     fun startBattle() {
         val currentState = _uiState.value
@@ -203,18 +209,18 @@ class ArenaViewModel @Inject constructor(
         if (!currentState.canStartBattle) return
 
         val prompt = currentState.prompt.trim()
-        val specs = currentState.contenders.map {
-            ArenaContenderSpec(it.providerId, it.modelName)
-        }
 
-        // Re-anonymize EVERY run: fresh random codenames so identities can
-        // never be correlated across battles via a remembered name.
+        // Re-anonymize EVERY run: fresh random codenames AND a fresh random
+        // card order, so identities can never be correlated across battles via
+        // a remembered name or a stable position.
         val freshNames = CODENAMES.shuffled()
+        val reordered = currentState.contenders.shuffled()
+            .mapIndexed { index, contender -> contender.copy(slot = index) }
 
         _uiState.update { state ->
             if (state is ArenaUiState.Ready) {
                 state.copy(
-                    contenders = state.contenders.mapIndexed { index, contender ->
+                    contenders = reordered.mapIndexed { index, contender ->
                         contender.copy(
                             codename = freshNames[index % freshNames.size],
                             streamState = StreamingState.Starting
@@ -222,13 +228,21 @@ class ArenaViewModel @Inject constructor(
                     },
                     voted = false,
                     revealed = false,
-                    battleId = null
+                    battleId = null,
+                    answersReleased = false
                 )
             } else state
         }
 
+        val specs = reordered.map {
+            ArenaContenderSpec(it.providerId, it.modelName)
+        }
+
         battleJob = viewModelScope.launch(ioDispatcher) {
             try {
+                // Buffer incoming progress: while any contender is unfinished,
+                // cards keep the shared loading animation. Content is released
+                // only when the whole battle settles.
                 runArenaBattleUseCase(
                     prompt = prompt,
                     contenders = specs
@@ -236,12 +250,20 @@ class ArenaViewModel @Inject constructor(
                     _uiState.update { state ->
                         if (state is ArenaUiState.Ready) {
                             state.copy(
-                                contenders = state.contenders.mapIndexed { slot, contender ->
-                                    contender.copy(
-                                        streamState = progress.states.getOrElse(slot) { contender.streamState }
-                                    )
-                                },
-                                battleId = progress.battleId
+                                battleId = progress.battleId,
+                                answersReleased = progress.allFinished,
+                                contenders = if (progress.allFinished) {
+                                    state.contenders.mapIndexed { slot, contender ->
+                                        contender.copy(
+                                            streamState = progress.states.getOrElse(slot) { contender.streamState }
+                                        )
+                                    }
+                                } else {
+                                    state.contenders.map { contender ->
+                                        if (contender.streamState is StreamingState.Starting) contender
+                                        else contender.copy(streamState = StreamingState.Starting)
+                                    }
+                                }
                             )
                         } else state
                     }
@@ -256,7 +278,8 @@ class ArenaViewModel @Inject constructor(
                             contenders = state.contenders.map {
                                 it.copy(streamState = StreamingState.Idle)
                             },
-                            battleId = null
+                            battleId = null,
+                            answersReleased = false
                         )
                     } else state
                 }
@@ -298,13 +321,17 @@ class ArenaViewModel @Inject constructor(
 
     /**
      * Resets the arena for another round with the current roster.
+     * Card order is re-shuffled and the buffer reset for a fresh blind run.
      */
     fun newBattle() {
         val freshNames = CODENAMES.shuffled()
+        val reordered = (_uiState.value as? ArenaUiState.Ready)?.contenders.orEmpty()
+            .shuffled()
+            .mapIndexed { index, contender -> contender.copy(slot = index) }
         _uiState.update { state ->
             if (state is ArenaUiState.Ready) {
                 state.copy(
-                    contenders = state.contenders.mapIndexed { index, contender ->
+                    contenders = reordered.mapIndexed { index, contender ->
                         contender.copy(
                             codename = freshNames[index % freshNames.size],
                             streamState = StreamingState.Idle
@@ -312,7 +339,8 @@ class ArenaViewModel @Inject constructor(
                     },
                     battleId = null,
                     voted = false,
-                    revealed = false
+                    revealed = false,
+                    answersReleased = false
                 )
             } else state
         }

@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.size
+import androidx.compose.ui.unit.Dp
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.CallSplit
@@ -208,6 +209,10 @@ fun CompactMessageActions(
 /**
  * A single element that morphs between a compact 44dp bolt button and an
  * expanded stats pill in place — used for response speed after streaming.
+ *
+ * All expansion values (width via animateContentSize, horizontal padding via
+ * animateDpAsState) share one spring so the bolt slides smoothly instead of
+ * jumping when the padding snaps between 0dp and 14dp.
  */
 @Composable
 fun StatsPillButton(
@@ -216,11 +221,19 @@ fun StatsPillButton(
     ttftText: String?,
     avgText: String?,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    totalText: String? = null
 ) {
     val haptics = rememberHapticFeedback()
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
+
+    val expandSpec = spring<Dp>(dampingRatio = 0.85f, stiffness = 300f)
+    val horizontalPadding by animateDpAsState(
+        targetValue = if (expanded) 14.dp else 0.dp,
+        animationSpec = expandSpec,
+        label = "statsPillPadding"
+ )
 
     val scale by animateFloatAsState(
         targetValue = if (isPressed) 0.94f else 1f,
@@ -270,7 +283,7 @@ fun StatsPillButton(
                 .animateContentSize(
                     animationSpec = spring(dampingRatio = 0.85f, stiffness = 300f)
                 )
-                .padding(horizontal = if (expanded) 14.dp else 0.dp),
+                .padding(horizontal = horizontalPadding),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(5.dp, Alignment.CenterHorizontally)
         ) {
@@ -291,11 +304,15 @@ fun StatsPillButton(
                     }
                     if (ttftText != null) {
                         Text("·", style = MaterialTheme.typography.labelSmall)
-                        Text(text = "TTFT $ttftText", style = MaterialTheme.typography.labelSmall)
+                        Text(text = ttftText, style = MaterialTheme.typography.labelSmall)
+                    }
+                    if (totalText != null) {
+                        Text("·", style = MaterialTheme.typography.labelSmall)
+                        Text(text = totalText, style = MaterialTheme.typography.labelSmall)
                     }
                     if (avgText != null) {
                         Text("·", style = MaterialTheme.typography.labelSmall)
-                        Text(text = "avg $avgText", style = MaterialTheme.typography.labelSmall)
+                        Text(text = avgText, style = MaterialTheme.typography.labelSmall)
                     }
                 }
             }

@@ -12,9 +12,7 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -43,15 +41,18 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.materialchat.domain.model.StreamingState
 import com.materialchat.ui.components.MarkdownText
+import com.materialchat.ui.screens.chat.components.ShimmerSkeletonLines
 import com.materialchat.ui.screens.arena.ContenderUi
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
+import kotlin.random.Random
 
 /**
  * Blind N-model battle pager: one full-screen card per contender, swipeable.
  *
- * While the blind phase is active each card shows only a codename with a
- * scramble shimmer; markdown renders throughout. Names appear after reveal.
+ * While the blind phase is active each card shows only a codename. Cards are
+ * shuffled per battle by the ViewModel so position never identifies a model;
+ * answers are buffered and released together once every contender finishes.
  */
 @Composable
 fun ArenaBattleView(
@@ -122,8 +123,8 @@ fun ArenaBattleView(
 }
 
 /**
- * One anonymous response card: codename header (scrambling while streaming),
- * full markdown body, per-card streaming indicator.
+ * One anonymous response card: codename header (scrambling while running),
+ * full markdown body once released, shared shimmer skeleton while buffering.
  */
 @Composable
 private fun BattleCard(
@@ -153,36 +154,45 @@ private fun BattleCard(
                     .weight(1f)
                     .verticalScroll(rememberScrollState())
             ) {
-            // Header: codename during blind phase, real name after reveal.
-            AnimatedContent(
-                targetState = revealed,
-                transitionSpec = {
-                    (fadeIn(tween(350)) + slideInHorizontally(tween(350)) { it / 3 })
-                        .togetherWith(fadeOut(tween(200)))
-                },
-                label = "arenaReveal"
-            ) { isRevealed ->
-                Column {
-                    Text(
-                        text = if (isRevealed) realName ?: contender.codename
-                               else scrambleWhileStreaming(contender, isRevealed),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                    if (isRevealed && realName != null) {
+                // Header: codename during blind phase, real name after reveal.
+                AnimatedContent(
+                    targetState = revealed,
+                    transitionSpec = {
+                        (fadeIn(tween(350)) + slideInHorizontally(tween(350)) { it / 3 })
+                            .togetherWith(fadeOut(tween(200)))
+                    },
+                    label = "arenaReveal"
+                ) { isRevealed ->
+                    Column {
                         Text(
-                            text = "was ${contender.codename}",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = accentOnContainer.copy(alpha = 0.65f)
+                            text = if (isRevealed) realName ?: contender.codename
+                                   else scrambleWhileStreaming(contender, isRevealed),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
                         )
+                        if (isRevealed && realName != null) {
+                            Text(
+                                text = "was ${contender.codename}",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = accentOnContainer.copy(alpha = 0.65f)
+                            )
+                        }
                     }
                 }
-            }
 
-            Spacer(Modifier.height(10.dp))
+                Spacer(Modifier.height(10.dp))
 
-            when (contender.streamState) {
-                    is StreamingState.Error -> Text(
+                when {
+                    // Buffering phase: shared loading animation on EVERY card —
+                    // no partial text, no cadence leak, until release.
+                    !revealed && contender.streamState is StreamingState.Starting -> {
+                        ShimmerSkeletonLines(
+                            color = accentOnContainer,
+                            lines = 4,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                    contender.streamState is StreamingState.Error -> Text(
                         text = contender.content,
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.error
@@ -201,7 +211,7 @@ private fun BattleCard(
 
 /**
  * Codename display that shuffles through the name pool while its model is
- * still streaming — the "mixup" effect. Freezes once finished or revealed.
+ * still running — the "mixup" effect. Freezes once finished or revealed.
  */
 @Composable
 private fun scrambleWhileStreaming(
@@ -221,7 +231,9 @@ private fun scrambleWhileStreaming(
             return@LaunchedEffect
         }
         val pool = listOf("Aurora", "Borealis", "Comet", "Drift", "Ember", "Flux", "Gale", "Halcyon", "Ion", "Juno")
-        var i = contender.slot
+        // Random start offset so the scramble phase of one card never reveals
+        // its slot index through a deterministic name sequence.
+        var i = Random.nextInt(pool.size)
         while (isActive) {
             i = (i + 1) % pool.size
             display = pool[i]

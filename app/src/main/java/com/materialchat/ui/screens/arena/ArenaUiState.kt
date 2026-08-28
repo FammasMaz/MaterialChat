@@ -54,17 +54,24 @@ sealed interface ArenaUiState {
         val voted: Boolean = false,
         /** True once names have been revealed (after voting). */
         val revealed: Boolean = false,
+        /**
+         * True once every contender finished and buffered answers were released
+         * together. While false, cards show the shared loading animation.
+         */
+        val answersReleased: Boolean = false,
         val isLoadingModels: Boolean = false
     ) : ArenaUiState {
 
         val isBattleRunning: Boolean
-            get() = contenders.any {
+            get() = battleId != null && !answersReleased && contenders.any {
                 it.streamState is StreamingState.Starting ||
-                        it.streamState is StreamingState.Streaming
+                        it.streamState is StreamingState.Streaming ||
+                        it.streamState is StreamingState.Completed
             }
 
         val isBattleComplete: Boolean
-            get() = battleId != null && contenders.isNotEmpty() && contenders.all { it.isFinished }
+            get() = battleId != null && answersReleased &&
+                    contenders.isNotEmpty() && contenders.all { it.isFinished }
 
         val canStartBattle: Boolean
             get() = prompt.isNotBlank() &&
