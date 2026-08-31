@@ -2,11 +2,14 @@ package com.materialchat.domain.usecase
 
 import com.materialchat.data.local.database.dao.ConversationDao
 import com.materialchat.data.local.database.dao.MessageDao
+import com.materialchat.data.local.database.entity.ModelAvgDuration
+import com.materialchat.data.local.database.entity.ModelUsageCount
 import com.materialchat.domain.model.DailyActivityItem
 import com.materialchat.domain.model.InsightsData
 import com.materialchat.domain.model.InsightsTimeRange
 import com.materialchat.domain.model.ModelDurationItem
 import com.materialchat.domain.model.ModelUsageItem
+import com.materialchat.domain.util.ModelIdentity
 import javax.inject.Inject
 
 /**
@@ -55,8 +58,8 @@ class GetConversationInsightsUseCase @Inject constructor(
             assistantMessages = assistantMessages,
             avgThinkingDuration = avgThinkingDuration,
             avgTotalDuration = avgTotalDuration,
-            modelUsage = modelUsageCounts.map { ModelUsageItem(it.model_name ?: "Unknown", it.count) },
-            modelDurations = modelDurations.map { ModelDurationItem(it.model_name ?: "Unknown", it.avg_duration) },
+            modelUsage = mergeModelUsage(modelUsageCounts),
+            modelDurations = mergeModelDurations(modelDurations),
             dailyActivity = dailyActivity.map { DailyActivityItem(it.day, it.count) },
             timeRange = timeRange
         )
@@ -81,10 +84,56 @@ class GetConversationInsightsUseCase @Inject constructor(
             assistantMessages = assistantMessages,
             avgThinkingDuration = avgThinkingDuration,
             avgTotalDuration = avgTotalDuration,
-            modelUsage = modelUsageCounts.map { ModelUsageItem(it.model_name ?: "Unknown", it.count) },
-            modelDurations = modelDurations.map { ModelDurationItem(it.model_name ?: "Unknown", it.avg_duration) },
+            modelUsage = mergeModelUsage(modelUsageCounts),
+            modelDurations = mergeModelDurations(modelDurations),
             dailyActivity = dailyActivity.map { DailyActivityItem(it.day, it.count) },
             timeRange = timeRange
         )
+    }
+
+    /**
+     * Aggregates usage counts under canonical model identities so the same
+     * model served by different providers counts as ONE model.
+     * Display name: the variant with the highest count (most specific).
+     */
+    private fun mergeModelUsage(counts: List<ModelUsageCount>): List<ModelUsageItem> {
+        data class Acc(val key: String, var count: Int, var bestName: String, var bestCount: Int)
+        val merged = linkedMapOf<String, Acc>()
+        for (row in counts) {
+            val raw = row.model_name ?: continue
+            val key = ModelIdentity.canonicalKey(raw) ?: continue
+            val acc = merged.getOrPut(key) { Acc(key, 0, raw, row.count) }
+            acc.count += row.count
+            if (row.count > acc.bestCount) {
+                acc.bestName = raw
+                acc.bestCount = row.count
+            }
+        }
+        return merged.values
+            .sortedByDescending { it.count }
+            .map { ModelUsageItem(it.bestName, it.count) }
+    }
+
+    /**
+     * Aggregates average durations under canonical model identities.
+     * Merged average = weighted by each variant's message count.
+     */
+    private fun mergeModelDurations(durations: List<ModelAvgDuration>): List<ModelDurationItem> {
+        data class Acc(var weightedSum: Double = 0.0, var weight: Int = 0)
+        val accByKey = hashMapOf<String, Acc>()
+        for (row in durations) {
+            val key = ModelIdentity.canonicalKey(row.model_name) ?: continue
+            val acc = accByKey.getOrPut(key) { Acc() }
+            acc.weightedSum += row.avg_duration * row.message_count
+            acc.weight += row.message_count
+        }
+        return accByKey.entries
+            .map { (key, acc) ->
+                ModelDurationItem(
+                    modelName = key,
+                    avgDurationMs = if (acc.weight > 0) acc.weightedSum / acc.weight else 0.0
+                )
+            }
+            .sortedBy { it.avgDurationMs }
     }
 }

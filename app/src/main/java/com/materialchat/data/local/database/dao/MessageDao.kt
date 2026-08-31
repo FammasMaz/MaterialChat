@@ -289,7 +289,7 @@ interface MessageDao {
      * Get average total duration by model for assistant messages.
      */
     @Query("""
-        SELECT model_name, AVG(total_duration_ms) as avg_duration FROM messages
+        SELECT model_name, AVG(total_duration_ms) as avg_duration, COUNT(*) as message_count FROM messages
         WHERE role = 'ASSISTANT' AND model_name IS NOT NULL AND total_duration_ms IS NOT NULL
         GROUP BY model_name ORDER BY avg_duration ASC
     """)
@@ -358,7 +358,7 @@ interface MessageDao {
      * Get average duration by model since a timestamp.
      */
     @Query("""
-        SELECT model_name, AVG(total_duration_ms) as avg_duration FROM messages
+        SELECT model_name, AVG(total_duration_ms) as avg_duration, COUNT(*) as message_count FROM messages
         WHERE role = 'ASSISTANT' AND model_name IS NOT NULL AND total_duration_ms IS NOT NULL AND created_at >= :timestamp
         GROUP BY model_name ORDER BY avg_duration ASC
     """)

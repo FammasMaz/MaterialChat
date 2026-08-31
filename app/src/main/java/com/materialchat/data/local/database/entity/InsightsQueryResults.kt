@@ -18,12 +18,16 @@ data class ModelUsageCount(
  * POJO for model average duration aggregate query results.
  *
  * Maps to the result of grouping messages by model_name and averaging total_duration_ms.
+ * The message_count is the number of messages behind the average, used for
+ * weighted merging of provider variants under one canonical model identity.
  */
 data class ModelAvgDuration(
     @ColumnInfo(name = "model_name")
     val model_name: String?,
     @ColumnInfo(name = "avg_duration")
-    val avg_duration: Double
+    val avg_duration: Double,
+    @ColumnInfo(name = "message_count")
+    val message_count: Int
 )
 
 /**

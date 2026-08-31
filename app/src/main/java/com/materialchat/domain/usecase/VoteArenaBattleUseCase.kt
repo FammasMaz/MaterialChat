@@ -1,6 +1,7 @@
 package com.materialchat.domain.usecase
 
 import com.materialchat.domain.repository.ArenaRepository
+import com.materialchat.domain.util.ModelIdentity
 import javax.inject.Inject
 import kotlin.math.pow
 
@@ -50,10 +51,15 @@ class VoteArenaBattleUseCase @Inject constructor(
 
         when (verdict) {
             is ArenaVerdict.Win -> {
-                val ratings = contenders.associate {
-                    it.modelName to arenaRepository.getOrCreateRating(it.modelName)
+                // Key ratings by canonical model identity so provider variants
+                // of the same model (e.g. ox-alpha vs glm-5.3-flash) share one ELO.
+                val ratings = contenders.associate { contender ->
+                    val key = ModelIdentity.canonicalKey(contender.modelName)
+                        ?: contender.modelName
+                    key to arenaRepository.getOrCreateRating(contender.modelName)
                 }
-                val winnerName = contenders.firstOrNull { it.slot == verdict.slot }?.modelName
+                val winnerName = contenders.firstOrNull { it.slot == verdict.slot }
+                    ?.let { ModelIdentity.canonicalKey(it.modelName) ?: it.modelName }
                     ?: return
                 val winnerRating = ratings.getValue(winnerName)
 
@@ -88,7 +94,10 @@ class VoteArenaBattleUseCase @Inject constructor(
 
             ArenaVerdict.Tie, ArenaVerdict.BothBad -> {
                 for (contender in contenders) {
-                    val rating = arenaRepository.getOrCreateRating(contender.modelName)
+                    // Canonical key so provider variants of one model share one rating row.
+                    val rating = arenaRepository.getOrCreateRating(
+                        ModelIdentity.canonicalKey(contender.modelName) ?: contender.modelName
+                    )
                     arenaRepository.updateRating(
                         rating.copy(
                             ties = rating.ties + 1,

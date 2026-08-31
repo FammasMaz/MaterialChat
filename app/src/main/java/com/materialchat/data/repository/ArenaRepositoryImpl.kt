@@ -11,6 +11,7 @@ import com.materialchat.domain.model.ArenaBattle
 import com.materialchat.domain.model.ModelRating
 import com.materialchat.domain.repository.ArenaRepository
 import com.materialchat.domain.model.ContenderResult
+import com.materialchat.domain.util.ModelIdentity
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOn
@@ -58,11 +59,65 @@ class ArenaRepositoryImpl @Inject constructor(
     }
 
     override fun getAllRatings(): Flow<List<ModelRating>> {
-        return arenaDao.getAllRatings().map { it.toRatingDomainList() }.flowOn(Dispatchers.IO)
+        return arenaDao.getAllRatings().map { mergeRatings(it.toRatingDomainList()) }.flowOn(Dispatchers.IO)
     }
 
     override suspend fun getAllRatingsOnce(): List<ModelRating> {
-        return arenaDao.getAllRatingsOnce().toRatingDomainList()
+        return mergeRatings(arenaDao.getAllRatingsOnce().toRatingDomainList())
+    }
+
+    /**
+     * Aggregates per-provider rating rows under canonical model identities so
+     * the same model served by different providers appears ONCE on the
+     * leaderboard. Stats are summed; ELO is averaged; identity shown is the
+     * variant with the most battles.
+     */
+    private fun mergeRatings(ratings: List<ModelRating>): List<ModelRating> {
+        data class Acc(
+            val key: String,
+            var eloSum: Double = 0.0,
+            var wins: Int = 0,
+            var losses: Int = 0,
+            var ties: Int = 0,
+            var totalBattles: Int = 0,
+            var lastBattleAt: Long? = null,
+            var bestName: String = "",
+            var bestBattles: Int = -1
+        )
+        val merged = linkedMapOf<String, Acc>()
+        for (rating in ratings) {
+            val key = ModelIdentity.canonicalKey(rating.modelName) ?: continue
+            val acc = merged.getOrPut(key) { Acc(key) }
+            acc.eloSum += rating.eloRating
+            acc.wins += rating.wins
+            acc.losses += rating.losses
+            acc.ties += rating.ties
+            acc.totalBattles += rating.totalBattles
+            if (rating.lastBattleAt != null) {
+                val ratingLast = rating.lastBattleAt
+                val accLast = acc.lastBattleAt
+                if (accLast == null || ratingLast > accLast) {
+                    acc.lastBattleAt = ratingLast
+                }
+            }
+            if (rating.totalBattles > acc.bestBattles) {
+                acc.bestName = rating.modelName
+                acc.bestBattles = rating.totalBattles
+            }
+        }
+        return merged.values
+            .map { acc ->
+                ModelRating(
+                    modelName = acc.bestName.ifBlank { acc.key },
+                    eloRating = acc.eloSum / maxOf(acc.totalBattles, 1),
+                    wins = acc.wins,
+                    losses = acc.losses,
+                    ties = acc.ties,
+                    totalBattles = acc.totalBattles,
+                    lastBattleAt = acc.lastBattleAt
+                )
+            }
+            .sortedByDescending { it.eloRating }
     }
 
     override suspend fun getRating(modelName: String): ModelRating? {
