@@ -217,7 +217,7 @@ class HapticFeedbackManager(
     @get:RequiresApi(Build.VERSION_CODES.R)
     private val segmentTickComposition: VibrationEffect by lazy {
         VibrationEffect.startComposition()
-            .addPrimitive(VibrationEffect.Composition.PRIMITIVE_TICK, 0.6f)
+            .addPrimitive(VibrationEffect.Composition.PRIMITIVE_TICK, 0.35f)
             .compose()
     }
     @get:RequiresApi(Build.VERSION_CODES.R)
@@ -532,8 +532,9 @@ class HapticFeedbackManager(
 
     /**
      * Crisp tick for scrolling through segments/items.
-     * PRIMITIVE_TICK at solid amplitude so each scroll step reads as a distinct,
-     * clicky detent rather than a soft murmur (was LOW_TICK 0.3 - too soft).
+     * PRIMITIVE_TICK at reduced amplitude: still a distinct detent per scroll step,
+     * but noticeably softer than the previous 0.6 which felt like tapping on glass.
+     * (History: LOW_TICK 0.3 read as too soft, TICK 0.6 too sharp — 0.35 splits it.)
      */
     private fun performSegmentTick() {
         when {
