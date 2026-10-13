@@ -1979,7 +1979,10 @@ private fun ShapePreviewDot(
 }
 
 private fun AppPreferences.ThemePalette.prettyName(): String {
-    return name.lowercase().replaceFirstChar { it.uppercase() }
+    return when (this) {
+        AppPreferences.ThemePalette.SEA_GLASS -> "SeaGlass"
+        else -> name.lowercase().replaceFirstChar { it.uppercase() }
+    }
 }
 
 private fun AppPreferences.ChatBubbleStyle.prettyName(): String {

@@ -50,7 +50,7 @@ class AssistantViewModel(
     private val textToSpeechManager: TextToSpeechManager,
     private val chatRepository: ChatRepository,
     private val providerRepository: ProviderRepository,
-    private val appPreferences: AppPreferences,
+    val appPreferences: AppPreferences,
     private val createConversationUseCase: CreateConversationUseCase,
     private val conversationRepository: ConversationRepository,
     private val generateConversationTitleUseCase: GenerateConversationTitleUseCase,

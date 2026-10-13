@@ -105,7 +105,8 @@ class AppPreferences(private val context: Context) {
         GRAPHITE,
         COSMIC,
         FLAMINGO,
-        CITRUS
+        CITRUS,
+        SEA_GLASS
     }
 
     /**

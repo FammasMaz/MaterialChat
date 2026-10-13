@@ -38,6 +38,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.rememberTextMeasurer
 import com.materialchat.domain.model.CanvasArtifact
@@ -70,8 +71,6 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.viewinterop.AndroidView
-import com.materialchat.ui.theme.CodeBlockBackgroundDark
-import com.materialchat.ui.theme.CodeBlockBackgroundLight
 
 /**
  * A composable that renders Markdown text with proper formatting.
@@ -101,8 +100,11 @@ fun MarkdownText(
     fillWidth: Boolean = true,
     onOpenCanvas: ((CanvasArtifact) -> Unit)? = null
 ) {
-    val isDarkTheme = isSystemInDarkTheme()
-    val codeBlockBackground = if (isDarkTheme) CodeBlockBackgroundDark else CodeBlockBackgroundLight
+    // Derive from the live scheme so code blocks follow the active palette (e.g. SeaGlass)
+    // instead of static lavender constants.
+    val codeBlockBackground = MaterialTheme.colorScheme.surfaceContainerHighest.copy(
+        alpha = if (MaterialTheme.colorScheme.surfaceContainerHighest.luminance() > 0.5f) 0.45f else 0.55f
+    )
     val codeTextColor = MaterialTheme.colorScheme.onSurface
     val linkColor = MaterialTheme.colorScheme.primary
 

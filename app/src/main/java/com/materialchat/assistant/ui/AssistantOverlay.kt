@@ -58,10 +58,12 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.materialchat.assistant.ui.components.AssistantInputBar
 import com.materialchat.assistant.ui.components.AssistantResponseCard
 import com.materialchat.assistant.voice.VoiceState
+import com.materialchat.data.local.preferences.AppPreferences
 import com.materialchat.ui.components.ExpressiveFilledIconButton
 import com.materialchat.ui.theme.ExpressiveMotion
 import com.materialchat.ui.theme.MaterialChatExpressiveTitleFontFamily
 import com.materialchat.ui.theme.MaterialChatTheme
+import com.materialchat.ui.theme.isDynamicColorSupported
 import kotlin.math.roundToInt
 
 /**
@@ -97,6 +99,17 @@ fun AssistantOverlay(
 
     val context = LocalContext.current
 
+    // Follow the user's appearance preferences (mode, palette, dynamic color)
+    val themeMode by viewModel.appPreferences.themeMode.collectAsStateWithLifecycle(
+        initialValue = AppPreferences.ThemeMode.SYSTEM
+    )
+    val dynamicColorEnabled by viewModel.appPreferences.dynamicColorEnabled.collectAsStateWithLifecycle(
+        initialValue = true
+    )
+    val themePalette by viewModel.appPreferences.themePalette.collectAsStateWithLifecycle(
+        initialValue = AppPreferences.DEFAULT_THEME_PALETTE
+    )
+
     // Check permission state (we can't request it here, only check)
     val hasMicPermission = remember {
         ContextCompat.checkSelfPermission(
@@ -115,7 +128,11 @@ fun AssistantOverlay(
         }
     }
 
-    MaterialChatTheme {
+    MaterialChatTheme(
+        themeMode = themeMode,
+        dynamicColor = dynamicColorEnabled && isDynamicColorSupported(),
+        themePalette = themePalette
+    ) {
         Box(
             modifier = Modifier
                 .fillMaxSize()

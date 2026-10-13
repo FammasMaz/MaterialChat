@@ -30,6 +30,7 @@ object MaterialChatThemePalettes {
             AppPreferences.ThemePalette.COSMIC -> if (darkTheme) cosmicDark else cosmicLight
             AppPreferences.ThemePalette.FLAMINGO -> if (darkTheme) flamingoDark else flamingoLight
             AppPreferences.ThemePalette.CITRUS -> if (darkTheme) citrusDark else citrusLight
+            AppPreferences.ThemePalette.SEA_GLASS -> if (darkTheme) seaGlassDark else seaGlassLight
         }
     }
 
@@ -45,6 +46,7 @@ object MaterialChatThemePalettes {
             AppPreferences.ThemePalette.COSMIC -> Color(0xFF4B3DE8)
             AppPreferences.ThemePalette.FLAMINGO -> Color(0xFFB02E56)
             AppPreferences.ThemePalette.CITRUS -> Color(0xFF6D7100)
+            AppPreferences.ThemePalette.SEA_GLASS -> Color(0xFF2EE6B8)
         }
     }
 
@@ -60,6 +62,7 @@ object MaterialChatThemePalettes {
             AppPreferences.ThemePalette.COSMIC -> Color(0xFF00A6C8)
             AppPreferences.ThemePalette.FLAMINGO -> Color(0xFFFF7FA9)
             AppPreferences.ThemePalette.CITRUS -> Color(0xFF9DA514)
+            AppPreferences.ThemePalette.SEA_GLASS -> Color(0xFF4A82FF)
         }
     }
 
@@ -365,6 +368,39 @@ object MaterialChatThemePalettes {
         tertiaryContainer = Color(0xFF085233),
         onTertiaryContainer = Color(0xFFAAF6C7)
     )
+
+    // SEA_GLASS — surf-tumbled seafoam glass with a cobalt-tide counterpoint.
+    // Accents drawn from github.com/mweinbach/SeaGlass SeafoamMint/CobaltTide palettes;
+    // neutrals are sea-toned (see SeaGlass* constants in Color.kt).
+    private val seaGlassLight = seaGlassLightScheme(
+        primary = Color(0xFF006B57),
+        onPrimary = Color.White,
+        primaryContainer = Color(0xFF9CF1DC),
+        onPrimaryContainer = Color(0xFF00201A),
+        secondary = Color(0xFF4A635C),
+        onSecondary = Color.White,
+        secondaryContainer = Color(0xFFCCE8E0),
+        onSecondaryContainer = Color(0xFF062019),
+        tertiary = Color(0xFF3E5FBA),
+        onTertiary = Color.White,
+        tertiaryContainer = Color(0xFFD9E2FF),
+        onTertiaryContainer = Color(0xFF00174B)
+    )
+
+    private val seaGlassDark = seaGlassDarkScheme(
+        primary = Color(0xFF6FDBBF),
+        onPrimary = Color(0xFF00382D),
+        primaryContainer = Color(0xFF005144),
+        onPrimaryContainer = Color(0xFF9CF1DC),
+        secondary = Color(0xFFB0CCC2),
+        onSecondary = Color(0xFF1C352E),
+        secondaryContainer = Color(0xFF334B44),
+        onSecondaryContainer = Color(0xFFCCE8E0),
+        tertiary = Color(0xFFB4C3FF),
+        onTertiary = Color(0xFF0A2782),
+        tertiaryContainer = Color(0xFF24409A),
+        onTertiaryContainer = Color(0xFFD9E2FF)
+    )
 }
 
 private fun materialLightScheme(
@@ -467,4 +503,108 @@ private fun materialDarkScheme(
     surfaceContainer = SurfaceContainerDark,
     surfaceContainerHigh = SurfaceContainerHighDark,
     surfaceContainerHighest = SurfaceContainerHighestDark
+)
+
+// SeaGlass variant helpers: identical structure but with sea-toned neutral
+// surface/outline tokens instead of the shared lavender/purple ones.
+private fun seaGlassLightScheme(
+    primary: Color,
+    onPrimary: Color,
+    primaryContainer: Color,
+    onPrimaryContainer: Color,
+    secondary: Color,
+    onSecondary: Color,
+    secondaryContainer: Color,
+    onSecondaryContainer: Color,
+    tertiary: Color,
+    onTertiary: Color,
+    tertiaryContainer: Color,
+    onTertiaryContainer: Color
+): ColorScheme = lightColorScheme(
+    primary = primary,
+    onPrimary = onPrimary,
+    primaryContainer = primaryContainer,
+    onPrimaryContainer = onPrimaryContainer,
+    secondary = secondary,
+    onSecondary = onSecondary,
+    secondaryContainer = secondaryContainer,
+    onSecondaryContainer = onSecondaryContainer,
+    tertiary = tertiary,
+    onTertiary = onTertiary,
+    tertiaryContainer = tertiaryContainer,
+    onTertiaryContainer = onTertiaryContainer,
+    error = ErrorLight,
+    onError = OnErrorLight,
+    errorContainer = ErrorContainerLight,
+    onErrorContainer = OnErrorContainerLight,
+    background = SeaGlassBackgroundLight,
+    onBackground = SeaGlassOnBackgroundLight,
+    surface = SeaGlassSurfaceLight,
+    surfaceDim = SeaGlassSurfaceDimLight,
+    surfaceBright = SeaGlassSurfaceBrightLight,
+    onSurface = SeaGlassOnSurfaceLight,
+    surfaceVariant = SeaGlassSurfaceVariantLight,
+    onSurfaceVariant = SeaGlassOnSurfaceVariantLight,
+    outline = SeaGlassOutlineLight,
+    outlineVariant = SeaGlassOutlineVariantLight,
+    inverseSurface = SeaGlassInverseSurfaceLight,
+    inverseOnSurface = SeaGlassInverseOnSurfaceLight,
+    inversePrimary = primaryContainer,
+    scrim = Scrim,
+    surfaceContainerLowest = SeaGlassSurfaceContainerLowestLight,
+    surfaceContainerLow = SeaGlassSurfaceContainerLowLight,
+    surfaceContainer = SeaGlassSurfaceContainerLight,
+    surfaceContainerHigh = SeaGlassSurfaceContainerHighLight,
+    surfaceContainerHighest = SeaGlassSurfaceContainerHighestLight
+)
+
+private fun seaGlassDarkScheme(
+    primary: Color,
+    onPrimary: Color,
+    primaryContainer: Color,
+    onPrimaryContainer: Color,
+    secondary: Color,
+    onSecondary: Color,
+    secondaryContainer: Color,
+    onSecondaryContainer: Color,
+    tertiary: Color,
+    onTertiary: Color,
+    tertiaryContainer: Color,
+    onTertiaryContainer: Color
+): ColorScheme = darkColorScheme(
+    primary = primary,
+    onPrimary = onPrimary,
+    primaryContainer = primaryContainer,
+    onPrimaryContainer = onPrimaryContainer,
+    secondary = secondary,
+    onSecondary = onSecondary,
+    secondaryContainer = secondaryContainer,
+    onSecondaryContainer = onSecondaryContainer,
+    tertiary = tertiary,
+    onTertiary = onTertiary,
+    tertiaryContainer = tertiaryContainer,
+    onTertiaryContainer = onTertiaryContainer,
+    error = ErrorDark,
+    onError = OnErrorDark,
+    errorContainer = ErrorContainerDark,
+    onErrorContainer = OnErrorContainerDark,
+    background = SeaGlassBackgroundDark,
+    onBackground = SeaGlassOnBackgroundDark,
+    surface = SeaGlassSurfaceDark,
+    surfaceDim = SeaGlassSurfaceDimDark,
+    surfaceBright = SeaGlassSurfaceBrightDark,
+    onSurface = SeaGlassOnSurfaceDark,
+    surfaceVariant = SeaGlassSurfaceVariantDark,
+    onSurfaceVariant = SeaGlassOnSurfaceVariantDark,
+    outline = SeaGlassOutlineDark,
+    outlineVariant = SeaGlassOutlineVariantDark,
+    inverseSurface = SeaGlassInverseSurfaceDark,
+    inverseOnSurface = SeaGlassInverseOnSurfaceDark,
+    inversePrimary = primaryContainer,
+    scrim = Scrim,
+    surfaceContainerLowest = SeaGlassSurfaceContainerLowestDark,
+    surfaceContainerLow = SeaGlassSurfaceContainerLowDark,
+    surfaceContainer = SeaGlassSurfaceContainerDark,
+    surfaceContainerHigh = SeaGlassSurfaceContainerHighDark,
+    surfaceContainerHighest = SeaGlassSurfaceContainerHighestDark
 )
