@@ -22,4 +22,6 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "MaterialChat"
-include(":app")
+include(":app", ":seaglass-core", ":seaglass-compose")
+project(":seaglass-core").projectDir = file("third_party/seaglass/seaglass-core")
+project(":seaglass-compose").projectDir = file("third_party/seaglass/seaglass-compose")

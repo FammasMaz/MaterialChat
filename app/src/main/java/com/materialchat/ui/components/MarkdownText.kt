@@ -3,7 +3,6 @@ package com.materialchat.ui.components
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.text.InlineTextContent
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -24,10 +23,10 @@ import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.OpenInNew
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
+import com.materialchat.ui.components.seaglass.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
+import com.materialchat.ui.components.seaglass.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -102,9 +101,12 @@ fun MarkdownText(
 ) {
     // Derive from the live scheme so code blocks follow the active palette (e.g. SeaGlass)
     // instead of static lavender constants.
-    val codeBlockBackground = MaterialTheme.colorScheme.surfaceContainerHighest.copy(
-        alpha = if (MaterialTheme.colorScheme.surfaceContainerHighest.luminance() > 0.5f) 0.45f else 0.55f
-    )
+    val scheme = MaterialTheme.colorScheme
+    val codeBlockBackground = if (scheme.background.luminance() < 0.5f) {
+        scheme.surfaceContainerHighest
+    } else {
+        scheme.surfaceContainerLow
+    }
     val codeTextColor = MaterialTheme.colorScheme.onSurface
     val linkColor = MaterialTheme.colorScheme.primary
 
@@ -736,10 +738,10 @@ private fun MathBlockView(
         return
     }
 
-    val isDarkTheme = isSystemInDarkTheme()
-    val fgHex = if (isDarkTheme) "#E6E1E5" else "#1C1B1F"
+    val foreground = MaterialTheme.colorScheme.onSurface
+    val fgHex = String.format(java.util.Locale.ROOT, "#%06X", foreground.toArgb() and 0xFFFFFF)
 
-    val html = remember(expression, isDarkTheme) {
+    val html = remember(expression, fgHex) {
         buildMathHtml(
             expression = expression,
             fgColor = fgHex,

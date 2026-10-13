@@ -62,35 +62,35 @@ import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Vibration
 import androidx.compose.material.icons.outlined.Language
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Card
+import com.materialchat.ui.components.seaglass.AlertDialog
+import com.materialchat.ui.components.seaglass.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ElevatedFilterChip
+import com.materialchat.ui.components.seaglass.DropdownMenu
+import com.materialchat.ui.components.seaglass.DropdownMenuItem
+import com.materialchat.ui.components.seaglass.ElevatedFilterChip
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.OutlinedTextField
+import com.materialchat.ui.components.seaglass.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
-import androidx.compose.material3.FilterChip
+import com.materialchat.ui.components.seaglass.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Slider
+import com.materialchat.ui.components.seaglass.Slider
 import androidx.compose.material3.SliderDefaults
-import androidx.compose.material3.Snackbar
+import com.materialchat.ui.components.seaglass.Snackbar
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.LargeTopAppBar
+import com.materialchat.ui.components.seaglass.IconButton
+import com.materialchat.ui.components.seaglass.LargeTopAppBar
 import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import com.materialchat.ui.components.ExpressiveButton
 import com.materialchat.ui.components.ExpressiveTopBarTitle
-import androidx.compose.material3.Scaffold
+import com.materialchat.ui.components.seaglass.Scaffold
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Surface
+import com.materialchat.ui.components.seaglass.Surface
 import androidx.compose.material3.SuggestionChipDefaults
 import com.materialchat.ui.components.ExpressiveSwitch
 import com.materialchat.ui.components.M3ExpressiveCircularProgress
@@ -114,6 +114,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -823,6 +824,7 @@ private fun SuccessContent(
 ) {
     LazyColumn(
         modifier = Modifier
+            .testTag("settings-content")
             .fillMaxSize()
             .imePadding()
             .animateContentSize(
@@ -1684,15 +1686,15 @@ private fun ColorPaletteSelector(
                 Spacer(modifier = Modifier.width(12.dp))
                 Column {
                     Text(
-                        text = "Material palette",
+                        text = "Material palette & appearance",
                         style = MaterialTheme.typography.titleSmall,
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
                         text = if (dynamicColorEnabled) {
-                            "Used when Dynamic Color is off or unavailable"
+                            "SeaGlass adds glass effects to Dynamic Color; other palettes are fallbacks"
                         } else {
-                            "Choose a colorful Material 3 fallback theme"
+                            "Choose a Material 3 palette or SeaGlass frosted-glass appearance"
                         },
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -1703,6 +1705,7 @@ private fun ColorPaletteSelector(
             Spacer(modifier = Modifier.height(12.dp))
 
             LazyRow(
+                modifier = Modifier.testTag("appearance-palettes"),
                 contentPadding = PaddingValues(horizontal = 16.dp),
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {

@@ -26,7 +26,7 @@ import androidx.compose.material.icons.outlined.Memory
 import androidx.compose.material.icons.outlined.SmartToy
 import androidx.compose.material.icons.outlined.Key
 import androidx.compose.material.icons.outlined.KeyOff
-import androidx.compose.material3.Card
+import com.materialchat.ui.components.seaglass.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme

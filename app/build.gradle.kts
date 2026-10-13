@@ -229,6 +229,8 @@ kotlin {
 }
 
 dependencies {
+    implementation(project(":seaglass-compose"))
+
     // Kotlin
     implementation(libs.kotlin.stdlib)
 
