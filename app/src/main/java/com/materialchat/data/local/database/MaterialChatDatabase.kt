@@ -157,11 +157,11 @@ abstract class MaterialChatDatabase : RoomDatabase() {
             // Backfill legacy two-model battles into slots 0/1.
             db.execSQL(
                 """INSERT INTO arena_contenders (id, battle_id, slot, model_name, provider_id, response, thinking_content, duration_ms)
-                   SELECT left_model_name || '-' || id, id, 0, left_model_name, left_provider_id, left_response, left_thinking_content, left_duration_ms FROM arena_battles"""
+                   SELECT left_model_name || '-0-' || id, id, 0, left_model_name, left_provider_id, left_response, left_thinking_content, left_duration_ms FROM arena_battles"""
             )
             db.execSQL(
                 """INSERT INTO arena_contenders (id, battle_id, slot, model_name, provider_id, response, thinking_content, duration_ms)
-                   SELECT right_model_name || '-' || id, id, 1, right_model_name, right_provider_id, right_response, right_thinking_content, right_duration_ms FROM arena_battles"""
+                   SELECT right_model_name || '-1-' || id, id, 1, right_model_name, right_provider_id, right_response, right_thinking_content, right_duration_ms FROM arena_battles"""
             )
         }
     }

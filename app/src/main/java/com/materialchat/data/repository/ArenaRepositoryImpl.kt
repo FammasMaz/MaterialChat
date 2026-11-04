@@ -76,6 +76,7 @@ class ArenaRepositoryImpl @Inject constructor(
         data class Acc(
             val key: String,
             var eloSum: Double = 0.0,
+            var eloWeight: Double = 0.0,
             var wins: Int = 0,
             var losses: Int = 0,
             var ties: Int = 0,
@@ -88,7 +89,11 @@ class ArenaRepositoryImpl @Inject constructor(
         for (rating in ratings) {
             val key = ModelIdentity.canonicalKey(rating.modelName) ?: continue
             val acc = merged.getOrPut(key) { Acc(key) }
-            acc.eloSum += rating.eloRating
+            // Weight each variant's Elo by its battle count so merging never
+            // divides a single rating by its own battle total.
+            val weight = maxOf(rating.totalBattles, 1).toDouble()
+            acc.eloSum += rating.eloRating * weight
+            acc.eloWeight += weight
             acc.wins += rating.wins
             acc.losses += rating.losses
             acc.ties += rating.ties
@@ -109,7 +114,7 @@ class ArenaRepositoryImpl @Inject constructor(
             .map { acc ->
                 ModelRating(
                     modelName = acc.bestName.ifBlank { acc.key },
-                    eloRating = acc.eloSum / maxOf(acc.totalBattles, 1),
+                    eloRating = if (acc.eloWeight > 0.0) acc.eloSum / acc.eloWeight else acc.eloSum,
                     wins = acc.wins,
                     losses = acc.losses,
                     ties = acc.ties,
