@@ -118,6 +118,7 @@ import com.materialchat.ui.screens.chat.MessageUiItem
 import com.materialchat.ui.screens.chat.MessageGroupPosition
 import com.materialchat.ui.screens.chat.SiblingInfo
 import com.materialchat.ui.components.ExpressiveFilledIconButton
+import com.materialchat.ui.components.ImageViewerDialog
 import com.materialchat.ui.components.HapticPattern
 import com.materialchat.ui.components.rememberHapticFeedback
 import com.materialchat.data.local.preferences.AppPreferences
@@ -1421,7 +1422,18 @@ private fun AttachmentImage(
         .size(120.dp)
         .clip(RoundedCornerShape(8.dp))
 
-    val imageModifier = modifier.then(if (isGeneratedImage) generatedModifier else thumbnailModifier)
+    var viewerOpen by remember { mutableStateOf(false) }
+    val imageModifier = modifier
+        .then(if (isGeneratedImage) generatedModifier else thumbnailModifier)
+        .clickable { viewerOpen = true }
+
+    if (viewerOpen) {
+        ImageViewerDialog(
+            uri = attachment.uri,
+            mimeType = attachment.mimeType,
+            onDismiss = { viewerOpen = false }
+        )
+    }
 
     val bitmap = remember(attachment.base64Data, isGeneratedImage) {
         if (isGeneratedImage && attachment.base64Data.isNotBlank()) {
