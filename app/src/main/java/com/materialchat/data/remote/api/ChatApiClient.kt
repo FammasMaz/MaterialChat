@@ -406,6 +406,12 @@ class ChatApiClient(
             .addHeader("Openai-Intent", "conversation-edits")
             .addHeader("Content-Type", "application/json")
             .addHeader("Accept", "text/event-stream")
+            .apply {
+                // Copilot rejects image parts unless the vision opt-in header is present.
+                if (messages.any { it.attachments.isNotEmpty() }) {
+                    addHeader("Copilot-Vision-Request", "true")
+                }
+            }
 
         val httpRequest = if (isCopilotResponsesModel(cleanModel)) {
             val payload = buildCodexResponsesPayload(cleanModel, messages, systemPrompt, reasoningEffort)

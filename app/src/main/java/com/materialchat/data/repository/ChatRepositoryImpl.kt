@@ -269,6 +269,6 @@ class ChatRepositoryImpl @Inject constructor(
     }
 
     private companion object {
-        const val GENERATED_IMAGES_DIR = "generated_images"
+        const val GENERATED_IMAGES_DIR = com.materialchat.util.AttachmentFiles.GENERATED_DIR
     }
 }

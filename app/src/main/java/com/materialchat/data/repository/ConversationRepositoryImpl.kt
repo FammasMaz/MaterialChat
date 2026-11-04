@@ -1,7 +1,9 @@
 package com.materialchat.data.repository
 
+import android.content.Context
 import com.materialchat.data.local.database.dao.ConversationDao
 import com.materialchat.data.local.database.dao.MessageDao
+import com.materialchat.data.local.database.entity.MessageEntity
 import com.materialchat.data.mapper.AttachmentData
 import com.materialchat.data.mapper.toDomain
 import com.materialchat.data.mapper.toEntity
@@ -16,6 +18,8 @@ import com.materialchat.domain.model.MessageRole
 import com.materialchat.domain.model.SearchQuery
 import com.materialchat.domain.model.SearchResult
 import com.materialchat.domain.repository.ConversationRepository
+import com.materialchat.util.AttachmentFiles
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -34,7 +38,8 @@ import javax.inject.Singleton
 @Singleton
 class ConversationRepositoryImpl @Inject constructor(
     private val conversationDao: ConversationDao,
-    private val messageDao: MessageDao
+    private val messageDao: MessageDao,
+    @ApplicationContext private val context: Context
 ) : ConversationRepository {
 
     private val json = Json {
@@ -71,8 +76,30 @@ class ConversationRepositoryImpl @Inject constructor(
     }
 
     override suspend fun deleteConversation(conversationId: String) {
-        // Messages are cascade deleted via Room foreign key constraint
+        // Collect image files first: messages (and branch conversations) are cascade
+        // deleted via Room foreign keys, so the rows are gone once deleteById returns.
+        val ids = mutableListOf(conversationId)
+        collectBranchIds(conversationId, ids)
+        val entities = messageDao.getMessagesForConversations(ids)
         conversationDao.deleteById(conversationId)
+        deleteAttachmentFiles(entities)
+    }
+
+    private suspend fun collectBranchIds(parentId: String, into: MutableList<String>) {
+        conversationDao.getBranchesForConversationOnce(parentId).forEach { branch ->
+            if (branch.id !in into) {
+                into.add(branch.id)
+                collectBranchIds(branch.id, into)
+            }
+        }
+    }
+
+    private fun deleteAttachmentFiles(entities: List<MessageEntity>) {
+        entities.forEach { entity ->
+            entity.toDomain().attachments.forEach { attachment ->
+                AttachmentFiles.deleteIfOwned(context, attachment.uri)
+            }
+        }
     }
 
     override suspend fun deleteEphemeralConversations() {
@@ -246,11 +273,15 @@ class ConversationRepositoryImpl @Inject constructor(
     }
 
     override suspend fun deleteMessage(messageId: String) {
+        val entity = messageDao.getMessageById(messageId)
         messageDao.deleteById(messageId)
+        entity?.let { deleteAttachmentFiles(listOf(it)) }
     }
 
     override suspend fun deleteLastMessage(conversationId: String) {
+        val entity = messageDao.getLastMessage(conversationId)
         messageDao.deleteLastMessages(conversationId, count = 1)
+        entity?.let { deleteAttachmentFiles(listOf(it)) }
     }
 
     // ========== Export Operations ==========

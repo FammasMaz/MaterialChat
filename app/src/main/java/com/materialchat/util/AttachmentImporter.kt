@@ -30,7 +30,7 @@ import java.util.UUID
  */
 object AttachmentImporter {
     private const val TAG = "AttachmentImporter"
-    private const val ATTACHMENTS_DIR = "chat_attachments"
+    private const val ATTACHMENTS_DIR = AttachmentFiles.PICKED_DIR
     const val MAX_DIMENSION = 1536
     private const val JPEG_QUALITY = 85
 
@@ -97,14 +97,9 @@ object AttachmentImporter {
         }
     }
 
-    /** Deletes the backing file if it is one this importer created. */
+    /** Deletes the backing file if it is one this app created (picked or generated). */
     fun discard(context: Context, attachment: Attachment) {
-        val path = Uri.parse(attachment.uri).takeIf { it.scheme == "file" }?.path ?: return
-        val file = File(path)
-        val dir = File(context.applicationContext.filesDir, ATTACHMENTS_DIR)
-        if (file.parentFile?.canonicalPath == dir.canonicalPath && file.exists()) {
-            if (!file.delete()) Log.w(TAG, "Could not delete ${file.name}")
-        }
+        AttachmentFiles.deleteIfOwned(context, attachment.uri)
     }
 
     private fun querySize(context: Context, uri: Uri): Long? {
