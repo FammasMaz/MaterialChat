@@ -1,8 +1,6 @@
 package com.materialchat.ui.screens.chat
 
 import android.content.Intent
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.net.Uri
 import android.util.Log
 import androidx.activity.compose.BackHandler
@@ -75,6 +73,7 @@ import androidx.core.content.FileProvider
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.materialchat.domain.model.Attachment
+import com.materialchat.util.AttachmentImporter
 import com.materialchat.domain.model.MessageRole
 import com.materialchat.domain.model.ReasoningEffort
 import com.materialchat.ui.components.HapticPattern
@@ -95,22 +94,10 @@ import com.materialchat.ui.theme.CustomShapes
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.io.ByteArrayOutputStream
 import java.io.File
-import java.util.UUID
 import androidx.compose.ui.layout.onSizeChanged
 
 private const val TAG = "ChatScreen"
-
-/**
- * Maximum dimension for image compression (width or height).
- */
-private const val MAX_IMAGE_DIMENSION = 1024
-
-/**
- * JPEG compression quality (0-100).
- */
-private const val COMPRESSION_QUALITY = 85
 
 /**
  * Maximum number of image attachments per message.
@@ -150,28 +137,33 @@ fun ChatScreen(
     val context = LocalContext.current
     val haptics = rememberHapticFeedback()
 
-    // Image picker launcher
+    // Image picker launcher (multi-select, bounded by MAX_ATTACHMENTS)
     val imagePickerLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.PickVisualMedia()
-    ) { uri: Uri? ->
-        uri?.let { selectedUri ->
-            // Check attachment limit
-            val currentState = uiState
-            if (currentState is ChatUiState.Success &&
-                currentState.pendingAttachments.size >= MAX_ATTACHMENTS) {
-                coroutineScope.launch {
-                    snackbarHostState.showSnackbar("Maximum $MAX_ATTACHMENTS images allowed")
-                }
-                return@rememberLauncherForActivityResult
-            }
-
+        contract = ActivityResultContracts.PickMultipleVisualMedia(MAX_ATTACHMENTS)
+    ) { uris: List<Uri> ->
+        if (uris.isEmpty()) return@rememberLauncherForActivityResult
+        val currentState = uiState
+        val existing = (currentState as? ChatUiState.Success)?.pendingAttachments?.size ?: 0
+        val room = (MAX_ATTACHMENTS - existing).coerceAtLeast(0)
+        if (room == 0) {
             coroutineScope.launch {
-                val attachment = uriToAttachment(context, selectedUri)
-                if (attachment != null) {
-                    viewModel.addAttachment(attachment)
-                } else {
-                    snackbarHostState.showSnackbar("Failed to load image. Check file size (max 10MB) and format.")
+                snackbarHostState.showSnackbar("Maximum $MAX_ATTACHMENTS images allowed")
+            }
+            return@rememberLauncherForActivityResult
+        }
+        val accepted = uris.take(room)
+        val dropped = uris.size - accepted.size
+        coroutineScope.launch {
+            var firstFailure: String? = null
+            accepted.forEach { selectedUri ->
+                when (val result = AttachmentImporter.import(context, selectedUri)) {
+                    is AttachmentImporter.ImportResult.Success -> viewModel.addAttachment(result.attachment)
+                    is AttachmentImporter.ImportResult.Failure -> if (firstFailure == null) firstFailure = result.reason
                 }
+            }
+            when {
+                firstFailure != null -> snackbarHostState.showSnackbar(firstFailure!!)
+                dropped > 0 -> snackbarHostState.showSnackbar("Only $MAX_ATTACHMENTS images per message; $dropped skipped")
             }
         }
     }
@@ -388,7 +380,10 @@ fun ChatScreen(
                             PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
                         )
                     },
-                    onRemoveAttachment = { viewModel.removeAttachment(it) },
+                    onRemoveAttachment = { attachment ->
+                        viewModel.removeAttachment(attachment)
+                        AttachmentImporter.discard(context, attachment)
+                    },
                     reasoningEffort = state.reasoningEffort,
                     onReasoningEffortChange = { viewModel.updateReasoningEffort(it) },
                     onConversationStarterSelected = { starter ->
@@ -983,139 +978,4 @@ private fun MessageList(
     }
 
     }
-}
-
-/**
- * Converts a content URI to an Attachment object with base64-encoded image data.
- * Includes image compression to reduce memory and network usage.
- *
- * @param context The Android context for accessing content resolver
- * @param uri The content URI of the selected image
- * @return An Attachment object, or null if the conversion fails
- */
-private suspend fun uriToAttachment(
-    context: android.content.Context,
-    uri: Uri
-): Attachment? = withContext(Dispatchers.IO) {
-    try {
-        val contentResolver = context.contentResolver
-
-        // Get MIME type
-        val mimeType = contentResolver.getType(uri) ?: "image/jpeg"
-
-        // Check if it's a supported image type
-        if (!Attachment.isSupportedImageType(mimeType)) {
-            Log.w(TAG, "Unsupported image type: $mimeType")
-            return@withContext null
-        }
-
-        // Read the image data
-        val inputStream = contentResolver.openInputStream(uri) ?: run {
-            Log.w(TAG, "Failed to open input stream for URI: $uri")
-            return@withContext null
-        }
-
-        val originalBytes = inputStream.use { it.readBytes() }
-
-        // Check original file size (max 10MB)
-        if (originalBytes.size > Attachment.MAX_FILE_SIZE_BYTES) {
-            Log.w(TAG, "Image too large: ${originalBytes.size} bytes (max ${Attachment.MAX_FILE_SIZE_BYTES})")
-            return@withContext null
-        }
-
-        // Compress the image
-        val compressedBytes = compressImage(originalBytes, mimeType)
-        Log.d(TAG, "Image compressed: ${originalBytes.size} -> ${compressedBytes.size} bytes")
-
-        val persistedMimeType = if (mimeType == "image/png") "image/png" else "image/jpeg"
-        val localUri = persistAttachmentImage(context, compressedBytes, persistedMimeType)
-
-        Attachment(
-            uri = localUri.toString(),
-            mimeType = persistedMimeType
-        )
-    } catch (e: Exception) {
-        Log.e(TAG, "Failed to convert URI to attachment", e)
-        null
-    }
-}
-
-/**
- * Saves compressed attachment bytes in app-private storage so the message can be
- * restored and resent without keeping a huge base64 blob in Room.
- */
-private fun persistAttachmentImage(
-    context: android.content.Context,
-    imageBytes: ByteArray,
-    mimeType: String
-): Uri {
-    val extension = when (mimeType.lowercase()) {
-        "image/png" -> "png"
-        "image/webp" -> "webp"
-        else -> "jpg"
-    }
-    val directory = File(context.filesDir, "chat_attachments").apply { mkdirs() }
-    val file = File(directory, "attachment_${System.currentTimeMillis()}_${UUID.randomUUID()}.$extension")
-    file.outputStream().use { it.write(imageBytes) }
-    return Uri.fromFile(file)
-}
-
-/**
- * Compresses an image to reduce file size while maintaining reasonable quality.
- * Resizes large images and compresses using JPEG for better size reduction.
- */
-private fun compressImage(imageBytes: ByteArray, mimeType: String): ByteArray {
-    // Decode the bitmap with options to get dimensions first
-    val options = BitmapFactory.Options().apply {
-        inJustDecodeBounds = true
-    }
-    BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size, options)
-
-    // Calculate sample size for scaling down large images
-    val width = options.outWidth
-    val height = options.outHeight
-    var sampleSize = 1
-
-    if (width > MAX_IMAGE_DIMENSION || height > MAX_IMAGE_DIMENSION) {
-        val halfWidth = width / 2
-        val halfHeight = height / 2
-        while ((halfWidth / sampleSize) >= MAX_IMAGE_DIMENSION ||
-               (halfHeight / sampleSize) >= MAX_IMAGE_DIMENSION) {
-            sampleSize *= 2
-        }
-    }
-
-    // Decode the bitmap with the calculated sample size
-    val decodeOptions = BitmapFactory.Options().apply {
-        inSampleSize = sampleSize
-    }
-    val bitmap = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size, decodeOptions)
-        ?: return imageBytes // Return original if decode fails
-
-    // Further scale down if still too large
-    val scaledBitmap = if (bitmap.width > MAX_IMAGE_DIMENSION || bitmap.height > MAX_IMAGE_DIMENSION) {
-        val scale = minOf(
-            MAX_IMAGE_DIMENSION.toFloat() / bitmap.width,
-            MAX_IMAGE_DIMENSION.toFloat() / bitmap.height
-        )
-        val newWidth = (bitmap.width * scale).toInt()
-        val newHeight = (bitmap.height * scale).toInt()
-        Bitmap.createScaledBitmap(bitmap, newWidth, newHeight, true).also {
-            if (it != bitmap) bitmap.recycle()
-        }
-    } else {
-        bitmap
-    }
-
-    // Compress to JPEG (or PNG for transparency)
-    val outputStream = ByteArrayOutputStream()
-    val format = if (mimeType == "image/png") {
-        Bitmap.CompressFormat.PNG
-    } else {
-        Bitmap.CompressFormat.JPEG
-    }
-    scaledBitmap.compress(format, COMPRESSION_QUALITY, outputStream)
-    scaledBitmap.recycle()
-
-    return outputStream.toByteArray()
 }

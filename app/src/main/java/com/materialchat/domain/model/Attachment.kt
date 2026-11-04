@@ -26,7 +26,13 @@ data class Attachment(
             "image/jpg",
             "image/png",
             "image/gif",
-            "image/webp"
+            "image/webp",
+            "image/heic",
+            "image/heif",
+            "image/heic-sequence",
+            "image/heif-sequence",
+            "image/bmp",
+            "image/x-ms-bmp"
         )
 
         /**
