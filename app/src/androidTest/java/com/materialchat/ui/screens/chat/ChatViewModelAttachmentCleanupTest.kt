@@ -5,6 +5,7 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.ViewModelStore
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.filters.SdkSuppress
 import androidx.test.platform.app.InstrumentationRegistry
 import com.materialchat.data.local.preferences.AppPreferences
 import com.materialchat.data.local.preferences.EncryptedPreferences
@@ -46,7 +47,13 @@ import java.util.UUID
  * Picked images belong to the composer until they are sent. Leaving the chat
  * abandons them, so the backing files must be deleted instead of piling up in
  * `filesDir` forever.
+ *
+ * MockK needs the JVMTI instrumentation agent to intercept final classes, which
+ * Android only exposes from API 28. The cleanup and edit logic under test has no
+ * platform-version behavior, so this runs on API 28+ rather than silently
+ * asserting against unmocked objects below it.
  */
+@SdkSuppress(minSdkVersion = 28)
 @RunWith(AndroidJUnit4::class)
 class ChatViewModelAttachmentCleanupTest {
 
