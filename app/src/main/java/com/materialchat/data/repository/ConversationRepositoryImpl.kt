@@ -263,14 +263,7 @@ class ConversationRepositoryImpl @Inject constructor(
     }
 
     override suspend fun addMessage(message: Message): String {
-        messageDao.insert(message.toEntity())
-
-        // Update the conversation's updatedAt timestamp
-        conversationDao.updateTimestamp(
-            conversationId = message.conversationId,
-            updatedAt = System.currentTimeMillis()
-        )
-
+        messageDao.insertWithConversationTimestamp(message.toEntity(), System.currentTimeMillis())
         return message.id
     }
 

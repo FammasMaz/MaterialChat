@@ -5,6 +5,7 @@ import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Transaction
 import androidx.room.Update
 import com.materialchat.data.local.database.entity.DailyMessageCount
 import com.materialchat.data.local.database.entity.GeneratedImageMessageEntity
@@ -27,6 +28,16 @@ interface MessageDao {
      */
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(message: MessageEntity)
+
+    /** A failed timestamp update must not leave a partially saved message behind. */
+    @Transaction
+    suspend fun insertWithConversationTimestamp(message: MessageEntity, updatedAt: Long) {
+        insert(message)
+        updateConversationTimestamp(message.conversationId, updatedAt)
+    }
+
+    @Query("UPDATE conversations SET updated_at = :updatedAt WHERE id = :conversationId")
+    suspend fun updateConversationTimestamp(conversationId: String, updatedAt: Long)
 
     /**
      * Insert multiple messages. Replaces on conflict.

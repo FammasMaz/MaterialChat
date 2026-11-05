@@ -46,6 +46,69 @@ class ConversationAttachmentCleanupTest {
     }
 
     @Test
+    fun failedTimestampUpdateRollsBackTheMessageAndKeepsItsImage() = runBlocking {
+        createConversation("root")
+        val image = imageFile(AttachmentFiles.PICKED_DIR)
+        val message = Message(
+            id = "rejected-message",
+            conversationId = "root",
+            role = MessageRole.USER,
+            content = "Keep this draft",
+            attachments = listOf(Attachment(uri = Uri.fromFile(image).toString(), mimeType = "image/jpeg"))
+        )
+        rejectTimestampUpdates()
+
+        val failure = runCatching { repository.addMessage(message) }.exceptionOrNull()
+
+        assertNotNull("The real SQLite trigger must reject the timestamp update", failure)
+        assertNull("A refused save must not leave a committed attachment reference", database.messageDao().getMessageById(message.id))
+        assertEquals(1L, requireNotNull(database.conversationDao().getConversationById("root")).updatedAt)
+        assertTrue("The unsaved image still belongs to the composer", image.exists())
+    }
+
+    @Test
+    fun failedReplacementRestoresThePreviouslySavedMessage() = runBlocking {
+        createConversation("root")
+        val image = imageFile(AttachmentFiles.PICKED_DIR)
+        val original = addImageMessage("root", image)
+        val timestamp = requireNotNull(database.conversationDao().getConversationById("root")).updatedAt
+        rejectTimestampUpdates()
+
+        val failure = runCatching {
+            repository.addMessage(original.copy(content = "Replacement that must roll back", attachments = emptyList()))
+        }.exceptionOrNull()
+
+        assertNotNull(failure)
+        assertEquals(listOf(original), repository.getMessages("root"))
+        assertEquals(timestamp, requireNotNull(database.conversationDao().getConversationById("root")).updatedAt)
+        assertTrue(image.exists())
+    }
+
+    @Test
+    fun successfulSaveCommitsTheMessageAndConversationTimestampTogether() = runBlocking {
+        createConversation("root")
+        val before = System.currentTimeMillis()
+
+        val message = addImageMessage("root", imageFile(AttachmentFiles.PICKED_DIR))
+
+        val after = System.currentTimeMillis()
+        val updatedAt = requireNotNull(database.conversationDao().getConversationById("root")).updatedAt
+        assertEquals(listOf(message), repository.getMessages("root"))
+        assertTrue("The committed timestamp must belong to this save", updatedAt in before..after)
+    }
+
+    private fun rejectTimestampUpdates() {
+        database.openHelper.writableDatabase.execSQL(
+            """
+            CREATE TRIGGER reject_timestamp BEFORE UPDATE OF updated_at ON conversations
+            BEGIN
+                SELECT RAISE(ABORT, 'timestamp update rejected by regression test');
+            END
+            """.trimIndent()
+        )
+    }
+
+    @Test
     fun deletingBranchedMessageKeepsSharedFileUntilLastReferenceIsDeleted() = runBlocking {
         createConversation("root")
         val image = imageFile(AttachmentFiles.PICKED_DIR)
