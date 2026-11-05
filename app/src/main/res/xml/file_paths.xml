@@ -13,7 +13,11 @@
         name="updates"
         path="updates/" />
 
-    <!-- App-private generated images shared through the system share sheet -->
+    <!-- Only image storage is exposed to the system share sheet. -->
+    <files-path
+        name="chat_attachments"
+        path="chat_attachments/" />
+
     <files-path
         name="generated_images"
         path="generated_images/" />

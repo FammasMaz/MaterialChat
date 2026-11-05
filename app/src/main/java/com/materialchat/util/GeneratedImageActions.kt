@@ -1,5 +1,6 @@
 package com.materialchat.util
 
+import android.content.ClipData
 import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
@@ -9,17 +10,20 @@ import android.os.Environment
 import android.provider.MediaStore
 import android.util.Base64
 import androidx.core.content.FileProvider
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.ByteArrayInputStream
 import java.io.File
+import java.util.UUID
 
 object GeneratedImageActions {
     fun share(context: Context, uriString: String, mimeType: String) {
-        val shareUri = shareableUri(context, uriString)
+        val shareUri = shareableUri(context, uriString, mimeType)
         val sendIntent = Intent(Intent.ACTION_SEND).apply {
             type = mimeType
             putExtra(Intent.EXTRA_STREAM, shareUri)
+            clipData = ClipData.newRawUri("Image", shareUri)
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
         context.startActivity(Intent.createChooser(sendIntent, "Share image"))
@@ -38,24 +42,38 @@ object GeneratedImageActions {
                 }
             }
 
-            val collection = MediaStore.Images.Media.EXTERNAL_CONTENT_URI
-            val outputUri = context.contentResolver.insert(collection, values) ?: return@withContext false
+            var outputUri: Uri? = null
+            var saved = false
             try {
-                openInputStream(context, uriString).use { input ->
-                    context.contentResolver.openOutputStream(outputUri).use { output ->
-                        if (input == null || output == null) return@withContext false
-                        input.copyTo(output)
+                val input = openInputStream(context, uriString) ?: return@withContext false
+                input.use {
+                    val destination = context.contentResolver.insert(
+                        MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                        values
+                    ) ?: return@withContext false
+                    outputUri = destination
+                    val output = context.contentResolver.openOutputStream(destination)
+                        ?: return@withContext false
+                    output.use { input.copyTo(it) }
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                        val completed = ContentValues().apply {
+                            put(MediaStore.Images.Media.IS_PENDING, 0)
+                        }
+                        check(context.contentResolver.update(destination, completed, null, null) == 1)
                     }
-                }
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    values.clear()
-                    values.put(MediaStore.Images.Media.IS_PENDING, 0)
-                    context.contentResolver.update(outputUri, values, null, null)
+                    saved = true
                 }
                 true
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
-                context.contentResolver.delete(outputUri, null, null)
                 false
+            } finally {
+                if (!saved) {
+                    outputUri?.let { uri ->
+                        runCatching { context.contentResolver.delete(uri, null, null) }
+                    }
+                }
             }
         }
 
@@ -70,14 +88,20 @@ object GeneratedImageActions {
             }
         }
 
-    private fun shareableUri(context: Context, uriString: String): Uri {
+    private fun shareableUri(context: Context, uriString: String, mimeType: String): Uri {
         val uri = Uri.parse(uriString)
         val file = if (uriString.startsWith("data:")) {
             val base64 = uriString.substringAfter("base64,", missingDelimiterValue = "")
             val shareDir = File(context.cacheDir, "generated_shares").apply { mkdirs() }
-            val tempFile = File(shareDir, "generated_share_${System.currentTimeMillis()}.png")
-            tempFile.outputStream().use { it.write(Base64.decode(base64, Base64.DEFAULT)) }
-            tempFile
+            val extension = extensionForMimeType(mimeType)
+            val tempFile = File(shareDir, "generated_share_${UUID.randomUUID()}.$extension")
+            try {
+                tempFile.outputStream().use { it.write(Base64.decode(base64, Base64.DEFAULT)) }
+                tempFile
+            } catch (e: Exception) {
+                tempFile.delete()
+                throw e
+            }
         } else if (uri.scheme == "file") {
             File(uri.path ?: return uri)
         } else {
