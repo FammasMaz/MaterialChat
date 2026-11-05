@@ -17,31 +17,39 @@ on:
         required: true
         type: string
 
+# Reserve each release version before building. Keep the APK, native tests and
+# release tag pinned to that commit even if main advances during verification.
+concurrency:
+  group: materialchat-release
+  cancel-in-progress: false
+
 jobs:
-  build-release:
+  prepare-release:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    outputs:
+      release_sha: ${{ steps.reserve.outputs.release_sha }}
+      new_version: ${{ steps.version.outputs.new_version }}
+      new_code: ${{ steps.version.outputs.new_code }}
 
     steps:
-      - name: Checkout repository
+      - name: Require the release branch
+        env:
+          RELEASE_REF: ${{ github.ref }}
+        run: test "$RELEASE_REF" = refs/heads/main
+
+      - name: Checkout current release branch
         uses: actions/checkout@v4
         with:
+          ref: main
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Set up JDK 17
-        uses: actions/setup-java@v4
-        with:
-          java-version: '17'
-          distribution: 'temurin'
-          cache: gradle
-
-      - name: Grant execute permission for gradlew
-        run: chmod +x gradlew
-
       - name: Parse current version and calculate new version
         id: version
+        env:
+          VERSION_BUMP: ${{ inputs.version_bump }}
         run: |
           # Extract current version from build.gradle.kts
           CURRENT_VERSION=$(grep -oP 'versionName = "\K[^"]+' app/build.gradle.kts)
@@ -51,7 +59,7 @@ jobs:
           IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT_VERSION"
 
           # Calculate new version based on bump type
-          case "${{ github.event.inputs.version_bump }}" in
+          case "$VERSION_BUMP" in
             major)
               MAJOR=$((MAJOR + 1))
               MINOR=0
@@ -63,6 +71,10 @@ jobs:
               ;;
             patch)
               PATCH=$((PATCH + 1))
+              ;;
+            *)
+              echo 'Unsupported version bump' >&2
+              exit 1
               ;;
           esac
 
@@ -87,9 +99,69 @@ jobs:
           echo "Updated build.gradle.kts:"
           grep -E "versionCode|versionName" app/build.gradle.kts
 
-      - name: Decode keystore
+      - name: Reserve version on main
+        id: reserve
         run: |
-          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > release.keystore
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add app/build.gradle.kts
+          git commit -m "chore: bump version to ${{ steps.version.outputs.new_version }}"
+          # A concurrent source push can only race this short step, not the build.
+          # Rebase rather than force-push; conflicting version edits fail closed.
+          for attempt in 1 2 3; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then
+              echo "release_sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+          done
+          echo 'Could not reserve the release version on main' >&2
+          exit 1
+
+  native-regression:
+    needs: prepare-release
+    uses: ./.github/workflows/android-regression.yml
+    with:
+      ref: ${{ needs.prepare-release.outputs.release_sha }}
+    permissions:
+      contents: read
+
+  build-release:
+    needs: [prepare-release, native-regression]
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    permissions:
+      contents: write
+    env:
+      RELEASE_VERSION: ${{ needs.prepare-release.outputs.new_version }}
+      RELEASE_SHA: ${{ needs.prepare-release.outputs.release_sha }}
+
+    steps:
+      - name: Checkout verified release commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare-release.outputs.release_sha }}
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Verify checkout and version
+        run: |
+          test "$(git rev-parse HEAD)" = "$RELEASE_SHA"
+          grep -F "versionName = \"$RELEASE_VERSION\"" app/build.gradle.kts
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: gradle
+
+      - name: Decode keystore
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+        run: |
+          umask 077
+          printf '%s' "$KEYSTORE_BASE64" | base64 -d > release.keystore
 
       - name: Build signed GitHub release APK
         env:
@@ -104,41 +176,35 @@ jobs:
 
       - name: Rename APK
         run: |
-          mv app/build/outputs/apk/github/release/app-github-release.apk app/build/outputs/apk/github/release/MaterialChat-${{ steps.version.outputs.new_version }}.apk
+          mv app/build/outputs/apk/github/release/app-github-release.apk "app/build/outputs/apk/github/release/MaterialChat-$RELEASE_VERSION.apk"
 
-      - name: Commit version update
+      - name: Create tag for the exact verified build
         run: |
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
-          git add app/build.gradle.kts
-          git commit -m "chore: bump version to ${{ steps.version.outputs.new_version }}"
-          git push
-
-      - name: Create git tag
-        run: |
-          git tag -a "v${{ steps.version.outputs.new_version }}" -m "Release v${{ steps.version.outputs.new_version }}"
-          git push origin "v${{ steps.version.outputs.new_version }}"
+          git tag -a "v$RELEASE_VERSION" "$RELEASE_SHA" -m "Release v$RELEASE_VERSION"
+          git push origin "refs/tags/v$RELEASE_VERSION"
 
       - name: Generate checksum
         id: checksum
         run: |
-          SHA256=$(sha256sum app/build/outputs/apk/github/release/MaterialChat-${{ steps.version.outputs.new_version }}.apk | cut -d' ' -f1)
+          SHA256=$(sha256sum "app/build/outputs/apk/github/release/MaterialChat-$RELEASE_VERSION.apk" | cut -d' ' -f1)
           echo "sha256=$SHA256" >> $GITHUB_OUTPUT
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: v${{ steps.version.outputs.new_version }}
-          name: MaterialChat v${{ steps.version.outputs.new_version }}
+          tag_name: v${{ env.RELEASE_VERSION }}
+          name: MaterialChat v${{ env.RELEASE_VERSION }}
           body: |
-            ## What's New in v${{ steps.version.outputs.new_version }}
+            ## What's New in v${{ env.RELEASE_VERSION }}
 
             ${{ github.event.inputs.release_notes }}
 
             ---
 
             ### Installation
-            1. Download `MaterialChat-${{ steps.version.outputs.new_version }}.apk` below
+            1. Download `MaterialChat-${{ env.RELEASE_VERSION }}.apk` below
             2. Enable "Install from unknown sources" if prompted
             3. Install and enjoy!
 
@@ -149,7 +215,7 @@ jobs:
             SHA256: ${{ steps.checksum.outputs.sha256 }}
             ```
           files: |
-            app/build/outputs/apk/github/release/MaterialChat-${{ steps.version.outputs.new_version }}.apk
+            app/build/outputs/apk/github/release/MaterialChat-${{ env.RELEASE_VERSION }}.apk
           draft: false
           prerelease: false
         env:
