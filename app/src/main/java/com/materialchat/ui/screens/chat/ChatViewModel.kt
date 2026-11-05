@@ -1,5 +1,6 @@
 package com.materialchat.ui.screens.chat
 
+import android.content.Context
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -31,6 +32,8 @@ import com.materialchat.domain.usecase.RunFusionUseCase
 import com.materialchat.domain.usecase.SendMessageUseCase
 import com.materialchat.notifications.AppNotificationManager
 import com.materialchat.ui.navigation.Screen
+import com.materialchat.util.AttachmentImporter
+import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -84,7 +87,8 @@ class ChatViewModel @Inject constructor(
     private val encryptedPreferences: EncryptedPreferences,
     private val appNotificationManager: AppNotificationManager,
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
-    @ApplicationScope private val applicationScope: CoroutineScope
+    @ApplicationScope private val applicationScope: CoroutineScope,
+    @ApplicationContext private val appContext: Context
 ) : ViewModel() {
 
     private val conversationId: String = checkNotNull(
@@ -1744,6 +1748,7 @@ class ChatViewModel @Inject constructor(
 
     override fun onCleared() {
         super.onCleared()
+        discardPendingAttachments()
         // Streaming now runs on applicationScope and will complete in the background.
         // We only cancel fusion jobs (which are less critical) and UI cleanup.
         fusionJob?.cancel()
@@ -1751,6 +1756,15 @@ class ChatViewModel @Inject constructor(
         // applicationScope so it can complete even after the user navigates away.
         // The use case handles DB cleanup (setMessageStreaming(false)) on completion,
         // error, or cancellation within its own flow.
+    }
+
+    /**
+     * Deletes images that were picked but never sent. Leaving the screen abandons
+     * the composer, so nothing can reference those files afterwards.
+     */
+    private fun discardPendingAttachments() {
+        val pending = (_uiState.value as? ChatUiState.Success)?.pendingAttachments.orEmpty()
+        pending.forEach { AttachmentImporter.discard(appContext, it) }
     }
 
     // ========== Fusion Methods ==========
