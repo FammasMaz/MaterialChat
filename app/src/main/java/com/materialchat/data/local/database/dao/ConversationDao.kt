@@ -54,6 +54,9 @@ interface ConversationDao {
     @Query("DELETE FROM conversations WHERE is_ephemeral = 1")
     suspend fun deleteEphemeralConversations()
 
+    @Query("SELECT id FROM conversations WHERE is_ephemeral = 1")
+    suspend fun getEphemeralConversationIds(): List<String>
+
     /**
      * Get archived conversations ordered by archive time.
      */

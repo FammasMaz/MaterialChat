@@ -25,6 +25,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
@@ -94,16 +95,45 @@ class ConversationRepositoryImpl @Inject constructor(
         }
     }
 
-    private fun deleteAttachmentFiles(entities: List<MessageEntity>) {
-        entities.forEach { entity ->
-            entity.toDomain().attachments.forEach { attachment ->
-                AttachmentFiles.deleteIfOwned(context, attachment.uri)
+    private suspend fun deleteAttachmentFiles(entities: List<MessageEntity>) {
+        val candidates = entities.flatMap { entity ->
+            parseAttachments(entity.imageAttachments).orEmpty()
+        }.mapNotNull { attachment ->
+            AttachmentFiles.ownedPath(context, attachment.uri)
+        }.toMutableSet()
+        if (candidates.isEmpty()) return
+
+        // Branches share image files rather than copying them. Check exact, normalized
+        // references in the remaining messages before removing any backing file.
+        for (metadata in messageDao.getAttachmentMetadata()) {
+            // Unknown/corrupt metadata must never turn a cleanup into data loss.
+            val attachments = parseAttachments(metadata) ?: return
+            attachments.forEach { attachment ->
+                candidates.remove(AttachmentFiles.ownedPath(context, attachment.uri))
             }
+            if (candidates.isEmpty()) return
+        }
+        withContext(Dispatchers.IO) {
+            candidates.forEach { AttachmentFiles.deleteIfOwned(context, it) }
         }
     }
 
+    private fun parseAttachments(metadata: String?): List<AttachmentData>? {
+        if (metadata == null) return emptyList()
+        return runCatching { json.decodeFromString<List<AttachmentData>>(metadata) }.getOrNull()
+    }
+
     override suspend fun deleteEphemeralConversations() {
+        val ids = mutableListOf<String>()
+        for (id in conversationDao.getEphemeralConversationIds()) {
+            if (id !in ids) {
+                ids.add(id)
+                collectBranchIds(id, ids)
+            }
+        }
+        val entities = if (ids.isEmpty()) emptyList() else messageDao.getMessagesForConversations(ids)
         conversationDao.deleteEphemeralConversations()
+        deleteAttachmentFiles(entities)
     }
 
     override fun observeArchivedConversations(): Flow<List<Conversation>> {
@@ -279,9 +309,11 @@ class ConversationRepositoryImpl @Inject constructor(
     }
 
     override suspend fun deleteLastMessage(conversationId: String) {
-        val entity = messageDao.getLastMessage(conversationId)
-        messageDao.deleteLastMessages(conversationId, count = 1)
-        entity?.let { deleteAttachmentFiles(listOf(it)) }
+        // Delete the exact row we inspected, not a second LIMIT 1 selection that
+        // could choose another message with the same timestamp.
+        val entity = messageDao.getLastMessage(conversationId) ?: return
+        messageDao.deleteById(entity.id)
+        deleteAttachmentFiles(listOf(entity))
     }
 
     // ========== Export Operations ==========

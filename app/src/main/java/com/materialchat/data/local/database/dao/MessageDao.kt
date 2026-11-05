@@ -74,6 +74,10 @@ interface MessageDao {
     """)
     suspend fun getMessagesForConversations(conversationIds: List<String>): List<MessageEntity>
 
+    /** Only attachment metadata is read when checking whether a deleted image is still shared. */
+    @Query("SELECT image_attachments FROM messages WHERE image_attachments IS NOT NULL")
+    suspend fun getAttachmentMetadata(): List<String>
+
     /**
      * Get a message by ID.
      */

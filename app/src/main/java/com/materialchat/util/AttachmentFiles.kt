@@ -18,6 +18,9 @@ object AttachmentFiles {
 
     fun isOwned(context: Context, uriString: String): Boolean = ownedFile(context, uriString) != null
 
+    /** Canonical identity for comparing file URIs with plain paths across copied messages. */
+    fun ownedPath(context: Context, uriString: String): String? = ownedFile(context, uriString)?.path
+
     /** Deletes the file behind [uriString] if it is one of ours. Returns true when a file was removed. */
     fun deleteIfOwned(context: Context, uriString: String): Boolean {
         val file = ownedFile(context, uriString) ?: return false
@@ -35,12 +38,12 @@ object AttachmentFiles {
             null, "" -> uriString
             else -> null
         } ?: return null
-        val file = File(path)
-        val parent = runCatching { file.parentFile?.canonicalPath }.getOrNull() ?: return null
+        val file = runCatching { File(path).canonicalFile }.getOrNull() ?: return null
+        val parent = file.parentFile ?: return null
         val filesDir = context.applicationContext.filesDir
         val owned = listOf(PICKED_DIR, GENERATED_DIR).any { dir ->
-            runCatching { File(filesDir, dir).canonicalPath }.getOrNull() == parent
+            runCatching { File(filesDir, dir).canonicalFile }.getOrNull() == parent
         }
-        return file.takeIf { owned }
+        return file.takeIf { owned && !it.isDirectory }
     }
 }
