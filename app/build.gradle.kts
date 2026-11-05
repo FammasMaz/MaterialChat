@@ -164,6 +164,8 @@ android {
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
+            excludes += "/META-INF/LICENSE*"
+            excludes += "/META-INF/NOTICE*"
         }
     }
 }
@@ -317,7 +319,11 @@ dependencies {
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.room.testing)
     androidTestImplementation(libs.androidx.junit)
-    androidTestImplementation(libs.mockk.android)
+    androidTestImplementation(libs.mockk.android) {
+        // JUnit 5 is only used by MockK's JVM test helpers; the device runner is JUnit 4
+        exclude(group = "org.junit.jupiter")
+        exclude(group = "org.junit.platform")
+    }
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
