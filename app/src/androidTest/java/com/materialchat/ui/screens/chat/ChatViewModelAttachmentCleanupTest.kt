@@ -52,6 +52,7 @@ class ChatViewModelAttachmentCleanupTest {
 
     private val context = InstrumentationRegistry.getInstrumentation().targetContext
     private val created = mutableListOf<File>()
+    private lateinit var lastRepository: ConversationRepository
 
     @After
     fun tearDown() {
@@ -65,7 +66,10 @@ class ChatViewModelAttachmentCleanupTest {
             created += this
         }
 
-    private fun buildViewModel(conversationId: String): Pair<ChatViewModel, ViewModelStore> {
+    private fun buildViewModel(
+        conversationId: String,
+        messages: List<com.materialchat.domain.model.Message> = emptyList()
+    ): Pair<ChatViewModel, ViewModelStore> {
         val conversation = Conversation(
             id = conversationId,
             title = "Chat",
@@ -85,10 +89,13 @@ class ChatViewModelAttachmentCleanupTest {
         )
         val getConversations = mockk<GetConversationsUseCase>(relaxed = true)
         coEvery { getConversations.getConversation(conversationId) } returns conversation
-        coEvery { getConversations.getMessages(conversationId) } returns emptyList()
+        coEvery { getConversations.getMessages(conversationId) } returns messages
         every { getConversations.observeConversation(conversationId) } returns flowOf(conversation)
-        every { getConversations.observeMessages(conversationId) } returns flowOf(emptyList())
+        every { getConversations.observeMessages(conversationId) } returns flowOf(messages)
         every { getConversations.observeSiblingBranches(any(), any()) } returns flowOf(emptyList())
+
+        val branchUseCase = mockk<BranchConversationUseCase>(relaxed = true)
+        coEvery { branchUseCase.invoke(any(), any(), any()) } returns "branched"
 
         val providers = mockk<ManageProvidersUseCase>(relaxed = true)
         every { providers.observeProviders() } returns flowOf(listOf(provider))
@@ -110,6 +117,7 @@ class ChatViewModelAttachmentCleanupTest {
             mapOf(Screen.Chat.ARG_CONVERSATION_ID to conversationId)
         )
 
+        this.lastRepository = mockk(relaxed = true)
         val store = ViewModelStore()
         val factory = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
@@ -120,8 +128,8 @@ class ChatViewModelAttachmentCleanupTest {
                     sendMessageUseCase = mockk<SendMessageUseCase>(relaxed = true),
                     regenerateResponseUseCase = mockk<RegenerateResponseUseCase>(relaxed = true),
                     exportConversationUseCase = mockk<ExportConversationUseCase>(relaxed = true),
-                    conversationRepository = mockk<ConversationRepository>(relaxed = true),
-                    branchConversationUseCase = mockk<BranchConversationUseCase>(relaxed = true),
+                    conversationRepository = lastRepository,
+                    branchConversationUseCase = branchUseCase,
                     redoWithModelUseCase = mockk<RedoWithModelUseCase>(relaxed = true),
                     manageBookmarksUseCase = mockk<ManageBookmarksUseCase>(relaxed = true),
                     runFusionUseCase = mockk<RunFusionUseCase>(relaxed = true),
@@ -163,6 +171,47 @@ class ChatViewModelAttachmentCleanupTest {
         store.clear()
 
         assertFalse("Abandoned attachment leaked: ${file.name}", file.exists())
+    }
+
+    @Test
+    fun editingAMessageKeepsItsAttachedImages() {
+        val file = imageFile()
+        val image = Attachment(uri = Uri.fromFile(file).toString(), mimeType = "image/jpeg")
+        val conversationId = "conv-${UUID.randomUUID()}"
+        val messages = listOf(
+            com.materialchat.domain.model.Message(
+                id = "m1",
+                conversationId = conversationId,
+                role = com.materialchat.domain.model.MessageRole.USER,
+                content = "first"
+            ),
+            com.materialchat.domain.model.Message(
+                id = "m2",
+                conversationId = conversationId,
+                role = com.materialchat.domain.model.MessageRole.USER,
+                content = "look at this",
+                attachments = listOf(image)
+            )
+        )
+        val (viewModel, store) = buildViewModel(conversationId, messages)
+        awaitSendableState(viewModel)
+
+        val saved = mutableListOf<com.materialchat.domain.model.Message>()
+        coEvery { lastRepository.addMessage(capture(saved)) } returns "m3"
+
+        viewModel.startEditingMessage("m2")
+        viewModel.updateEditingText("look at this closely")
+        viewModel.submitEditedMessage()
+
+        val deadline = System.currentTimeMillis() + 5_000
+        while (saved.isEmpty() && System.currentTimeMillis() < deadline) Thread.sleep(20)
+
+        store.clear()
+        assertTrue("Edited message was never saved", saved.isNotEmpty())
+        assertTrue(
+            "Editing text must not silently drop the attached image",
+            saved.any { it.attachments.contains(image) }
+        )
     }
 
     @Test

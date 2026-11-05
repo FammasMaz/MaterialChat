@@ -1262,6 +1262,9 @@ class ChatViewModel @Inject constructor(
         }
 
         val branchFromId = messages[editingIndex - 1].id
+        // Editing rewrites the text only; the images the user attached stay with
+        // the message. They are shared files, so the copy is reference-counted.
+        val originalAttachments = messages[editingIndex].attachments
 
         // Clear editing state
         _uiState.value = currentState.copy(editingMessageId = null, editingText = "")
@@ -1277,7 +1280,8 @@ class ChatViewModel @Inject constructor(
                     id = java.util.UUID.randomUUID().toString(),
                     conversationId = newConversationId,
                     role = MessageRole.USER,
-                    content = editedText
+                    content = editedText,
+                    attachments = originalAttachments
                 )
                 conversationRepository.addMessage(editedMessage)
 
