@@ -99,7 +99,7 @@ class ChatViewModelAttachmentCleanupTest {
     private var previousWebSearchEnabled = false
 
     @Before
-    fun setUp() = runBlocking {
+    fun setUp(): Unit = runBlocking {
         database = Room.inMemoryDatabaseBuilder(context, MaterialChatDatabase::class.java).build()
         repository = ConversationRepositoryImpl(database.conversationDao(), database.messageDao(), context)
         preferences = AppPreferences(context)
