@@ -124,9 +124,16 @@ class AttachmentImporterTest {
         )
         for ((orientation, colors) in expected) {
             val source = writeImage("orientation-$orientation.jpg", 80, 40, quadrants = true)
-            ExifInterface(source.path).apply {
-                setAttribute(ExifInterface.TAG_ORIENTATION, orientation.toString())
-                saveAttributes()
+            writeExifOrientation(source, orientation)
+            source.inputStream().use { stream ->
+                assertEquals(
+                    "Fixture must contain EXIF orientation $orientation",
+                    orientation,
+                    ExifInterface(stream).getAttributeInt(
+                        ExifInterface.TAG_ORIENTATION,
+                        ExifInterface.ORIENTATION_UNDEFINED
+                    )
+                )
             }
             val result = decoded(importImage(source))
             try {
@@ -175,6 +182,27 @@ class AttachmentImporterTest {
         val result = BitmapFactory.decodeFile(Uri.parse(attachment.uri).path)
         assertNotNull("Saved attachment must decode", result)
         return requireNotNull(result)
+    }
+
+    /** Insert one standard APP1/TIFF orientation tag without the API 26 EXIF writer. */
+    private fun writeExifOrientation(file: File, orientation: Int) {
+        val jpeg = file.readBytes()
+        assertEquals(0xff, jpeg[0].toInt() and 0xff)
+        assertEquals(0xd8, jpeg[1].toInt() and 0xff)
+        val exif = byteArrayOf(
+            0xff.toByte(), 0xe1.toByte(), 0x00, 0x22,
+            0x45, 0x78, 0x69, 0x66, 0x00, 0x00, // Exif header
+            0x49, 0x49, 0x2a, 0x00, 0x08, 0x00, 0x00, 0x00, // Little-endian TIFF
+            0x01, 0x00, // One IFD entry
+            0x12, 0x01, 0x03, 0x00, 0x01, 0x00, 0x00, 0x00, // Orientation, SHORT, count 1
+            orientation.toByte(), 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00 // No next IFD
+        )
+        file.outputStream().use { output ->
+            output.write(jpeg, 0, 2)
+            output.write(exif)
+            output.write(jpeg, 2, jpeg.size - 2)
+        }
     }
 
     private fun writeImage(name: String, width: Int, height: Int, quadrants: Boolean = false): File {
