@@ -181,8 +181,6 @@ class ChatViewModel @Inject constructor(
 
                 // Get provider info
                 val providers = manageProvidersUseCase.observeProviders().first()
-                val provider = providers.find { it.id == initialConversation.providerId }
-                val providerName = provider?.name ?: "Unknown Provider"
 
                 // Observe conversation and messages reactively, switching on activeConversationId
                 activeConversationId.flatMapLatest { currentId ->
@@ -190,7 +188,7 @@ class ChatViewModel @Inject constructor(
                         getConversationsUseCase.observeConversation(currentId),
                         getConversationsUseCase.observeMessages(currentId)
                     ) { conversation, messages ->
-                        Pair(conversation, messages)
+                        Triple(currentId, conversation, messages)
                     }
                 }
                     .catch { e ->
@@ -198,59 +196,17 @@ class ChatViewModel @Inject constructor(
                             message = e.message ?: "Failed to load messages"
                         )
                     }
-                    .collect { (conversation, messages) ->
+                    .collect { (observedId, conversation, messages) ->
+                        if (observedId != activeConversationId.value) return@collect
                         if (conversation == null) {
                             _uiState.value = ChatUiState.Error("Conversation not found")
                             return@collect
                         }
 
                         val currentState = _uiState.value
-                        val isSameConversation = currentState is ChatUiState.Success &&
-                            currentState.conversationId == activeConversationId.value
-                        val inputText = if (isSameConversation) {
-                            currentState.inputText
-                        } else {
-                            ""
-                        }
-                        val pendingAttachments = if (isSameConversation) {
-                            currentState.pendingAttachments
-                        } else {
-                            emptyList()
-                        }
-                        val streamingStateAtCollect = if (isSameConversation) {
-                            currentState.streamingState
-                        } else {
-                            StreamingState.Idle
-                        }
-                        // Model lists are scoped to the current conversation/provider.
-                        // Clear cached models when switching conversations or when the
-                        // cached list no longer matches the conversation's provider.
-                        val cachedModels = (currentState as? ChatUiState.Success)?.availableModels.orEmpty()
-                        val modelsMatchConversationProvider = cachedModels.isEmpty() ||
-                            cachedModels.all { it.providerId == conversation.providerId }
-                        val availableModels = if (isSameConversation && modelsMatchConversationProvider) {
-                            cachedModels
-                        } else {
-                            emptyList()
-                        }
-                        val isLoadingModels = if (isSameConversation && modelsMatchConversationProvider) {
-                            currentState.isLoadingModels
-                        } else {
-                            false
-                        }
-                        val currentModelName = if (currentState is ChatUiState.Success &&
-                            currentState.conversationId == activeConversationId.value) {
-                            // Same conversation — preserve user's model picker selection
-                            currentState.modelName
-                        } else {
-                            // New/switched conversation — use its actual model
-                            conversation.modelName
-                        }
-                        val reasoningEffort = if (currentState is ChatUiState.Success) {
-                            currentState.reasoningEffort
-                        } else {
-                            currentReasoningEffort
-                        }
+                        val sameConversation = (currentState as? ChatUiState.Success)
+                            ?.takeIf { it.conversationId == observedId }
+                        val streamingStateAtCollect = sameConversation?.streamingState ?: StreamingState.Idle
 
                         // Filter out the message being regenerated to prevent overlap artifacts.
                         // The DB may still contain the old message for a few frames after deleteMessage()
@@ -320,71 +276,71 @@ class ChatViewModel @Inject constructor(
                             )
                         }
 
-                        val slideDirection = if (currentState is ChatUiState.Success) {
-                            currentState.slideDirection
-                        } else {
-                            0
-                        }
-
-                        // Compute branch state inline to avoid race condition
-                        // (loadBranchState() ran before state was Success, so hasBranches was always false)
-                        val hasBranches = if (isSameConversation) {
-                            currentState.hasBranches
-                        } else {
+                        val hasBranches = sameConversation?.hasBranches ?: (
                             conversation.parentId != null ||
-                                conversationRepository.getBranchCount(activeConversationId.value) > 0
-                        }
-                        val contextWindowUsage = withContext(ioDispatcher) {
-                            buildContextWindowUsage(
-                                modelName = currentModelName,
-                                messages = filteredMessages,
-                                inputText = inputText,
-                                pendingAttachments = pendingAttachments,
-                                availableModels = availableModels,
-                                quotedMessage = (currentState as? ChatUiState.Success)?.quotedMessage
+                                conversationRepository.getBranchCount(observedId) > 0
                             )
+                        // Only history is expensive to estimate. Do not capture composer
+                        // ownership across this suspension: a send may commit or fail here.
+                        val historyTokens = withContext(ioDispatcher) {
+                            ContextWindowEstimator.estimate(
+                                messages = filteredMessages,
+                                draft = "",
+                                pendingAttachments = emptyList(),
+                                systemPrompt = "",
+                                modelName = conversation.modelName
+                            ).usedTokens
                         }
+                        if (observedId != activeConversationId.value) return@collect
 
-                        // Re-read streaming state after any suspension — a message DB emission can
-                        // be processed while streaming is still active, then complete before we
-                        // assign UI state (regression from moving context-window work off Main).
-                        val latestState = _uiState.value
-                        val streamingState = when {
-                            latestState is ChatUiState.Success &&
-                                latestState.conversationId == activeConversationId.value ->
-                                latestState.streamingState
-                            isSameConversation && currentState is ChatUiState.Success ->
-                                currentState.streamingState
-                            else -> StreamingState.Idle
+                        // Merge database fields into the latest state atomically. Rebuilding
+                        // Success from the earlier snapshot can resurrect committed images
+                        // or erase a refused draft, model selection, or fusion controls.
+                        _uiState.update { state ->
+                            if (observedId != activeConversationId.value) return@update state
+                            val latest = (state as? ChatUiState.Success)
+                                ?.takeIf { it.conversationId == observedId }
+                            val base = latest ?: ChatUiState.Success(
+                                conversationId = observedId,
+                                conversationTitle = conversation.title,
+                                providerName = "Unknown Provider",
+                                modelName = conversation.modelName,
+                                messages = emptyList(),
+                                hapticsEnabled = currentHapticsEnabled,
+                                reasoningEffort = currentReasoningEffort,
+                                beautifulModelNamesEnabled = currentBeautifulModelNamesEnabled,
+                                alwaysShowThinking = currentAlwaysShowThinking,
+                                slideDirection = (state as? ChatUiState.Success)?.slideDirection ?: 0,
+                                persona = currentPersona,
+                                showTokenCounter = currentShowTokenCounter
+                            )
+                            val modelsMatchProvider = base.availableModels.all {
+                                it.providerId == conversation.providerId
+                            }
+                            val updated = base.copy(
+                                conversationTitle = conversation.title,
+                                conversationIcon = conversation.icon,
+                                isEphemeral = conversation.isEphemeral,
+                                isArchived = conversation.isArchived,
+                                providerName = providers.find { it.id == conversation.providerId }?.name
+                                    ?: "Unknown Provider",
+                                messages = messageItems,
+                                availableModels = if (modelsMatchProvider) base.availableModels else emptyList(),
+                                isLoadingModels = modelsMatchProvider && base.isLoadingModels,
+                                hasBranches = hasBranches
+                            )
+                            val draftUsage = buildContextWindowUsage(
+                                modelName = updated.modelName,
+                                messages = emptyList(),
+                                inputText = updated.inputText,
+                                pendingAttachments = updated.pendingAttachments,
+                                availableModels = updated.availableModels,
+                                quotedMessage = updated.quotedMessage
+                            )
+                            updated.copy(contextWindowUsage = draftUsage.copy(
+                                usedTokens = historyTokens + draftUsage.usedTokens
+                            ))
                         }
-
-                        _uiState.value = ChatUiState.Success(
-                            conversationId = activeConversationId.value,
-                            conversationTitle = conversation.title,
-                            conversationIcon = conversation.icon,
-                            isEphemeral = conversation.isEphemeral,
-                            isArchived = conversation.isArchived,
-                            providerName = providerName,
-                            modelName = currentModelName,
-                            messages = messageItems,
-                            inputText = inputText,
-                            pendingAttachments = pendingAttachments,
-                            streamingState = streamingState,
-                            availableModels = availableModels,
-                            isLoadingModels = isLoadingModels,
-                            hapticsEnabled = currentHapticsEnabled,
-                            reasoningEffort = reasoningEffort,
-                            beautifulModelNamesEnabled = currentBeautifulModelNamesEnabled,
-                            alwaysShowThinking = currentAlwaysShowThinking,
-                            slideDirection = slideDirection,
-                            persona = currentPersona,
-                            editingMessageId = (currentState as? ChatUiState.Success)?.editingMessageId,
-                            editingText = (currentState as? ChatUiState.Success)?.editingText ?: "",
-                            hasBranches = hasBranches,
-                            quotedMessage = (currentState as? ChatUiState.Success)?.quotedMessage,
-                            showTokenCounter = currentShowTokenCounter,
-                            contextWindowUsage = contextWindowUsage
-                        )
 
                         // Only scroll to bottom when a NEW message is added, not during streaming updates
                         // Track message count to detect new messages
@@ -401,6 +357,8 @@ class ChatViewModel @Inject constructor(
                             regenerateResponse(overrideModelName = overrideModel)
                         }
                     }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 _uiState.value = ChatUiState.Error(
                     message = e.message ?: "Failed to load conversation"
