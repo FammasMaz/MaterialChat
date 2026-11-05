@@ -1,6 +1,7 @@
 package com.materialchat.domain.usecase
 
 import com.materialchat.data.local.preferences.AppPreferences
+import com.materialchat.domain.model.Attachment
 import com.materialchat.domain.model.FusionConfig
 import com.materialchat.domain.model.FusionIndividualResponse
 import com.materialchat.domain.model.FusionMetadata
@@ -52,6 +53,7 @@ class RunFusionUseCase @Inject constructor(
      * @param fusionConfig The fusion configuration with selected models and judge
      * @param systemPrompt The system prompt to use
      * @param reasoningEffort The reasoning effort setting
+     * @param attachments Image attachments to include with the prompt
      * @return A Flow emitting FusionResult updates in real-time as models stream
      */
     operator fun invoke(
@@ -59,7 +61,8 @@ class RunFusionUseCase @Inject constructor(
         userContent: String,
         fusionConfig: FusionConfig,
         systemPrompt: String,
-        reasoningEffort: ReasoningEffort
+        reasoningEffort: ReasoningEffort,
+        attachments: List<Attachment> = emptyList()
     ): Flow<FusionResult> = channelFlow {
         // Get conversation
         val conversation = conversationRepository.getConversation(conversationId)
@@ -69,7 +72,8 @@ class RunFusionUseCase @Inject constructor(
         val userMessage = Message(
             conversationId = conversationId,
             role = MessageRole.USER,
-            content = userContent
+            content = userContent,
+            attachments = attachments
         )
         conversationRepository.addMessage(userMessage)
 

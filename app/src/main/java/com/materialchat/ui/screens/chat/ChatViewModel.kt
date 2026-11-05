@@ -1880,6 +1880,9 @@ class ChatViewModel @Inject constructor(
         if (!currentState.canSend) return
 
         val messageContent = currentState.inputText.trim()
+        // Attachments belong to this send; hand them to the pipeline before the
+        // composer clears so images are neither dropped nor left as orphan files.
+        val attachments = currentState.pendingAttachments.toList()
 
         // Clear input immediately
         _uiState.value = currentState.withUpdatedContextWindowUsage(
@@ -1898,7 +1901,8 @@ class ChatViewModel @Inject constructor(
                     userContent = messageContent,
                     fusionConfig = currentState.fusionConfig,
                     systemPrompt = currentSystemPrompt,
-                    reasoningEffort = currentReasoningEffort
+                    reasoningEffort = currentReasoningEffort,
+                    attachments = attachments
                 ).collect { result ->
                     _uiState.update { state ->
                         if (state is ChatUiState.Success) {
