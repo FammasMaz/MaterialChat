@@ -103,21 +103,24 @@ class ImageGenerationForegroundService : Service() {
         const val IMAGE_OWNER = "image"
 
         fun startImage(context: Context, modelName: String, ownerId: String = IMAGE_OWNER) {
-            ActiveAiWorkRegistry.begin(ownerId)
-            start(
+            val started = start(
                 context = context,
                 title = "Creating image",
                 text = "Using $modelName. This may take a few minutes."
             )
+            // Android 12+ can refuse a foreground start from the background. Only
+            // claim the notification when it really exists, otherwise the owner
+            // would never be released and the service would run forever.
+            if (started) ActiveAiWorkRegistry.begin(ownerId)
         }
 
         fun startChat(context: Context, modelName: String, ownerId: String = CHAT_OWNER) {
-            ActiveAiWorkRegistry.begin(ownerId)
-            start(
+            val started = start(
                 context = context,
                 title = "Generating response",
                 text = "Streaming with $modelName."
             )
+            if (started) ActiveAiWorkRegistry.begin(ownerId)
         }
 
         /**
@@ -126,6 +129,9 @@ class ImageGenerationForegroundService : Service() {
          * cannot tear down the notification for a parallel image generation.
          */
         fun stop(context: Context, ownerId: String) {
+            // Never started for this owner (for example the foreground start was
+            // refused), so there is no notification to release.
+            if (!ActiveAiWorkRegistry.contains(ownerId)) return
             if (ActiveAiWorkRegistry.finish(ownerId)) return
             forceStop(context)
         }
@@ -143,8 +149,8 @@ class ImageGenerationForegroundService : Service() {
             }
         }
 
-        private fun start(context: Context, title: String, text: String) {
-            runCatching {
+        private fun start(context: Context, title: String, text: String): Boolean {
+            return runCatching {
                 val intent = Intent(context, ImageGenerationForegroundService::class.java).apply {
                     action = ACTION_START
                     putExtra(EXTRA_TITLE, title)
@@ -155,7 +161,7 @@ class ImageGenerationForegroundService : Service() {
                 } else {
                     context.startService(intent)
                 }
-            }
+            }.isSuccess
         }
     }
 }

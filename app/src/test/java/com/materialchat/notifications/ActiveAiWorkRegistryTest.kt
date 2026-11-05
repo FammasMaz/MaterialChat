@@ -57,6 +57,17 @@ class ActiveAiWorkRegistryTest {
     }
 
     @Test
+    fun `stop is a no-op for an owner whose notification never started`() {
+        assertFalse("nothing was ever claimed", ActiveAiWorkRegistry.contains("refused"))
+
+        // The service would otherwise run its shutdown path for work that never
+        // acquired the notification, tearing down a still-needed one.
+        ActiveAiWorkRegistry.begin("chat-a")
+        assertFalse("stop must return early for this owner", ActiveAiWorkRegistry.contains("refused"))
+        assertTrue("the real owner keeps the service", ActiveAiWorkRegistry.contains("chat-a"))
+    }
+
+    @Test
     fun `a chat and its inline image generation are independent owners`() {
         ActiveAiWorkRegistry.begin("conv-a")
         ActiveAiWorkRegistry.begin("conv-a:image")

@@ -29,6 +29,9 @@ object ActiveAiWorkRegistry {
     }
 
     @Synchronized
+    fun contains(ownerId: String): Boolean = ownerId in owners
+
+    @Synchronized
     fun activeCount(): Int = owners.size
 
     @Synchronized
