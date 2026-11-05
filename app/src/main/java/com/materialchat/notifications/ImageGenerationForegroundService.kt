@@ -24,7 +24,15 @@ class ImageGenerationForegroundService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        val action = intent?.action
+        // After a process restart Android re-delivers null intents. Treating
+        // that as a fresh START would post a permanent, undismissable
+        // "working" notification for work that no longer exists.
+        if (intent == null) {
+            stopSelf()
+            return START_NOT_STICKY
+        }
+
+        val action = intent.action
         if (action == ACTION_STOP) {
             if (!isForeground) {
                 // To satisfy Android's startForegroundService contract and avoid ForegroundServiceDidNotStartInTimeException,
@@ -41,7 +49,7 @@ class ImageGenerationForegroundService : Service() {
             return START_NOT_STICKY
         }
 
-        val title = intent?.getStringExtra(EXTRA_TITLE) ?: "MaterialChat is working"
+        val title = intent.getStringExtra(EXTRA_TITLE) ?: "MaterialChat is working"
         val text = intent?.getStringExtra(EXTRA_TEXT) ?: "Keeping the request active in the background."
         ServiceCompat.startForeground(
             this,
@@ -50,7 +58,7 @@ class ImageGenerationForegroundService : Service() {
             ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
         )
         isForeground = true
-        return START_STICKY
+        return START_NOT_STICKY
     }
 
     private fun buildNotification(title: String, text: String): Notification {
@@ -91,8 +99,11 @@ class ImageGenerationForegroundService : Service() {
         private const val EXTRA_TEXT = "extra_text"
         private const val ACTION_START = "com.materialchat.action.START"
         private const val ACTION_STOP = "com.materialchat.action.STOP"
+        const val CHAT_OWNER = "chat"
+        const val IMAGE_OWNER = "image"
 
-        fun startImage(context: Context, modelName: String) {
+        fun startImage(context: Context, modelName: String, ownerId: String = IMAGE_OWNER) {
+            ActiveAiWorkRegistry.begin(ownerId)
             start(
                 context = context,
                 title = "Creating image",
@@ -100,7 +111,8 @@ class ImageGenerationForegroundService : Service() {
             )
         }
 
-        fun startChat(context: Context, modelName: String) {
+        fun startChat(context: Context, modelName: String, ownerId: String = CHAT_OWNER) {
+            ActiveAiWorkRegistry.begin(ownerId)
             start(
                 context = context,
                 title = "Generating response",
@@ -108,7 +120,17 @@ class ImageGenerationForegroundService : Service() {
             )
         }
 
-        fun stop(context: Context) {
+        /**
+         * Releases [ownerId]'s claim on the notification. The service keeps
+         * running while any other owner still needs it, so one chat finishing
+         * cannot tear down the notification for a parallel image generation.
+         */
+        fun stop(context: Context, ownerId: String) {
+            if (ActiveAiWorkRegistry.finish(ownerId)) return
+            forceStop(context)
+        }
+
+        private fun forceStop(context: Context) {
             runCatching {
                 val intent = Intent(context, ImageGenerationForegroundService::class.java).apply {
                     action = ACTION_STOP

@@ -151,7 +151,7 @@ class SendMessageUseCase @Inject constructor(
             val startedAt = System.currentTimeMillis()
             var finalized = false
             try {
-                ImageGenerationForegroundService.startImage(context, imageModel)
+                ImageGenerationForegroundService.startImage(context, imageModel, "$conversationId:image")
                 val result = chatRepository.generateImage(
                     provider = provider,
                     prompt = contextualImagePrompt,
@@ -191,7 +191,7 @@ class SendMessageUseCase @Inject constructor(
                     )
                 }
             } finally {
-                ImageGenerationForegroundService.stop(context)
+                ImageGenerationForegroundService.stop(context, "$conversationId:image")
                 if (!finalized) {
                     withContext(NonCancellable) {
                         runCatching { conversationRepository.setMessageStreaming(assistantMessageId, false) }
@@ -270,7 +270,7 @@ class SendMessageUseCase @Inject constructor(
             messageId = assistantMessageId
         )
 
-        ImageGenerationForegroundService.startChat(context, conversation.modelName)
+        ImageGenerationForegroundService.startChat(context, conversation.modelName, conversationId)
 
         // Stream the response from the chat repository
         chatRepository.sendMessage(
@@ -351,7 +351,7 @@ class SendMessageUseCase @Inject constructor(
                         val imageModel = appPreferences.defaultImageGenerationModel.first()
                             .ifBlank { AppPreferences.DEFAULT_IMAGE_GENERATION_MODEL }
                         val outputFormat = appPreferences.defaultImageOutputFormat.first()
-                        ImageGenerationForegroundService.startImage(context, imageModel)
+                        ImageGenerationForegroundService.startImage(context, imageModel, "$conversationId:image")
                         val contextualImagePrompt = buildContextualImagePrompt(
                             imagePrompt = imageToolPrompt,
                             messages = messages
@@ -388,6 +388,7 @@ class SendMessageUseCase @Inject constructor(
                                 )
                             )
                         }
+                        ImageGenerationForegroundService.stop(context, "$conversationId:image")
                         conversationRepository.updateMessageDurations(assistantMessageId, thinkingDurationMs, totalDurationMs)
                     // Persist generation metrics for the speed pill (skip image-gen path).
                     if (imageToolPrompt == null) {
@@ -454,7 +455,7 @@ class SendMessageUseCase @Inject constructor(
                 try {
                     contentUpdater.flush()
                     conversationRepository.setMessageStreaming(assistantMessageId, false)
-                    ImageGenerationForegroundService.stop(context)
+                    ImageGenerationForegroundService.stop(context, conversationId)
                 } catch (_: Exception) { }
             }
         }.collect { state ->

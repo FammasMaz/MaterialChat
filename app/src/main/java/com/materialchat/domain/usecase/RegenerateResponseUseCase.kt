@@ -121,7 +121,7 @@ class RegenerateResponseUseCase @Inject constructor(
                 )
             }
             emit(StreamingState.Starting)
-            ImageGenerationForegroundService.startChat(context, modelToUse)
+            ImageGenerationForegroundService.startChat(context, modelToUse, conversationId)
 
             chatRepository.sendMessage(
                 provider = provider,
@@ -292,7 +292,7 @@ class RegenerateResponseUseCase @Inject constructor(
                         conversationRepository.deleteMessage(assistantMessageId)
                     }
                 } finally {
-                    ImageGenerationForegroundService.stop(context)
+                    ImageGenerationForegroundService.stop(context, conversationId)
                 }
             }
         }
