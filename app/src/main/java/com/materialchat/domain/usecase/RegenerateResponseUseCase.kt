@@ -17,8 +17,6 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.flow.onCompletion
-import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -28,10 +26,10 @@ import javax.inject.Inject
  * Use case for regenerating the last AI response in a conversation.
  *
  * This use case orchestrates:
- * 1. Deleting the last assistant message
- * 2. Creating a new placeholder assistant message
- * 3. Re-sending the conversation to the AI provider
- * 4. Updating the assistant message with streaming content
+ * 1. Keeping the saved answer until its replacement succeeds
+ * 2. Creating a separate placeholder for the retry
+ * 3. Re-sending the conversation without the old answer
+ * 4. Persisting the replacement before removing the old answer
  */
 class RegenerateResponseUseCase @Inject constructor(
     private val chatRepository: ChatRepository,
@@ -78,14 +76,10 @@ class RegenerateResponseUseCase @Inject constructor(
             return@flow
         }
 
-        // Find and remove the last assistant message (skip if last is USER, e.g. auto-send after redo)
-        val lastMessage = messages.last()
-        if (lastMessage.role == MessageRole.ASSISTANT) {
-            conversationRepository.deleteMessage(lastMessage.id)
-        }
-
-        // Get updated messages without the last assistant message
-        val updatedMessages = conversationRepository.getMessages(conversationId)
+        // Exclude the answer from the request, not from storage. A failed retry
+        // must not destroy the saved text, attachments, or generation metadata.
+        val previousAnswer = messages.last().takeIf { it.role == MessageRole.ASSISTANT }
+        val updatedMessages = if (previousAnswer != null) messages.dropLast(1) else messages
 
         val webSearchContext = resolveWebSearchPromptContext(
             basePrompt = effectiveSystemPrompt,
@@ -106,18 +100,8 @@ class RegenerateResponseUseCase @Inject constructor(
             modelName = modelToUse
         )
         val assistantMessageId = conversationRepository.addMessage(assistantMessage)
-        var webSearchMetadataJson = webSearchContext.metadata?.let { Json.encodeToString(it) }
-        webSearchMetadataJson?.let { metadataJson ->
-            conversationRepository.updateMessageWebSearchMetadata(
-                assistantMessageId,
-                metadataJson
-            )
-        }
-
-        // Emit starting state
-        emit(StreamingState.Starting)
-
-        var hasError = false
+        var hasTerminalState = false
+        var hasPartialResponse = false
         val streamStartTime = System.currentTimeMillis()
         var thinkingEndTime: Long? = null
         // First token of ANY kind (thinking deltas included) starts the TTFT clock,
@@ -129,135 +113,187 @@ class RegenerateResponseUseCase @Inject constructor(
             messageId = assistantMessageId
         )
 
-        ImageGenerationForegroundService.startChat(context, modelToUse)
+        try {
+            webSearchContext.metadata?.let { metadata ->
+                conversationRepository.updateMessageWebSearchMetadata(
+                    assistantMessageId,
+                    Json.encodeToString(metadata)
+                )
+            }
+            emit(StreamingState.Starting)
+            ImageGenerationForegroundService.startChat(context, modelToUse)
 
-        // Stream the response from the chat repository
-        chatRepository.sendMessage(
-            provider = provider,
-            messages = updatedMessages,
-            model = modelToUse,
-            reasoningEffort = reasoningEffort,
-            systemPrompt = webSearchContext.systemPrompt,
-            disableTools = webSearchContext.metadata != null,
-            nativeWebSearch = webSearchContext.nativeWebSearchEnabled
-        ).onEach { state ->
-            when (state) {
-                is StreamingState.Streaming -> {
-                    // Coalesce Room writes so each token does not invalidate the whole chat list.
-                    contentUpdater.onStreaming(state.content, state.thinkingContent)
-                    if (firstContentAtMs == null &&
-                        (state.content.isNotEmpty() || !state.thinkingContent.isNullOrEmpty())
-                    ) {
-                        firstContentAtMs = System.currentTimeMillis()
-                    }
-                    if (!state.thinkingContent.isNullOrEmpty()) {
-                        accumulatedThinking = state.thinkingContent
-                    }
-                    // Track when thinking ends
-                    if (thinkingEndTime == null && state.content.isNotEmpty() && !state.thinkingContent.isNullOrEmpty()) {
-                        thinkingEndTime = System.currentTimeMillis()
-                        // Persist thinking duration immediately so UI shows "Thought for Xs" on collapse
-                        val thinkingDurationMs = thinkingEndTime!! - streamStartTime
-                        conversationRepository.updateMessageDurations(assistantMessageId, thinkingDurationMs, null)
-                    }
-                }
-                is StreamingState.Error -> {
-                    hasError = true
-                    // Save partial content if available
-                    state.partialContent?.let { content ->
-                        contentUpdater.persistPartial(content)
-                    } ?: contentUpdater.flush()
-                    conversationRepository.setMessageStreaming(assistantMessageId, false)
-                }
-                is StreamingState.Cancelled -> {
-                    // Save partial content if available
-                    state.partialContent?.let { content ->
-                        contentUpdater.persistPartial(content)
-                    } ?: contentUpdater.flush()
-                    conversationRepository.setMessageStreaming(assistantMessageId, false)
-                }
-                is StreamingState.Completed -> {
-                    val completedContent = if (webSearchContext.nativeWebSearchEnabled) {
-                        val query = updatedMessages
-                            .lastOrNull { it.role == MessageRole.USER }
-                            ?.content
-                            .orEmpty()
-                        val parsed = extractNativeWebSearchSources(
-                            content = state.finalContent,
-                            query = query
-                        )
-                        parsed.metadata?.let { metadata ->
-                            val metadataJson = Json.encodeToString(metadata)
-                            webSearchMetadataJson = metadataJson
-                            conversationRepository.updateMessageWebSearchMetadata(
+            chatRepository.sendMessage(
+                provider = provider,
+                messages = updatedMessages,
+                model = modelToUse,
+                reasoningEffort = reasoningEffort,
+                systemPrompt = webSearchContext.systemPrompt,
+                disableTools = webSearchContext.metadata != null,
+                nativeWebSearch = webSearchContext.nativeWebSearchEnabled
+            ).collect { state ->
+                // Some providers emit more than one terminal event. Never apply
+                // tokens or a second completion after the request has finished.
+                if (hasTerminalState) return@collect
+
+                var emittedState: StreamingState = state
+                when (state) {
+                    is StreamingState.Streaming -> {
+                        hasPartialResponse = state.content.isNotBlank() ||
+                            !state.thinkingContent.isNullOrBlank()
+                        // Coalesce Room writes so each token does not invalidate the whole chat list.
+                        contentUpdater.onStreaming(state.content, state.thinkingContent)
+                        if (firstContentAtMs == null &&
+                            (state.content.isNotEmpty() || !state.thinkingContent.isNullOrEmpty())
+                        ) {
+                            firstContentAtMs = System.currentTimeMillis()
+                        }
+                        if (!state.thinkingContent.isNullOrEmpty()) {
+                            accumulatedThinking = state.thinkingContent
+                        }
+                        // Track when thinking ends
+                        if (thinkingEndTime == null &&
+                            state.content.isNotEmpty() &&
+                            !state.thinkingContent.isNullOrEmpty()
+                        ) {
+                            thinkingEndTime = System.currentTimeMillis()
+                            // Persist thinking duration immediately so UI shows "Thought for Xs" on collapse
+                            conversationRepository.updateMessageDurations(
                                 assistantMessageId,
-                                metadataJson
+                                thinkingEndTime!! - streamStartTime,
+                                null
                             )
                         }
-                        parsed.content
-                    } else {
-                        state.finalContent
                     }
-                    contentUpdater.persistFinal(completedContent, state.finalThinkingContent)
-                    conversationRepository.setMessageStreaming(assistantMessageId, false)
+                    is StreamingState.Error -> {
+                        hasTerminalState = true
+                        state.partialContent?.takeIf { it.isNotBlank() }?.let { content ->
+                            hasPartialResponse = true
+                            contentUpdater.persistPartial(content)
+                        } ?: contentUpdater.flush()
+                    }
+                    is StreamingState.Cancelled -> {
+                        hasTerminalState = true
+                        state.partialContent?.takeIf { it.isNotBlank() }?.let { content ->
+                            hasPartialResponse = true
+                            contentUpdater.persistPartial(content)
+                        } ?: contentUpdater.flush()
+                    }
+                    is StreamingState.Completed -> {
+                        val completedContent = if (webSearchContext.nativeWebSearchEnabled) {
+                            val query = updatedMessages
+                                .lastOrNull { it.role == MessageRole.USER }
+                                ?.content
+                                .orEmpty()
+                            val parsed = extractNativeWebSearchSources(
+                                content = state.finalContent,
+                                query = query
+                            )
+                            parsed.metadata?.let { metadata ->
+                                conversationRepository.updateMessageWebSearchMetadata(
+                                    assistantMessageId,
+                                    Json.encodeToString(metadata)
+                                )
+                            }
+                            parsed.content
+                        } else {
+                            state.finalContent
+                        }
+                        hasTerminalState = true
+                        if (completedContent.isBlank()) {
+                            // An empty completion is a failure: keep the saved answer.
+                            if (!state.finalThinkingContent.isNullOrBlank()) {
+                                hasPartialResponse = true
+                                contentUpdater.persistFinal(completedContent, state.finalThinkingContent)
+                            }
+                            emittedState = StreamingState.Error(
+                                error = IllegalStateException("The provider returned an empty response"),
+                                messageId = assistantMessageId
+                            )
+                        } else {
+                            contentUpdater.persistFinal(completedContent, state.finalThinkingContent)
+                            hasPartialResponse = true
+                            conversationRepository.setMessageStreaming(assistantMessageId, false)
 
-                    // Save duration data
-                    val totalDurationMs = System.currentTimeMillis() - streamStartTime
-                    val thinkingDurationMs = if (!state.finalThinkingContent.isNullOrEmpty()) {
-                        (thinkingEndTime ?: System.currentTimeMillis()) - streamStartTime
-                    } else null
-                    conversationRepository.updateMessageDurations(assistantMessageId, thinkingDurationMs, totalDurationMs)
+                            // Save duration data
+                            val totalDurationMs = System.currentTimeMillis() - streamStartTime
+                            val thinkingDurationMs = if (!state.finalThinkingContent.isNullOrEmpty()) {
+                                (thinkingEndTime ?: System.currentTimeMillis()) - streamStartTime
+                            } else null
+                            conversationRepository.updateMessageDurations(
+                                assistantMessageId,
+                                thinkingDurationMs,
+                                totalDurationMs
+                            )
 
-                    // Persist generation metrics for the speed pill (same contract as
-                    // SendMessageUseCase so regenerated responses report TPS/TTFT too).
-                    val ttftMs = firstContentAtMs?.let { it - streamStartTime }
-                    val tokens = ContextWindowEstimator.estimateTokens(completedContent) +
-                            ContextWindowEstimator.estimateTokens(accumulatedThinking ?: "")
-                    conversationRepository.updateGenerationMetrics(
-                        messageId = assistantMessageId,
-                        firstTokenLatencyMs = ttftMs,
-                        generatedTokenCount = if (tokens > 0) tokens else null
-                    )
-
+                            // Persist generation metrics for the speed pill (same contract as
+                            // SendMessageUseCase so regenerated responses report TPS/TTFT too).
+                            val ttftMs = firstContentAtMs?.let { it - streamStartTime }
+                            val tokens = ContextWindowEstimator.estimateTokens(completedContent) +
+                                ContextWindowEstimator.estimateTokens(accumulatedThinking ?: "")
+                            conversationRepository.updateGenerationMetrics(
+                                messageId = assistantMessageId,
+                                firstTokenLatencyMs = ttftMs,
+                                generatedTokenCount = if (tokens > 0) tokens else null
+                            )
+                            // The replacement is durable before the old row (and its
+                            // unshared files) can be removed. Never delete on errors.
+                            previousAnswer?.let { conversationRepository.deleteMessage(it.id) }
+                            emittedState = state.copy(finalContent = completedContent)
+                        }
+                    }
+                    else -> { /* Ignore other states */ }
                 }
-                else -> { /* Ignore other states */ }
+
+                // Re-emit with the correct message ID for the UI.
+                emit(
+                    when (val mapped = emittedState) {
+                        is StreamingState.Streaming -> StreamingState.Streaming(
+                            content = mapped.content,
+                            thinkingContent = mapped.thinkingContent,
+                            messageId = assistantMessageId
+                        )
+                        is StreamingState.Completed -> StreamingState.Completed(
+                            finalContent = mapped.finalContent,
+                            finalThinkingContent = mapped.finalThinkingContent,
+                            messageId = assistantMessageId
+                        )
+                        is StreamingState.Error -> StreamingState.Error(
+                            error = mapped.error,
+                            partialContent = mapped.partialContent,
+                            messageId = assistantMessageId
+                        )
+                        is StreamingState.Cancelled -> StreamingState.Cancelled(
+                            partialContent = mapped.partialContent,
+                            messageId = assistantMessageId
+                        )
+                        else -> mapped
+                    }
+                )
             }
-        }.onCompletion { cause ->
-            // Always mark streaming as complete, regardless of success, error, or cancellation.
-            // This prevents messages from getting stuck with isStreaming=true forever
-            // (e.g. when the coroutine is cancelled by navigation or user action).
+            if (!hasTerminalState) {
+                emit(
+                    StreamingState.Error(
+                        error = IllegalStateException(
+                            "The provider ended the stream without completing the response"
+                        ),
+                        messageId = assistantMessageId
+                    )
+                )
+            }
+        } finally {
             withContext(NonCancellable) {
                 try {
                     contentUpdater.flush()
-                    conversationRepository.setMessageStreaming(assistantMessageId, false)
+                    if (hasPartialResponse) {
+                        conversationRepository.setMessageStreaming(assistantMessageId, false)
+                    } else {
+                        conversationRepository.deleteMessage(assistantMessageId)
+                    }
+                } finally {
                     ImageGenerationForegroundService.stop(context)
-                } catch (_: Exception) { }
+                }
             }
-        }.collect { state ->
-            // Re-emit with the correct message ID for the UI
-            val mappedState = when (state) {
-                is StreamingState.Streaming -> StreamingState.Streaming(
-                    content = state.content,
-                    thinkingContent = state.thinkingContent,
-                    messageId = assistantMessageId
-                )
-                is StreamingState.Completed -> StreamingState.Completed(
-                    finalContent = state.finalContent,
-                    finalThinkingContent = state.finalThinkingContent,
-                    messageId = assistantMessageId
-                )
-                is StreamingState.Error -> StreamingState.Error(
-                    error = state.error,
-                    partialContent = state.partialContent,
-                    messageId = assistantMessageId
-                )
-                is StreamingState.Cancelled -> StreamingState.Cancelled(
-                    partialContent = state.partialContent,
-                    messageId = assistantMessageId
-                )
-                else -> state
-            }
-            emit(mappedState)
         }
     }
 
