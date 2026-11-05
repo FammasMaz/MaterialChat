@@ -113,7 +113,8 @@ class RunFusionUseCase @Inject constructor(
                         messages = messages,
                         model = modelSelection.modelName,
                         reasoningEffort = reasoningEffort,
-                        systemPrompt = systemPrompt
+                        systemPrompt = systemPrompt,
+                        ownerId = conversationId
                     ).collect { state ->
                         when (state) {
                             is StreamingState.Streaming -> {
@@ -194,7 +195,8 @@ class RunFusionUseCase @Inject constructor(
             messages = synthesisMessages,
             model = judgeModel.modelName,
             reasoningEffort = reasoningEffort,
-            systemPrompt = "You are an expert synthesizer. Your job is to combine multiple AI responses into one optimal answer."
+            systemPrompt = "You are an expert synthesizer. Your job is to combine multiple AI responses into one optimal answer.",
+            ownerId = conversationId
         ).collect { state ->
             when (state) {
                 is StreamingState.Streaming -> {

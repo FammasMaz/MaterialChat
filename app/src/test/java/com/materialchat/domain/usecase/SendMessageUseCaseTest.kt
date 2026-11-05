@@ -153,7 +153,9 @@ class SendMessageUseCaseTest {
                 model = capture(modelSlot),
                 reasoningEffort = capture(reasoningSlot),
                 systemPrompt = capture(systemPromptSlot),
-                disableTools = any()
+                disableTools = any(),
+                nativeWebSearch = any(),
+                ownerId = any()
             )
         } returns completedFlow("Hello!")
 
@@ -284,7 +286,9 @@ class SendMessageUseCaseTest {
                 model = any(),
                 reasoningEffort = any(),
                 systemPrompt = capture(systemPromptSlot),
-                disableTools = capture(disableToolsSlot)
+                disableTools = capture(disableToolsSlot),
+                nativeWebSearch = any(),
+                ownerId = any()
             )
         } returns completedFlow("Kotlin released new tooling updates. [1]")
 
@@ -317,12 +321,13 @@ class SendMessageUseCaseTest {
     }
 
     @Test
-    fun `cancel - delegates to chat repository`() {
-        every { chatRepository.cancelStreaming() } returns Unit
+    fun `cancel - cancels only the owning conversation`() {
+        every { chatRepository.cancelStreaming("conv-1") } returns Unit
 
-        sendMessageUseCase.cancel()
+        sendMessageUseCase.cancel("conv-1")
 
-        verify { chatRepository.cancelStreaming() }
+        verify(exactly = 1) { chatRepository.cancelStreaming("conv-1") }
+        verify(exactly = 0) { chatRepository.cancelStreaming("other-conversation") }
     }
 
     private fun invokeUseCase(
@@ -371,7 +376,9 @@ class SendMessageUseCaseTest {
                 model = any(),
                 reasoningEffort = any(),
                 systemPrompt = any(),
-                disableTools = any()
+                disableTools = any(),
+                nativeWebSearch = any(),
+                ownerId = any()
             )
         } returns stream
     }

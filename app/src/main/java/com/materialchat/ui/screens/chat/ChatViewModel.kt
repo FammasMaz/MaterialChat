@@ -898,8 +898,8 @@ class ChatViewModel @Inject constructor(
         streamingJob = null
         fusionJob?.cancel()
         fusionJob = null
-        sendMessageUseCase.cancel()
-        regenerateResponseUseCase.cancel()
+        sendMessageUseCase.cancel(activeConversationId.value)
+        regenerateResponseUseCase.cancel(activeConversationId.value)
         regeneratingMessageId = null
 
         if (currentState != null) {

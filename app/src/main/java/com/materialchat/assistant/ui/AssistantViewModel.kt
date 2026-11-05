@@ -298,7 +298,8 @@ class AssistantViewModel(
                     messages = messages,
                     model = provider.defaultModel,
                     reasoningEffort = reasoningEffort,
-                    systemPrompt = systemPrompt
+                    systemPrompt = systemPrompt,
+                    ownerId = ASSISTANT_STREAM_OWNER
                 ).collect { state ->
                     when (state) {
                         is StreamingState.Starting -> {
@@ -383,7 +384,7 @@ class AssistantViewModel(
      */
     fun cancelStreaming() {
         streamingJob?.cancel()
-        chatRepository.cancelStreaming()
+        chatRepository.cancelStreaming(ASSISTANT_STREAM_OWNER)
         _uiState.update { it.copy(isLoading = false, isStreaming = false) }
         _voiceState.value = VoiceState.Idle
     }
@@ -590,3 +591,6 @@ data class AssistantMessage(
     val content: String,
     val isStreaming: Boolean = false
 )
+
+/** Owner key isolating assistant streams from chat Stop requests. */
+private const val ASSISTANT_STREAM_OWNER = "assistant"

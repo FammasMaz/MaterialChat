@@ -88,6 +88,7 @@ class ExecuteWorkflowUseCase @Inject constructor(
                     provider = provider,
                     messages = messages,
                     model = modelName,
+                    ownerId = "workflow-$workflowId",
                     reasoningEffort = com.materialchat.domain.model.ReasoningEffort.HIGH,
                     systemPrompt = step.systemPrompt
                 ).collect { state ->

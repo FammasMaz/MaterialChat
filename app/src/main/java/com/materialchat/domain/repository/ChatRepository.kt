@@ -31,7 +31,8 @@ interface ChatRepository {
         reasoningEffort: ReasoningEffort,
         systemPrompt: String? = null,
         disableTools: Boolean = false,
-        nativeWebSearch: Boolean = false
+        nativeWebSearch: Boolean = false,
+        ownerId: String? = null
     ): Flow<StreamingState>
 
     /**
@@ -47,9 +48,10 @@ interface ChatRepository {
     ): Result<List<AiModel>>
 
     /**
-     * Cancels any ongoing streaming request.
+     * Cancels ongoing streaming requests owned by [ownerId]. Work owned by a
+     * different conversation or feature is left running.
      */
-    fun cancelStreaming()
+    fun cancelStreaming(ownerId: String?)
 
     /**
      * Generates a simple non-streaming completion from the AI provider.

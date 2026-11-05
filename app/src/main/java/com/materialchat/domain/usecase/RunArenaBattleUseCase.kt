@@ -125,6 +125,7 @@ class RunArenaBattleUseCase @Inject constructor(
                         provider = provider,
                         messages = messages,
                         model = spec.modelName,
+                        ownerId = "arena-$battleId",
                         reasoningEffort = reasoningEffort
                     ).collect { state ->
                         states[slot] = state

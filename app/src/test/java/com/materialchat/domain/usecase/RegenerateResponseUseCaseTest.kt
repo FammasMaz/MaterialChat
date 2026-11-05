@@ -171,7 +171,7 @@ class RegenerateResponseUseCaseTest {
     @Test
     fun `throw before a flow is returned still cleans up and preserves the original`() = runTest {
         every {
-            chat.sendMessage(any(), any(), any(), any(), any(), any(), any())
+            chat.sendMessage(any(), any(), any(), any(), any(), any(), any(), any())
         } throws IllegalStateException("Credential lookup failed")
 
         val error = runCatching { regenerate().toList() }.exceptionOrNull()
@@ -238,7 +238,7 @@ class RegenerateResponseUseCaseTest {
 
     private fun respondWith(stream: Flow<StreamingState>) {
         every {
-            chat.sendMessage(any(), any(), any(), any(), any(), any(), any())
+            chat.sendMessage(any(), any(), any(), any(), any(), any(), any(), any())
         } answers {
             sentMessages = secondArg()
             sentModel = thirdArg()

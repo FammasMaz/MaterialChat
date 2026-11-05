@@ -280,7 +280,8 @@ class SendMessageUseCase @Inject constructor(
             reasoningEffort = reasoningEffort,
             systemPrompt = requestSystemPrompt,
             disableTools = webSearchContext.metadata != null,
-            nativeWebSearch = webSearchContext.nativeWebSearchEnabled
+            nativeWebSearch = webSearchContext.nativeWebSearchEnabled,
+            ownerId = conversationId
         ).onEach { state ->
             when (state) {
                 is StreamingState.Streaming -> {
@@ -1041,7 +1042,7 @@ MaterialChat image generation tool:
     /**
      * Cancels any ongoing streaming request.
      */
-    fun cancel() {
-        chatRepository.cancelStreaming()
+    fun cancel(conversationId: String) {
+        chatRepository.cancelStreaming(conversationId)
     }
 }

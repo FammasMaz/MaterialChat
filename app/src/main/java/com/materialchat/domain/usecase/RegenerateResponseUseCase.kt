@@ -130,7 +130,8 @@ class RegenerateResponseUseCase @Inject constructor(
                 reasoningEffort = reasoningEffort,
                 systemPrompt = webSearchContext.systemPrompt,
                 disableTools = webSearchContext.metadata != null,
-                nativeWebSearch = webSearchContext.nativeWebSearchEnabled
+                nativeWebSearch = webSearchContext.nativeWebSearchEnabled,
+                ownerId = conversationId
             ).collect { state ->
                 // Some providers emit more than one terminal event. Never apply
                 // tokens or a second completion after the request has finished.
@@ -300,7 +301,7 @@ class RegenerateResponseUseCase @Inject constructor(
     /**
      * Cancels any ongoing streaming request.
      */
-    fun cancel() {
-        chatRepository.cancelStreaming()
+    fun cancel(conversationId: String) {
+        chatRepository.cancelStreaming(conversationId)
     }
 }

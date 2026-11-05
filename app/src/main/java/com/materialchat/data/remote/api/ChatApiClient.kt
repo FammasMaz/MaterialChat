@@ -78,7 +78,27 @@ class ChatApiClient(
     private val sseEventParser: SseEventParser = SseEventParser.default
 ) {
 
-    private val activeCalls = java.util.concurrent.CopyOnWriteArraySet<Call>()
+    /**
+     * Streaming calls grouped by the conversation that owns them. Cancelling a
+     * stream cancels only its owner's requests so an arena battle, fusion run,
+     * title generation, or assistant reply is never aborted by the chat Stop
+     * button. Each flow also cancels its own call in awaitClose; this registry
+     * exists for the explicit Stop path.
+     */
+    private val activeCallsByOwner =
+        java.util.concurrent.ConcurrentHashMap<String, MutableSet<Call>>()
+
+    private fun registerCall(ownerId: String?, call: Call) {
+        activeCallsByOwner
+            .getOrPut(ownerId.orEmpty()) { java.util.concurrent.CopyOnWriteArraySet() }
+            .add(call)
+    }
+
+    private fun unregisterCall(ownerId: String?, call: Call) {
+        val calls = activeCallsByOwner[ownerId.orEmpty()] ?: return
+        calls.remove(call)
+        if (calls.isEmpty()) activeCallsByOwner.remove(ownerId.orEmpty(), calls)
+    }
 
     /**
      * Streams a chat completion from the given provider.
@@ -100,7 +120,8 @@ class ChatApiClient(
         temperature: Double = 0.7,
         reasoningEffort: ReasoningEffort = ReasoningEffort.HIGH,
         disableTools: Boolean = false,
-        nativeWebSearch: Boolean = false
+        nativeWebSearch: Boolean = false,
+        ownerId: String? = null
     ): Flow<StreamingEvent> {
         return when (provider.type) {
             ProviderType.OPENAI_COMPATIBLE -> streamOpenAiChat(
@@ -112,7 +133,8 @@ class ChatApiClient(
                 temperature = temperature,
                 reasoningEffort = reasoningEffort,
                 disableTools = disableTools,
-                nativeWebSearch = nativeWebSearch
+                nativeWebSearch = nativeWebSearch,
+                ownerId = ownerId
             )
             ProviderType.OLLAMA_NATIVE -> streamOllamaChat(
                 baseUrl = provider.baseUrl,
@@ -128,7 +150,8 @@ class ChatApiClient(
                 messages = messages,
                 credentialJson = apiKey,
                 systemPrompt = systemPrompt,
-                reasoningEffort = reasoningEffort
+                reasoningEffort = reasoningEffort,
+                ownerId = ownerId
             )
             ProviderType.CODEX_NATIVE -> streamCodexChat(
                 baseUrl = provider.baseUrl,
@@ -136,7 +159,8 @@ class ChatApiClient(
                 messages = messages,
                 credentialJson = apiKey,
                 systemPrompt = systemPrompt,
-                reasoningEffort = reasoningEffort
+                reasoningEffort = reasoningEffort,
+                ownerId = ownerId
             )
             ProviderType.ANTIGRAVITY_NATIVE -> streamAntigravityChat(
                 baseUrl = provider.baseUrl,
@@ -145,7 +169,8 @@ class ChatApiClient(
                 credentialJson = apiKey,
                 systemPrompt = systemPrompt,
                 reasoningEffort = reasoningEffort,
-                temperature = temperature
+                temperature = temperature,
+                ownerId = ownerId
             )
             ProviderType.LITERT_LM_LOCAL,
             ProviderType.AICORE_GEMINI_NANO -> flowUnsupportedProvider(provider.type)
@@ -178,7 +203,8 @@ class ChatApiClient(
         temperature: Double = 0.7,
         reasoningEffort: ReasoningEffort = ReasoningEffort.HIGH,
         disableTools: Boolean = false,
-        nativeWebSearch: Boolean = false
+        nativeWebSearch: Boolean = false,
+        ownerId: String? = null
     ): Flow<StreamingEvent> = callbackFlow {
         // Per-flow cancel flag so parallel streams don't interfere
         val cancelled = AtomicBoolean(false)
@@ -218,7 +244,7 @@ class ChatApiClient(
             .build()
 
         val call = okHttpClient.newCall(httpRequest)
-        activeCalls.add(call)
+        registerCall(ownerId, call)
 
         call.enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
@@ -271,7 +297,7 @@ class ChatApiClient(
 
         awaitClose {
             cancelled.set(true)
-            activeCalls.remove(call)
+            unregisterCall(ownerId, call)
             call.cancel()
         }
     }
@@ -294,7 +320,8 @@ class ChatApiClient(
         messages: List<Message>,
         systemPrompt: String? = null,
         temperature: Double = 0.7,
-        reasoningEffort: ReasoningEffort = ReasoningEffort.HIGH
+        reasoningEffort: ReasoningEffort = ReasoningEffort.HIGH,
+        ownerId: String? = null
     ): Flow<StreamingEvent> = callbackFlow {
         // Per-flow cancel flag so parallel streams don't interfere
         val cancelled = AtomicBoolean(false)
@@ -325,7 +352,7 @@ class ChatApiClient(
             .build()
 
         val call = okHttpClient.newCall(httpRequest)
-        activeCalls.add(call)
+        registerCall(ownerId, call)
 
         call.enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
@@ -376,7 +403,7 @@ class ChatApiClient(
 
         awaitClose {
             cancelled.set(true)
-            activeCalls.remove(call)
+            unregisterCall(ownerId, call)
             call.cancel()
         }
     }
@@ -387,7 +414,8 @@ class ChatApiClient(
         messages: List<Message>,
         credentialJson: String?,
         systemPrompt: String?,
-        reasoningEffort: ReasoningEffort
+        reasoningEffort: ReasoningEffort,
+        ownerId: String? = null
     ): Flow<StreamingEvent> = callbackFlow {
         val credential = NativeAuthCredential.decodeOrNull(credentialJson)
         val token = credential?.accessToken
@@ -433,7 +461,7 @@ class ChatApiClient(
                 .build()
         }
 
-        val call = enqueueStreamingCall(httpRequest, cancelled) { reader ->
+        val call = enqueueStreamingCall(httpRequest, cancelled, ownerId) { reader ->
             if (isCopilotResponsesModel(cleanModel)) {
                 processCodexResponsesStream(reader, cancelled) { event ->
                     if (!cancelled.get() && isActive) trySend(event)
@@ -447,7 +475,7 @@ class ChatApiClient(
 
         awaitClose {
             cancelled.set(true)
-            activeCalls.remove(call)
+            unregisterCall(ownerId, call)
             call.cancel()
         }
     }
@@ -458,7 +486,8 @@ class ChatApiClient(
         messages: List<Message>,
         credentialJson: String?,
         systemPrompt: String?,
-        reasoningEffort: ReasoningEffort
+        reasoningEffort: ReasoningEffort,
+        ownerId: String? = null
     ): Flow<StreamingEvent> = callbackFlow {
         val credential = NativeAuthCredential.decodeOrNull(credentialJson)
         val token = credential?.bearerToken
@@ -483,7 +512,7 @@ class ChatApiClient(
             requestBuilder.addHeader("ChatGPT-Account-Id", it)
         }
 
-        val call = enqueueStreamingCall(requestBuilder.build(), cancelled) { reader ->
+        val call = enqueueStreamingCall(requestBuilder.build(), cancelled, ownerId) { reader ->
             processCodexResponsesStream(reader, cancelled) { event ->
                 if (!cancelled.get() && isActive) trySend(event)
             }
@@ -491,7 +520,7 @@ class ChatApiClient(
 
         awaitClose {
             cancelled.set(true)
-            activeCalls.remove(call)
+            unregisterCall(ownerId, call)
             call.cancel()
         }
     }
@@ -503,7 +532,8 @@ class ChatApiClient(
         credentialJson: String?,
         systemPrompt: String?,
         reasoningEffort: ReasoningEffort,
-        temperature: Double
+        temperature: Double,
+        ownerId: String? = null
     ): Flow<StreamingEvent> = callbackFlow {
         val credential = NativeAuthCredential.decodeOrNull(credentialJson)
         val token = credential?.accessToken
@@ -524,7 +554,7 @@ class ChatApiClient(
             .post(payload.toString().toRequestBody(JSON_MEDIA_TYPE))
             .build()
 
-        val call = enqueueStreamingCall(httpRequest, cancelled) { reader ->
+        val call = enqueueStreamingCall(httpRequest, cancelled, ownerId) { reader ->
             processAntigravityStream(reader, cancelled) { event ->
                 if (!cancelled.get() && isActive) trySend(event)
             }
@@ -532,7 +562,7 @@ class ChatApiClient(
 
         awaitClose {
             cancelled.set(true)
-            activeCalls.remove(call)
+            unregisterCall(ownerId, call)
             call.cancel()
         }
     }
@@ -540,10 +570,11 @@ class ChatApiClient(
     private fun kotlinx.coroutines.channels.ProducerScope<StreamingEvent>.enqueueStreamingCall(
         request: Request,
         cancelled: AtomicBoolean,
+        ownerId: String?,
         processBody: (BufferedReader) -> Unit
     ): Call {
         val call = okHttpClient.newCall(request)
-        activeCalls.add(call)
+        registerCall(ownerId, call)
         call.enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
                 if (!cancelled.get()) trySend(StreamingEvent.fromException(e))
@@ -570,7 +601,7 @@ class ChatApiClient(
                     } catch (e: IOException) {
                         if (!cancelled.get()) trySend(StreamingEvent.fromException(e))
                     } finally {
-                        activeCalls.remove(call)
+                        unregisterCall(ownerId, call)
                         close()
                     }
                 }
@@ -580,11 +611,16 @@ class ChatApiClient(
     }
 
     /**
-     * Cancels any active streaming request.
+     * Cancels the active streaming requests belonging to [ownerId].
+     *
+     * Only that owner's calls are cancelled; unrelated work in flight (arena
+     * battles, fusion, title generation, the assistant) keeps running.
      */
-    fun cancelStreaming() {
-        activeCalls.forEach { it.cancel() }
-        activeCalls.clear()
+    fun cancelStreaming(ownerId: String?) {
+        val key = ownerId.orEmpty()
+        val calls = activeCallsByOwner.remove(key) ?: return
+        calls.forEach { it.cancel() }
+        calls.clear()
     }
 
     /**
@@ -653,7 +689,8 @@ class ChatApiClient(
         apiKey: String?,
         size: String = "1024x1024",
         quality: String? = null,
-        outputFormat: String = "png"
+        outputFormat: String = "png",
+        ownerId: String? = IMAGE_GENERATION_OWNER
     ): Result<GeneratedImageData> = withContext(Dispatchers.IO) {
         try {
             when (provider.type) {
@@ -664,7 +701,8 @@ class ChatApiClient(
                     apiKey = apiKey ?: "",
                     size = size,
                     quality = quality,
-                    outputFormat = outputFormat
+                    outputFormat = outputFormat,
+                    ownerId = ownerId
                 )
                 ProviderType.OLLAMA_NATIVE -> Result.failure(
                     IOException("Image generation requires a Codex or OpenAI-compatible provider")
@@ -676,7 +714,8 @@ class ChatApiClient(
                     credentialJson = apiKey,
                     size = size,
                     qualityOverride = quality,
-                    outputFormat = outputFormat
+                    outputFormat = outputFormat,
+                    ownerId = ownerId
                 )
                 ProviderType.GITHUB_COPILOT_NATIVE,
                 ProviderType.ANTIGRAVITY_NATIVE,
@@ -799,7 +838,8 @@ class ChatApiClient(
         apiKey: String,
         size: String,
         quality: String?,
-        outputFormat: String
+        outputFormat: String,
+        ownerId: String?
     ): Result<GeneratedImageData> {
         val request = OpenAiImageGenerationRequest(
             model = model,
@@ -832,7 +872,7 @@ class ChatApiClient(
             }
 
             val call = imageClient.newCall(httpRequestBuilder.build())
-            activeCalls.add(call)
+            registerCall(ownerId, call)
             try {
                 val response = call.execute()
                 response.use { resp ->
@@ -865,7 +905,7 @@ class ChatApiClient(
                     }
                 }
             } finally {
-                activeCalls.remove(call)
+                unregisterCall(ownerId, call)
             }
         }
 
@@ -879,7 +919,8 @@ class ChatApiClient(
         credentialJson: String?,
         size: String,
         qualityOverride: String?,
-        outputFormat: String
+        outputFormat: String,
+        ownerId: String?
     ): Result<GeneratedImageData> {
         val credential = NativeAuthCredential.decodeOrNull(credentialJson)
         val token = credential?.bearerToken
@@ -913,7 +954,7 @@ class ChatApiClient(
         }
 
         val call = imageClient.newCall(requestBuilder.build())
-        activeCalls.add(call)
+        registerCall(ownerId, call)
         return try {
             call.execute().use { response ->
                 if (!response.isSuccessful) {
@@ -939,7 +980,7 @@ class ChatApiClient(
         } catch (e: Exception) {
             Result.failure(e)
         } finally {
-            activeCalls.remove(call)
+            unregisterCall(ownerId, call)
         }
     }
 
@@ -1893,6 +1934,9 @@ class ChatApiClient(
     }
 
     companion object {
+        /** Owner key for generated-image requests, never cancelled by chat Stop. */
+        const val IMAGE_GENERATION_OWNER = "image-generation"
+
         private val JSON_MEDIA_TYPE = "application/json".toMediaType()
 
         /**

@@ -55,7 +55,8 @@ class ChatRepositoryImpl @Inject constructor(
         reasoningEffort: ReasoningEffort,
         systemPrompt: String?,
         disableTools: Boolean,
-        nativeWebSearch: Boolean
+        nativeWebSearch: Boolean,
+        ownerId: String?
     ): Flow<StreamingState> {
         if (provider.type.isOnDevice) {
             return localModelRepository.streamChat(
@@ -97,7 +98,8 @@ class ChatRepositoryImpl @Inject constructor(
             systemPrompt = systemPrompt,
             reasoningEffort = reasoningEffort,
             disableTools = disableTools,
-            nativeWebSearch = nativeWebSearch
+            nativeWebSearch = nativeWebSearch,
+            ownerId = ownerId
         ).collect { event ->
             when (event) {
                 is StreamingEvent.Connected -> {
@@ -183,8 +185,8 @@ class ChatRepositoryImpl @Inject constructor(
         }
     }
 
-    override fun cancelStreaming() {
-        chatApiClient.cancelStreaming()
+    override fun cancelStreaming(ownerId: String?) {
+        chatApiClient.cancelStreaming(ownerId)
         localModelRepository.cancelActiveGeneration()
     }
 
