@@ -28,6 +28,8 @@ import com.materialchat.notifications.ImageGenerationForegroundService
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
@@ -74,6 +76,7 @@ class SendMessageUseCase @Inject constructor(
      * @param systemPrompt The system prompt to use for the conversation
      * @param reasoningEffort The reasoning effort setting for compatible models
      * @param forceImageGeneration Whether to route this request directly to the default image model
+     * @param onUserMessageSaved Called after persistence commits, even if cancelled during the save
      * @return A Flow of StreamingState representing the response progress
      */
     operator fun invoke(
@@ -84,7 +87,8 @@ class SendMessageUseCase @Inject constructor(
         reasoningEffort: ReasoningEffort,
         webSearchConfig: WebSearchConfig = WebSearchConfig(),
         forceImageGeneration: Boolean = false,
-        imageModelOverride: String? = null
+        imageModelOverride: String? = null,
+        onUserMessageSaved: () -> Unit = {}
     ): Flow<StreamingState> = flow {
         // Get the conversation and provider
         val conversation = conversationRepository.getConversation(conversationId)
@@ -121,7 +125,13 @@ class SendMessageUseCase @Inject constructor(
             content = userContent,
             attachments = attachments
         )
-        conversationRepository.addMessage(userMessage)
+        currentCoroutineContext().ensureActive()
+        // Saving and acknowledging ownership are one cancellation-safe handoff.
+        withContext(NonCancellable) {
+            conversationRepository.addMessage(userMessage)
+            onUserMessageSaved()
+        }
+        currentCoroutineContext().ensureActive()
 
         val imagePrompt = resolveImageGenerationPrompt(
             userContent = userContent,

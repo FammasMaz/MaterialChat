@@ -14,10 +14,14 @@ import com.materialchat.domain.model.StreamingState
 import com.materialchat.domain.repository.ChatRepository
 import com.materialchat.domain.repository.ConversationRepository
 import com.materialchat.domain.repository.ProviderRepository
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.channelFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.util.concurrent.ConcurrentHashMap
@@ -54,6 +58,7 @@ class RunFusionUseCase @Inject constructor(
      * @param systemPrompt The system prompt to use
      * @param reasoningEffort The reasoning effort setting
      * @param attachments Image attachments to include with the prompt
+     * @param onUserMessageSaved Called after persistence commits, even if cancelled during the save
      * @return A Flow emitting FusionResult updates in real-time as models stream
      */
     operator fun invoke(
@@ -62,7 +67,8 @@ class RunFusionUseCase @Inject constructor(
         fusionConfig: FusionConfig,
         systemPrompt: String,
         reasoningEffort: ReasoningEffort,
-        attachments: List<Attachment> = emptyList()
+        attachments: List<Attachment> = emptyList(),
+        onUserMessageSaved: () -> Unit = {}
     ): Flow<FusionResult> = channelFlow {
         // Get conversation
         val conversation = conversationRepository.getConversation(conversationId)
@@ -75,7 +81,12 @@ class RunFusionUseCase @Inject constructor(
             content = userContent,
             attachments = attachments
         )
-        conversationRepository.addMessage(userMessage)
+        currentCoroutineContext().ensureActive()
+        withContext(NonCancellable) {
+            conversationRepository.addMessage(userMessage)
+            onUserMessageSaved()
+        }
+        currentCoroutineContext().ensureActive()
 
         // Get conversation history (before adding placeholder)
         val messages = conversationRepository.getMessages(conversationId)

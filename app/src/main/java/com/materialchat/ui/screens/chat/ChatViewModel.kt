@@ -35,6 +35,7 @@ import com.materialchat.ui.navigation.Screen
 import com.materialchat.util.AttachmentImporter
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.CoroutineScope
@@ -57,6 +58,7 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.util.concurrent.atomic.AtomicBoolean
 import javax.inject.Inject
 import kotlin.math.abs
 
@@ -105,6 +107,8 @@ class ChatViewModel @Inject constructor(
 
     private var streamingJob: Job? = null
     private var fusionJob: Job? = null
+    private val composerLock = Any()
+    private var isCleared = false
     private var lastStreamingUiUpdateMs: Long = 0L
     private var lastStreamingUiMessageId: String? = null
     private var currentSystemPrompt: String = AppPreferences.DEFAULT_SYSTEM_PROMPT
@@ -762,6 +766,14 @@ class ChatViewModel @Inject constructor(
         }
         if (!shouldGenerateImage && !currentState.canSend) return
         if (shouldGenerateImage && currentState.isStreaming) return
+        if (shouldGenerateImage && currentState.hasAttachments) {
+            viewModelScope.launch {
+                _events.emit(ChatEvent.ShowSnackbar(
+                    "Image generation supports text only. Remove the attached images or switch to a chat model."
+                ))
+            }
+            return
+        }
 
         // If fusion is enabled and configured, use fusion flow
         if (!shouldGenerateImage && currentState.fusionConfig.isEnabled &&
@@ -794,73 +806,71 @@ class ChatViewModel @Inject constructor(
             quotedMessage = null
         )
 
+        val targetConversationId = currentState.conversationId
+        val userMessageSaved = AtomicBoolean(false)
+
         // Use applicationScope so streaming survives navigation away / ViewModel destruction.
-        // The DB is updated by the use case; we only update UI state here.
         streamingJob = applicationScope.launch(ioDispatcher) {
             try {
                 val webSearchConfig = buildCurrentWebSearchConfig()
 
                 sendMessageUseCase(
-                    conversationId = activeConversationId.value,
+                    conversationId = targetConversationId,
                     userContent = finalContent,
                     attachments = attachments,
                     systemPrompt = currentSystemPrompt,
                     reasoningEffort = currentReasoningEffort,
                     webSearchConfig = webSearchConfig,
                     forceImageGeneration = shouldGenerateImage,
-                    imageModelOverride = imageModelOverride
+                    imageModelOverride = imageModelOverride,
+                    onUserMessageSaved = { userMessageSaved.set(true) }
                 ).collect { state ->
-                    updateStreamingState(state)
-                    // Notify when completed and app is in background
+                    updateStreamingState(state, targetConversationId)
                     if (state is StreamingState.Completed) {
                         appNotificationManager.notifyChatResponseComplete(
-                            conversationId = activeConversationId.value,
+                            conversationId = targetConversationId,
                             preview = state.finalContent
                         )
                     }
                 }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
-                restoreUnsavedAttachments(attachments)
                 updateStreamingState(
-                    StreamingState.Error(
-                        error = e,
-                        partialContent = null,
-                        messageId = null
-                    )
+                    StreamingState.Error(error = e),
+                    targetConversationId
                 )
-                _events.emit(
-                    ChatEvent.ShowSnackbar(
-                        message = e.message ?: "Failed to send message"
-                    )
-                )
+            }
+        }.also { job ->
+            // Also runs if Stop cancels the coroutine before its body ever starts.
+            job.invokeOnCompletion {
+                if (!userMessageSaved.get()) restoreUnsentDraft(currentState)
             }
         }
     }
 
-    /**
-     * Puts images back in the composer when the send failed before the user message
-     * was saved. A send can be rejected up front (on-device model, missing provider),
-     * and the composer is cleared before that happens, so without this the picked
-     * files would be unreferenced and silently deleted on exit.
-     */
-    private suspend fun restoreUnsavedAttachments(attachments: List<Attachment>) {
-        if (attachments.isEmpty()) return
-        val savedUris = runCatching {
-            conversationRepository.getMessages(activeConversationId.value)
-        }.getOrNull().orEmpty()
-            .flatMap { it.attachments }
-            .map { it.uri }
-            .toSet()
-        val unsaved = attachments.filter { it.uri !in savedUris }
-        if (unsaved.isEmpty()) return
-        _uiState.update { state ->
-            if (state is ChatUiState.Success) {
-                val restored = state.pendingAttachments + unsaved.filter { pending ->
-                    state.pendingAttachments.none { it.uri == pending.uri }
+    /** Only the persistence acknowledgement can transfer a draft's file ownership. */
+    private fun restoreUnsentDraft(draft: ChatUiState.Success) {
+        synchronized(composerLock) {
+            val current = _uiState.value
+            if (isCleared || current !is ChatUiState.Success ||
+                current.conversationId != draft.conversationId ||
+                activeConversationId.value != draft.conversationId
+            ) {
+                draft.pendingAttachments.forEach { AttachmentImporter.discard(appContext, it) }
+                return
+            }
+            _uiState.update { state ->
+                if (state !is ChatUiState.Success || state.conversationId != draft.conversationId) {
+                    state
+                } else {
+                    val pending = (state.pendingAttachments + draft.pendingAttachments).distinctBy { it.uri }
+                    state.withUpdatedContextWindowUsage(
+                        inputText = state.inputText.ifEmpty { draft.inputText },
+                        pendingAttachments = pending,
+                        quotedMessage = state.quotedMessage ?: draft.quotedMessage
+                    )
                 }
-                state.withUpdatedContextWindowUsage(pendingAttachments = restored)
-            } else {
-                state
             }
         }
     }
@@ -868,7 +878,8 @@ class ChatViewModel @Inject constructor(
     /**
      * Updates the streaming state in the UI.
      */
-    private fun updateStreamingState(state: StreamingState) {
+    private fun updateStreamingState(state: StreamingState, expectedConversationId: String? = null) {
+        if (expectedConversationId != null && activeConversationId.value != expectedConversationId) return
         // Clear regenerating ID when streaming completes or errors
         if (state is StreamingState.Completed || state is StreamingState.Error || state is StreamingState.Cancelled) {
             regeneratingMessageId = null
@@ -903,7 +914,9 @@ class ChatViewModel @Inject constructor(
         }
 
         _uiState.update { currentState ->
-            if (currentState is ChatUiState.Success) {
+            if (currentState is ChatUiState.Success &&
+                (expectedConversationId == null || currentState.conversationId == expectedConversationId)
+            ) {
                 currentState.copy(streamingState = stateForUi)
             } else {
                 currentState
@@ -949,12 +962,18 @@ class ChatViewModel @Inject constructor(
                 }
             }
 
-            _uiState.value = currentState.copy(
-                messages = updatedMessages,
-                streamingState = StreamingState.Idle,
-                isFusionRunning = false,
-                fusionResult = null
-            )
+            // Cancellation can restore an unsaved draft synchronously. Keep that
+            // latest composer state instead of copying the pre-cancel snapshot.
+            _uiState.update { latest ->
+                if (latest is ChatUiState.Success && latest.conversationId == currentState.conversationId) {
+                    latest.copy(
+                        messages = updatedMessages,
+                        streamingState = StreamingState.Idle,
+                        isFusionRunning = false,
+                        fusionResult = null
+                    )
+                } else latest
+            }
 
             if (streamingMessages.isNotEmpty()) {
                 viewModelScope.launch(ioDispatcher) {
@@ -1781,7 +1800,10 @@ class ChatViewModel @Inject constructor(
 
     override fun onCleared() {
         super.onCleared()
-        discardPendingAttachments()
+        synchronized(composerLock) {
+            isCleared = true
+            discardPendingAttachments()
+        }
         // Streaming now runs on applicationScope and will complete in the background.
         // We only cancel fusion jobs (which are less critical) and UI cleanup.
         fusionJob?.cancel()
@@ -1941,18 +1963,24 @@ class ChatViewModel @Inject constructor(
             fusionResult = null
         )
 
+        val targetConversationId = currentState.conversationId
+        val userMessageSaved = AtomicBoolean(false)
+
         fusionJob = viewModelScope.launch(ioDispatcher) {
             try {
                 runFusionUseCase(
-                    conversationId = activeConversationId.value,
+                    conversationId = targetConversationId,
                     userContent = messageContent,
                     fusionConfig = currentState.fusionConfig,
                     systemPrompt = currentSystemPrompt,
                     reasoningEffort = currentReasoningEffort,
-                    attachments = attachments
+                    attachments = attachments,
+                    onUserMessageSaved = { userMessageSaved.set(true) }
                 ).collect { result ->
                     _uiState.update { state ->
-                        if (state is ChatUiState.Success) {
+                        if (state is ChatUiState.Success &&
+                            state.conversationId == targetConversationId
+                        ) {
                             state.copy(
                                 fusionResult = result,
                                 streamingState = if (result.synthesizedResponse != null && !result.isSynthesizing) {
@@ -1966,34 +1994,36 @@ class ChatViewModel @Inject constructor(
                     }
                 }
 
-                // Fusion complete
                 _uiState.update { state ->
-                    if (state is ChatUiState.Success) {
+                    if (state is ChatUiState.Success &&
+                        state.conversationId == targetConversationId
+                    ) {
                         state.copy(
                             streamingState = StreamingState.Idle,
                             isFusionRunning = false
                         )
                     } else state
                 }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
-                restoreUnsavedAttachments(attachments)
                 _uiState.update { state ->
-                    if (state is ChatUiState.Success) {
+                    if (state is ChatUiState.Success &&
+                        state.conversationId == targetConversationId
+                    ) {
                         state.copy(
-                            streamingState = StreamingState.Error(
-                                error = e,
-                                partialContent = null,
-                                messageId = null
-                            ),
+                            streamingState = StreamingState.Error(error = e),
                             isFusionRunning = false
                         )
                     } else state
                 }
-                _events.emit(
-                    ChatEvent.ShowSnackbar(
-                        message = e.message ?: "Fusion failed"
-                    )
-                )
+                if (activeConversationId.value == targetConversationId) {
+                    _events.emit(ChatEvent.ShowSnackbar(message = e.message ?: "Fusion failed"))
+                }
+            }
+        }.also { job ->
+            job.invokeOnCompletion {
+                if (!userMessageSaved.get()) restoreUnsentDraft(currentState)
             }
         }
     }
