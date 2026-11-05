@@ -820,6 +820,7 @@ class ChatViewModel @Inject constructor(
                     }
                 }
             } catch (e: Exception) {
+                restoreUnsavedAttachments(attachments)
                 updateStreamingState(
                     StreamingState.Error(
                         error = e,
@@ -832,6 +833,34 @@ class ChatViewModel @Inject constructor(
                         message = e.message ?: "Failed to send message"
                     )
                 )
+            }
+        }
+    }
+
+    /**
+     * Puts images back in the composer when the send failed before the user message
+     * was saved. A send can be rejected up front (on-device model, missing provider),
+     * and the composer is cleared before that happens, so without this the picked
+     * files would be unreferenced and silently deleted on exit.
+     */
+    private suspend fun restoreUnsavedAttachments(attachments: List<Attachment>) {
+        if (attachments.isEmpty()) return
+        val savedUris = runCatching {
+            conversationRepository.getMessages(activeConversationId.value)
+        }.getOrNull().orEmpty()
+            .flatMap { it.attachments }
+            .map { it.uri }
+            .toSet()
+        val unsaved = attachments.filter { it.uri !in savedUris }
+        if (unsaved.isEmpty()) return
+        _uiState.update { state ->
+            if (state is ChatUiState.Success) {
+                val restored = state.pendingAttachments + unsaved.filter { pending ->
+                    state.pendingAttachments.none { it.uri == pending.uri }
+                }
+                state.withUpdatedContextWindowUsage(pendingAttachments = restored)
+            } else {
+                state
             }
         }
     }
@@ -1947,6 +1976,7 @@ class ChatViewModel @Inject constructor(
                     } else state
                 }
             } catch (e: Exception) {
+                restoreUnsavedAttachments(attachments)
                 _uiState.update { state ->
                     if (state is ChatUiState.Success) {
                         state.copy(

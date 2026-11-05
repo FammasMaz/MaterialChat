@@ -34,6 +34,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import org.junit.After
 import org.junit.Assert.assertFalse
@@ -60,6 +61,7 @@ class ChatViewModelAttachmentCleanupTest {
     private val context = InstrumentationRegistry.getInstrumentation().targetContext
     private val created = mutableListOf<File>()
     private lateinit var lastRepository: ConversationRepository
+    private lateinit var lastSendUseCase: SendMessageUseCase
 
     @After
     fun tearDown() {
@@ -125,6 +127,7 @@ class ChatViewModelAttachmentCleanupTest {
         )
 
         this.lastRepository = mockk(relaxed = true)
+        this.lastSendUseCase = mockk(relaxed = true)
         val store = ViewModelStore()
         val factory = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
@@ -132,7 +135,7 @@ class ChatViewModelAttachmentCleanupTest {
                 ChatViewModel(
                     savedStateHandle = savedState,
                     getConversationsUseCase = getConversations,
-                    sendMessageUseCase = mockk<SendMessageUseCase>(relaxed = true),
+                    sendMessageUseCase = lastSendUseCase,
                     regenerateResponseUseCase = mockk<RegenerateResponseUseCase>(relaxed = true),
                     exportConversationUseCase = mockk<ExportConversationUseCase>(relaxed = true),
                     conversationRepository = lastRepository,
@@ -219,6 +222,42 @@ class ChatViewModelAttachmentCleanupTest {
             "Editing text must not silently drop the attached image",
             saved.any { it.attachments.contains(image) }
         )
+    }
+
+    @Test
+    fun rejectedSendKeepsThePickedImageInTheComposer() {
+        val file = imageFile()
+        val image = Attachment(uri = Uri.fromFile(file).toString(), mimeType = "image/jpeg")
+        val (viewModel, store) = buildViewModel("conv-${UUID.randomUUID()}")
+        awaitSendableState(viewModel)
+
+        // A send can be refused before the user message is stored, e.g. images on an
+        // on-device model. The composer is cleared first, so the image must come back.
+        every {
+            lastSendUseCase.invoke(any(), any(), any(), any(), any(), any(), any(), any())
+        } returns flow { throw IllegalStateException("On-device models support text only") }
+
+        viewModel.addAttachment(image)
+        viewModel.updateInputText("describe this")
+        viewModel.sendMessage()
+
+        val restored = waitForRestoredAttachment(viewModel, image)
+
+        assertTrue("Failed send must return the image to the composer", restored)
+        assertTrue("Rejected send must not delete ${file.name}", file.exists())
+        store.clear()
+    }
+
+    private fun waitForRestoredAttachment(viewModel: ChatViewModel, image: Attachment): Boolean {
+        val deadline = System.currentTimeMillis() + 5_000
+        while (System.currentTimeMillis() < deadline) {
+            val state = viewModel.uiState.value
+            if (state is ChatUiState.Success && state.pendingAttachments.any { it.uri == image.uri }) {
+                return true
+            }
+            Thread.sleep(20)
+        }
+        return false
     }
 
     @Test
