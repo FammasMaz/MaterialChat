@@ -190,6 +190,13 @@ interface ConversationRepository {
     suspend fun setMessageStreaming(messageId: String, isStreaming: Boolean)
 
     /**
+     * Clears every streaming flag left behind by an interrupted process.
+     *
+     * Only safe at process start, before any stream can be running.
+     */
+    suspend fun clearInterruptedStreamingFlags()
+
+    /**
      * Updates the thinking and total duration for a message.
      *
      * @param messageId The ID of the message
