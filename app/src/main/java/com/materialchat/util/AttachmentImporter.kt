@@ -11,6 +11,7 @@ import android.os.Build
 import android.provider.OpenableColumns
 import android.util.Log
 import com.materialchat.domain.model.Attachment
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -24,7 +25,7 @@ import java.util.UUID
  * - Accept every format the platform can decode (JPEG, PNG, WebP, GIF, HEIC/HEIF, BMP).
  * - Never load the original file fully into memory; decode with bounds + sample size.
  * - Honor EXIF orientation so portrait camera photos are not sent sideways.
- * - Downscale to [MAX_DIMENSION] and re-encode (JPEG, or PNG when the source has alpha).
+ * - Downscale to [MAX_DIMENSION] and re-encode (JPEG, or PNG when the bitmap has alpha).
  * - Store the result in app-private storage so messages can be restored and resent.
  * - Delete files it created when an attachment is discarded.
  */
@@ -41,6 +42,8 @@ object AttachmentImporter {
 
     suspend fun import(context: Context, uri: Uri): ImportResult = withContext(Dispatchers.IO) {
         val appContext = context.applicationContext
+        var decodedBitmap: Bitmap? = null
+        var unfinishedFile: File? = null
         try {
             val resolver = appContext.contentResolver
             val declaredMime = resolver.getType(uri)?.lowercase()
@@ -64,9 +67,11 @@ object AttachmentImporter {
             val bitmap = decodeScaled(appContext, uri, bounds)
                 ?: return@withContext ImportResult.Failure("Couldn't decode this image")
 
-            val keepPng = sourceMime == "image/png" && bitmap.hasAlpha()
+            decodedBitmap = bitmap
+            val keepPng = bitmap.hasAlpha()
             val outMime = if (keepPng) "image/png" else "image/jpeg"
             val file = newAttachmentFile(appContext, if (keepPng) "png" else "jpg")
+            unfinishedFile = file
             file.outputStream().buffered().use { out ->
                 val ok = bitmap.compress(
                     if (keepPng) Bitmap.CompressFormat.PNG else Bitmap.CompressFormat.JPEG,
@@ -74,17 +79,17 @@ object AttachmentImporter {
                     out
                 )
                 if (!ok) {
-                    bitmap.recycle()
-                    file.delete()
                     return@withContext ImportResult.Failure("Couldn't save this image")
                 }
             }
             Log.d(TAG, "Imported $sourceMime ${bounds.outWidth}x${bounds.outHeight} -> $outMime ${bitmap.width}x${bitmap.height} ${file.length()}B")
-            bitmap.recycle()
-
-            ImportResult.Success(
+            val result = ImportResult.Success(
                 Attachment(uri = Uri.fromFile(file).toString(), mimeType = outMime)
             )
+            unfinishedFile = null
+            result
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: SecurityException) {
             Log.w(TAG, "No permission to read $uri", e)
             ImportResult.Failure("No permission to read this image")
@@ -94,6 +99,9 @@ object AttachmentImporter {
         } catch (e: Exception) {
             Log.e(TAG, "Failed to import $uri", e)
             ImportResult.Failure("Couldn't load this image")
+        } finally {
+            decodedBitmap?.recycle()
+            unfinishedFile?.delete()
         }
     }
 
@@ -120,7 +128,9 @@ object AttachmentImporter {
 
     private fun decodeBounds(context: Context, uri: Uri): BitmapFactory.Options? {
         val options = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-        open(context, uri)?.use { BitmapFactory.decodeStream(it, null, options) } ?: return null
+        val input = open(context, uri) ?: return null
+        // A bounds-only decode deliberately returns null; the dimensions are in options.
+        input.use { BitmapFactory.decodeStream(it, null, options) }
         return options.takeIf { it.outWidth > 0 && it.outHeight > 0 }
     }
 
@@ -177,8 +187,14 @@ object AttachmentImporter {
             ExifInterface.ORIENTATION_ROTATE_270 -> matrix.postRotate(270f)
             ExifInterface.ORIENTATION_FLIP_HORIZONTAL -> matrix.preScale(-1f, 1f)
             ExifInterface.ORIENTATION_FLIP_VERTICAL -> matrix.preScale(1f, -1f)
-            ExifInterface.ORIENTATION_TRANSPOSE -> { matrix.postRotate(90f); matrix.preScale(-1f, 1f) }
-            ExifInterface.ORIENTATION_TRANSVERSE -> { matrix.postRotate(270f); matrix.preScale(-1f, 1f) }
+            ExifInterface.ORIENTATION_TRANSPOSE -> {
+                matrix.postRotate(90f)
+                matrix.postScale(-1f, 1f)
+            }
+            ExifInterface.ORIENTATION_TRANSVERSE -> {
+                matrix.postRotate(270f)
+                matrix.postScale(-1f, 1f)
+            }
             else -> return bitmap
         }
         val rotated = Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
