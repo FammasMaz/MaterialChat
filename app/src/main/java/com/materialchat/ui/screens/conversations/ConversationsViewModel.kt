@@ -24,6 +24,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -62,8 +63,9 @@ class ConversationsViewModel @Inject constructor(
         observeConversations()
     }
 
-    // Set of conversation IDs pending deletion (for UI filtering)
-    private val pendingDeleteIds = mutableSetOf<String>()
+    // Set of conversation IDs pending deletion (for UI filtering). Kept as an
+    // observable so undo restores the row immediately.
+    private val pendingDeleteIds = MutableStateFlow<Set<String>>(emptySet())
     // Most recent deletion for undo functionality
     private var lastDeletedConversation: Conversation? = null
 
@@ -89,9 +91,10 @@ class ConversationsViewModel @Inject constructor(
                 combine(
                     _expandedGroupIds,
                     _selectedFilter,
-                    conversationRepository.observeStreamingConversationIds()
-                ) { expandedIds, selectedFilter, streamingIds ->
-                    ConversationListPrefs(expandedIds, selectedFilter, streamingIds)
+                    conversationRepository.observeStreamingConversationIds(),
+                    pendingDeleteIds
+                ) { expandedIds, selectedFilter, streamingIds, hiddenIds ->
+                    ConversationListPrefs(expandedIds, selectedFilter, streamingIds, hiddenIds)
                 }
             ) { conversationSets, providers, hapticsEnabled, listPrefs ->
                 val activeProvider = providers.find { it.isActive }
@@ -103,7 +106,8 @@ class ConversationsViewModel @Inject constructor(
                     hapticsEnabled = hapticsEnabled,
                     expandedIds = listPrefs.expandedIds,
                     selectedFilter = listPrefs.selectedFilter,
-                    streamingConversationIds = listPrefs.streamingIds
+                    streamingConversationIds = listPrefs.streamingIds,
+                    pendingDeleteIds = listPrefs.hiddenIds
                 )
             }
                 .distinctUntilChanged()
@@ -113,8 +117,11 @@ class ConversationsViewModel @Inject constructor(
                     )
                 }
                 .collect { data ->
-                    val filteredActiveConversations = data.conversations.filterNot { it.id in pendingDeleteIds }
-                    val filteredArchivedConversations = data.archivedConversations.filterNot { it.id in pendingDeleteIds }
+                    val pendingDeletes = data.pendingDeleteIds
+                    val filteredActiveConversations =
+                        data.conversations.filterNot { it.id in pendingDeletes }
+                    val filteredArchivedConversations =
+                        data.archivedConversations.filterNot { it.id in pendingDeletes }
 
                     val activeDisplay = buildDisplayData(
                         conversations = filteredActiveConversations,
@@ -164,13 +171,15 @@ class ConversationsViewModel @Inject constructor(
         val hapticsEnabled: Boolean,
         val expandedIds: Set<String>,
         val selectedFilter: ConversationListFilter,
-        val streamingConversationIds: Set<String>
+        val streamingConversationIds: Set<String>,
+        val pendingDeleteIds: Set<String>
     )
 
     private data class ConversationListPrefs(
         val expandedIds: Set<String>,
         val selectedFilter: ConversationListFilter,
-        val streamingIds: Set<String>
+        val streamingIds: Set<String>,
+        val hiddenIds: Set<String>
     )
 
     private data class ConversationDisplayData(
@@ -267,19 +276,20 @@ class ConversationsViewModel @Inject constructor(
         pendingDeletions[conversationId]?.cancel()
 
         // Track this conversation as pending deletion
-        pendingDeleteIds.add(conversationId)
+        pendingDeleteIds.update { it + conversationId }
         lastDeletedConversation = conversation
 
         // Update state to remove the conversation visually
         val currentState = _uiState.value
         if (currentState is ConversationsUiState.Success) {
-            val updatedActiveGroups = currentState.conversationGroups.filterGroups(pendingDeleteIds)
-            val updatedArchivedGroups = currentState.archivedConversationGroups.filterGroups(pendingDeleteIds)
+            val hidden = pendingDeleteIds.value
+            val updatedActiveGroups = currentState.conversationGroups.filterGroups(hidden)
+            val updatedArchivedGroups = currentState.archivedConversationGroups.filterGroups(hidden)
             val updatedConversations = currentState.conversations.filterNot {
-                it.conversation.id in pendingDeleteIds
+                it.conversation.id in hidden
             }
             val updatedArchivedConversations = currentState.archivedConversations.filterNot {
-                it.conversation.id in pendingDeleteIds
+                it.conversation.id in hidden
             }
 
             val hasAnyConversation = updatedActiveGroups.isNotEmpty() || updatedArchivedGroups.isNotEmpty()
@@ -328,22 +338,23 @@ class ConversationsViewModel @Inject constructor(
         // Cancel the deletion job for this conversation
         pendingDeletions[conversationId]?.cancel()
         pendingDeletions.remove(conversationId)
-        pendingDeleteIds.remove(conversationId)
+        pendingDeleteIds.update { it - conversationId }
 
         // Clear last deleted if it matches
         if (lastDeletedConversation?.id == conversationId) {
             lastDeletedConversation = null
         }
 
-        // Trigger UI refresh to restore the conversation
+        // Restore immediately: the pending-delete flow re-emits the list without
+        // waiting for the database or another preference change.
         val currentState = _uiState.value
-        if (currentState is ConversationsUiState.Success || currentState is ConversationsUiState.Empty) {
-            // Force a re-collection by updating state - the Flow will re-emit
-            viewModelScope.launch {
-                _events.emit(
-                    ConversationsEvent.ShowSnackbar(message = "Deletion cancelled")
-                )
-            }
+        if (currentState is ConversationsUiState.Success) {
+            _uiState.value = currentState.copy(deletedConversation = null)
+        }
+        viewModelScope.launch {
+            _events.emit(
+                ConversationsEvent.ShowSnackbar(message = "Deletion cancelled")
+            )
         }
     }
 
@@ -421,7 +432,7 @@ class ConversationsViewModel @Inject constructor(
         } finally {
             // Clean up tracking regardless of success/failure
             pendingDeletions.remove(conversationId)
-            pendingDeleteIds.remove(conversationId)
+            pendingDeleteIds.update { it - conversationId }
             if (lastDeletedConversation?.id == conversationId) {
                 lastDeletedConversation = null
             }
