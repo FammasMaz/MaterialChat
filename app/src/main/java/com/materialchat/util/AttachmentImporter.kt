@@ -5,11 +5,11 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.ImageDecoder
 import android.graphics.Matrix
-import android.media.ExifInterface
 import android.net.Uri
 import android.os.Build
 import android.provider.OpenableColumns
 import android.util.Log
+import androidx.exifinterface.media.ExifInterface
 import com.materialchat.domain.model.Attachment
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
