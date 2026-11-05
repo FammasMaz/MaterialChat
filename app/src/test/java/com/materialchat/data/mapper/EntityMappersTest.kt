@@ -268,6 +268,21 @@ class EntityMappersTest {
         val conversation = entity.toDomain()
 
         assertEquals("", conversation.providerId)
+        assertEquals(entity, conversation.toEntity())
+    }
+
+    @Test
+    fun `Conversation toEntity - blank provider IDs are stored as null`() {
+        for (providerId in listOf("", " ", "\t")) {
+            val conversation = Conversation(
+                id = "providerless",
+                title = "Provider was deleted",
+                providerId = providerId,
+                modelName = "test-model"
+            )
+
+            assertEquals(null, conversation.toEntity().providerId)
+        }
     }
 
     @Test

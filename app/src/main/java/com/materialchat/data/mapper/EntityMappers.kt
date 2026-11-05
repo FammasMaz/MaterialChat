@@ -76,7 +76,8 @@ fun Conversation.toEntity(): ConversationEntity = ConversationEntity(
     id = id,
     title = title,
     icon = icon,
-    providerId = providerId,
+    // The domain uses an empty ID after a provider is deleted; Room needs NULL.
+    providerId = providerId.takeUnless { it.isBlank() },
     modelName = modelName,
     isEphemeral = isEphemeral,
     isArchived = isArchived,
