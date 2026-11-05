@@ -25,16 +25,21 @@ internal fun extractNativeWebSearchSources(
     content: String,
     query: String
 ): NativeWebSearchParseResult {
-    val match = sourceSectionRegex.findAll(content).lastOrNull()
-    if (match != null) {
-        val sourcesText = match.groups["items"]?.value.orEmpty()
-        val results = parseNativeSourceLines(sourcesText)
-        if (results.isNotEmpty()) {
-            val strippedContent = content.substring(0, match.range.first).trimEnd()
-            return NativeWebSearchParseResult(
-                content = strippedContent.ifBlank { content },
-                metadata = nativeSearchMetadata(query, results)
-            )
+    val lines = content.lines()
+    val sourceHeading = lastSourceHeadingOutsideCode(lines)
+    if (sourceHeading != null) {
+        val sourceLines = lines.drop(sourceHeading + 1).filter { it.isNotBlank() }
+        // Removing arbitrary prose here loses part of the answer. Only a tail
+        // made entirely of recognizable source rows is safe to replace with cards.
+        if (sourceLines.isNotEmpty() && sourceLines.all(::isSourceRow)) {
+            val results = parseNativeSourceLines(sourceLines.joinToString("\n"))
+            if (results.isNotEmpty()) {
+                val strippedContent = lines.take(sourceHeading).joinToString("\n").trimEnd()
+                return NativeWebSearchParseResult(
+                    content = strippedContent.ifBlank { content },
+                    metadata = nativeSearchMetadata(query, results)
+                )
+            }
         }
     }
 
@@ -61,16 +66,42 @@ private fun nativeSearchMetadata(
     searchDurationMs = null
 )
 
-/**
- * Matches a trailing sources section. Tolerates markdown headings
- * ("## Sources"), emphasis markers ("**Sources:**", "__References__"),
- * colons, and the common synonyms models actually emit.
- */
-private val sourceSectionRegex = Regex(
-    pattern = "(?is)(?:^|\\n)[ \\t]*(?:#{1,6}[ \\t]*)?[*_~]{0,2}\\s*" +
+/** Match only the heading line, never consume the answer that follows it. */
+private val sourceHeadingRegex = Regex(
+    pattern = "(?i)^[ \\t]*(?:#{1,6}[ \\t]*)?[*_~]{0,2}[ \\t]*" +
         "(?:sources|references|citations|web results|search results|further reading)" +
-        "\\s*[*_~]{0,2}\\s*:?\\s*[*_~]{0,2}[ \\t]*\\r?\\n(?<items>.*)\\s*$"
+        "[ \\t]*[*_~]{0,2}[ \\t]*:?[ \\t]*[*_~]{0,2}[ \\t]*$"
 )
+private val codeFenceRegex = Regex("^[ \\t]{0,3}(`{3,}|~{3,})(.*)$")
+private val namedSourceRowRegex = Regex(
+    "^[^\\r\\n]+?[ \\t]+[—–:|-][ \\t]+<?https?://[^\\s<>]+>?[ \\t]*$"
+)
+
+private fun lastSourceHeadingOutsideCode(lines: List<String>): Int? {
+    var fenceCharacter: Char? = null
+    var fenceLength = 0
+    var heading: Int? = null
+    lines.forEachIndexed { index, line ->
+        val fence = codeFenceRegex.matchEntire(line)
+        if (fence != null) {
+            val marker = fence.groupValues[1]
+            if (fenceCharacter == null) {
+                fenceCharacter = marker.first()
+                fenceLength = marker.length
+            } else if (marker.first() == fenceCharacter && marker.length >= fenceLength &&
+                fence.groupValues[2].isBlank()
+            ) {
+                fenceCharacter = null
+            }
+        } else if (fenceCharacter == null && sourceHeadingRegex.matches(line)) {
+            heading = index
+        }
+    }
+    return heading
+}
+
+private fun isSourceRow(line: String): Boolean =
+    bareLinkLineRegex.matches(line) || namedSourceRowRegex.matches(line)
 
 private val markdownLinkRegex = Regex("\\[([^]]+)]\\((https?://[^)\\s]+)\\)")
 private val urlRegex = Regex("https?://[^\\s)>,]+")

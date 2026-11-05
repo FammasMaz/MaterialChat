@@ -94,6 +94,108 @@ class NativeWebSearchSourcesTest {
     }
 
     @Test
+    fun `only the final sources section is stripped when earlier headings exist`() {
+        val answer = """
+            References:
+            - [Background](https://example.com/background)
+
+            This explanation must not disappear.
+
+            ## Sources
+            - [Final source](https://example.com/final)
+        """.trimIndent()
+
+        val result = extractNativeWebSearchSources(answer, "query")
+
+        assertEquals(answer.substringBefore("\n\n## Sources"), result.content)
+        assertEquals(listOf("https://example.com/final"), result.metadata?.results?.map { it.url })
+    }
+
+    @Test
+    fun `a mid-answer references section never removes later prose`() {
+        val answer = """
+            Here is the answer.
+
+            References:
+            - [Background](https://example.com/background)
+
+            Important limitation: the evidence does not establish causation.
+        """.trimIndent()
+
+        val result = extractNativeWebSearchSources(answer, "query")
+
+        assertEquals(answer, result.content)
+        assertTrue(result.metadata == null)
+    }
+
+    @Test
+    fun `a later heading is answer content rather than part of a source list`() {
+        val answer = """
+            An introduction.
+
+            Sources:
+            - [Evidence](https://example.com/evidence)
+
+            ## Limitations
+            Results may differ in production.
+        """.trimIndent()
+
+        assertEquals(answer, extractNativeWebSearchSources(answer, "query").content)
+    }
+
+    @Test
+    fun `links embedded in prose do not make a whole section disposable`() {
+        val answer = """
+            Sources:
+            The [study](https://example.com/study) supports only the first claim.
+            The second claim is unproven.
+        """.trimIndent()
+
+        val result = extractNativeWebSearchSources(answer, "query")
+
+        assertEquals(answer, result.content)
+        assertTrue(result.metadata == null)
+    }
+
+    @Test
+    fun `source-looking headings inside fenced examples are never stripped`() {
+        for (fence in listOf("```", "~~~")) {
+            val answer = """
+                Example source document:
+                ${fence}markdown
+                Sources:
+                - [Example](https://example.com)
+                $fence
+            """.trimIndent()
+
+            val result = extractNativeWebSearchSources(answer, "query")
+
+            assertEquals(answer, result.content)
+            assertTrue(result.metadata == null)
+        }
+    }
+
+    @Test
+    fun `plain named source rows and CRLF headings still extract`() {
+        val answer = "Answer.\r\n\r\n__References__:\r\nKotlin Blog — https://kotlinlang.org/news\r\n"
+
+        val result = extractNativeWebSearchSources(answer, "query")
+
+        assertEquals("Answer.", result.content)
+        assertEquals("Kotlin Blog", result.metadata?.results?.single()?.title)
+    }
+
+    @Test
+    fun `a source-only answer keeps its visible text`() {
+        val answer = "Sources:\n- [Evidence](https://example.com/evidence)"
+
+        val result = extractNativeWebSearchSources(answer, "query")
+
+        assertEquals(answer, result.content)
+        assertEquals(1, result.metadata?.results?.size)
+    }
+
+    @Test
     fun `single bare link is not treated as source list`() {
         val content = """
             Check this out.
