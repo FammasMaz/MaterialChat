@@ -3,7 +3,7 @@ package com.materialchat.assistant.voice
 /**
  * Converts append-only cumulative model snapshots into non-repeating speech chunks.
  * A revised snapshot is rejected: callers must [reset] for a new response.
- * Only complete lines are parsed while streaming, so split Markdown fences cannot leak code.
+ * Complete prose sentences are emitted before newline; uncertain Markdown stays buffered.
  */
 class StreamingSpeechChunker {
     private var snapshot = ""
@@ -24,6 +24,25 @@ class StreamingSpeechChunker {
             val end = pendingLine.indexOf('\n')
             consumeLine(pendingLine.substring(0, end), chunks)
             pendingLine = pendingLine.substring(end + 1)
+        }
+        // A paragraph need not contain a newline. Consume only a safe prefix ending
+        // in sentence punctuation followed by whitespace; leave partial markup intact.
+        if (!isFinal && fence == null && pendingLine.isNotBlank()) {
+            val safeEnd = Regex("[.!?]+\\s+").findAll(pendingLine)
+                .map { it.range.last + 1 }
+                .lastOrNull { end ->
+                    val prefix = pendingLine.substring(0, end)
+                    val trimmed = prefix.trimStart()
+                    !trimmed.startsWith("`") && !trimmed.startsWith("~") &&
+                        !prefix.contains('`') && !prefix.contains('[') &&
+                        !prefix.contains('<') && !prefix.contains("http") &&
+                        !prefix.startsWith("    ") && !prefix.startsWith('\t') &&
+                        !trimmed.startsWith('|')
+                }
+            if (safeEnd != null) {
+                consumeLine(pendingLine.substring(0, safeEnd), chunks)
+                pendingLine = pendingLine.substring(safeEnd)
+            }
         }
         if (isFinal) {
             consumeLine(pendingLine, chunks)

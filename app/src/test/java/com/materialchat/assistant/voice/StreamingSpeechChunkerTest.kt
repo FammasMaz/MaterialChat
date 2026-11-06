@@ -4,6 +4,15 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 class StreamingSpeechChunkerTest {
+    @Test fun `speaks a paragraph before newline or completion without repetition`() {
+        val chunker = StreamingSpeechChunker()
+        assertEquals(emptyList<String>(), chunker.update("Hello world."))
+        assertEquals(listOf("Hello world."), chunker.update("Hello world. Next"))
+        assertEquals(emptyList<String>(), chunker.update("Hello world. Next"))
+        assertEquals(listOf("Next sentence!"), chunker.update("Hello world. Next sentence! More"))
+        assertEquals(listOf("More"), chunker.update("Hello world. Next sentence! More", true))
+    }
+
     @Test fun `cumulative snapshots never repeat spoken sentences`() {
         val chunker = StreamingSpeechChunker()
         assertEquals(emptyList<String>(), chunker.update("Hello"))
