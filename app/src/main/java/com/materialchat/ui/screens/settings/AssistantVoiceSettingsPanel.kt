@@ -3,6 +3,8 @@ package com.materialchat.ui.screens.settings
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
+import java.util.Locale
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
@@ -23,6 +25,14 @@ fun AssistantVoiceSettingsPanel(viewModel: AssistantVoiceSettingsViewModel = hil
         Text("Voice configuration")
     }
     if (!open) return
+    DisposableEffect(viewModel) {
+        viewModel.openVoicePicker()
+        onDispose { viewModel.closeVoicePicker() }
+    }
+    val voices by viewModel.installedVoices.collectAsStateWithLifecycle()
+    val voicesLoading by viewModel.voicesLoading.collectAsStateWithLifecycle()
+    val previewing by viewModel.previewing.collectAsStateWithLifecycle()
+    val previewMessage by viewModel.previewMessage.collectAsStateWithLifecycle()
     val stored by viewModel.settings.collectAsStateWithLifecycle()
     val providers by viewModel.providers.collectAsStateWithLifecycle()
     val configured by viewModel.keyConfigured.collectAsStateWithLifecycle()
@@ -60,15 +70,34 @@ fun AssistantVoiceSettingsPanel(viewModel: AssistantVoiceSettingsViewModel = hil
                 HorizontalDivider()
                 Text("Speech output", style = MaterialTheme.typography.titleMedium)
                 VoiceChoice("Backend", draft.backend.name, AssistantSpeechBackend.entries.map { it to it.name }) {
-                    draft = draft.copy(backend = it)
+                    viewModel.stopPreview(); draft = draft.copy(backend = it)
                 }
                 if (draft.backend == AssistantSpeechBackend.ANDROID) {
-                    OutlinedTextField(draft.androidVoiceId.orEmpty(), { draft = draft.copy(androidVoiceId = it) },
-                        label = { Text("Android voice identifier (optional)") }, modifier = Modifier.fillMaxWidth())
-                    OutlinedTextField(draft.languageTag.orEmpty(), { draft = draft.copy(languageTag = it) },
+                    val selectedVoice = voices.firstOrNull { it.id == draft.androidVoiceId }
+                    val voiceLabel = when {
+                        draft.androidVoiceId == null -> "Engine default"
+                        selectedVoice != null -> "${Locale.forLanguageTag(selectedVoice.languageTag).displayName} — ${selectedVoice.id}"
+                        voicesLoading -> "${draft.androidVoiceId} (checking availability…)"
+                        else -> "${draft.androidVoiceId} (unavailable)"
+                    }
+                    VoiceChoice("Offline voice", voiceLabel,
+                        listOf(null to "Engine default") + voices.map {
+                            it.id to "${Locale.forLanguageTag(it.languageTag).displayName} — ${it.id}"
+                        }) { id ->
+                        viewModel.stopPreview()
+                        draft = draft.copy(androidVoiceId = id,
+                            languageTag = voices.firstOrNull { it.id == id }?.languageTag ?: draft.languageTag)
+                    }
+                    if (voicesLoading) Text("Loading installed offline voices…")
+                    else if (voices.isEmpty()) Text("No installed offline voices found. Install voice data in Android speech settings, then reopen this panel.")
+                    OutlinedTextField(draft.languageTag.orEmpty(), { viewModel.stopPreview(); draft = draft.copy(languageTag = it) },
                         label = { Text("Language tag (e.g. en-US)") }, modifier = Modifier.fillMaxWidth())
                     Text("Speech rate: ${"%.2f".format(draft.speechRate)}×")
-                    Slider(value = draft.speechRate, onValueChange = { draft = draft.copy(speechRate = it) }, valueRange = 0.25f..2f)
+                    Slider(value = draft.speechRate, onValueChange = { viewModel.stopPreview(); draft = draft.copy(speechRate = it) }, valueRange = 0.25f..2f)
+                    Button(enabled = !voicesLoading && !previewing, onClick = { viewModel.preview(draft) },
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Preview draft voice") }
+                    if (previewing) TextButton(onClick = viewModel::stopPreview) { Text("Stop preview") }
+                    previewMessage?.let { Text(it) }
                     Text("Blank voice and language use engine defaults. Availability depends on the installed Android speech engine.")
                 } else {
                     Text("Gemini sends response text to Google. Supply a model and voice supported by your account; availability and billing depend on Google.")
@@ -104,7 +133,8 @@ private fun <T> VoiceChoice(label: String, value: String, choices: List<Pair<T, 
         OutlinedButton(onClick = { expanded = true }, modifier = Modifier.fillMaxWidth()) {
             Text("$label: $value")
         }
-        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false },
+            modifier = Modifier.heightIn(max = 280.dp)) {
             choices.forEach { (id, name) ->
                 DropdownMenuItem(text = { Text(name) }, onClick = { onSelect(id); expanded = false })
             }
