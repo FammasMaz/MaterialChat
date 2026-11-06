@@ -2,6 +2,9 @@ package com.materialchat.assistant.voice
 
 import android.content.Context
 import android.content.Intent
+import android.os.Build
+import android.os.Handler
+import android.os.Looper
 import android.os.Bundle
 import android.speech.RecognitionListener
 import android.speech.RecognizerIntent
@@ -13,7 +16,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.callbackFlow
 import javax.inject.Inject
-import kotlin.math.abs
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 /**
  * Manages speech recognition for the MaterialChat Assistant.
@@ -24,7 +28,8 @@ import kotlin.math.abs
 class SpeechRecognitionManager @Inject constructor(
     private val context: Context
 ) {
-    private var speechRecognizer: SpeechRecognizer? = null
+    private val mainHandler = Handler(Looper.getMainLooper())
+    private var activeCleanup: (() -> Unit)? = null
 
     private val _isListening = MutableStateFlow(false)
     val isListening: StateFlow<Boolean> = _isListening.asStateFlow()
@@ -37,7 +42,23 @@ class SpeechRecognitionManager @Inject constructor(
     /**
      * Check if speech recognition is available on this device.
      */
-    fun isAvailable(): Boolean = SpeechRecognizer.isRecognitionAvailable(context)
+    fun isAvailable(): Boolean = isOnDeviceAvailable() || SpeechRecognizer.isRecognitionAvailable(context)
+
+    private fun isOnDeviceAvailable(): Boolean =
+        Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
+            SpeechRecognizer.isOnDeviceRecognitionAvailable(context)
+
+    private fun createRecognizer(): SpeechRecognizer {
+        if (isOnDeviceAvailable()) {
+            try {
+                return SpeechRecognizer.createOnDeviceSpeechRecognizer(context)
+            } catch (error: RuntimeException) {
+                // A service may disappear between the capability check and creation.
+                if (!SpeechRecognizer.isRecognitionAvailable(context)) throw error
+            }
+        }
+        return SpeechRecognizer.createSpeechRecognizer(context)
+    }
 
     /**
      * Start listening for voice input.
@@ -45,101 +66,139 @@ class SpeechRecognitionManager @Inject constructor(
      * @return Flow of recognition results (partial and final)
      */
     fun startListening(): Flow<SpeechRecognitionResult> = callbackFlow {
-        if (!isAvailable()) {
-            trySend(SpeechRecognitionResult.Error(
-                "Speech recognition not available",
-                SpeechRecognitionErrors.ERROR_CLIENT
-            ))
-            close()
-            return@callbackFlow
-        }
-
-        val recognizer = SpeechRecognizer.createSpeechRecognizer(context)
-        speechRecognizer = recognizer
-
-        val listener = object : RecognitionListener {
-            override fun onReadyForSpeech(params: Bundle?) {
-                _isListening.value = true
-                trySend(SpeechRecognitionResult.Ready)
+        var cleanup: (() -> Unit)? = null
+        withContext(Dispatchers.Main.immediate) {
+            activeCleanup?.invoke()
+            var recognizer: SpeechRecognizer? = null
+            var finished = false
+            val finish: () -> Unit = {
+                if (!finished) {
+                    finished = true
+                    activeCleanup = null
+                    _isListening.value = false
+                    _amplitudeData.value = AudioAmplitudeData.Empty
+                    lastAmplitudeEmitUptimeMs = 0L
+                    val ownedRecognizer = recognizer
+                    recognizer = null
+                    runCatching { ownedRecognizer?.cancel() }
+                    runCatching { ownedRecognizer?.destroy() }
+                    close()
+                }
             }
-
-            override fun onBeginningOfSpeech() {
-                trySend(SpeechRecognitionResult.SpeechStarted)
-            }
-
-            override fun onRmsChanged(rmsdB: Float) {
-                // Convert RMS dB to normalized amplitude (0.0 to 1.0)
-                // RMS typically ranges from -2 to 10 dB
-                val normalized = ((rmsdB + 2f) / 12f).coerceIn(0.05f, 1f)
-                updateAmplitudeData(normalized)
-            }
-
-            override fun onBufferReceived(buffer: ByteArray?) {
-                // Not used for basic recognition
-            }
-
-            override fun onEndOfSpeech() {
-                _isListening.value = false
-                trySend(SpeechRecognitionResult.SpeechEnded)
-            }
-
-            override fun onError(error: Int) {
-                _isListening.value = false
-                _amplitudeData.value = AudioAmplitudeData.Empty
-                trySend(SpeechRecognitionResult.Error(
-                    SpeechRecognitionErrors.getErrorMessage(error),
-                    error
-                ))
-                close()
-            }
-
-            override fun onResults(results: Bundle?) {
-                _isListening.value = false
-                _amplitudeData.value = AudioAmplitudeData.Empty
-
-                val matches = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
-                val text = matches?.firstOrNull() ?: ""
-
-                if (text.isNotEmpty()) {
-                    trySend(SpeechRecognitionResult.FinalResult(text))
-                } else {
+            cleanup = finish
+            activeCleanup = finish
+            try {
+                if (!isAvailable()) {
                     trySend(SpeechRecognitionResult.Error(
-                        "No speech detected",
-                        SpeechRecognitionErrors.ERROR_NO_MATCH
+                        "Speech recognition not available",
+                        SpeechRecognitionErrors.ERROR_CLIENT
                     ))
+                    finish()
+                    return@withContext
                 }
-                close()
-            }
 
-            override fun onPartialResults(partialResults: Bundle?) {
-                val matches = partialResults?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
-                val text = matches?.firstOrNull() ?: return
+                val engine = createRecognizer()
+                recognizer = engine
 
-                if (text.isNotEmpty()) {
-                    trySend(SpeechRecognitionResult.PartialResult(text))
+                val listener = object : RecognitionListener {
+                    override fun onReadyForSpeech(params: Bundle?) {
+                        if (finished) return
+                        _isListening.value = true
+                        trySend(SpeechRecognitionResult.Ready)
+                    }
+
+                    override fun onBeginningOfSpeech() {
+                        if (finished) return
+                        trySend(SpeechRecognitionResult.SpeechStarted)
+                    }
+
+                    override fun onRmsChanged(rmsdB: Float) {
+                        if (finished) return
+                        // Convert RMS dB to normalized amplitude (0.0 to 1.0)
+                        // RMS typically ranges from -2 to 10 dB
+                        val normalized = ((rmsdB + 2f) / 12f).coerceIn(0.05f, 1f)
+                        updateAmplitudeData(normalized)
+                    }
+
+                    override fun onBufferReceived(buffer: ByteArray?) {
+                        // Not used for basic recognition
+                    }
+
+                    override fun onEndOfSpeech() {
+                        if (finished) return
+                        _isListening.value = false
+                        trySend(SpeechRecognitionResult.SpeechEnded)
+                    }
+
+                    override fun onError(error: Int) {
+                        if (finished) return
+                        _isListening.value = false
+                        _amplitudeData.value = AudioAmplitudeData.Empty
+                        trySend(SpeechRecognitionResult.Error(
+                            SpeechRecognitionErrors.getErrorMessage(error),
+                            error
+                        ))
+                        finish()
+                    }
+
+                    override fun onResults(results: Bundle?) {
+                        if (finished) return
+                        _isListening.value = false
+                        _amplitudeData.value = AudioAmplitudeData.Empty
+
+                        val matches = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
+                        val text = matches?.firstOrNull() ?: ""
+
+                        if (text.isNotEmpty()) {
+                            trySend(SpeechRecognitionResult.FinalResult(text))
+                        } else {
+                            trySend(SpeechRecognitionResult.Error(
+                                "No speech detected",
+                                SpeechRecognitionErrors.ERROR_NO_MATCH
+                            ))
+                        }
+                        finish()
+                    }
+
+                    override fun onPartialResults(partialResults: Bundle?) {
+                        if (finished) return
+                        val matches = partialResults?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
+                        val text = matches?.firstOrNull() ?: return
+
+                        if (text.isNotEmpty()) {
+                            trySend(SpeechRecognitionResult.PartialResult(text))
+                        }
+                    }
+
+                    override fun onEvent(eventType: Int, params: Bundle?) {
+                        // Not used
+                    }
                 }
-            }
 
-            override fun onEvent(eventType: Int, params: Bundle?) {
-                // Not used
+                engine.setRecognitionListener(listener)
+
+                val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+                    putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+                    putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
+                    putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
+                    // Omitting language lets the service use the device default.
+                }
+
+                engine.startListening(intent)
+
+            } catch (error: RuntimeException) {
+                val code = if (error is SecurityException) {
+                    SpeechRecognitionErrors.ERROR_INSUFFICIENT_PERMISSIONS
+                } else {
+                    SpeechRecognitionErrors.ERROR_CLIENT
+                }
+                trySend(SpeechRecognitionResult.Error(SpeechRecognitionErrors.getErrorMessage(code), code))
+                finish()
             }
         }
-
-        recognizer.setRecognitionListener(listener)
-
-        val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
-            putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-            putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
-            putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
-            // Use the device's default language
-            putExtra(RecognizerIntent.EXTRA_LANGUAGE, "en-US")
-            putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, "en-US")
-        }
-
-        recognizer.startListening(intent)
-
         awaitClose {
-            stopListening()
+            // Capture this flow's cleanup: an old collector must not cancel a newer session.
+            mainHandler.post { cleanup?.invoke() }
         }
     }
 
@@ -147,14 +206,11 @@ class SpeechRecognitionManager @Inject constructor(
      * Stop listening for voice input.
      */
     fun stopListening() {
-        _isListening.value = false
-        _amplitudeData.value = AudioAmplitudeData.Empty
-        speechRecognizer?.apply {
-            stopListening()
-            cancel()
-            destroy()
+        if (Looper.myLooper() == Looper.getMainLooper()) {
+            activeCleanup?.invoke()
+        } else {
+            mainHandler.post { activeCleanup?.invoke() }
         }
-        speechRecognizer = null
     }
 
     /**
