@@ -278,7 +278,7 @@ private fun ContinueInAppButton(onClick: () -> Unit) {
             onClick = onClick,
             shape = MaterialTheme.shapes.medium,  // 12dp from theme
             color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f),
-            modifier = Modifier.height(32.dp)
+            modifier = Modifier.height(48.dp)
         ) {
             Row(
                 modifier = Modifier.padding(horizontal = 12.dp),

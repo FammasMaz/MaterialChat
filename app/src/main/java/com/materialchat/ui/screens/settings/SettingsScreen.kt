@@ -1071,6 +1071,7 @@ private fun SuccessContent(
                 onVoiceEnabledChange = onAssistantVoiceChange,
                 onTtsEnabledChange = onAssistantTtsChange
             )
+            AssistantVoiceSettingsPanel()
         }
 
         item {

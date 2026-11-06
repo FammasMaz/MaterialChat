@@ -2,6 +2,12 @@ package com.materialchat.assistant.ui
 
 import android.Manifest
 import android.content.pm.PackageManager
+import androidx.compose.animation.animateContentSize
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
@@ -11,9 +17,6 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.Orientation
-import androidx.compose.foundation.gestures.draggable
-import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -31,9 +34,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import com.materialchat.ui.components.seaglass.Surface
 import androidx.compose.material3.Text
@@ -41,7 +42,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -61,10 +61,8 @@ import com.materialchat.assistant.voice.VoiceState
 import com.materialchat.data.local.preferences.AppPreferences
 import com.materialchat.ui.components.ExpressiveFilledIconButton
 import com.materialchat.ui.theme.ExpressiveMotion
-import com.materialchat.ui.theme.MaterialChatExpressiveTitleFontFamily
 import com.materialchat.ui.theme.MaterialChatTheme
 import com.materialchat.ui.theme.isDynamicColorSupported
-import kotlin.math.roundToInt
 
 /**
  * M3 Expressive Assistant Overlay.
@@ -73,12 +71,12 @@ import kotlin.math.roundToInt
  * as the system assistant (power button long-press, corner swipe).
  *
  * Features:
- * - Bottom sheet style with 32dp top corners
+ * - Compact floating surface with an expandable transcript
  * - Spring-based entrance animation
  * - Dynamic color from system theme
  * - Voice waveform visualization
  * - AI response streaming with markdown
- * - Swipe-up gesture on drag handle to open in app
+ * - Explicit keyboard, microphone, interrupt, and session controls
  *
  * @param viewModel The ViewModel for this overlay (created by the session)
  * @param onDismiss Callback to dismiss the overlay
@@ -93,7 +91,6 @@ fun AssistantOverlay(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val voiceState by viewModel.voiceState.collectAsStateWithLifecycle()
     val amplitudeData by viewModel.amplitudeData.collectAsStateWithLifecycle()
-    val pendingAttachments by viewModel.pendingAttachments.collectAsStateWithLifecycle()
     val messages by viewModel.messages.collectAsStateWithLifecycle()
     val showTrigger by viewModel.showTrigger.collectAsStateWithLifecycle()
 
@@ -165,6 +162,11 @@ fun AssistantOverlay(
                             // User needs to grant permission in system settings
                         }
                     },
+                    onInterrupt = {
+                        viewModel.stopVoiceInput()
+                        viewModel.cancelStreaming()
+                        viewModel.stopSpeaking()
+                    },
                     onStopVoice = viewModel::stopVoiceInput,
                     onSendClick = { viewModel.sendQuery() },
                     onOpenInApp = viewModel::openInApp,
@@ -192,6 +194,7 @@ private fun AssistantOverlayContent(
     hasContent: Boolean,
     onTextChange: (String) -> Unit,
     onVoiceClick: () -> Unit,
+    onInterrupt: () -> Unit,
     onStopVoice: () -> Unit,
     onSendClick: () -> Unit,
     onOpenInApp: () -> Unit,
@@ -200,6 +203,20 @@ private fun AssistantOverlayContent(
     modifier: Modifier = Modifier
 ) {
     var isVisible by remember { mutableStateOf(false) }
+    var expanded by remember { mutableStateOf(false) }
+    var keyboardMode by remember { mutableStateOf(false) }
+    val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
+    val keyboard = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
+    val busy = uiState.isLoading || uiState.isStreaming || uiState.isSpeaking ||
+        voiceState is VoiceState.Speaking
+    val capturing = voiceState is VoiceState.Listening || voiceState is VoiceState.Processing
+    val status = when {
+        voiceState is VoiceState.Error -> "Try again"
+        voiceState is VoiceState.Speaking || uiState.isSpeaking -> "Speaking"
+        capturing -> "Listening"
+        busy || voiceState is VoiceState.Thinking || voiceState is VoiceState.Responding -> "Thinking"
+        else -> "How can I help?"
+    }
 
     LaunchedEffect(Unit) {
         isVisible = true
@@ -228,14 +245,16 @@ private fun AssistantOverlayContent(
     Surface(
         modifier = modifier
             .fillMaxWidth()
-            .heightIn(max = 600.dp)  // Max height
+            .padding(horizontal = 12.dp, vertical = 8.dp)
+            .heightIn(max = 600.dp)
+            .animateContentSize(animationSpec = ExpressiveMotion.Spatial.container())
             .offset { IntOffset(0, offsetY.roundToPx()) }  // Animate entrance only
             .graphicsLayer {
                 scaleX = sheetScale
                 scaleY = sheetScale
             }
             .alpha(alpha),
-        shape = RoundedCornerShape(topStart = 36.dp, topEnd = 36.dp),
+        shape = RoundedCornerShape(32.dp),
         color = MaterialTheme.colorScheme.surfaceContainer,
         tonalElevation = 8.dp,
         shadowElevation = 24.dp
@@ -247,17 +266,75 @@ private fun AssistantOverlayContent(
                 .padding(top = 12.dp, bottom = 12.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // Handle bar and close button with swipe gesture
-            HeaderSection(
-                onDismiss = onDismiss,
-                onOpenInApp = onOpenInApp,
-                onNewChat = onNewChat,
-                hasContent = hasContent
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f).padding(start = 8.dp)) {
+                    Text("Material Chat", style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(status, style = MaterialTheme.typography.titleLarge,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
+                }
+                ExpressiveFilledIconButton(
+                    onClick = { expanded = !expanded },
+                    icon = if (expanded) Icons.Default.ExpandMore else Icons.Default.ExpandLess,
+                    contentDescription = if (expanded) "Collapse assistant" else "Expand assistant",
+                    modifier = Modifier.size(48.dp),
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+                )
+                ExpressiveFilledIconButton(
+                    onClick = { onInterrupt(); onDismiss() },
+                    icon = Icons.Default.Close,
+                    contentDescription = "End assistant session",
+                    modifier = Modifier.size(48.dp),
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+                )
+            }
+
+            if (!expanded) {
+                val preview = if (capturing) uiState.textInput else messages.lastOrNull()?.content.orEmpty()
+                if (preview.isNotBlank()) {
+                    Text(
+                        text = preview,
+                        maxLines = 2,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(horizontal = 8.dp)
+                    )
+                }
+            }
+
+            if (expanded) {
+                Box(Modifier.fillMaxWidth().height(64.dp), contentAlignment = Alignment.Center) {
+                    if (capturing) {
+                        com.materialchat.assistant.ui.components.VoiceWaveform(
+                            amplitudeData = amplitudeData, maxBarHeight = 48.dp)
+                    } else {
+                        Text(if (busy) "One moment…" else "Tap the microphone to speak",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+                if (capturing && uiState.textInput.isNotBlank()) {
+                    Text(uiState.textInput, style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurface)
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    androidx.compose.material3.TextButton(onClick = onNewChat,
+                        modifier = Modifier.heightIn(min = 48.dp)) { Text("New chat") }
+                    if (hasContent) {
+                        androidx.compose.material3.TextButton(onClick = onOpenInApp,
+                            modifier = Modifier.heightIn(min = 48.dp)) { Text("Open in app") }
+                    }
+                }
+            }
 
             // Response card - flexible height that shrinks when keyboard appears
             AnimatedVisibility(
-                visible = messages.isNotEmpty() || uiState.isLoading,
+                visible = expanded && (messages.isNotEmpty() || uiState.isLoading),
                 enter = fadeIn(animationSpec = ExpressiveMotion.Effects.alpha()) +
                         slideInVertically(
                             animationSpec = ExpressiveMotion.Spatial.default(),
@@ -291,7 +368,7 @@ private fun AssistantOverlayContent(
 
             // Voice state indicator
             AnimatedVisibility(
-                visible = voiceState is VoiceState.Error,
+                visible = voiceState is VoiceState.Error && uiState.error != (voiceState as? VoiceState.Error)?.message,
                 enter = fadeIn(animationSpec = ExpressiveMotion.Effects.alpha()),
                 exit = fadeOut(animationSpec = ExpressiveMotion.Effects.alpha())
             ) {
@@ -300,149 +377,71 @@ private fun AssistantOverlayContent(
                 }
             }
 
-            // Input bar - IME padding handled by parent Box
-            AssistantInputBar(
-                textInput = uiState.textInput,
-                onTextChange = onTextChange,
-                voiceState = voiceState,
-                amplitudeData = amplitudeData,
-                onVoiceClick = onVoiceClick,
-                onSendClick = onSendClick,
-                onStopVoice = onStopVoice,
-                modifier = Modifier.fillMaxWidth()
-            )
-        }
-    }
-}
-
-/**
- * Header section with drag handle (swipe-up gesture), close button, and new chat button.
- * M3 Expressive: Drag handle expands on drag to provide visual feedback.
- */
-@Composable
-private fun HeaderSection(
-    onDismiss: () -> Unit,
-    onOpenInApp: () -> Unit,
-    onNewChat: () -> Unit,
-    hasContent: Boolean
-) {
-    var dragOffset by remember { mutableFloatStateOf(0f) }
-    var isDragging by remember { mutableStateOf(false) }
-
-    val draggableState = rememberDraggableState { delta ->
-        dragOffset += delta
-    }
-
-    // Animate handle width based on drag progress (M3 Expressive visual feedback)
-    val handleWidth by animateFloatAsState(
-        targetValue = when {
-            dragOffset < -80f -> 0.2f
-            dragOffset < -40f -> 0.15f
-            else -> 0.1f
-        },
-        animationSpec = ExpressiveMotion.Spatial.playful(),
-        label = "handleWidth"
-    )
-
-    // Animate handle color on drag
-    val handleAlpha by animateFloatAsState(
-        targetValue = if (dragOffset < -40f) 0.8f else 0.4f,
-        animationSpec = ExpressiveMotion.Effects.alpha(),
-        label = "handleAlpha"
-    )
-
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .draggable(
-                state = draggableState,
-                orientation = Orientation.Vertical,
-                onDragStarted = {
-                    isDragging = true
-                    dragOffset = 0f
-                },
-                onDragStopped = {
-                    // If dragged up significantly and there's content, open in app
-                    if (dragOffset < -100f && hasContent) {
-                        onOpenInApp()
-                    }
-                    isDragging = false
-                    dragOffset = 0f
-                }
-            )
-    ) {
-        // Handle bar with visual feedback
-        Column(
-            modifier = Modifier
-                .align(Alignment.TopCenter)
-                .padding(vertical = 8.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
-            Box(
-                modifier = Modifier
-                    .height(4.dp)
-                    .fillMaxWidth(handleWidth)
-                    .background(
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = handleAlpha),
-                        shape = RoundedCornerShape(2.dp)
-                    )
-            )
-
-            // Visual hint text when dragging up
-            AnimatedVisibility(
-                visible = dragOffset < -40f && hasContent,
-                enter = fadeIn(animationSpec = ExpressiveMotion.Effects.alpha()) +
-                        slideInVertically(
-                            animationSpec = ExpressiveMotion.Spatial.playful(),
-                            initialOffsetY = { it }
-                        ),
-                exit = fadeOut(animationSpec = ExpressiveMotion.Effects.alpha())
-            ) {
+            if (!hasMicPermission || !uiState.isVoiceInputEnabled) {
                 Text(
-                    text = "Open in App",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.primary
+                    if (!hasMicPermission) "Enable microphone permission in system settings to speak."
+                    else "Voice input is disabled in settings.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-        }
-
-        // Close button
-        ExpressiveFilledIconButton(
-            onClick = onDismiss,
-            icon = Icons.Default.Close,
-            contentDescription = "Close",
-            modifier = Modifier.align(Alignment.TopEnd),
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-            contentColor = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-
-        // Title and New Chat button
-        Row(
-            modifier = Modifier
-                .align(Alignment.TopStart)
-                .padding(start = 4.dp, top = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Text(
-                text = "Material Chat",
-                style = MaterialTheme.typography.titleLarge.copy(
-                    fontFamily = MaterialChatExpressiveTitleFontFamily
-                ),
-                color = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.padding(end = 2.dp)
-            )
-
-            // New Chat button - always visible
-            ExpressiveFilledIconButton(
-                onClick = onNewChat,
-                icon = Icons.Default.Add,
-                contentDescription = "New Chat",
-                modifier = Modifier.size(48.dp),
-                containerColor = MaterialTheme.colorScheme.primaryContainer,
-                contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-            )
+            if (keyboardMode) {
+                AssistantInputBar(
+                    textInput = uiState.textInput,
+                    onTextChange = onTextChange,
+                    voiceState = voiceState,
+                    amplitudeData = amplitudeData,
+                    onVoiceClick = {
+                        keyboardMode = false
+                        focusManager.clearFocus()
+                        keyboard?.hide()
+                        if (hasMicPermission && uiState.isVoiceInputEnabled) {
+                            onInterrupt()
+                            expanded = true
+                            onVoiceClick()
+                        }
+                    },
+                    onSendClick = { onInterrupt(); expanded = true; onSendClick() },
+                    onStopVoice = onStopVoice,
+                    voiceEnabled = hasMicPermission && uiState.isVoiceInputEnabled,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                androidx.compose.material3.TextButton(
+                    onClick = {
+                        onInterrupt()
+                        if (keyboardMode) {
+                            focusManager.clearFocus()
+                            keyboard?.hide()
+                        }
+                        keyboardMode = !keyboardMode
+                    },
+                    modifier = Modifier.heightIn(min = 48.dp)
+                ) { Text(if (keyboardMode) "Hide keyboard" else "Keyboard") }
+                Spacer(Modifier.weight(1f))
+                if (busy) {
+                    androidx.compose.material3.FilledTonalButton(
+                        onClick = onInterrupt, modifier = Modifier.heightIn(min = 48.dp)
+                    ) { Text("Interrupt") }
+                } else {
+                    androidx.compose.material3.FilledTonalButton(
+                        onClick = {
+                            keyboardMode = false
+                            focusManager.clearFocus()
+                            keyboard?.hide()
+                            expanded = true
+                            if (capturing) onStopVoice() else { onInterrupt(); onVoiceClick() }
+                        },
+                        enabled = capturing || (hasMicPermission && uiState.isVoiceInputEnabled),
+                        modifier = Modifier.heightIn(min = 48.dp)
+                    ) { Text(if (capturing) "Stop listening" else "Microphone") }
+                }
+            }
         }
     }
 }

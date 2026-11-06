@@ -3,6 +3,7 @@ package com.materialchat.data.local.preferences
 import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.edit
@@ -65,6 +66,15 @@ class AppPreferences(private val context: Context) {
         val SKIPPED_UPDATE_VERSION = stringPreferencesKey("skipped_update_version")
         val REMEMBER_LAST_MODEL = booleanPreferencesKey("remember_last_model")
         val LAST_USED_MODEL = stringPreferencesKey("last_used_model")
+        val VOICE_PROVIDER = stringPreferencesKey("assistant_voice_provider")
+        val VOICE_MODEL = stringPreferencesKey("assistant_voice_model")
+        val VOICE_REASONING = stringPreferencesKey("assistant_voice_reasoning")
+        val VOICE_BACKEND = stringPreferencesKey("assistant_voice_backend")
+        val VOICE_ANDROID_ID = stringPreferencesKey("assistant_voice_android_id")
+        val VOICE_LANGUAGE = stringPreferencesKey("assistant_voice_language")
+        val VOICE_RATE = floatPreferencesKey("assistant_voice_rate")
+        val VOICE_GEMINI_MODEL = stringPreferencesKey("assistant_voice_gemini_model")
+        val VOICE_GEMINI_VOICE = stringPreferencesKey("assistant_voice_gemini_voice")
         // Assistant settings
         val ASSISTANT_ENABLED = booleanPreferencesKey("assistant_enabled")
         val ASSISTANT_VOICE_ENABLED = booleanPreferencesKey("assistant_voice_enabled")
@@ -656,6 +666,44 @@ class AppPreferences(private val context: Context) {
     suspend fun setLastUsedModel(model: String) {
         dataStore.edit { preferences ->
             preferences[Keys.LAST_USED_MODEL] = model
+        }
+    }
+
+    /** Voice-only configuration; credentials are exclusively in EncryptedPreferences. */
+    val assistantVoiceSettings: Flow<AssistantVoiceSettings> = dataStore.data.map { p ->
+        AssistantVoiceSettings(
+            providerId = p[Keys.VOICE_PROVIDER],
+            model = p[Keys.VOICE_MODEL],
+            reasoningEffort = p[Keys.VOICE_REASONING]?.let { stored ->
+                ReasoningEffort.entries.firstOrNull { it.name == stored }
+            },
+            backend = AssistantSpeechBackend.entries.firstOrNull {
+                it.name == p[Keys.VOICE_BACKEND]
+            } ?: AssistantSpeechBackend.ANDROID,
+            androidVoiceId = p[Keys.VOICE_ANDROID_ID],
+            languageTag = p[Keys.VOICE_LANGUAGE],
+            speechRate = p[Keys.VOICE_RATE] ?: 1f,
+            geminiModel = p[Keys.VOICE_GEMINI_MODEL].orEmpty(),
+            geminiVoice = p[Keys.VOICE_GEMINI_VOICE].orEmpty()
+        ).normalized()
+    }.distinctUntilChanged()
+
+    /** Atomic snapshot update; null overrides remove the persisted value (inherit). */
+    suspend fun setAssistantVoiceSettings(settings: AssistantVoiceSettings) {
+        val value = settings.normalized()
+        dataStore.edit { p ->
+            fun optional(key: Preferences.Key<String>, text: String?) {
+                if (text == null) p.remove(key) else p[key] = text
+            }
+            optional(Keys.VOICE_PROVIDER, value.providerId)
+            optional(Keys.VOICE_MODEL, value.model)
+            optional(Keys.VOICE_REASONING, value.reasoningEffort?.name)
+            optional(Keys.VOICE_ANDROID_ID, value.androidVoiceId)
+            optional(Keys.VOICE_LANGUAGE, value.languageTag)
+            p[Keys.VOICE_BACKEND] = value.backend.name
+            p[Keys.VOICE_RATE] = value.speechRate
+            p[Keys.VOICE_GEMINI_MODEL] = value.geminiModel
+            p[Keys.VOICE_GEMINI_VOICE] = value.geminiVoice
         }
     }
 

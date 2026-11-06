@@ -72,7 +72,8 @@ fun AssistantInputBar(
     onVoiceClick: () -> Unit,
     onSendClick: () -> Unit,
     onStopVoice: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    voiceEnabled: Boolean = true
 ) {
     val isListening = voiceState is VoiceState.Listening
     val isProcessing = voiceState is VoiceState.Processing
@@ -127,6 +128,7 @@ fun AssistantInputBar(
                 onTextChange = onTextChange,
                 hasText = hasText,
                 isProcessing = isProcessing,
+                voiceEnabled = voiceEnabled,
                 voiceState = voiceState,
                 onVoiceClick = onVoiceClick,
                 onSendClick = onSendClick,
@@ -174,6 +176,7 @@ private fun NormalInputContent(
     onTextChange: (String) -> Unit,
     hasText: Boolean,
     isProcessing: Boolean,
+    voiceEnabled: Boolean,
     voiceState: VoiceState,
     onVoiceClick: () -> Unit,
     onSendClick: () -> Unit,
@@ -233,6 +236,7 @@ private fun NormalInputContent(
         ActionButton(
             hasText = hasText,
             isProcessing = isProcessing,
+            voiceEnabled = voiceEnabled,
             onVoiceClick = onVoiceClick,
             onSendClick = onSendClick
         )
@@ -251,6 +255,7 @@ private fun NormalInputContent(
 private fun ActionButton(
     hasText: Boolean,
     isProcessing: Boolean,
+    voiceEnabled: Boolean,
     onVoiceClick: () -> Unit,
     onSendClick: () -> Unit
 ) {
@@ -311,7 +316,7 @@ private fun ActionButton(
             },
         shape = RoundedCornerShape(cornerRadius),
         color = buttonColor,
-        enabled = !isProcessing
+        enabled = !isProcessing && (hasText || voiceEnabled)
     ) {
         Box(
             contentAlignment = Alignment.Center
