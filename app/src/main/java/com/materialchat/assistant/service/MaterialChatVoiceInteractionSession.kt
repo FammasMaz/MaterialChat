@@ -15,6 +15,9 @@ import androidx.compose.ui.platform.ComposeView
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.LifecycleRegistry
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.viewmodel.initializer
+import androidx.lifecycle.viewmodel.viewModelFactory
 import androidx.lifecycle.ViewModelStore
 import androidx.lifecycle.ViewModelStoreOwner
 import androidx.lifecycle.setViewTreeLifecycleOwner
@@ -74,6 +77,7 @@ class MaterialChatVoiceInteractionSession(
     }
 
     override fun onHide() {
+        assistantViewModel?.clearConversation()
         lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_PAUSE)
         lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_STOP)
         super.onHide()
@@ -97,7 +101,8 @@ class MaterialChatVoiceInteractionSession(
         )
 
         // Create ViewModel with dependencies
-        assistantViewModel = AssistantViewModel(
+        assistantViewModel = ViewModelProvider(this, viewModelFactory { initializer { AssistantViewModel(
+            speechRuntime = entryPoint.assistantSpeechRuntime(),
             speechRecognitionManager = entryPoint.speechRecognitionManager(),
             textToSpeechManager = entryPoint.textToSpeechManager(),
             chatRepository = entryPoint.chatRepository(),
@@ -107,7 +112,7 @@ class MaterialChatVoiceInteractionSession(
             conversationRepository = entryPoint.conversationRepository(),
             generateConversationTitleUseCase = entryPoint.generateConversationTitleUseCase(),
             applicationScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
-        )
+        ) } })[AssistantViewModel::class.java]
 
         return ComposeView(context).apply {
             composeView = this

@@ -13,13 +13,19 @@ import com.materialchat.data.local.preferences.AppPreferences
 import com.materialchat.domain.model.Attachment
 import com.materialchat.domain.model.Message
 import com.materialchat.domain.model.MessageRole
-import com.materialchat.domain.model.ReasoningEffort
 import com.materialchat.domain.model.StreamingState
 import com.materialchat.domain.repository.ChatRepository
 import com.materialchat.domain.repository.ConversationRepository
 import com.materialchat.domain.repository.ProviderRepository
 import com.materialchat.domain.usecase.CreateConversationUseCase
 import com.materialchat.domain.usecase.GenerateConversationTitleUseCase
+import com.materialchat.assistant.voice.AssistantSpeechRuntime
+import com.materialchat.assistant.voice.AssistantSpeechQueue
+import com.materialchat.assistant.voice.StreamingSpeechChunker
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -54,7 +60,8 @@ class AssistantViewModel(
     private val createConversationUseCase: CreateConversationUseCase,
     private val conversationRepository: ConversationRepository,
     private val generateConversationTitleUseCase: GenerateConversationTitleUseCase,
-    private val applicationScope: CoroutineScope
+    private val applicationScope: CoroutineScope,
+    private val speechRuntime: AssistantSpeechRuntime
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(AssistantUiState())
@@ -83,6 +90,10 @@ class AssistantViewModel(
     private var streamingJob: Job? = null
     private var voiceInputJob: Job? = null
     private var ttsJob: Job? = null
+    private var turn = 0L
+    private var recognition = 0L
+    private var speechQueue: AssistantSpeechQueue? = null
+    private var speechStopped = false
 
     /** The persistent conversation ID - created on first query */
     private var currentConversationId: String? = null
@@ -127,6 +138,7 @@ class AssistantViewModel(
         viewModelScope.launch {
             appPreferences.assistantTtsEnabled.collect { enabled ->
                 _uiState.update { it.copy(isTtsEnabled = enabled) }
+                if (!enabled) stopSpeaking()
             }
         }
     }
@@ -186,6 +198,9 @@ class AssistantViewModel(
      * Start voice input.
      */
     fun startVoiceInput() {
+        val previousTurn = streamingJob
+        cancelStreaming()
+        val token = ++recognition
         if (!speechRecognitionManager.isAvailable()) {
             _voiceState.value = VoiceState.Error("Speech recognition not available")
             return
@@ -193,7 +208,10 @@ class AssistantViewModel(
 
         voiceInputJob?.cancel()
         voiceInputJob = viewModelScope.launch {
+            previousTurn?.join()
+            if (token != recognition) return@launch
             speechRecognitionManager.startListening().collect { result ->
+                if (token != recognition) return@collect
                 when (result) {
                     is SpeechRecognitionResult.Ready -> {
                         _voiceState.value = VoiceState.Listening
@@ -224,6 +242,7 @@ class AssistantViewModel(
      * Stop voice input.
      */
     fun stopVoiceInput() {
+        recognition++
         voiceInputJob?.cancel()
         speechRecognitionManager.stopListening()
         _voiceState.value = VoiceState.Idle
@@ -235,6 +254,10 @@ class AssistantViewModel(
     fun sendQuery(query: String = _uiState.value.textInput) {
         if (query.isBlank()) return
 
+        val previousTurn = streamingJob
+        cancelStreaming()
+        val token = turn
+        speechStopped = false
         val trimmedQuery = query.trim()
         val attachments = _pendingAttachments.value
 
@@ -247,134 +270,173 @@ class AssistantViewModel(
                 userQuery = trimmedQuery,
                 response = "",
                 isLoading = true,
-                isStreaming = false
+                isStreaming = false,
+                error = null
             )
         }
         _pendingAttachments.value = emptyList()
         _voiceState.value = VoiceState.Thinking(trimmedQuery)
         lastActivityTimestamp = System.currentTimeMillis()
 
-        streamingJob?.cancel()
         streamingJob = viewModelScope.launch {
             try {
-                // Get active provider
-                val provider = providerRepository.getActiveProvider()
-                if (provider == null) {
-                    handleError("No active AI provider. Please configure one in Settings.")
-                    return@launch
-                }
-
-                // Create persistent conversation on first query
-                if (currentConversationId == null) {
-                    try {
-                        currentConversationId = createConversationUseCase()
-                    } catch (e: Exception) {
-                        handleError("Failed to create conversation: ${e.message}")
-                        return@launch
+                previousTurn?.join()
+                currentCoroutineContext().ensureActive()
+                if (token != turn) return@launch
+                coroutineScope {
+                    val settings = appPreferences.assistantVoiceSettings.first().normalized()
+                    val chunker = StreamingSpeechChunker()
+                    val queue = AssistantSpeechQueue(this) { chunk ->
+                        if (token == turn && !speechStopped && _uiState.value.isTtsEnabled) {
+                            speechRuntime.speak(chunk, settings) { event ->
+                                if (token == turn && !speechStopped) {
+                                    when (event) {
+                                        TtsEvent.Started -> {
+                                            _uiState.update { it.copy(isSpeaking = true) }
+                                            _voiceState.value = VoiceState.Speaking(chunk)
+                                        }
+                                        else -> {
+                                            _uiState.update { it.copy(isSpeaking = false) }
+                                            if (!_uiState.value.isStreaming && !_uiState.value.isLoading) {
+                                                _voiceState.value = VoiceState.Complete(_uiState.value.response, trimmedQuery)
+                                            }
+                                            if (event is TtsEvent.Error) _uiState.update { it.copy(error = event.message) }
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
-                }
+                    speechQueue = queue
+                    ttsJob = queue.job
+                    // Voice overrides are independent of normal chat preferences.
+                    val provider = settings.providerId?.let { providerRepository.getProvider(it) }
+                        ?: if (settings.providerId == null) providerRepository.getActiveProvider() else null
+                    if (provider == null) {
+                        handleError("No active AI provider. Please configure one in Settings.")
+                        queue.finish()
+                        return@coroutineScope
+                    }
 
-                val conversationId = currentConversationId!!
+                    val model = settings.model ?: provider.defaultModel
+                    if (currentConversationId == null) {
+                        val created = createConversationUseCase.withProviderAndModel(provider.id, model)
+                        currentCoroutineContext().ensureActive()
+                        if (token != turn) return@coroutineScope
+                        currentConversationId = created
+                    }
+                    val conversationId = currentConversationId!!
+                    conversationRepository.updateConversationProviderAndModel(conversationId, provider.id, model)
+                    val systemPrompt = appPreferences.systemPrompt.first()
+                    val reasoningEffort = settings.reasoningEffort ?: appPreferences.reasoningEffort.first()
 
-                // Get system prompt
-                val systemPrompt = appPreferences.systemPrompt.first()
-                val reasoningEffort = appPreferences.reasoningEffort.first()
+                    // Create and save user message
+                    val userMessage = Message(
+                        conversationId = conversationId,
+                        role = MessageRole.USER,
+                        content = trimmedQuery,
+                        attachments = attachments
+                    )
+                    conversationRepository.addMessage(userMessage)
 
-                // Create and save user message
-                val userMessage = Message(
-                    conversationId = conversationId,
-                    role = MessageRole.USER,
-                    content = trimmedQuery,
-                    attachments = attachments
-                )
-                conversationRepository.addMessage(userMessage)
+                    // Get all messages for this conversation
+                    val messages = conversationRepository.getMessages(conversationId)
 
-                // Get all messages for this conversation
-                val messages = conversationRepository.getMessages(conversationId)
-
-                // Stream the response
-                chatRepository.sendMessage(
-                    provider = provider,
-                    messages = messages,
-                    model = provider.defaultModel,
-                    reasoningEffort = reasoningEffort,
-                    systemPrompt = systemPrompt,
-                    ownerId = ASSISTANT_STREAM_OWNER
-                ).collect { state ->
-                    when (state) {
-                        is StreamingState.Starting -> {
-                            _uiState.update { it.copy(isLoading = true) }
-                        }
-                        is StreamingState.Streaming -> {
-                            _voiceState.value = VoiceState.Responding(
-                                content = state.content,
-                                userQuery = trimmedQuery
-                            )
-                            _uiState.update {
-                                it.copy(
-                                    response = state.content,
-                                    isLoading = false,
-                                    isStreaming = true
-                                )
+                    // Stream the response
+                    chatRepository.sendMessage(
+                        provider = provider,
+                        messages = messages,
+                        model = model,
+                        reasoningEffort = reasoningEffort,
+                        systemPrompt = systemPrompt,
+                        ownerId = ASSISTANT_STREAM_OWNER
+                    ).collect { state ->
+                        currentCoroutineContext().ensureActive()
+                        if (token != turn) return@collect
+                        when (state) {
+                            is StreamingState.Starting -> {
+                                _uiState.update { it.copy(isLoading = true) }
                             }
-                            // Update streaming response in message list
-                            updateStreamingResponse(state.content)
-                        }
-                        is StreamingState.Completed -> {
-                            _voiceState.value = VoiceState.Complete(
-                                content = state.finalContent,
-                                userQuery = trimmedQuery
-                            )
-                            _uiState.update {
-                                it.copy(
-                                    response = state.finalContent,
-                                    isLoading = false,
-                                    isStreaming = false
+                            is StreamingState.Streaming -> {
+                                if (!_uiState.value.isSpeaking) _voiceState.value = VoiceState.Responding(
+                                    content = state.content,
+                                    userQuery = trimmedQuery
                                 )
+                                _uiState.update {
+                                    it.copy(
+                                        response = state.content,
+                                        isLoading = false,
+                                        isStreaming = true
+                                    )
+                                }
+                                // Update streaming response in message list
+                                updateStreamingResponse(state.content)
+                                if (!speechStopped && _uiState.value.isTtsEnabled)
+                                    chunker.update(state.content).forEach { queue.enqueue(it) }
                             }
+                            is StreamingState.Completed -> {
+                                if (!_uiState.value.isSpeaking) _voiceState.value = VoiceState.Complete(
+                                    content = state.finalContent,
+                                    userQuery = trimmedQuery
+                                )
+                                _uiState.update {
+                                    it.copy(
+                                        response = state.finalContent,
+                                        isLoading = false,
+                                        isStreaming = false
+                                    )
+                                }
 
-                            // Finalize assistant message in message list
-                            finalizeAssistantResponse(state.finalContent)
-                            lastActivityTimestamp = System.currentTimeMillis()
+                                // Finalize assistant message in message list
+                                finalizeAssistantResponse(state.finalContent)
+                                lastActivityTimestamp = System.currentTimeMillis()
 
-                            // Save assistant message to database
-                            val assistantMessage = Message(
-                                conversationId = conversationId,
-                                role = MessageRole.ASSISTANT,
-                                content = state.finalContent
-                            )
-                            conversationRepository.addMessage(assistantMessage)
-
-                            // Trigger title generation (non-blocking)
-                            applicationScope.launch {
-                                generateTitleIfNeeded(
+                                // Save assistant message to database
+                                val assistantMessage = Message(
                                     conversationId = conversationId,
-                                    userMessage = trimmedQuery,
-                                    assistantResponse = state.finalContent
+                                    role = MessageRole.ASSISTANT,
+                                    content = state.finalContent
                                 )
-                            }
+                                conversationRepository.addMessage(assistantMessage)
 
-                            // Speak the response if TTS is enabled
-                            speakResponseIfEnabled(state.finalContent)
-                        }
-                        is StreamingState.Error -> {
-                            handleError(state.error.message ?: "An error occurred")
-                        }
-                        is StreamingState.Cancelled -> {
-                            _uiState.update {
-                                it.copy(
-                                    response = state.partialContent ?: "",
-                                    isLoading = false,
-                                    isStreaming = false
-                                )
+                                // Trigger title generation (non-blocking)
+                                applicationScope.launch {
+                                    generateTitleIfNeeded(
+                                        conversationId = conversationId,
+                                        userMessage = trimmedQuery,
+                                        assistantResponse = state.finalContent
+                                    )
+                                }
+
+                                // Speak the response if TTS is enabled
+                                if (!speechStopped && _uiState.value.isTtsEnabled)
+                                    chunker.update(state.finalContent, isFinal = true).forEach { queue.enqueue(it) }
+                                queue.finish()
                             }
-                            _voiceState.value = VoiceState.Idle
+                            is StreamingState.Error -> {
+                                queue.cancel()
+                                handleError(state.error.message ?: "An error occurred")
+                            }
+                            is StreamingState.Cancelled -> {
+                                queue.cancel()
+                                _uiState.update {
+                                    it.copy(
+                                        response = state.partialContent ?: "",
+                                        isLoading = false,
+                                        isStreaming = false
+                                    )
+                                }
+                                _voiceState.value = VoiceState.Idle
+                            }
+                            else -> {}
                         }
-                        else -> {}
                     }
+                    queue.finish()
                 }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
             } catch (e: Exception) {
-                handleError(e.message ?: "An error occurred")
+                if (token == turn) handleError("Assistant request failed. Check provider and voice settings.")
             }
         }
     }
@@ -383,43 +445,20 @@ class AssistantViewModel(
      * Cancel the current streaming request.
      */
     fun cancelStreaming() {
+        turn++
+        stopVoiceInput()
         streamingJob?.cancel()
-        chatRepository.cancelStreaming(ASSISTANT_STREAM_OWNER)
+        stopSpeaking()
+        _messages.update { messages -> messages.map { it.copy(isStreaming = false) } }
         _uiState.update { it.copy(isLoading = false, isStreaming = false) }
         _voiceState.value = VoiceState.Idle
     }
 
-    /**
-     * Speak the response using TTS if enabled.
-     */
-    private fun speakResponseIfEnabled(text: String) {
-        if (!_uiState.value.isTtsEnabled || !_uiState.value.isTtsAvailable) return
-
-        ttsJob?.cancel()
-        ttsJob = viewModelScope.launch {
-            _voiceState.value = VoiceState.Speaking(text)
-            textToSpeechManager.speak(text).collect { event ->
-                when (event) {
-                    is TtsEvent.Started -> {
-                        _uiState.update { it.copy(isSpeaking = true) }
-                    }
-                    is TtsEvent.Completed, is TtsEvent.Stopped -> {
-                        _uiState.update { it.copy(isSpeaking = false) }
-                        _voiceState.value = VoiceState.Idle
-                    }
-                    is TtsEvent.Error -> {
-                        _uiState.update { it.copy(isSpeaking = false) }
-                        _voiceState.value = VoiceState.Idle
-                    }
-                }
-            }
-        }
-    }
-
-    /**
-     * Stop TTS playback.
-     */
+    /** Stops speech for the rest of this turn without cancelling generation. */
     fun stopSpeaking() {
+        speechStopped = true
+        speechQueue?.cancel()
+        speechQueue = null
         ttsJob?.cancel()
         textToSpeechManager.stop()
         _uiState.update { it.copy(isSpeaking = false) }
@@ -478,6 +517,8 @@ class AssistantViewModel(
                     assistantResponse = assistantResponse
                 )
             }
+        } catch (cancelled: CancellationException) {
+            throw cancelled
         } catch (_: Exception) {
             // Silent failure - title generation is non-critical
         }
@@ -553,6 +594,7 @@ class AssistantViewModel(
     }
 
     override fun onCleared() {
+        cancelStreaming()
         super.onCleared()
         speechRecognitionManager.release()
         textToSpeechManager.release()

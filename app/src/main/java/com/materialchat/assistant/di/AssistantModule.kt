@@ -1,6 +1,10 @@
 package com.materialchat.assistant.di
 
 import android.content.Context
+import com.materialchat.assistant.voice.AssistantSpeechRuntime
+import com.materialchat.assistant.voice.GeminiTtsBackend
+import com.materialchat.assistant.voice.AudioTrackPcmPlayer
+import com.materialchat.data.local.preferences.EncryptedPreferences
 import com.materialchat.assistant.voice.SpeechRecognitionManager
 import com.materialchat.assistant.voice.TextToSpeechManager
 import com.materialchat.data.local.preferences.AppPreferences
@@ -29,6 +33,10 @@ import javax.inject.Singleton
 object AssistantModule {
 
     @Provides
+    fun provideAssistantSpeechRuntime(android: TextToSpeechManager, credentials: EncryptedPreferences): AssistantSpeechRuntime =
+        AssistantSpeechRuntime(android, GeminiTtsBackend(player = AudioTrackPcmPlayer()), credentials)
+
+    @Provides
     @Singleton
     fun provideSpeechRecognitionManager(
         @ApplicationContext context: Context
@@ -50,6 +58,7 @@ object AssistantModule {
 @EntryPoint
 @InstallIn(SingletonComponent::class)
 interface AssistantEntryPoint {
+    fun assistantSpeechRuntime(): AssistantSpeechRuntime
     fun speechRecognitionManager(): SpeechRecognitionManager
     fun textToSpeechManager(): TextToSpeechManager
     fun chatRepository(): ChatRepository
