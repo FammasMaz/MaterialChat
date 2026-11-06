@@ -1,6 +1,7 @@
 package com.materialchat.assistant.voice
 
 import com.materialchat.data.local.preferences.AssistantVoiceSettings
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
@@ -45,6 +46,10 @@ class GeminiTtsBackend(
             } finally {
                 pcm.fill(0)
             }
+        } catch (_: TimeoutCancellationException) {
+            // A synthesis deadline is a speech failure, not cancellation of the voice turn.
+            currentCoroutineContext().ensureActive()
+            emit(TtsEvent.Error("Gemini speech timed out. Try Android speech or retry."))
         } catch (cancelled: CancellationException) {
             throw cancelled
         } catch (_: Exception) {

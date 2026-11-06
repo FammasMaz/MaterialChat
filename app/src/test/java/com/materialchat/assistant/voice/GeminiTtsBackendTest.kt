@@ -69,6 +69,14 @@ class GeminiTtsBackendTest {
         assertArrayEquals(byteArrayOf(0, 0), borrowed)
     }
 
+    @Test fun synthesisTimeoutIsSpeechErrorNotTurnCancellation() = kotlinx.coroutines.test.runTest {
+        val backend = GeminiTtsBackend(GeminiTtsTransport { _, _, _ -> awaitCancellation() },
+            GeminiPcmPlayer { _, _ -> fail("Must not play") })
+        val result = backend.speak("Hello", settings, "test-key").toList()
+        assertTrue(result.single() is TtsEvent.Error)
+        currentCoroutineContext().ensureActive()
+    }
+
     @Test fun errorsNeverExposeSecrets() = runBlocking {
         val backend = GeminiTtsBackend(GeminiTtsTransport { _, _, _ -> error("SECRET") }, GeminiPcmPlayer { _, _ -> fail() })
         val result = backend.speak("Hello", settings, "SECRET").toList().single() as TtsEvent.Error
