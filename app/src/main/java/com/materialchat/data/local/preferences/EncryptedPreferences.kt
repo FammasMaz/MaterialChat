@@ -134,7 +134,20 @@ class EncryptedPreferences(context: Context) {
         return "$API_KEY_PREFIX$providerId"
     }
 
+    suspend fun setAssistantGeminiTtsApiKey(apiKey: String) {
+        if (apiKey.isBlank()) deleteApiKey(ASSISTANT_GEMINI_TTS_CREDENTIAL_ID)
+        else setApiKey(ASSISTANT_GEMINI_TTS_CREDENTIAL_ID, apiKey.trim())
+    }
+
+    suspend fun getAssistantGeminiTtsApiKey(): String? =
+        getApiKey(ASSISTANT_GEMINI_TTS_CREDENTIAL_ID)
+
+    suspend fun hasAssistantGeminiTtsApiKey(): Boolean =
+        hasApiKey(ASSISTANT_GEMINI_TTS_CREDENTIAL_ID)
+
     companion object {
+        private const val ASSISTANT_GEMINI_TTS_CREDENTIAL_ID = "assistant-gemini-tts"
+
         private const val PREFS_NAME = "materialchat_encrypted_prefs"
         private const val KEYSET_NAME = "materialchat_keyset"
         private const val MASTER_KEY_URI = "android-keystore://materialchat_master_key"
