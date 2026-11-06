@@ -59,15 +59,17 @@ class ConversationsViewModel @Inject constructor(
     // Active conversations observer; cancelled and relaunched on retry() to avoid stacking collectors.
     private var observeJob: Job? = null
 
-    init {
-        observeConversations()
-    }
-
     // Set of conversation IDs pending deletion (for UI filtering). Kept as an
     // observable so undo restores the row immediately.
     private val pendingDeleteIds = MutableStateFlow<Set<String>>(emptySet())
     // Most recent deletion for undo functionality
     private var lastDeletedConversation: Conversation? = null
+
+    // Main.immediate can start collection during construction, so every field
+    // used by the observer must be initialized before launching it.
+    init {
+        observeConversations()
+    }
 
     /**
      * Observes conversations and provider changes to update the UI state.

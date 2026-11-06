@@ -22,6 +22,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
@@ -148,6 +149,22 @@ class ConversationsViewModelTest {
         }
 
         assertEquals(listOf(conversation.id), visible(viewModel))
+    }
+
+    @Test
+    fun `immediate main dispatcher loads on construction without retry`() = runTest {
+        Dispatchers.setMain(UnconfinedTestDispatcher(testScheduler))
+        conversations.value = listOf(conversation("startup"))
+        val viewModel = ConversationsViewModel(
+            getConversationsUseCase = getConversations,
+            createConversationUseCase = createConversation,
+            manageProvidersUseCase = manageProviders,
+            conversationRepository = repository,
+            appPreferences = preferences,
+            generateConversationTitleUseCase = mockk(relaxed = true)
+        )
+        runCurrent()
+        assertEquals(listOf("startup"), visible(viewModel))
     }
 
     /** Built inside the test body so the ViewModel shares the test scheduler. */
