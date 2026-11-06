@@ -48,23 +48,30 @@ class AssistantSpeechRuntime(
     private val credentials: EncryptedPreferences
 ) {
     suspend fun speak(text: String, settings: AssistantVoiceSettings, event: (TtsEvent) -> Unit) {
-        when (settings.backend) {
-            AssistantSpeechBackend.ANDROID -> {
-                if (android.initialize().first() !is TtsInitResult.Success ||
-                    android.configure(settings).first() !is TtsInitResult.Success) {
-                    event(TtsEvent.Error("Android voice unavailable. Check voice settings."))
-                    return
+        try {
+            when (settings.backend) {
+                AssistantSpeechBackend.ANDROID -> {
+                    if (android.initialize().first() !is TtsInitResult.Success ||
+                        android.configure(settings).first() !is TtsInitResult.Success) {
+                        event(TtsEvent.Error("Android voice unavailable. Check voice settings."))
+                        return
+                    }
+                    android.enqueue(text).collect(event)
                 }
-                android.enqueue(text).collect(event)
-            }
-            AssistantSpeechBackend.GEMINI -> {
-                val key = credentials.getAssistantGeminiTtsApiKey()
-                if (key.isNullOrBlank()) {
-                    event(TtsEvent.Error("Configure a Gemini speech key in voice settings."))
-                    return
+                AssistantSpeechBackend.GEMINI -> {
+                    val key = credentials.getAssistantGeminiTtsApiKey()
+                    if (key.isNullOrBlank()) {
+                        event(TtsEvent.Error("Configure a Gemini speech key in voice settings."))
+                        return
+                    }
+                    gemini.speak(text, settings, key).collect(event)
                 }
-                gemini.speak(text, settings, key).collect(event)
             }
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (_: Exception) {
+            // Credentials and engine exceptions must not cancel sibling generation or leak details.
+            event(TtsEvent.Error("Speech unavailable. Check voice settings and retry."))
         }
     }
 }
