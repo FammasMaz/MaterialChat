@@ -27,8 +27,11 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.imePadding
-import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.ime
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.union
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -140,8 +143,10 @@ fun AssistantOverlay(
                 ) {
                     viewModel.dismiss()
                 }
-                .imePadding()
-                .navigationBarsPadding()
+                // The session window does not resize/pan for IME. Union takes the
+                // larger bottom inset, not IME + navigation bar, and retains side
+                // navigation-bar clearance in landscape / three-button navigation.
+                .windowInsetsPadding(WindowInsets.ime.union(WindowInsets.navigationBars))
         ) {
             // Use showTrigger as key to force recomposition and animation restart
             key(showTrigger) {

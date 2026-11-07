@@ -9,6 +9,8 @@ import android.os.Bundle
 import android.service.voice.VoiceInteractionSession
 import android.view.View
 import android.view.ViewGroup
+import android.view.WindowManager
+import androidx.core.view.WindowCompat
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.ComposeView
@@ -93,6 +95,14 @@ class MaterialChatVoiceInteractionSession(
 
     override fun onCreateContentView(): View {
         lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_CREATE)
+
+        // The session owns a separate Dialog window; MainActivity's edge-to-edge and
+        // soft-input settings do not apply here. Keep its bounds stable when the IME
+        // opens so Compose is the only owner of IME/navigation-bar clearance.
+        window.window?.let { sessionWindow ->
+            WindowCompat.setDecorFitsSystemWindows(sessionWindow, false)
+            sessionWindow.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_NOTHING)
+        }
 
         // Get dependencies from Hilt EntryPoint
         val entryPoint = EntryPointAccessors.fromApplication(
