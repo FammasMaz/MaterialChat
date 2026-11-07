@@ -35,6 +35,7 @@ fun AssistantVoiceSettingsPanel(viewModel: AssistantVoiceSettingsViewModel = hil
     val previewMessage by viewModel.previewMessage.collectAsStateWithLifecycle()
     val stored by viewModel.settings.collectAsStateWithLifecycle()
     val providers by viewModel.providers.collectAsStateWithLifecycle()
+    val modelPicker by viewModel.modelPicker.collectAsStateWithLifecycle()
     val configured by viewModel.keyConfigured.collectAsStateWithLifecycle()
     val saving by viewModel.saving.collectAsStateWithLifecycle()
     val message by viewModel.message.collectAsStateWithLifecycle()
@@ -44,7 +45,8 @@ fun AssistantVoiceSettingsPanel(viewModel: AssistantVoiceSettingsViewModel = hil
             text = { Text("Loading settings…") }, confirmButton = {})
         return
     }
-    var draft by remember(loaded) { mutableStateOf(loaded) }
+    var draft by remember(loaded) { mutableStateOf(VoiceGeminiChoices.draftDefaults(loaded)) }
+    LaunchedEffect(draft.providerId, providers) { viewModel.loadModels(draft.providerId) }
     var key by remember { mutableStateOf("") }
     var removeKey by remember { mutableStateOf(false) }
     AlertDialog(
@@ -56,13 +58,23 @@ fun AssistantVoiceSettingsPanel(viewModel: AssistantVoiceSettingsViewModel = hil
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Text("Voice conversation", style = MaterialTheme.typography.titleMedium)
-                Text("Blank overrides inherit the assistant configuration. A selected provider uses its default model when model is blank.")
+                Text("Inherit uses the active assistant provider. Provider default follows that provider's configured default model. Reasoning can inherit independently.")
                 VoiceChoice("Provider", providers.firstOrNull { it.id == draft.providerId }?.name
-                    ?: draft.providerId ?: "Inherit", listOf(null to "Inherit") + providers.map { it.id to it.name }) {
+                    ?: draft.providerId ?: "Inherit active provider", listOf(null to "Inherit active provider") + providers.map { it.id to it.name }) {
                     draft = draft.copy(providerId = it, model = null)
                 }
-                OutlinedTextField(draft.model.orEmpty(), { draft = draft.copy(model = it) },
-                    label = { Text("Model identifier (blank to inherit)") }, modifier = Modifier.fillMaxWidth())
+                val modelChoices = modelPicker.choices(draft.model, draft.providerId == null)
+                VoiceChoice("Model", modelChoices.firstOrNull { it.first == draft.model }?.second.orEmpty(), modelChoices) {
+                    draft = draft.copy(model = it)
+                }
+                if (modelPicker.loading) Text("Loading provider models…")
+                modelPicker.error?.let { Text(it) }
+                if (!modelPicker.loading) {
+                    if (modelPicker.error == null && modelPicker.models.isEmpty()) Text("Provider returned no models. You can keep the saved choice or use the provider default.")
+                    TextButton(onClick = { viewModel.loadModels(draft.providerId) }) {
+                        Text(if (modelPicker.error != null) "Retry models" else "Refresh models")
+                    }
+                }
                 VoiceChoice("Reasoning", draft.reasoningEffort?.displayName ?: "Inherit",
                     listOf(null to "Inherit") + ReasoningEffort.entries.map { it to it.displayName }) {
                     draft = draft.copy(reasoningEffort = it)
@@ -100,11 +112,15 @@ fun AssistantVoiceSettingsPanel(viewModel: AssistantVoiceSettingsViewModel = hil
                     previewMessage?.let { Text(it) }
                     Text("Blank voice and language use engine defaults. Availability depends on the installed Android speech engine.")
                 } else {
-                    Text("Gemini sends response text to Google. Supply a model and voice supported by your account; availability and billing depend on Google.")
-                    OutlinedTextField(draft.geminiModel, { draft = draft.copy(geminiModel = it) },
-                        label = { Text("Gemini TTS model identifier") }, modifier = Modifier.fillMaxWidth())
-                    OutlinedTextField(draft.geminiVoice, { draft = draft.copy(geminiVoice = it) },
-                        label = { Text("Gemini voice name") }, modifier = Modifier.fillMaxWidth())
+                    Text("Gemini sends response text to Google. These are backend-compatible choices, not a live availability check. Account access, availability and billing depend on Google.")
+                    VoiceChoice("Gemini TTS model", draft.geminiModel,
+                        VoiceGeminiChoices.choices(draft.geminiModel, VoiceGeminiChoices.models)) {
+                        draft = draft.copy(geminiModel = it)
+                    }
+                    VoiceChoice("Gemini voice", draft.geminiVoice,
+                        VoiceGeminiChoices.choices(draft.geminiVoice, VoiceGeminiChoices.voices)) {
+                        draft = draft.copy(geminiVoice = it)
+                    }
                     Text(if (configured) "Encrypted key stored. Leave blank to keep it." else "No dedicated Gemini TTS key stored.")
                     OutlinedTextField(key, { key = it; removeKey = false },
                         label = { Text("Optional Gemini TTS API key") }, singleLine = true,

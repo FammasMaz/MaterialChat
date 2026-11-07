@@ -5,6 +5,9 @@ import androidx.lifecycle.ViewModelStore
 import com.materialchat.assistant.voice.*
 import com.materialchat.data.local.preferences.*
 import com.materialchat.domain.repository.ProviderRepository
+import com.materialchat.domain.repository.ChatRepository
+import com.materialchat.domain.model.Provider
+import com.materialchat.domain.model.AiModel
 import io.mockk.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
@@ -18,6 +21,7 @@ class AssistantVoiceSettingsViewModelTest {
     private val store = ViewModelStore()
     private val preferences = mockk<AppPreferences>(relaxed = true)
     private val credentials = mockk<EncryptedPreferences>(relaxed = true)
+    private val chat = mockk<ChatRepository>()
     private val providers = mockk<ProviderRepository>(relaxed = true)
 
     private fun TestScope.create(): AssistantVoiceSettingsViewModel {
@@ -32,7 +36,7 @@ class AssistantVoiceSettingsViewModelTest {
         every { anyConstructed<TextToSpeechManager>().enqueue(any()) } returns flow { awaitCancellation() }
         every { anyConstructed<TextToSpeechManager>().release() } just Runs
         every { anyConstructed<TextToSpeechManager>().stop() } just Runs
-        return AssistantVoiceSettingsViewModel(preferences, credentials, providers, context).also {
+        return AssistantVoiceSettingsViewModel(preferences, credentials, providers, chat, context).also {
             store.put("settings", it)
             runCurrent()
         }
@@ -76,5 +80,41 @@ class AssistantVoiceSettingsViewModelTest {
         assertFalse(vm.previewing.value)
         verify { anyConstructed<TextToSpeechManager>().stop() }
         verify { anyConstructed<TextToSpeechManager>().release() }
+    }
+
+    @Test fun `models load from inherited provider and retry sanitized failure`() = runTest {
+        val vm = create()
+        val provider = Provider.openAiTemplate()
+        coEvery { providers.getActiveProvider() } returns provider
+        coEvery { chat.fetchModels(provider, any()) } returns Result.failure(Exception("private diagnostic"))
+        vm.loadModels(null)
+        assertTrue(vm.modelPicker.value.loading)
+        runCurrent()
+        assertFalse(vm.modelPicker.value.loading)
+        assertFalse(vm.modelPicker.value.error.orEmpty().contains("private"))
+        coEvery { chat.fetchModels(provider, any()) } returns Result.success(listOf(AiModel("available", providerId = provider.id)))
+        vm.loadModels(null); runCurrent()
+        assertNull(vm.modelPicker.value.error)
+        assertEquals("available", vm.modelPicker.value.models.single().id)
+        assertTrue(vm.modelPicker.value.choices("saved", true).any { it.first == "saved" })
+        assertTrue(vm.modelPicker.value.choices(null, true).first().second.contains(provider.defaultModel))
+    }
+
+    @Test fun `explicit missing provider does not fall back to active provider`() = runTest {
+        val vm = create()
+        coEvery { providers.getProvider("removed") } returns null
+        vm.loadModels("removed"); runCurrent()
+        assertNotNull(vm.modelPicker.value.error)
+        coVerify(exactly = 0) { providers.getActiveProvider() }
+        coVerify(exactly = 0) { chat.fetchModels(any(), any()) }
+    }
+
+    @Test fun `Gemini draft defaults are compatible and preserve saved choices`() {
+        val defaults = VoiceGeminiChoices.draftDefaults(AssistantVoiceSettings())
+        assertTrue(defaults.geminiModel in GeminiTtsBackend.SUPPORTED_MODELS)
+        assertEquals("Kore", defaults.geminiVoice)
+        val saved = defaults.copy(geminiModel = "legacy", geminiVoice = "Custom")
+        assertEquals(saved, VoiceGeminiChoices.draftDefaults(saved))
+        assertTrue(VoiceGeminiChoices.choices("Custom", VoiceGeminiChoices.voices).any { it.first == "Custom" })
     }
 }

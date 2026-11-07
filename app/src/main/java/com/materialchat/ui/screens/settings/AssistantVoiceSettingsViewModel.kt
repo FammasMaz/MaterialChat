@@ -14,6 +14,10 @@ import com.materialchat.data.local.preferences.AppPreferences
 import com.materialchat.data.local.preferences.AssistantVoiceSettings
 import com.materialchat.data.local.preferences.EncryptedPreferences
 import com.materialchat.domain.repository.ProviderRepository
+import com.materialchat.domain.repository.ChatRepository
+import com.materialchat.domain.model.AiModel
+import com.materialchat.domain.model.Provider
+import com.materialchat.assistant.voice.GeminiTtsBackend
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -26,18 +30,49 @@ import javax.inject.Inject
 class AssistantVoiceSettingsViewModel @Inject constructor(
     private val preferences: AppPreferences,
     private val credentials: EncryptedPreferences,
-    providers: ProviderRepository,
+    private val providerRepository: ProviderRepository,
+    private val chatRepository: ChatRepository,
     @ApplicationContext context: Context
 ) : ViewModel() {
     val settings: kotlinx.coroutines.flow.StateFlow<AssistantVoiceSettings?> = preferences.assistantVoiceSettings.stateIn(
         viewModelScope, SharingStarted.Eagerly, null
     )
-    val providers = providers.observeProviders().stateIn(
+    val providers = providerRepository.observeProviders().stateIn(
         viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList()
     )
     val keyConfigured = MutableStateFlow(false)
     val saving = MutableStateFlow(false)
     val message = MutableStateFlow<String?>(null)
+
+    val modelPicker = MutableStateFlow(VoiceModelPickerState())
+    private var modelJob: Job? = null
+    private var modelGeneration = 0
+
+    fun loadModels(providerId: String?) {
+        modelJob?.cancel()
+        val generation = ++modelGeneration
+        modelPicker.value = VoiceModelPickerState(loading = true)
+        modelJob = viewModelScope.launch {
+            try {
+                val provider = if (providerId == null) providerRepository.getActiveProvider()
+                    else providerRepository.getProvider(providerId)
+                if (provider == null) {
+                    modelPicker.value = VoiceModelPickerState(error = "Provider unavailable. Configure a provider in Settings.")
+                    return@launch
+                }
+                val models = chatRepository.fetchModels(provider).getOrThrow()
+                if (generation == modelGeneration) {
+                    modelPicker.value = VoiceModelPickerState(provider = provider, models = models.distinctBy { it.id })
+                }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                if (generation == modelGeneration) {
+                    modelPicker.value = VoiceModelPickerState(error = "Unable to load models. Check provider settings and retry.")
+                }
+            }
+        }
+    }
 
     // Never inject the assistant's shared engine into settings.
     private val previewEngine by lazy { TextToSpeechManager(context.applicationContext) }
@@ -156,4 +191,33 @@ class AssistantVoiceSettingsViewModel @Inject constructor(
             }
         }
     }
+}
+
+data class VoiceModelPickerState(
+    val provider: Provider? = null,
+    val models: List<AiModel> = emptyList(),
+    val loading: Boolean = false,
+    val error: String? = null
+) {
+    fun choices(saved: String?, inherited: Boolean): List<Pair<String?, String>> {
+        val defaultLabel = if (inherited) "Inherit active provider default" else "Provider default"
+        val defaults = listOf(null to (provider?.defaultModel?.let { "$defaultLabel ($it)" } ?: defaultLabel))
+        val missing = saved?.takeIf { id -> models.none { it.id == id } }?.let {
+            listOf(it to "$it (saved; not in fetched list)")
+        }.orEmpty()
+        return defaults + missing + models.map { it.id to it.name }
+    }
+}
+
+/** Backend-compatible choices, not a live availability or account entitlement check. */
+internal object VoiceGeminiChoices {
+    val models = GeminiTtsBackend.SUPPORTED_MODELS.toList()
+    val voices = listOf("Kore", "Puck", "Charon", "Fenrir", "Aoede")
+    fun draftDefaults(value: AssistantVoiceSettings) = value.copy(
+        geminiModel = value.geminiModel.ifBlank { models.first() },
+        geminiVoice = value.geminiVoice.ifBlank { voices.first() }
+    )
+    fun choices(saved: String, supported: List<String>): List<Pair<String, String>> =
+        (if (saved.isNotBlank() && saved !in supported) listOf(saved to "$saved (saved; not a listed choice)") else emptyList()) +
+            supported.map { it to it }
 }
