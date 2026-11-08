@@ -33,10 +33,10 @@ class GeminiTtsBackend(
             require(settings.geminiModel in SUPPORTED_MODELS)
             require(settings.geminiVoice.matches(Regex("[A-Za-z][A-Za-z0-9_-]{0,63}")))
             val pcm = withTimeout(60_000) {
-                val response = transport.generate(settings.geminiModel, key, request(text, settings.geminiVoice))
+                val response = transport.generate(settings.geminiModel, key, request(text, settings.geminiVoice, settings.geminiModel))
                 try {
                     currentCoroutineContext().ensureActive()
-                    decode(response)
+                    decode(response, settings.geminiModel)
                 } finally {
                     response.fill(0)
                 }
@@ -63,42 +63,81 @@ class GeminiTtsBackend(
         }
     }
 
-    private fun request(text: String, voice: String): String = buildJsonObject {
-        putJsonArray("contents") {
-            addJsonObject { putJsonArray("parts") { addJsonObject { put("text", text) } } }
-        }
-        putJsonObject("generationConfig") {
-            putJsonArray("responseModalities") { add("AUDIO") }
-            putJsonObject("speechConfig") {
-                putJsonObject("voiceConfig") {
-                    putJsonObject("prebuiltVoiceConfig") { put("voiceName", voice) }
+    private fun request(text: String, voice: String, model: String): String {
+        if (model in INTERACTIONS_MODELS) return buildJsonObject {
+            put("model", model)
+            put("store", false)
+            putJsonArray("input") {
+                addJsonObject {
+                    put("type", "user_input")
+                    putJsonArray("content") { addJsonObject { put("type", "text"); put("text", text) } }
                 }
             }
-        }
-    }.toString()
+            putJsonObject("response_format") {
+                put("type", "audio"); put("mime_type", "audio/l16"); put("sample_rate", SAMPLE_RATE)
+            }
+            putJsonObject("generation_config") {
+                putJsonArray("speech_config") { addJsonObject { put("voice", voice) } }
+            }
+        }.toString()
+        return buildJsonObject {
+            putJsonArray("contents") {
+                addJsonObject { putJsonArray("parts") { addJsonObject { put("text", text) } } }
+            }
+            putJsonObject("generationConfig") {
+                putJsonArray("responseModalities") { add("AUDIO") }
+                putJsonObject("speechConfig") {
+                    putJsonObject("voiceConfig") {
+                        putJsonObject("prebuiltVoiceConfig") { put("voiceName", voice) }
+                    }
+                }
+            }
+        }.toString()
+    }
 
-    internal fun decode(response: ByteArray): ByteArray {
+    internal fun decode(response: ByteArray, model: String = "gemini-3.1-flash-tts-preview"): ByteArray {
         val chunks = mutableListOf<ByteArray>()
         try {
             require(response.size <= MAX_RESPONSE_BYTES)
             val root = Json.parseToJsonElement(response.decodeToString(throwOnInvalidSequence = true)).jsonObject
-            val candidates = root["candidates"]!!.jsonArray
-            require(candidates.size == 1)
-            val candidate = candidates.single().jsonObject
-            require(candidate["finishReason"]?.jsonPrimitive?.content == "STOP")
-            val parts = candidate["content"]!!.jsonObject["parts"]!!.jsonArray
+            val interactions = model in INTERACTIONS_MODELS
+            val parts = if (interactions) {
+                require(root["status"]?.jsonPrimitive?.content == "completed")
+                JsonArray(root["steps"]!!.jsonArray.flatMap { step ->
+                    val output = step.jsonObject
+                    require(output["type"]?.jsonPrimitive?.content == "model_output")
+                    output["content"]!!.jsonArray
+                })
+            } else {
+                val candidates = root["candidates"]!!.jsonArray
+                require(candidates.size == 1)
+                val candidate = candidates.single().jsonObject
+                require(candidate["finishReason"]?.jsonPrimitive?.content == "STOP")
+                candidate["content"]!!.jsonObject["parts"]!!.jsonArray
+            }
             var total = 0
             for (element in parts) {
                 val part = element.jsonObject
-                val inline = part["inlineData"]
+                val inline = if (interactions) {
+                    when (part["type"]?.jsonPrimitive?.content) {
+                        "audio" -> part
+                        "text" -> { require(part["text"]?.jsonPrimitive?.isString == true); continue }
+                        else -> error("Unsupported content")
+                    }
+                } else part["inlineData"]
                 if (inline == null) {
                     require(part["text"]?.jsonPrimitive?.isString == true ||
                         part["thought"]?.jsonPrimitive?.booleanOrNull == true)
                     continue
                 }
                 val audio = inline.jsonObject
-                val mime = audio["mimeType"]!!.jsonPrimitive.content.lowercase().replace(" ", "")
-                require(mime == "audio/l16;codec=pcm;rate=24000" || mime == "audio/l16;rate=24000")
+                val mime = audio[if (interactions) "mime_type" else "mimeType"]!!.jsonPrimitive.content.lowercase().replace(" ", "")
+                if (interactions) {
+                    require(mime == "audio/l16")
+                    require(audio["sample_rate"] == null || audio["sample_rate"]!!.jsonPrimitive.int == SAMPLE_RATE)
+                    require(audio["channels"] == null || audio["channels"]!!.jsonPrimitive.int == 1)
+                    require(audio["uri"] == null)
+                } else require(mime == "audio/l16;codec=pcm;rate=24000" || mime == "audio/l16;rate=24000")
                 val encoded = audio["data"]!!.jsonPrimitive.content
                 require(encoded.length <= ((MAX_PCM_BYTES - total + 2) / 3) * 4)
                 val pcm = Base64.getDecoder().decode(encoded)
@@ -126,8 +165,8 @@ class GeminiTtsBackend(
         const val SAMPLE_RATE = 24_000
         const val MAX_PCM_BYTES = SAMPLE_RATE * 2 * 60
         const val MAX_RESPONSE_BYTES = 4_000_000
-        // Only the verified generateContent raw-PCM schema, not newer Interactions/WAV models.
-        val SUPPORTED_MODELS = setOf("gemini-3.1-flash-tts-preview", "gemini-2.5-pro-preview-tts", "gemini-2.5-flash-preview-tts")
+        val INTERACTIONS_MODELS = setOf("gemini-3.8-flash-tts", "gemini-3.8-flash-lite-tts")
+        val SUPPORTED_MODELS = INTERACTIONS_MODELS + setOf("gemini-3.1-flash-tts-preview", "gemini-2.5-pro-preview-tts", "gemini-2.5-flash-preview-tts")
     }
 }
 
@@ -154,7 +193,9 @@ class OkHttpGeminiTtsTransport internal constructor(private val calls: Call.Fact
     override suspend fun generate(model: String, key: String, requestJson: String): ByteArray {
         require(model in GeminiTtsBackend.SUPPORTED_MODELS)
         val request = Request.Builder()
-            .url("https://generativelanguage.googleapis.com/v1beta/models/$model:generateContent")
+            .url(if (model in GeminiTtsBackend.INTERACTIONS_MODELS)
+                "https://generativelanguage.googleapis.com/v1beta/interactions"
+            else "https://generativelanguage.googleapis.com/v1beta/models/$model:generateContent")
             .header("x-goog-api-key", key)
             .post(requestJson.toRequestBody("application/json".toMediaType())).build()
         val call = calls.newCall(request)

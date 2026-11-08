@@ -6,6 +6,11 @@ import kotlinx.coroutines.flow.toList
 import org.junit.Assert.*
 import org.junit.Test
 import java.util.Base64
+import kotlinx.serialization.json.*
+import io.mockk.*
+import okhttp3.*
+import okhttp3.ResponseBody.Companion.toResponseBody
+import okhttp3.MediaType.Companion.toMediaType
 
 class GeminiTtsBackendTest {
     private val settings = AssistantVoiceSettings(geminiModel = "gemini-3.1-flash-tts-preview", geminiVoice = "Kore")
@@ -40,7 +45,7 @@ class GeminiTtsBackendTest {
     @Test fun rejectsInvalidInputsWithoutNetwork() = runBlocking {
         val backend = GeminiTtsBackend(GeminiTtsTransport { _, _, _ -> error("Must not request") }, GeminiPcmPlayer { _, _ -> fail() })
         assertTrue(backend.speak("x".repeat(4001), settings, "key").toList().single() is TtsEvent.Error)
-        assertTrue(backend.speak("Hello", settings.copy(geminiModel = "gemini-3.8-flash-tts"), "key").toList().single() is TtsEvent.Error)
+        assertTrue(backend.speak("Hello", settings.copy(geminiModel = "unsupported-tts"), "key").toList().single() is TtsEvent.Error)
         assertTrue(backend.speak("Hello", settings, "").toList().single() is TtsEvent.Error)
     }
 
@@ -139,6 +144,87 @@ class GeminiTtsBackendTest {
             val error = backend.speak("Hi", settings, "SECRET").toList().single() as TtsEvent.Error
             assertEquals(expected.diagnostic, error.message)
             assertFalse(error.message.contains("SECRET"))
+        }
+    }
+
+    private fun interaction(part: String = """{"type":"audio","mime_type":"audio/l16","data":"AQA="}""", status: String = "completed") =
+        """{"status":"$status","steps":[{"type":"model_output","content":[$part]}]}""".toByteArray()
+
+    @Test fun serializedProtocolsUseCorrectEndpointAndEnvelope() = runBlocking {
+        for (model in GeminiTtsBackend.SUPPORTED_MODELS) {
+            val interactions = model in GeminiTtsBackend.INTERACTIONS_MODELS
+            val factory = mockk<okhttp3.Call.Factory>()
+            val call = mockk<okhttp3.Call>()
+            every { factory.newCall(any()) } answers {
+                val request = firstArg<Request>()
+                assertEquals("POST", request.method)
+                assertEquals("test-key", request.header("x-goog-api-key"))
+                assertNull(request.url.query)
+                assertEquals(if (interactions) "/v1beta/interactions" else "/v1beta/models/$model:generateContent", request.url.encodedPath)
+                val buffer = okio.Buffer()
+                request.body!!.writeTo(buffer)
+                val json = Json.parseToJsonElement(buffer.readUtf8()).jsonObject
+                if (interactions) {
+                    assertEquals(model, json["model"]!!.jsonPrimitive.content)
+                    assertEquals(false, json["store"]!!.jsonPrimitive.boolean)
+                    val input = json["input"]!!.jsonArray.single().jsonObject
+                    assertEquals("user_input", input["type"]!!.jsonPrimitive.content)
+                    assertEquals(Json.parseToJsonElement("""[{"type":"text","text":"Hello"}]"""), input["content"])
+                    assertEquals(Json.parseToJsonElement("""{"type":"audio","mime_type":"audio/l16","sample_rate":24000}"""), json["response_format"])
+                    assertEquals(Json.parseToJsonElement("""{"speech_config":[{"voice":"Kore"}]}"""), json["generation_config"])
+                    assertFalse(json.containsKey("contents"))
+                } else {
+                    assertEquals("Hello", json["contents"]!!.jsonArray.single().jsonObject["parts"]!!.jsonArray.single().jsonObject["text"]!!.jsonPrimitive.content)
+                    assertEquals("Kore", json["generationConfig"]!!.jsonObject["speechConfig"]!!.jsonObject["voiceConfig"]!!.jsonObject["prebuiltVoiceConfig"]!!.jsonObject["voiceName"]!!.jsonPrimitive.content)
+                    assertFalse(json.containsKey("input"))
+                }
+                call
+            }
+            every { call.enqueue(any()) } answers {
+                val request = Request.Builder().url("https://example.invalid").build()
+                val body = if (interactions) interaction() else response()
+                firstArg<Callback>().onResponse(call, Response.Builder().request(request).protocol(Protocol.HTTP_1_1).code(200).message("OK")
+                    .body(body.toResponseBody("application/json".toMediaType())).build())
+            }
+            val backend = GeminiTtsBackend(OkHttpGeminiTtsTransport(factory), GeminiPcmPlayer { pcm, rate ->
+                assertArrayEquals(byteArrayOf(1, 0), pcm)
+                assertEquals(24000, rate)
+            })
+            assertEquals(listOf(TtsEvent.Started, TtsEvent.Completed), backend.speak("Hello", settings.copy(geminiModel = model), "test-key").toList())
+        }
+    }
+
+    @Test fun interactionsRejectInvalidFormatsAndIncompleteEnvelopes() {
+        val backend = GeminiTtsBackend(player = GeminiPcmPlayer { _, _ -> fail() })
+        val audio = """{"type":"audio","mime_type":"audio/l16","data":"AQA="}"""
+        val invalid = listOf(
+            interaction(audio.replace("audio/l16", "audio/wav")),
+            interaction(audio.replace("AQA=", "!")),
+            interaction(audio.replace("AQA=", "AQ==")),
+            interaction(audio.replace("AQA=", "")),
+            interaction(audio.dropLast(1) + ",\"sample_rate\":16000}"),
+            interaction(audio.dropLast(1) + ",\"channels\":2}"),
+            interaction(audio.dropLast(1) + ",\"uri\":\"https://example.invalid\"}"),
+            interaction(status = "failed"), interaction("""{"type":"text","text":"no audio"}"""),
+            response(), "{}".toByteArray()
+        )
+        for (model in GeminiTtsBackend.INTERACTIONS_MODELS) invalid.forEach {
+            assertEquals(GeminiTtsFailure.INVALID_AUDIO, assertThrows(GeminiTtsException::class.java) { backend.decode(it, model) }.kind)
+        }
+    }
+
+    @Test fun interactionsCancellationCancelsOwnedHttpCall() = runBlocking {
+        for (model in GeminiTtsBackend.INTERACTIONS_MODELS) {
+            val factory = mockk<okhttp3.Call.Factory>()
+            val call = mockk<okhttp3.Call>(relaxed = true)
+            val entered = CompletableDeferred<Unit>()
+            every { factory.newCall(any()) } returns call
+            every { call.enqueue(any()) } answers { entered.complete(Unit); Unit }
+            val backend = GeminiTtsBackend(OkHttpGeminiTtsTransport(factory), GeminiPcmPlayer { _, _ -> fail() })
+            val job = launch { backend.speak("Hello", settings.copy(geminiModel = model), "key").toList() }
+            entered.await()
+            job.cancelAndJoin()
+            verify(exactly = 1) { call.cancel() }
         }
     }
 
