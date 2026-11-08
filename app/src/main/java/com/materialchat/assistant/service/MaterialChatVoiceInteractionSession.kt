@@ -98,8 +98,12 @@ class MaterialChatVoiceInteractionSession(
 
         // VoiceInteractionSession already configures its root/window for edge-to-edge.
         // Do not change decor fitting here: it is framework-owned, not an Activity.
-        // Compose owns IME clearance; prevent a second resize/pan adjustment.
-        window.window?.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_NOTHING)
+        // The framework may create content before attaching its dialog decor. Calling
+        // setSoftInputMode here dispatches a layout update to an unattached window
+        // on Android 15. Set the initial attributes without dispatching that update;
+        // the framework applies them when it attaches the session window.
+        window.window?.attributes?.softInputMode =
+            WindowManager.LayoutParams.SOFT_INPUT_ADJUST_NOTHING
 
         // Get dependencies from Hilt EntryPoint
         val entryPoint = EntryPointAccessors.fromApplication(
