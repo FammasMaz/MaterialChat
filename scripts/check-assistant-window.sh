@@ -5,7 +5,10 @@ mkdir -p "$out"
 component=com.materialchat/com.materialchat.assistant.service.MaterialChatVoiceInteractionService
 adb shell settings put secure voice_interaction_service "$component"
 adb shell settings put secure assistant "$component"
-adb logcat -c
+# Connected tests uninstall their target APK on completion; restore it for system invocation.
+adb install -r app/build/outputs/apk/github/debug/app-github-debug.apk
+adb shell pm path com.materialchat > "$out/package.txt"
+adb logcat -c || true
 adb shell input keyevent KEYCODE_HOME
 adb shell input keyevent KEYCODE_ASSIST
 sleep 4
