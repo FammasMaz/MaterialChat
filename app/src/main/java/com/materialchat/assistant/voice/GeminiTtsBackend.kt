@@ -3,13 +3,11 @@ package com.materialchat.assistant.voice
 import com.materialchat.data.local.preferences.AssistantVoiceSettings
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.suspendCancellableCoroutine
-import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import kotlinx.serialization.json.*
 import okhttp3.*
@@ -36,7 +34,12 @@ class GeminiTtsBackend(
             require(settings.geminiVoice.matches(Regex("[A-Za-z][A-Za-z0-9_-]{0,63}")))
             val pcm = withTimeout(60_000) {
                 val response = transport.generate(settings.geminiModel, key, request(text, settings.geminiVoice))
-                withContext(Dispatchers.Default) { decode(response) }
+                try {
+                    currentCoroutineContext().ensureActive()
+                    decode(response)
+                } finally {
+                    response.fill(0)
+                }
             }
             try {
                 currentCoroutineContext().ensureActive()
@@ -52,6 +55,8 @@ class GeminiTtsBackend(
             emit(TtsEvent.Error("Gemini speech timed out. Try Android speech or retry."))
         } catch (cancelled: CancellationException) {
             throw cancelled
+        } catch (failure: GeminiTtsException) {
+            emit(TtsEvent.Error(failure.message!!))
         } catch (_: Exception) {
             // Never expose server bodies, request URLs, credentials or exception messages.
             emit(TtsEvent.Error("Gemini speech failed. Check voice settings, quota and connectivity."))
@@ -73,25 +78,47 @@ class GeminiTtsBackend(
     }.toString()
 
     internal fun decode(response: ByteArray): ByteArray {
-        require(response.size <= MAX_RESPONSE_BYTES)
-        val root = Json.parseToJsonElement(response.decodeToString(throwOnInvalidSequence = true)).jsonObject
-        val candidates = root["candidates"]!!.jsonArray
-        require(candidates.size == 1)
-        val candidate = candidates.single().jsonObject
-        require(candidate["finishReason"]?.jsonPrimitive?.content == "STOP")
-        val parts = candidate["content"]!!.jsonObject["parts"]!!.jsonArray
-        require(parts.size == 1)
-        val audio = parts.single().jsonObject["inlineData"]!!.jsonObject
-        val mime = audio["mimeType"]!!.jsonPrimitive.content.lowercase().replace(" ", "")
-        require(mime == "audio/l16;codec=pcm;rate=24000" || mime == "audio/l16;rate=24000")
-        val encoded = audio["data"]!!.jsonPrimitive.content
-        require(encoded.length <= ((MAX_PCM_BYTES + 2) / 3) * 4)
-        val pcm = Base64.getDecoder().decode(encoded)
-        if (pcm.isEmpty() || pcm.size > MAX_PCM_BYTES || pcm.size % 2 != 0) {
-            pcm.fill(0)
-            error("Invalid audio")
+        val chunks = mutableListOf<ByteArray>()
+        try {
+            require(response.size <= MAX_RESPONSE_BYTES)
+            val root = Json.parseToJsonElement(response.decodeToString(throwOnInvalidSequence = true)).jsonObject
+            val candidates = root["candidates"]!!.jsonArray
+            require(candidates.size == 1)
+            val candidate = candidates.single().jsonObject
+            require(candidate["finishReason"]?.jsonPrimitive?.content == "STOP")
+            val parts = candidate["content"]!!.jsonObject["parts"]!!.jsonArray
+            var total = 0
+            for (element in parts) {
+                val part = element.jsonObject
+                val inline = part["inlineData"]
+                if (inline == null) {
+                    require(part["text"]?.jsonPrimitive?.isString == true ||
+                        part["thought"]?.jsonPrimitive?.booleanOrNull == true)
+                    continue
+                }
+                val audio = inline.jsonObject
+                val mime = audio["mimeType"]!!.jsonPrimitive.content.lowercase().replace(" ", "")
+                require(mime == "audio/l16;codec=pcm;rate=24000" || mime == "audio/l16;rate=24000")
+                val encoded = audio["data"]!!.jsonPrimitive.content
+                require(encoded.length <= ((MAX_PCM_BYTES - total + 2) / 3) * 4)
+                val pcm = Base64.getDecoder().decode(encoded)
+                chunks.add(pcm)
+                require(pcm.isNotEmpty() && pcm.size % 2 == 0 && pcm.size <= MAX_PCM_BYTES - total)
+                total += pcm.size
+            }
+            require(total > 0)
+            return ByteArray(total).also { result ->
+                var offset = 0
+                for (chunk in chunks) {
+                    chunk.copyInto(result, offset)
+                    offset += chunk.size
+                }
+            }
+        } catch (_: Exception) {
+            throw GeminiTtsException(GeminiTtsFailure.INVALID_AUDIO)
+        } finally {
+            chunks.forEach { it.fill(0) }
         }
-        return pcm
     }
 
     companion object {
@@ -117,11 +144,12 @@ fun interface GeminiTtsTransport {
 }
 
 /** Dedicated client deliberately has no application logging interceptors, cache, or redirects. */
-class OkHttpGeminiTtsTransport : GeminiTtsTransport {
-    private val client = OkHttpClient.Builder()
+class OkHttpGeminiTtsTransport internal constructor(private val calls: Call.Factory) : GeminiTtsTransport {
+    constructor() : this(OkHttpClient.Builder()
         .followRedirects(false).followSslRedirects(false)
         .retryOnConnectionFailure(false)
         .callTimeout(60, TimeUnit.SECONDS).build()
+    )
 
     override suspend fun generate(model: String, key: String, requestJson: String): ByteArray {
         require(model in GeminiTtsBackend.SUPPORTED_MODELS)
@@ -129,17 +157,17 @@ class OkHttpGeminiTtsTransport : GeminiTtsTransport {
             .url("https://generativelanguage.googleapis.com/v1beta/models/$model:generateContent")
             .header("x-goog-api-key", key)
             .post(requestJson.toRequestBody("application/json".toMediaType())).build()
-        val call = client.newCall(request)
+        val call = calls.newCall(request)
         return suspendCancellableCoroutine { continuation ->
             continuation.invokeOnCancellation { call.cancel() }
             call.enqueue(object : Callback {
                 override fun onFailure(call: Call, e: IOException) {
-                    continuation.resumeWithException(IOException("Speech request failed"))
+                    continuation.resumeWithException(GeminiTtsException(GeminiTtsFailure.TRANSPORT))
                 }
                 override fun onResponse(call: Call, response: Response) {
                     try {
                         val bytes = response.use {
-                            require(it.isSuccessful)
+                            if (!it.isSuccessful) throw GeminiTtsException(GeminiTtsFailure.fromHttp(it.code))
                             val body = requireNotNull(it.body)
                             require(body.contentType()?.subtype == "json")
                             require(body.contentLength() <= GeminiTtsBackend.MAX_RESPONSE_BYTES)
@@ -154,12 +182,38 @@ class OkHttpGeminiTtsTransport : GeminiTtsTransport {
                             require(buffer.size <= GeminiTtsBackend.MAX_RESPONSE_BYTES)
                             buffer.readByteArray()
                         }
-                        continuation.resume(bytes)
+                        continuation.resume(bytes) { _, value, _ -> value.fill(0) }
+                    } catch (failure: GeminiTtsException) {
+                        continuation.resumeWithException(failure)
+                    } catch (_: IOException) {
+                        continuation.resumeWithException(GeminiTtsException(GeminiTtsFailure.TRANSPORT))
                     } catch (_: Exception) {
-                        continuation.resumeWithException(IOException("Invalid speech response"))
+                        continuation.resumeWithException(GeminiTtsException(GeminiTtsFailure.INVALID_AUDIO))
                     }
                 }
             })
         }
     }
 }
+
+/** Fixed diagnostics only: never retain a provider body, URL, credential or underlying cause. */
+enum class GeminiTtsFailure(val diagnostic: String) {
+    AUTHENTICATION("Gemini speech authentication failed. Check the speech API key."),
+    PERMISSION("Gemini speech permission denied. Check project and API access."),
+    QUOTA("Gemini speech quota or rate limit reached. Retry later."),
+    MODEL_UNAVAILABLE("Gemini speech model unavailable. Check the selected model."),
+    TRANSPORT("Gemini speech service or connection failed. Retry later."),
+    INVALID_AUDIO("Gemini speech returned invalid or unsupported audio.");
+
+    companion object {
+        internal fun fromHttp(code: Int): GeminiTtsFailure = when (code) {
+            401 -> AUTHENTICATION
+            403 -> PERMISSION
+            429 -> QUOTA
+            404 -> MODEL_UNAVAILABLE
+            else -> TRANSPORT
+        }
+    }
+}
+
+class GeminiTtsException(val kind: GeminiTtsFailure) : IOException(kind.diagnostic)

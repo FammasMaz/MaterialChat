@@ -82,4 +82,64 @@ class GeminiTtsBackendTest {
         val result = backend.speak("Hello", settings, "SECRET").toList().single() as TtsEvent.Error
         assertFalse(result.message.contains("SECRET"))
     }
+    private fun partsResponse(vararg parts: String) =
+        """{"candidates":[{"finishReason":"STOP","content":{"parts":[${parts.joinToString(",")}]}}]}""".toByteArray()
+
+    private fun audioPart(bytes: ByteArray, mime: String = "audio/l16;rate=24000") =
+        """{"inlineData":{"mimeType":"$mime","data":"${Base64.getEncoder().encodeToString(bytes)}"}}"""
+
+    @Test fun concatenatesAudioAndIgnoresTextAndThoughts() = runBlocking {
+        val body = partsResponse("""{"text":"explanation"}""", audioPart(byteArrayOf(1, 0)),
+            """{"thought":true,"text":"thought"}""", audioPart(byteArrayOf(2, 0)))
+        var borrowed: ByteArray? = null
+        val backend = GeminiTtsBackend(GeminiTtsTransport { _, _, _ -> body }, GeminiPcmPlayer { pcm, _ ->
+            assertArrayEquals(byteArrayOf(1, 0, 2, 0), pcm)
+            borrowed = pcm
+        })
+        assertEquals(listOf(TtsEvent.Started, TtsEvent.Completed), backend.speak("Hi", settings, "key").toList())
+        assertTrue(body.all { it == 0.toByte() })
+        assertTrue(borrowed!!.all { it == 0.toByte() })
+    }
+
+    @Test fun rejectsMixedUnsupportedMissingAndMalformedAudio() {
+        val backend = GeminiTtsBackend(player = GeminiPcmPlayer { _, _ -> fail() })
+        val valid = audioPart(byteArrayOf(1, 0))
+        val invalid = listOf(partsResponse("""{"text":"only text"}"""), partsResponse(),
+            partsResponse(valid, audioPart(byteArrayOf(2, 0), "audio/wav")),
+            partsResponse(valid, audioPart(byteArrayOf(1))),
+            partsResponse(valid, """{"inlineData":{"mimeType":"audio/l16;rate=24000","data":"!"}}"""),
+            partsResponse(valid, """{"fileData":{"mimeType":"audio/l16"}}"""))
+        invalid.forEach { body ->
+            val failure = assertThrows(GeminiTtsException::class.java) { backend.decode(body) }
+            assertEquals(GeminiTtsFailure.INVALID_AUDIO, failure.kind)
+            assertNull(failure.cause)
+        }
+    }
+
+    @Test fun enforcesAggregatePcmLimit() {
+        val backend = GeminiTtsBackend(player = GeminiPcmPlayer { _, _ -> fail() })
+        val half = audioPart(ByteArray(GeminiTtsBackend.MAX_PCM_BYTES / 2))
+        val exact = backend.decode(partsResponse(half, half))
+        assertEquals(GeminiTtsBackend.MAX_PCM_BYTES, exact.size)
+        exact.fill(0)
+        assertEquals(GeminiTtsFailure.INVALID_AUDIO,
+            assertThrows(GeminiTtsException::class.java) {
+                backend.decode(partsResponse(half, half, audioPart(byteArrayOf(1, 0))))
+            }.kind)
+    }
+
+    @Test fun httpFailuresHaveDistinctSanitizedDiagnostics() = runBlocking {
+        val statuses = mapOf(401 to GeminiTtsFailure.AUTHENTICATION, 403 to GeminiTtsFailure.PERMISSION,
+            429 to GeminiTtsFailure.QUOTA, 404 to GeminiTtsFailure.MODEL_UNAVAILABLE,
+            500 to GeminiTtsFailure.TRANSPORT)
+        for ((status, expected) in statuses) {
+            assertEquals(expected, GeminiTtsFailure.fromHttp(status))
+            val backend = GeminiTtsBackend(GeminiTtsTransport { _, _, _ -> throw GeminiTtsException(expected) },
+                GeminiPcmPlayer { _, _ -> fail() })
+            val error = backend.speak("Hi", settings, "SECRET").toList().single() as TtsEvent.Error
+            assertEquals(expected.diagnostic, error.message)
+            assertFalse(error.message.contains("SECRET"))
+        }
+    }
+
 }
