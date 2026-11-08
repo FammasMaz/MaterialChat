@@ -89,7 +89,8 @@ import com.materialchat.ui.theme.isDynamicColorSupported
 fun AssistantOverlay(
     viewModel: AssistantViewModel,
     onDismiss: () -> Unit,
-    onOpenInApp: (String?) -> Unit
+    onOpenInApp: (String?) -> Unit,
+    onOpenClock: (AssistantEvent.OpenClock) -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val voiceState by viewModel.voiceState.collectAsStateWithLifecycle()
@@ -122,6 +123,7 @@ fun AssistantOverlay(
     LaunchedEffect(Unit) {
         viewModel.events.collect { event ->
             when (event) {
+                is AssistantEvent.OpenClock -> onOpenClock(event)
                 is AssistantEvent.OpenInApp -> onOpenInApp(event.conversationId)
                 is AssistantEvent.Dismiss -> onDismiss()
             }

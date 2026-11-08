@@ -1,6 +1,8 @@
 package com.materialchat.assistant.ui
 
 import androidx.lifecycle.ViewModel
+import com.materialchat.assistant.actions.ClockCommand
+import com.materialchat.assistant.actions.ClockCommandParser
 import androidx.lifecycle.viewModelScope
 import com.materialchat.assistant.voice.AudioAmplitudeData
 import com.materialchat.assistant.voice.SpeechRecognitionManager
@@ -283,6 +285,13 @@ class AssistantViewModel(
                 previousTurn?.join()
                 currentCoroutineContext().ensureActive()
                 if (token != turn) return@launch
+                val clockCommand = if (attachments.isEmpty()) ClockCommandParser.parse(trimmedQuery) else null
+                if (clockCommand != null) {
+                    _uiState.update { it.copy(isLoading = false) }
+                    _voiceState.value = VoiceState.Idle
+                    _events.emit(AssistantEvent.OpenClock(clockCommand, token))
+                    return@launch
+                }
                 coroutineScope {
                     val settings = appPreferences.assistantVoiceSettings.first().normalized()
                     val chunker = StreamingSpeechChunker()
@@ -558,9 +567,19 @@ class AssistantViewModel(
         _voiceState.value = VoiceState.Idle
     }
 
-    /**
-     * Request to open the conversation in the main app.
-     */
+    /** Only reports a handoff, never that the clock saved anything. Ignore stale callbacks. */
+    fun onClockHandoff(token: Long, error: String?) {
+        if (token != turn) return
+        if (error != null) {
+            handleError(error)
+            return
+        }
+        val response = "Opened the clock app. Review and confirm there; nothing is confirmed here."
+        _uiState.update { it.copy(response = response, isLoading = false, isStreaming = false) }
+        finalizeAssistantResponse(response)
+        _voiceState.value = VoiceState.Complete(response, _uiState.value.userQuery)
+    }
+
     fun openInApp() {
         viewModelScope.launch {
             _events.emit(AssistantEvent.OpenInApp(conversationId = currentConversationId))
@@ -621,6 +640,7 @@ data class AssistantUiState(
  * Events emitted by the assistant ViewModel.
  */
 sealed class AssistantEvent {
+    data class OpenClock(val command: ClockCommand, val token: Long) : AssistantEvent()
     data class OpenInApp(val conversationId: String?) : AssistantEvent()
     data object Dismiss : AssistantEvent()
 }

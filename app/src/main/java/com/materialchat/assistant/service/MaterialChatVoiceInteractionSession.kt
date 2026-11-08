@@ -28,6 +28,7 @@ import androidx.savedstate.SavedStateRegistry
 import androidx.savedstate.SavedStateRegistryController
 import androidx.savedstate.SavedStateRegistryOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
+import com.materialchat.assistant.actions.ClockHandoff
 import com.materialchat.MainActivity
 import com.materialchat.assistant.di.AssistantEntryPoint
 import com.materialchat.assistant.ui.AssistantOverlay
@@ -154,6 +155,11 @@ class MaterialChatVoiceInteractionSession(
             },
             onOpenInApp = { conversationId ->
                 openInApp(conversationId)
+            },
+            onOpenClock = { event ->
+                val error = ClockHandoff.launch(event.command) { context.startActivity(it) }
+                viewModel.onClockHandoff(event.token, error)
+                if (error == null) hide()
             }
         )
     }

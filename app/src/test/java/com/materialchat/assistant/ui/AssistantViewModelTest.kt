@@ -77,6 +77,25 @@ class AssistantViewModelTest {
         Dispatchers.resetMain()
     }
 
+    @Test fun `clock handoff bypasses provider and rejects stale results`() = runTest {
+        val vm = createViewModel()
+        coEvery { providers.getActiveProvider() } returns null
+        val events = mutableListOf<AssistantEvent>()
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.events.collect { events += it } }
+        vm.sendQuery("set alarm at 7 am")
+        runCurrent()
+        val event = events.single() as AssistantEvent.OpenClock
+        assertEquals(com.materialchat.assistant.actions.ClockCommand.Alarm(7, 0), event.command)
+        coVerify(exactly = 0) { providers.getActiveProvider() }
+        coVerify(exactly = 0) { providers.getProvider(any()) }
+        verify(exactly = 0) { chat.sendMessage(any(), any(), any(), any(), any(), any(), any(), any()) }
+        vm.onClockHandoff(event.token, "No clock app")
+        assertEquals("No clock app", vm.uiState.value.error)
+        vm.startNewChat()
+        vm.onClockHandoff(event.token, null)
+        assertEquals("", vm.uiState.value.response)
+    }
+
     @Test fun `provider model and reasoning overrides are independent`() = runTest {
         val vm = createViewModel()
         val cases = listOf(
