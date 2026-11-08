@@ -3,11 +3,18 @@ set -euo pipefail
 out="${1:-test-evidence/assistant}"
 mkdir -p "$out"
 component=com.materialchat/com.materialchat.assistant.service.MaterialChatVoiceInteractionService
-adb shell settings put secure voice_interaction_service "$component"
-adb shell settings put secure assistant "$component"
 # Connected tests uninstall their target APK on completion; restore it for system invocation.
 adb install -r app/build/outputs/apk/github/debug/app-github-debug.apk
 adb shell pm path com.materialchat > "$out/package.txt"
+# Select only after installation. Older Android clears unavailable service choices.
+adb shell settings put secure voice_interaction_service "$component"
+adb shell settings put secure assistant "$component"
+for attempt in $(seq 1 20); do
+  adb shell dumpsys voiceinteraction > "$out/activation.txt"
+  if grep -q 'mComponent=com.materialchat/' "$out/activation.txt"; then break; fi
+  sleep 1
+done
+grep -q 'mComponent=com.materialchat/' "$out/activation.txt"
 adb logcat -c || true
 adb shell input keyevent KEYCODE_HOME
 adb shell input keyevent KEYCODE_ASSIST
