@@ -65,7 +65,7 @@ jobs:
           disk-size: 2048M
           disable-animations: false
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -camera-front none
-          script: ./gradlew :app:connectedGithubDebugAndroidTest --no-daemon --max-workers=2 -Pkotlin.compiler.execution.strategy=in-process -Dorg.gradle.jvmargs=-Xmx2g -Pandroid.testInstrumentationRunnerArguments.class=com.materialchat.util.AttachmentImporterTest,com.materialchat.util.GeneratedImageActionsTest,com.materialchat.data.repository.ConversationAttachmentCleanupTest,com.materialchat.ui.screens.chat.ChatViewModelAttachmentCleanupTest
+          script: ./gradlew :app:connectedGithubDebugAndroidTest --no-daemon --max-workers=2 -Pkotlin.compiler.execution.strategy=in-process -Dorg.gradle.jvmargs=-Xmx2g -Pandroid.testInstrumentationRunnerArguments.class=com.materialchat.util.AttachmentImporterTest,com.materialchat.util.GeneratedImageActionsTest,com.materialchat.data.repository.ConversationAttachmentCleanupTest,com.materialchat.ui.screens.chat.ChatViewModelAttachmentCleanupTest,com.materialchat.assistant.service.MaterialChatVoiceInteractionSessionTest
 
       - name: Record tested commit
         if: always()
