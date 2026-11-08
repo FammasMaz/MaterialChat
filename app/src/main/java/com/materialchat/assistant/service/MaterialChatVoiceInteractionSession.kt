@@ -107,7 +107,7 @@ class MaterialChatVoiceInteractionSession(
         // on Android 15. Set the initial attributes without dispatching that update;
         // the framework applies them when it attaches the session window.
         window.window?.attributes?.softInputMode =
-            WindowManager.LayoutParams.SOFT_INPUT_ADJUST_NOTHING
+            WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE
 
         // Get dependencies from Hilt EntryPoint
         val entryPoint = EntryPointAccessors.fromApplication(
@@ -162,7 +162,7 @@ class MaterialChatVoiceInteractionSession(
                 openInApp(conversationId)
             },
             onOpenClock = { event ->
-                val error = ClockHandoff.launch(event.command) { context.startActivity(it) }
+                val error = ClockHandoff.launch(event.command) { startAssistantActivity(it) }
                 viewModel.onClockHandoff(event.token, error)
                 if (error == null) hide()
             }
@@ -181,7 +181,7 @@ class MaterialChatVoiceInteractionSession(
                 putExtra("conversation_id", it)
             }
         }
-        context.startActivity(intent)
+        startAssistantActivity(intent)
         hide()
     }
 

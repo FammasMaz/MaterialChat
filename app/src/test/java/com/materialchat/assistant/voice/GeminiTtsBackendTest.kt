@@ -13,6 +13,13 @@ import okhttp3.ResponseBody.Companion.toResponseBody
 import okhttp3.MediaType.Companion.toMediaType
 
 class GeminiTtsBackendTest {
+    @Test fun quotaDetailsNeverExposeProviderText() {
+        val body = """{"error":{"message":"SECRET","details":[{"@type":"type.googleapis.com/google.rpc.QuotaFailure","violations":[{"quotaValue":"0"}]}]}}""".toByteArray()
+        assertEquals(GeminiTtsFailure.NO_QUOTA, GeminiTtsFailure.fromQuotaResponse(body))
+        assertEquals(GeminiTtsFailure.QUOTA, GeminiTtsFailure.fromQuotaResponse("SECRET".toByteArray()))
+        assertFalse(GeminiTtsFailure.NO_QUOTA.diagnostic.contains("SECRET"))
+    }
+
     private val settings = AssistantVoiceSettings(geminiModel = "gemini-3.1-flash-tts-preview", geminiVoice = "Kore")
     private fun response(data: ByteArray = byteArrayOf(1, 0), mime: String = "audio/l16;codec=pcm;rate=24000", finish: String = "STOP") =
         """{"candidates":[{"finishReason":"$finish","content":{"parts":[{"inlineData":{"mimeType":"$mime","data":"${Base64.getEncoder().encodeToString(data)}"}}]}}]}""".toByteArray()

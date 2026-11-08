@@ -208,7 +208,20 @@ class OkHttpGeminiTtsTransport internal constructor(private val calls: Call.Fact
                 override fun onResponse(call: Call, response: Response) {
                     try {
                         val bytes = response.use {
-                            if (!it.isSuccessful) throw GeminiTtsException(GeminiTtsFailure.fromHttp(it.code))
+                            if (!it.isSuccessful) {
+                                val kind = if (it.code == 429) {
+                                    val source = it.body?.source()
+                                    val buffer = okio.Buffer()
+                                    if (source != null) {
+                                        while (buffer.size < 16_384) {
+                                            if (source.read(buffer, 16_384 - buffer.size) == -1L) break
+                                        }
+                                    }
+                                    val bytes = buffer.readByteArray()
+                                    try { GeminiTtsFailure.fromQuotaResponse(bytes) } finally { bytes.fill(0) }
+                                } else GeminiTtsFailure.fromHttp(it.code)
+                                throw GeminiTtsException(kind)
+                            }
                             val body = requireNotNull(it.body)
                             require(body.contentType()?.subtype == "json")
                             require(body.contentLength() <= GeminiTtsBackend.MAX_RESPONSE_BYTES)
@@ -241,12 +254,27 @@ class OkHttpGeminiTtsTransport internal constructor(private val calls: Call.Fact
 enum class GeminiTtsFailure(val diagnostic: String) {
     AUTHENTICATION("Gemini speech authentication failed. Check the speech API key."),
     PERMISSION("Gemini speech permission denied. Check project and API access."),
-    QUOTA("Gemini speech quota or rate limit reached. Retry later."),
+    QUOTA("Gemini speech quota or rate limit reached. Check this model's quota in Google AI Studio, or use Android speech."),
+    NO_QUOTA("This Gemini speech model has no available project quota. Check model access and billing in Google AI Studio, or use Android speech."),
     MODEL_UNAVAILABLE("Gemini speech model unavailable. Check the selected model."),
     TRANSPORT("Gemini speech service or connection failed. Retry later."),
     INVALID_AUDIO("Gemini speech returned invalid or unsupported audio.");
 
     companion object {
+        internal fun fromQuotaResponse(bytes: ByteArray): GeminiTtsFailure = try {
+            val details = Json.parseToJsonElement(bytes.decodeToString()).jsonObject["error"]
+                ?.jsonObject?.get("details")?.jsonArray.orEmpty()
+            val noQuota = details.any { detail ->
+                val value = detail.jsonObject
+                value["@type"]?.jsonPrimitive?.content == "type.googleapis.com/google.rpc.QuotaFailure" &&
+                    value["violations"]?.jsonArray.orEmpty().any { violation ->
+                        violation.jsonObject["quotaValue"]?.jsonPrimitive?.content == "0" ||
+                            violation.jsonObject["quota_value"]?.jsonPrimitive?.content == "0"
+                    }
+            }
+            if (noQuota) NO_QUOTA else QUOTA
+        } catch (_: Exception) { QUOTA }
+
         internal fun fromHttp(code: Int): GeminiTtsFailure = when (code) {
             401 -> AUTHENTICATION
             403 -> PERMISSION

@@ -37,3 +37,33 @@ grep -q 'End assistant session' "$out/ui.xml"
 if grep -E 'FATAL EXCEPTION|Unable to add window|BadTokenException' "$out/logcat.txt"; then
   exit 1
 fi
+
+# Exercise the actual keyboard state, not only initial overlay visibility.
+python3 - "$out/ui.xml" <<'PYTAP' | xargs adb shell input tap
+import sys, re, xml.etree.ElementTree as ET
+nodes=ET.parse(sys.argv[1]).iter('node')
+n=next(n for n in nodes if n.get('text') == 'Keyboard')
+x1,y1,x2,y2=map(int,re.findall(r'\d+',n.get('bounds')))
+print((x1+x2)//2,(y1+y2)//2)
+PYTAP
+sleep 3
+adb shell dumpsys input_method > "$out/keyboard-input-method.txt"
+adb shell dumpsys window > "$out/keyboard-windows.txt"
+adb shell uiautomator dump /sdcard/assistant-keyboard.xml
+adb pull /sdcard/assistant-keyboard.xml "$out/keyboard-ui.xml"
+adb exec-out screencap -p > "$out/keyboard-screen.png"
+grep -q 'Hide keyboard' "$out/keyboard-ui.xml"
+
+# Require a real visible IME, not merely the keyboard-mode button.
+grep -Eq "mInputShown=true|isInputViewShown=true|inputShown=true" "$out/keyboard-input-method.txt"
+
+# Submit through the real assistant; no provider credentials are configured.
+adb shell input text 'set%salarm%sat%s7%sam'
+adb shell input keyevent KEYCODE_ENTER
+sleep 3
+adb shell dumpsys activity activities > "$out/clock-activities.txt"
+adb shell uiautomator dump /sdcard/assistant-clock.xml
+adb pull /sdcard/assistant-clock.xml "$out/clock-ui.xml"
+adb exec-out screencap -p > "$out/clock-screen.png"
+# A resumed Clock activity proves the session handoff escaped background-launch restrictions.
+grep -Ei '(ResumedActivity|topResumedActivity|mResumedActivity).*com\.(android|google\.android)\.deskclock' "$out/clock-activities.txt"

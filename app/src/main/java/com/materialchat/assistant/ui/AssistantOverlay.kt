@@ -28,9 +28,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.navigationBars
-import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
@@ -145,10 +143,9 @@ fun AssistantOverlay(
                 ) {
                     viewModel.dismiss()
                 }
-                // The session window does not resize/pan for IME. Union takes the
-                // larger bottom inset, not IME + navigation bar, and retains side
-                // navigation-bar clearance in landscape / three-button navigation.
-                .windowInsetsPadding(WindowInsets.ime.union(WindowInsets.navigationBars))
+                // The framework resizes this session for the keyboard. Applying
+                // the IME height again would lift the sheet by a second keyboard.
+                .windowInsetsPadding(WindowInsets.navigationBars)
         ) {
             // Use showTrigger as key to force recomposition and animation restart
             key(showTrigger) {

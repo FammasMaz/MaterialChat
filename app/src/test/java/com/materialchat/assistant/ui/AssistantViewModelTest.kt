@@ -157,6 +157,7 @@ class AssistantViewModelTest {
         runCurrent()
         assertEquals("First sentence. More text.", vm.uiState.value.response)
         assertFalse(vm.uiState.value.isStreaming)
+        coVerify(exactly = 1) { runtime.speak(any(), any(), any()) }
         coVerify(exactly = 1) { conversations.addMessage(match {
             it.role == MessageRole.ASSISTANT && it.content == "First sentence. More text."
         }) }

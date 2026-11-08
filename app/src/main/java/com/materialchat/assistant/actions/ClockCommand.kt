@@ -10,7 +10,8 @@ sealed interface ClockCommand {
 
 object ClockCommandParser {
     fun parse(input: String): ClockCommand? {
-        val text = input.trim().lowercase(java.util.Locale.ROOT).removePrefix("please ").trimEnd('.', '!')
+        val text = input.trim().lowercase(java.util.Locale.ROOT).replace(Regex("\\s+"), " ")
+            .removePrefix("please ").trimEnd('.', '!', '?')
         val alarm = Regex("(?:set|create) (?:an? )?alarm(?: (?:at|for) (.+))?").matchEntire(text)
         if (alarm != null) {
             val time = Regex("(\\d{1,2})(?::(\\d{2}))?\\s*(am|pm)?").matchEntire(alarm.groupValues[1])

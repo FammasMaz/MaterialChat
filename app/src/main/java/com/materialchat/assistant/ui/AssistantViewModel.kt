@@ -309,7 +309,10 @@ class AssistantViewModel(
                                             if (!_uiState.value.isStreaming && !_uiState.value.isLoading) {
                                                 _voiceState.value = VoiceState.Complete(_uiState.value.response, trimmedQuery)
                                             }
-                                            if (event is TtsEvent.Error) _uiState.update { it.copy(error = event.message) }
+                                            if (event is TtsEvent.Error) {
+                                                speechStopped = true
+                                                _uiState.update { it.copy(error = event.message) }
+                                            }
                                         }
                                     }
                                 }

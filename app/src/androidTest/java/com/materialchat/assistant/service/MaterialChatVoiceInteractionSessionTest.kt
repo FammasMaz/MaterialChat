@@ -32,7 +32,7 @@ class MaterialChatVoiceInteractionSessionTest {
                 assertEquals(Lifecycle.State.CREATED, session.lifecycle.currentState)
                 val window = requireNotNull(session.window.window)
                 assertEquals(
-                    WindowManager.LayoutParams.SOFT_INPUT_ADJUST_NOTHING,
+                    WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE,
                     window.attributes.softInputMode and WindowManager.LayoutParams.SOFT_INPUT_MASK_ADJUST
                 )
                 // Keep the framework's full-screen session layout; Activity edge-to-edge
