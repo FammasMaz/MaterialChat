@@ -17,6 +17,13 @@ done
 grep -q 'mComponent=com.materialchat/' "$out/activation.txt"
 adb logcat -c || true
 adb shell input keyevent KEYCODE_HOME
+# Changing the selected assistant restarts SystemUI on API 26. Wait for its
+# status-bar binder before sending the key, otherwise the invocation is lost.
+for attempt in $(seq 1 30); do
+  adb shell dumpsys statusbar > "$out/statusbar.txt"
+  if grep -Eq 'mBar=.*(Proxy|Stub)' "$out/statusbar.txt"; then break; fi
+  sleep 1
+done
 adb shell input keyevent KEYCODE_ASSIST
 sleep 4
 adb shell dumpsys voiceinteraction > "$out/voiceinteraction.txt"

@@ -1,6 +1,7 @@
 package com.materialchat.assistant.service
 
 import android.service.voice.VoiceInteractionService
+import android.service.voice.VoiceInteractionSession
 
 /**
  * MaterialChat's VoiceInteractionService implementation.
@@ -26,6 +27,11 @@ class MaterialChatVoiceInteractionService : VoiceInteractionService() {
     override fun onReady() {
         super.onReady()
         // Service is ready to handle voice interactions
+    }
+
+    override fun onLaunchVoiceAssistFromKeyguard() {
+        super.onLaunchVoiceAssistFromKeyguard()
+        showSession(null, VoiceInteractionSession.SHOW_SOURCE_ASSIST_GESTURE)
     }
 
     override fun onShutdown() {

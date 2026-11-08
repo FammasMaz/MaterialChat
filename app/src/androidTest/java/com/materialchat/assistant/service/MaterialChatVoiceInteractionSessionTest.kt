@@ -22,6 +22,7 @@ class MaterialChatVoiceInteractionSessionTest {
         instrumentation.runOnMainSync {
             val session = MaterialChatVoiceInteractionSession(instrumentation.targetContext)
             session.onCreate()
+            assertEquals(Lifecycle.State.CREATED, session.lifecycle.currentState)
             try {
                 val content = session.onCreateContentView()
                 assertTrue(content is ComposeView)

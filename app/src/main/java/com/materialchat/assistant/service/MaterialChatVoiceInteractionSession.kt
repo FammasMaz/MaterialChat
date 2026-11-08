@@ -13,6 +13,7 @@ import android.view.WindowManager
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.LifecycleRegistry
@@ -69,6 +70,11 @@ class MaterialChatVoiceInteractionSession(
         savedStateRegistryController.performRestore(null)
     }
 
+    override fun onCreate() {
+        super.onCreate()
+        lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_CREATE)
+    }
+
     override fun onShow(args: Bundle?, showFlags: Int) {
         super.onShow(args, showFlags)
         lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_START)
@@ -94,8 +100,6 @@ class MaterialChatVoiceInteractionSession(
     }
 
     override fun onCreateContentView(): View {
-        lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_CREATE)
-
         // VoiceInteractionSession already configures its root/window for edge-to-edge.
         // Do not change decor fitting here: it is framework-owned, not an Activity.
         // The framework may create content before attaching its dialog decor. Calling
@@ -127,6 +131,7 @@ class MaterialChatVoiceInteractionSession(
 
         return ComposeView(context).apply {
             composeView = this
+            setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
 
             // Set up lifecycle ownership for Compose
             setViewTreeLifecycleOwner(this@MaterialChatVoiceInteractionSession)
