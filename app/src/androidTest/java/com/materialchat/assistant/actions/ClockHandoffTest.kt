@@ -45,4 +45,22 @@ class ClockHandoffTest {
         assertNull(ClockHandoff.launch(ClockCommand.ShowTimers) { launched = true })
         assertTrue(launched)
     }
+
+    /**
+     * VoiceInteractionSession.startAssistantActivity throws IllegalStateException when the
+     * session is not the active or shown session, and AndroidRuntimeException for cancelled
+     * or unrecognised start results. Those escaped into the session's event collector and
+     * killed the overlay, so the clock request appeared to do nothing.
+     */
+    @Test fun inactiveSessionFailuresAreReportedInsteadOfThrown() {
+        val inactive = ClockHandoff.launch(ClockCommand.Alarm(7, 0)) {
+            throw IllegalStateException("Session calling startAssistantActivity does not match active session")
+        }
+        assertNotNull(inactive)
+
+        val cancelled = ClockHandoff.launch(ClockCommand.Timer(60)) {
+            throw android.util.AndroidRuntimeException("Activity could not be started")
+        }
+        assertNotNull(cancelled)
+    }
 }

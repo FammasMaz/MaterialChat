@@ -24,6 +24,14 @@ object ClockHandoff {
         }
     }
 
+    /**
+     * [start] is normally [android.service.voice.VoiceInteractionSession.startAssistantActivity],
+     * which throws more than the two obvious exceptions: the platform throws
+     * [IllegalStateException] when the session is not the active or shown session, and
+     * [android.util.AndroidRuntimeException] for cancelled or unrecognised start results.
+     * Those used to escape into the session's event collector and kill the overlay, so a
+     * clock request looked like it did nothing at all.
+     */
     fun launch(command: ClockCommand, start: (Intent) -> Unit): String? = try {
         start(intent(command))
         null
@@ -31,5 +39,9 @@ object ClockHandoff {
         "No clock app is available to handle this request."
     } catch (_: SecurityException) {
         "Android did not allow opening the clock app."
+    } catch (_: IllegalStateException) {
+        "The assistant session is no longer active, so the clock app could not be opened."
+    } catch (_: RuntimeException) {
+        "Android could not open the clock app from the assistant."
     }
 }
