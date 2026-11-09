@@ -355,6 +355,13 @@ class AssistantViewModel(
                     val conversationId = currentConversationId!!
                     conversationRepository.updateConversationProviderAndModel(conversationId, provider.id, model)
                     val systemPrompt = appPreferences.systemPrompt.first()
+                    // Append the capability notice so the model cannot claim device actions it
+                    // cannot perform; the user's own prompt still applies first.
+                    val effectiveSystemPrompt = if (systemPrompt.isBlank()) {
+                        ASSISTANT_CAPABILITY_NOTICE
+                    } else {
+                        systemPrompt + "\n\n" + ASSISTANT_CAPABILITY_NOTICE
+                    }
                     val reasoningEffort = settings.reasoningEffort ?: appPreferences.reasoningEffort.first()
 
                     // Create and save user message
@@ -375,7 +382,7 @@ class AssistantViewModel(
                         messages = messages,
                         model = model,
                         reasoningEffort = reasoningEffort,
-                        systemPrompt = systemPrompt,
+                        systemPrompt = effectiveSystemPrompt,
                         ownerId = ASSISTANT_STREAM_OWNER
                     ).collect { state ->
                         currentCoroutineContext().ensureActive()
@@ -705,3 +712,22 @@ data class AssistantMessage(
 
 /** Owner key isolating assistant streams from chat Stop requests. */
 private const val ASSISTANT_STREAM_OWNER = "assistant"
+
+/**
+ * Tells the model what it genuinely cannot do.
+ *
+ * Local recognition catches the common phrasings, but anything it misses still reaches the
+ * model, and an unconstrained model answers "I've set your alarm for 7am" without setting
+ * anything. This instruction makes the honest answer the default for everything the app
+ * cannot actually perform.
+ */
+private val ASSISTANT_CAPABILITY_NOTICE = """
+You are a voice assistant inside an Android app. You cannot control the device. You cannot
+set alarms, timers, reminders or calendar events, and you cannot change Wi-Fi, Bluetooth,
+Do Not Disturb, brightness or other system settings. The app handles flashlight, volume and
+mute itself, so those requests never reach you.
+
+If the user asks for anything you cannot do, say plainly that you cannot do it and tell them
+the shortest way to do it themselves. Never say or imply that you performed an action, and
+never invent a confirmation. Keep answers short: they are spoken aloud.
+""".trimIndent()

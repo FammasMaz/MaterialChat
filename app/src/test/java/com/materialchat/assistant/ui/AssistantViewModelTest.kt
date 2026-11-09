@@ -111,8 +111,11 @@ class AssistantViewModelTest {
             settings.value = config
             vm.sendQuery("query")
             runCurrent()
+            // The user's prompt is kept first; the capability notice is appended so the model
+            // cannot claim device actions it cannot perform.
             verify(exactly = 1) { chat.sendMessage(expected.first, any(), expected.second,
-                expected.third, "system", false, false, "assistant") }
+                expected.third, match { it.startsWith("system") && it.contains("cannot control the device") },
+                false, false, "assistant") }
             coVerify { conversations.updateConversationProviderAndModel("conversation", expected.first.id, expected.second) }
         }
     }
