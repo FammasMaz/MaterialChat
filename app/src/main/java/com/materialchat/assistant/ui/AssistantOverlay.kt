@@ -29,6 +29,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.ime
+import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
@@ -143,9 +145,9 @@ fun AssistantOverlay(
                 ) {
                     viewModel.dismiss()
                 }
-                // The framework resizes this session for the keyboard. Applying
-                // the IME height again would lift the sheet by a second keyboard.
-                .windowInsetsPadding(WindowInsets.navigationBars)
+                // The framework owns the full-screen session. Reserve IME space once
+                // here; do not combine this with framework content fitting.
+                .windowInsetsPadding(WindowInsets.ime.union(WindowInsets.navigationBars))
         ) {
             // Use showTrigger as key to force recomposition and animation restart
             key(showTrigger) {
