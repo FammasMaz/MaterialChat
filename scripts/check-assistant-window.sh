@@ -58,14 +58,21 @@ grep -q 'Hide keyboard' "$out/keyboard-ui.xml"
 grep -Eq "mInputShown=true|isInputViewShown=true|inputShown=true" "$out/keyboard-input-method.txt"
 
 # Fail closed on covered controls or a second keyboard-sized gap.
-python3 - "$out/keyboard-ui.xml" "$out/keyboard-windows.txt" <<'PYGEOMETRY'
+python3 - "$out/keyboard-ui.xml" "$out/keyboard-windows.txt" "$out/keyboard-input-method.txt" <<'PYGEOMETRY'
 import re, sys, xml.etree.ElementTree as ET
 nodes=list(ET.parse(sys.argv[1]).iter('node'))
 def bounds(n): return list(map(int,re.findall(r'\d+',n.get('bounds',''))))
 windows=open(sys.argv[2]).read()
 frames=re.findall(r'type=ime frame=\[\d+,(\d+)\]\[\d+,\d+\].*visible=true',windows)
 if not frames:
-    raise SystemExit('Cannot establish visible IME geometry')
+    # API 26 reports IME content in local coordinates, not InsetsSource frames.
+    method=open(sys.argv[3]).read()
+    inset=re.search(r'contentTopInsets=(\d+)',method)
+    ime=re.search(r'Window #\d+ Window\{[^\n]* InputMethod\}:(.*?)(?=\n  Window #|\Z)',windows,re.S)
+    origin=re.search(r'mShownPosition=\[(-?\d+),(-?\d+)\]',ime.group(1)) if ime else None
+    if not (inset and origin and 'Surface: shown=true' in ime.group(1)):
+        raise SystemExit('Cannot establish visible IME geometry')
+    frames=[int(inset.group(1))+int(origin.group(2))]
 top=min(map(int,frames))
 controls=[n for n in nodes if n.get('text')=='Hide keyboard']
 assert len(controls)==1, 'Missing keyboard control'
