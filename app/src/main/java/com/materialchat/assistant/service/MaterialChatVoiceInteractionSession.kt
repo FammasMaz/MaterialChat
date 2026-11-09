@@ -191,7 +191,13 @@ class MaterialChatVoiceInteractionSession(
                 putExtra("conversation_id", it)
             }
         }
-        startAssistantActivity(intent)
+        // startAssistantActivity throws when the session is no longer the active/shown one.
+        // Letting that escape would kill the overlay instead of just failing to open the app.
+        runCatching { startAssistantActivity(intent) }
+            .onFailure {
+                // Fall back to a plain launch, which still works from a service context.
+                runCatching { context.startActivity(intent) }
+            }
         hide()
     }
 
