@@ -1,9 +1,13 @@
 package com.materialchat.ui.screens.settings
 
 import android.app.Activity
+import android.content.Context
+import android.content.Intent
 import android.os.Build
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.materialchat.assistant.service.AssistantBindingDetector
+import com.materialchat.assistant.service.AssistantBindingStatus
 import com.materialchat.data.auth.NativeAuthCredential
 import com.materialchat.data.auth.NativeAuthManager
 import com.materialchat.data.backup.BackupExport
@@ -20,6 +24,7 @@ import com.materialchat.domain.model.Provider
 import com.materialchat.domain.model.ProviderType
 import com.materialchat.domain.usecase.ManageProvidersUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -32,6 +37,8 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
@@ -48,7 +55,9 @@ class SettingsViewModel @Inject constructor(
     private val updateManager: UpdateManager,
     private val nativeAuthManager: NativeAuthManager,
     private val monetizationManager: MonetizationManager,
-    private val backupRepository: BackupRepository
+    private val backupRepository: BackupRepository,
+    private val assistantBindingDetector: AssistantBindingDetector,
+    @ApplicationContext private val context: Context
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<SettingsUiState>(SettingsUiState.Loading)
@@ -63,9 +72,66 @@ class SettingsViewModel @Inject constructor(
     private val _titleModelPickerState = MutableStateFlow(TitleModelPickerState())
     val titleModelPickerState: StateFlow<TitleModelPickerState> = _titleModelPickerState.asStateFlow()
 
+    /**
+     * Whether Android is actually routing assistant invocations to MaterialChat.
+     * Kept out of [SettingsUiState] because it is device state, not a stored
+     * preference, and it changes when the user leaves and returns to the app.
+     */
+    private val _assistantBinding = MutableStateFlow(AssistantBindingStatus.NotSelected)
+    val assistantBinding: StateFlow<AssistantBindingStatus> = _assistantBinding.asStateFlow()
+    private var bindingRefreshJob: Job? = null
+
     init {
         observeSettings()
         observeMonetizationEvents()
+        refreshAssistantBinding()
+    }
+
+    /**
+     * Re-reads the assistant binding. An app update can silently drop Android's
+     * binding to the assistant service, so this is re-checked whenever the user
+     * returns to Settings rather than only once per process.
+     *
+     * The platform binds the assistant service when the user unlocks, so the very
+     * first sample after boot can legitimately be inactive. Requiring two
+     * consecutive failures keeps that transient state from showing a false
+     * "reconnect" prompt.
+     */
+    fun refreshAssistantBinding() {
+        bindingRefreshJob?.cancel()
+        bindingRefreshJob = viewModelScope.launch {
+            val first = runCatching { assistantBindingDetector.currentStatus() }
+                .getOrDefault(AssistantBindingStatus.NotSelected)
+            if (first != AssistantBindingStatus.NeedsReconnect) {
+                _assistantBinding.value = first
+                return@launch
+            }
+            delay(BINDING_RECONFIRM_DELAY_MS)
+            val second = runCatching { assistantBindingDetector.currentStatus() }
+                .getOrDefault(AssistantBindingStatus.NotSelected)
+            _assistantBinding.value = if (second == AssistantBindingStatus.NeedsReconnect) {
+                AssistantBindingStatus.NeedsReconnect
+            } else {
+                second
+            }
+        }
+    }
+
+    /** Re-asserting the assistant selection is what makes Android rebuild its binding. */
+    fun reconnectAssistant() {
+        viewModelScope.launch {
+            runCatching {
+                val intent = assistantBindingDetector.reconnectIntent()
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                context.startActivity(intent)
+            }.onFailure {
+                _events.emit(
+                    SettingsEvent.ShowSnackbar(
+                        message = "Could not open assistant settings"
+                    )
+                )
+            }
+        }
     }
 
     /**
@@ -1428,4 +1494,9 @@ class SettingsViewModel @Inject constructor(
         val webSearch: WebSearchPrefs,
         val premiumState: PremiumState
     )
+
+    private companion object {
+        /** Grace period before a second binding sample, so boot transients don't prompt. */
+        const val BINDING_RECONFIRM_DELAY_MS = 1_500L
+    }
 }

@@ -62,6 +62,7 @@ import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Vibration
 import androidx.compose.material.icons.outlined.Language
+import com.materialchat.assistant.service.AssistantBindingStatus
 import com.materialchat.ui.components.seaglass.AlertDialog
 import com.materialchat.ui.components.seaglass.Card
 import androidx.compose.material3.CardDefaults
@@ -100,6 +101,7 @@ import androidx.compose.material3.TopAppBarDefaults
 import kotlin.math.roundToInt
 import kotlinx.coroutines.Dispatchers
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -114,11 +116,14 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.core.content.ContextCompat
 import com.materialchat.BuildConfig
@@ -164,6 +169,7 @@ fun SettingsScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val formState by viewModel.formState.collectAsStateWithLifecycle()
     val titleModelPickerState by viewModel.titleModelPickerState.collectAsStateWithLifecycle()
+    val assistantBinding by viewModel.assistantBinding.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
     val context = LocalContext.current
@@ -360,6 +366,17 @@ fun SettingsScreen(
     val onAssistantEnabledChange = remember(viewModel) { { enabled: Boolean -> viewModel.updateAssistantEnabled(enabled) } }
     val onAssistantVoiceChange = remember(viewModel) { { enabled: Boolean -> viewModel.updateAssistantVoiceEnabled(enabled) } }
     val onAssistantTtsChange = remember(viewModel) { { enabled: Boolean -> viewModel.updateAssistantTtsEnabled(enabled) } }
+    val onReconnectAssistant = remember(viewModel) { { viewModel.reconnectAssistant() } }
+    // An app update can drop Android's binding to the assistant service while the app is
+    // backgrounded, so re-check every time this screen resumes rather than once per process.
+    val bindingLifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(bindingLifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) viewModel.refreshAssistantBinding()
+        }
+        bindingLifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { bindingLifecycleOwner.lifecycle.removeObserver(observer) }
+    }
     val onWebSearchEnabledChange = remember(viewModel) { { enabled: Boolean -> viewModel.updateWebSearchEnabled(enabled) } }
     val onWebSearchProviderChange = remember(viewModel) { { provider: String -> viewModel.updateWebSearchProvider(provider) } }
     val onExaApiKeyChange = remember(viewModel) { { key: String -> viewModel.updateExaApiKey(key) } }
@@ -463,6 +480,8 @@ fun SettingsScreen(
             onAssistantEnabledChange = onAssistantEnabledChange,
             onAssistantVoiceChange = onAssistantVoiceChange,
             onAssistantTtsChange = onAssistantTtsChange,
+            assistantBinding = assistantBinding,
+            onReconnectAssistant = onReconnectAssistant,
             onWebSearchEnabledChange = onWebSearchEnabledChange,
             onWebSearchProviderChange = onWebSearchProviderChange,
             onExaApiKeyChange = onExaApiKeyChange,
@@ -658,6 +677,8 @@ private fun SettingsContent(
     onAssistantEnabledChange: (Boolean) -> Unit,
     onAssistantVoiceChange: (Boolean) -> Unit,
     onAssistantTtsChange: (Boolean) -> Unit,
+    assistantBinding: AssistantBindingStatus,
+    onReconnectAssistant: () -> Unit,
     onWebSearchEnabledChange: (Boolean) -> Unit,
     onWebSearchProviderChange: (String) -> Unit,
     onExaApiKeyChange: (String) -> Unit,
@@ -729,6 +750,8 @@ private fun SettingsContent(
                     onAssistantEnabledChange = onAssistantEnabledChange,
                     onAssistantVoiceChange = onAssistantVoiceChange,
                     onAssistantTtsChange = onAssistantTtsChange,
+                    assistantBinding = assistantBinding,
+                    onReconnectAssistant = onReconnectAssistant,
                     onWebSearchEnabledChange = onWebSearchEnabledChange,
                     onWebSearchProviderChange = onWebSearchProviderChange,
                     onExaApiKeyChange = onExaApiKeyChange,
@@ -807,6 +830,8 @@ private fun SuccessContent(
     onAssistantEnabledChange: (Boolean) -> Unit,
     onAssistantVoiceChange: (Boolean) -> Unit,
     onAssistantTtsChange: (Boolean) -> Unit,
+    assistantBinding: AssistantBindingStatus,
+    onReconnectAssistant: () -> Unit,
     onWebSearchEnabledChange: (Boolean) -> Unit,
     onWebSearchProviderChange: (String) -> Unit,
     onExaApiKeyChange: (String) -> Unit,
@@ -1067,9 +1092,11 @@ private fun SuccessContent(
                 assistantEnabled = uiState.assistantEnabled,
                 voiceEnabled = uiState.assistantVoiceEnabled,
                 ttsEnabled = uiState.assistantTtsEnabled,
+                binding = assistantBinding,
                 onAssistantEnabledChange = onAssistantEnabledChange,
                 onVoiceEnabledChange = onAssistantVoiceChange,
-                onTtsEnabledChange = onAssistantTtsChange
+                onTtsEnabledChange = onAssistantTtsChange,
+                onReconnectAssistant = onReconnectAssistant
             )
             AssistantVoiceSettingsPanel()
         }
@@ -3571,15 +3598,60 @@ private fun AssistantSection(
     assistantEnabled: Boolean,
     voiceEnabled: Boolean,
     ttsEnabled: Boolean,
+    binding: AssistantBindingStatus,
     onAssistantEnabledChange: (Boolean) -> Unit,
     onVoiceEnabledChange: (Boolean) -> Unit,
-    onTtsEnabledChange: (Boolean) -> Unit
+    onTtsEnabledChange: (Boolean) -> Unit,
+    onReconnectAssistant: () -> Unit
 ) {
     val context = LocalContext.current
 
     Column(
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
+        // Android can drop its binding to the assistant service when the app is
+        // updated. The assistant then looks like it vanished until the user
+        // re-selects it, so surface that state instead of silently doing nothing.
+        if (binding == AssistantBindingStatus.NeedsReconnect) {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("assistant-reconnect-card"),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.errorContainer
+                ),
+                shape = RoundedCornerShape(24.dp)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Assistant not connected",
+                            style = MaterialTheme.typography.titleSmall,
+                            color = MaterialTheme.colorScheme.onErrorContainer
+                        )
+                        Text(
+                            text = "Android stopped routing the assistant gesture to MaterialChat, " +
+                                "usually after an update. Re-select it to reconnect.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onErrorContainer
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(12.dp))
+                    ExpressiveButton(
+                        onClick = onReconnectAssistant,
+                        text = "Reconnect",
+                        style = ExpressiveButtonStyle.Filled
+                    )
+                }
+            }
+        }
+
         // Assistant Toggle
         Card(
             modifier = Modifier.fillMaxWidth(),

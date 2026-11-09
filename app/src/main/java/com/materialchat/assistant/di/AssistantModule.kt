@@ -1,6 +1,7 @@
 package com.materialchat.assistant.di
 
 import android.content.Context
+import com.materialchat.assistant.service.AssistantBindingDetector
 import com.materialchat.assistant.voice.AssistantSpeechRuntime
 import com.materialchat.assistant.voice.GeminiTtsBackend
 import com.materialchat.assistant.voice.AudioTrackPcmPlayer
@@ -67,4 +68,5 @@ interface AssistantEntryPoint {
     fun createConversationUseCase(): CreateConversationUseCase
     fun conversationRepository(): ConversationRepository
     fun generateConversationTitleUseCase(): GenerateConversationTitleUseCase
+    fun assistantBindingDetector(): AssistantBindingDetector
 }
