@@ -29,6 +29,7 @@ import androidx.savedstate.SavedStateRegistryController
 import androidx.savedstate.SavedStateRegistryOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import com.materialchat.assistant.actions.ClockHandoff
+import com.materialchat.assistant.actions.DeviceActionHandler
 import com.materialchat.MainActivity
 import com.materialchat.assistant.di.AssistantEntryPoint
 import com.materialchat.assistant.ui.AssistantOverlay
@@ -119,7 +120,8 @@ class MaterialChatVoiceInteractionSession(
             createConversationUseCase = entryPoint.createConversationUseCase(),
             conversationRepository = entryPoint.conversationRepository(),
             generateConversationTitleUseCase = entryPoint.generateConversationTitleUseCase(),
-            applicationScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+            applicationScope = CoroutineScope(Dispatchers.IO + SupervisorJob()),
+            deviceActionHandler = DeviceActionHandler(context.applicationContext)
         ) } })[AssistantViewModel::class.java]
 
         return ComposeView(context).apply {

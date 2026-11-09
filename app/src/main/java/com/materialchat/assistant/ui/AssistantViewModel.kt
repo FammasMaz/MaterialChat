@@ -3,6 +3,8 @@ package com.materialchat.assistant.ui
 import androidx.lifecycle.ViewModel
 import com.materialchat.assistant.actions.ClockCommand
 import com.materialchat.assistant.actions.ClockCommandParser
+import com.materialchat.assistant.actions.DeviceActionHandler
+import com.materialchat.assistant.actions.DeviceActionParser
 import androidx.lifecycle.viewModelScope
 import com.materialchat.assistant.voice.AudioAmplitudeData
 import com.materialchat.assistant.voice.SpeechRecognitionManager
@@ -63,7 +65,8 @@ class AssistantViewModel(
     private val conversationRepository: ConversationRepository,
     private val generateConversationTitleUseCase: GenerateConversationTitleUseCase,
     private val applicationScope: CoroutineScope,
-    private val speechRuntime: AssistantSpeechRuntime
+    private val speechRuntime: AssistantSpeechRuntime,
+    private val deviceActionHandler: DeviceActionHandler
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(AssistantUiState())
@@ -292,6 +295,18 @@ class AssistantViewModel(
                     _events.emit(AssistantEvent.OpenClock(clockCommand, token))
                     return@launch
                 }
+                // Device actions are performed here and reported with their real outcome, so
+                // the assistant never claims a change it did not make. This runs before any
+                // provider call: no model can control the device.
+                val deviceAction = if (attachments.isEmpty()) DeviceActionParser.parse(trimmedQuery) else null
+                if (deviceAction != null) {
+                    val result = deviceActionHandler.perform(deviceAction)
+                    _uiState.update { it.copy(isLoading = false, isStreaming = false, response = result) }
+                    finalizeAssistantResponse(result)
+                    _voiceState.value = VoiceState.Complete(result, trimmedQuery)
+                    speakActionResult(result, token)
+                    return@launch
+                }
                 coroutineScope {
                     val settings = appPreferences.assistantVoiceSettings.first().normalized()
                     val chunker = StreamingSpeechChunker()
@@ -494,6 +509,37 @@ class AssistantViewModel(
                     content = content,
                     isStreaming = true
                 )
+            }
+        }
+    }
+
+    /**
+     * Speak a device-action result so a voice-only turn still gets an audible answer.
+     *
+     * Unlike a generated answer this is a short fixed sentence, so it is spoken directly
+     * rather than through the streaming chunker. Speech failures are contained: the result
+     * has already been shown, and a speech problem must not turn it into an error.
+     */
+    private fun speakActionResult(result: String, token: Long) {
+        if (!_uiState.value.isTtsEnabled) return
+        viewModelScope.launch {
+            try {
+                val settings = appPreferences.assistantVoiceSettings.first().normalized()
+                speechRuntime.speak(result, settings) { event ->
+                    if (token == turn) {
+                        when (event) {
+                            TtsEvent.Started -> _uiState.update { it.copy(isSpeaking = true) }
+                            is TtsEvent.Error -> {
+                                _uiState.update { it.copy(isSpeaking = false, error = event.message) }
+                            }
+                            else -> _uiState.update { it.copy(isSpeaking = false) }
+                        }
+                    }
+                }
+            } catch (_: CancellationException) {
+                throw CancellationException()
+            } catch (_: Exception) {
+                // Speech is optional here; the result is already on screen.
             }
         }
     }

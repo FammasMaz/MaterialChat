@@ -1,6 +1,8 @@
 package com.materialchat.assistant.ui
 
 import androidx.lifecycle.ViewModelStore
+import com.materialchat.assistant.actions.DeviceAction
+import com.materialchat.assistant.actions.DeviceActionHandler
 import com.materialchat.assistant.voice.*
 import com.materialchat.data.local.preferences.AppPreferences
 import com.materialchat.data.local.preferences.AssistantVoiceSettings
@@ -30,6 +32,7 @@ class AssistantViewModelTest {
     private val create = mockk<CreateConversationUseCase>()
     private val title = mockk<GenerateConversationTitleUseCase>(relaxed = true)
     private val runtime = mockk<AssistantSpeechRuntime>()
+    private val deviceActions = mockk<DeviceActionHandler>(relaxed = true)
     private val settings = MutableStateFlow(AssistantVoiceSettings())
     private val active = Provider("active", "Active", ProviderType.OPENAI_COMPATIBLE,
         "https://unused.invalid", "default", false)
@@ -66,7 +69,7 @@ class AssistantViewModelTest {
             try { awaitCancellation() } finally { speechReleased = true }
         }
         return AssistantViewModel(recognition, android, chat, providers, preferences, create,
-            conversations, title, backgroundScope, runtime).also {
+            conversations, title, backgroundScope, runtime, deviceActions).also {
             store.put("assistant", it)
             runCurrent()
         }
