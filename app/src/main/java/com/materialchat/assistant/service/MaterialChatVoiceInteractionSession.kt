@@ -172,7 +172,14 @@ class MaterialChatVoiceInteractionSession(
                 openInApp(conversationId)
             },
             onOpenClock = { event ->
-                val error = ClockHandoff.launch(event.command) { startAssistantActivity(it) }
+                // startAssistantActivity only succeeds while this session is the active and
+                // shown one, so fall back to a plain launch rather than failing whenever the
+                // session state has moved on.
+                val error = ClockHandoff.launchWithFallback(
+                    command = event.command,
+                    startAssistantActivity = { startAssistantActivity(it) },
+                    startActivity = { context.startActivity(it) }
+                )
                 viewModel.onClockHandoff(event.token, error)
                 if (error == null) hide()
             }

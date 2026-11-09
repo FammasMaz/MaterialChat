@@ -44,4 +44,28 @@ object ClockHandoff {
     } catch (_: RuntimeException) {
         "Android could not open the clock app from the assistant."
     }
+
+    /**
+     * Launches through the assistant session when possible, falling back to a plain
+     * activity start.
+     *
+     * [startAssistantActivity] only succeeds while the session is both the active and the
+     * shown session; the platform returns `START_ASSISTANT_NOT_ACTIVE_SESSION` or
+     * `START_ASSISTANT_HIDDEN_SESSION`, which surface as [IllegalStateException]. A clock
+     * request can easily land in that state (the answer may finish after the overlay was
+     * hidden), so retry as a normal launch rather than reporting a failure the user cannot
+     * act on. The assistant service is bound with `BIND_ALLOW_BACKGROUND_ACTIVITY_STARTS`,
+     * so the fallback is permitted from this context.
+     */
+    fun launchWithFallback(
+        command: ClockCommand,
+        startAssistantActivity: (Intent) -> Unit,
+        startActivity: (Intent) -> Unit
+    ): String? = launch(command) { intent ->
+        try {
+            startAssistantActivity(intent)
+        } catch (_: IllegalStateException) {
+            startActivity(intent)
+        }
+    }
 }

@@ -47,20 +47,31 @@ class ClockHandoffTest {
     }
 
     /**
-     * VoiceInteractionSession.startAssistantActivity throws IllegalStateException when the
-     * session is not the active or shown session, and AndroidRuntimeException for cancelled
-     * or unrecognised start results. Those escaped into the session's event collector and
-     * killed the overlay, so the clock request appeared to do nothing.
+     * The assistant session is only allowed to start an assistant activity while it is the
+     * active and shown session, so a clock request that lands after the overlay was hidden
+     * must fall back to a normal launch instead of failing.
      */
-    @Test fun inactiveSessionFailuresAreReportedInsteadOfThrown() {
-        val inactive = ClockHandoff.launch(ClockCommand.Alarm(7, 0)) {
-            throw IllegalStateException("Session calling startAssistantActivity does not match active session")
-        }
-        assertNotNull(inactive)
+    @Test fun inactiveSessionFallsBackToAPlainLaunch() {
+        var fallbackIntent: Intent? = null
+        val error = ClockHandoff.launchWithFallback(
+            command = ClockCommand.Alarm(7, 0),
+            startAssistantActivity = {
+                throw IllegalStateException("Session calling startAssistantActivity does not match active session")
+            },
+            startActivity = { fallbackIntent = it }
+        )
+        assertNull("fallback should succeed", error)
+        assertEquals(AlarmClock.ACTION_SET_ALARM, fallbackIntent?.action)
+        assertEquals(7, fallbackIntent?.getIntExtra(AlarmClock.EXTRA_HOUR, -1))
+    }
 
-        val cancelled = ClockHandoff.launch(ClockCommand.Timer(60)) {
-            throw android.util.AndroidRuntimeException("Activity could not be started")
-        }
-        assertNotNull(cancelled)
+    @Test fun reportedFailuresAreNotSwallowedByTheFallback() {
+        // No clock app at all: the fallback cannot help, so the failure must be reported.
+        val error = ClockHandoff.launchWithFallback(
+            command = ClockCommand.ShowTimers,
+            startAssistantActivity = { throw ActivityNotFoundException() },
+            startActivity = { throw ActivityNotFoundException() }
+        )
+        assertNotNull(error)
     }
 }
