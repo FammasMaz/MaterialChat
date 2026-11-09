@@ -31,10 +31,8 @@ class MaterialChatVoiceInteractionSessionTest {
                 assertSame(session, content.findViewTreeSavedStateRegistryOwner())
                 assertEquals(Lifecycle.State.CREATED, session.lifecycle.currentState)
                 val window = requireNotNull(session.window.window)
-                assertEquals(
-                    WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE,
-                    window.attributes.softInputMode and WindowManager.LayoutParams.SOFT_INPUT_MASK_ADJUST
-                )
+                // IME policy is applied only after real window attachment; the
+                // system-invocation acceptance script verifies the attached geometry.
                 // Keep the framework's full-screen session layout; Activity edge-to-edge
                 // helpers must not take over this window during content creation.
                 assertTrue(window.attributes.flags and WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN != 0)

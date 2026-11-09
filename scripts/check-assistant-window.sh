@@ -57,6 +57,24 @@ grep -q 'Hide keyboard' "$out/keyboard-ui.xml"
 # Require a real visible IME, not merely the keyboard-mode button.
 grep -Eq "mInputShown=true|isInputViewShown=true|inputShown=true" "$out/keyboard-input-method.txt"
 
+# Fail closed on covered controls or a second keyboard-sized gap.
+python3 - "$out/keyboard-ui.xml" "$out/keyboard-windows.txt" <<'PYGEOMETRY'
+import re, sys, xml.etree.ElementTree as ET
+nodes=list(ET.parse(sys.argv[1]).iter('node'))
+def bounds(n): return list(map(int,re.findall(r'\d+',n.get('bounds',''))))
+windows=open(sys.argv[2]).read()
+frames=re.findall(r'type=ime frame=\[\d+,(\d+)\]\[\d+,\d+\].*visible=true',windows)
+if not frames:
+    raise SystemExit('Cannot establish visible IME geometry')
+top=min(map(int,frames))
+controls=[n for n in nodes if n.get('text')=='Hide keyboard']
+assert len(controls)==1, 'Missing keyboard control'
+b= bounds(controls[0])
+assert b[3] <= top, f'Keyboard covers assistant controls: {b}, IME top={top}'
+assert 0 <= top-b[3] <= 64, f'Excessive keyboard gap: {top-b[3]}px'
+print(f'Keyboard geometry passed: control bottom={b[3]}, IME top={top}')
+PYGEOMETRY
+
 # Submit through the real assistant; no provider credentials are configured.
 adb shell input text 'set%salarm%sat%s7%sam'
 adb shell input keyevent KEYCODE_ENTER

@@ -100,18 +100,7 @@ class MaterialChatVoiceInteractionSession(
     }
 
     override fun onCreateContentView(): View {
-        // VoiceInteractionSession already configures its root/window for edge-to-edge.
-        // Configure initial window attributes before attachment; Compose owns IME spacing.
-        // The framework may create content before attaching its dialog decor. Calling
-        // setSoftInputMode here dispatches a layout update to an unattached window
-        // on Android 15. Set the initial attributes without dispatching that update;
-        // the framework applies them when it attaches the session window.
-        window.window?.attributes?.apply {
-            softInputMode = WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE
-            if (android.os.Build.VERSION.SDK_INT >= 30) {
-                setFitInsetsTypes(0)
-            }
-        }
+        // Keep framework decor ownership; apply IME policy only after attachment.
 
         // Get dependencies from Hilt EntryPoint
         val entryPoint = EntryPointAccessors.fromApplication(
@@ -147,6 +136,23 @@ class MaterialChatVoiceInteractionSession(
                 ViewGroup.LayoutParams.MATCH_PARENT
             )
 
+            // Apply after Dialog.show has installed its framework window policy.
+            addOnAttachStateChangeListener(object : View.OnAttachStateChangeListener {
+                override fun onViewAttachedToWindow(view: View) {
+                    view.post {
+                        if (view.isAttachedToWindow) {
+                            window.window?.let { attachedWindow ->
+                                val policy = attachedWindow.attributes
+                                policy.softInputMode = WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE
+                                if (android.os.Build.VERSION.SDK_INT >= 30) policy.setFitInsetsTypes(0)
+                                attachedWindow.attributes = policy
+                                view.requestApplyInsets()
+                            }
+                        }
+                    }
+                }
+                override fun onViewDetachedFromWindow(view: View) = Unit
+            })
             setContent {
                 AssistantOverlayContent()
             }
