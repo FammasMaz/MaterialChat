@@ -169,6 +169,91 @@ class AssistantViewModelTest {
         }) }
     }
 
+    @Test fun `auto listen is consumed once per visible invocation`() = runTest {
+        val vm = createViewModel()
+        every { recognition.startListening() } returns flow { awaitCancellation() }
+        vm.onOverlayShown()
+        val invocation = vm.showTrigger.value
+        vm.requestAutoListen(invocation, true)
+        vm.requestAutoListen(invocation, true)
+        vm.onOverlayShown()
+        runCurrent()
+        assertEquals(invocation, vm.showTrigger.value)
+        verify(exactly = 1) { recognition.startListening() }
+        vm.onOverlayHidden()
+        vm.onOverlayShown()
+        vm.requestAutoListen(vm.showTrigger.value, true)
+        runCurrent()
+        verify(exactly = 2) { recognition.startListening() }
+    }
+
+    @Test fun `hide during preference loading prevents hidden and stale auto listen`() = runTest {
+        val vm = createViewModel()
+        val gate = CompletableDeferred<Boolean>()
+        every { preferences.assistantVoiceEnabled } returns flow { emit(gate.await()) }
+        every { recognition.startListening() } returns flow { awaitCancellation() }
+        vm.onOverlayShown()
+        val oldInvocation = vm.showTrigger.value
+        val pending = launch { vm.requestAutoListen(oldInvocation, true) }
+        runCurrent()
+        vm.onOverlayHidden()
+        vm.onOverlayShown()
+        gate.complete(true)
+        pending.join()
+        runCurrent()
+        verify(exactly = 0) { recognition.startListening() }
+        vm.requestAutoListen(vm.showTrigger.value, false)
+        runCurrent()
+        verify(exactly = 0) { recognition.startListening() }
+        vm.requestAutoListen(vm.showTrigger.value, true)
+        runCurrent()
+        verify(exactly = 1) { recognition.startListening() }
+    }
+
+    @Test fun `hiding without reinvocation prevents deferred microphone startup`() = runTest {
+        val vm = createViewModel()
+        val gate = CompletableDeferred<Boolean>()
+        every { preferences.assistantVoiceEnabled } returns flow { emit(gate.await()) }
+        every { recognition.startListening() } returns flow { awaitCancellation() }
+        vm.onOverlayShown()
+        val pending = launch { vm.requestAutoListen(vm.showTrigger.value, true) }
+        runCurrent()
+        vm.clearConversation()
+        gate.complete(true)
+        pending.join()
+        runCurrent()
+        verify(exactly = 0) { recognition.startListening() }
+    }
+
+    @Test fun `disabled voice preference never starts automatic recognition`() = runTest {
+        val vm = createViewModel()
+        every { preferences.assistantVoiceEnabled } returns flowOf(false)
+        vm.onOverlayShown()
+        vm.requestAutoListen(vm.showTrigger.value, true)
+        runCurrent()
+        verify(exactly = 0) { recognition.startListening() }
+    }
+
+    @Test fun `finish speaking retains final transcript while cancel rejects it`() = runTest {
+        val vm = createViewModel()
+        val results = Channel<SpeechRecognitionResult>(Channel.UNLIMITED)
+        every { recognition.startListening() } returns results.receiveAsFlow()
+        vm.startVoiceInput()
+        runCurrent()
+        results.send(SpeechRecognitionResult.Ready)
+        runCurrent()
+        clearMocks(recognition, answers = false, recordedCalls = true)
+        vm.finishVoiceInput()
+        runCurrent()
+        verify(exactly = 1) { recognition.stopListening() }
+        verify(exactly = 0) { recognition.cancel() }
+        results.send(SpeechRecognitionResult.FinalResult("finish this utterance"))
+        runCurrent()
+        assertEquals("finish this utterance", vm.uiState.value.userQuery)
+        vm.cancelStreaming()
+        runCurrent()
+    }
+
     @Test fun `voice input waits for cancelled turn cleanup and final recognition sends query`() = runTest {
         val vm = createViewModel()
         val cleanup = CompletableDeferred<Unit>()

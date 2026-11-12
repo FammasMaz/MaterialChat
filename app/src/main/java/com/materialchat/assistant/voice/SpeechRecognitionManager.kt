@@ -25,11 +25,12 @@ import kotlinx.coroutines.withContext
  * Uses Android's SpeechRecognizer API to convert voice input to text,
  * with support for partial results and real-time audio amplitude data.
  */
-class SpeechRecognitionManager @Inject constructor(
-    private val context: Context
+class SpeechRecognitionManager internal constructor(
+    private val platform: RecognitionPlatform
 ) {
-    private val mainHandler = Handler(Looper.getMainLooper())
-    private var activeCleanup: (() -> Unit)? = null
+    @Inject constructor(context: Context) : this(AndroidRecognitionPlatform(context))
+    @Volatile private var activeCleanup: (() -> Unit)? = null
+    @Volatile private var activeStop: (() -> Unit)? = null
 
     private val _isListening = MutableStateFlow(false)
     val isListening: StateFlow<Boolean> = _isListening.asStateFlow()
@@ -42,23 +43,7 @@ class SpeechRecognitionManager @Inject constructor(
     /**
      * Check if speech recognition is available on this device.
      */
-    fun isAvailable(): Boolean = isOnDeviceAvailable() || SpeechRecognizer.isRecognitionAvailable(context)
-
-    private fun isOnDeviceAvailable(): Boolean =
-        Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
-            SpeechRecognizer.isOnDeviceRecognitionAvailable(context)
-
-    private fun createRecognizer(): SpeechRecognizer {
-        if (isOnDeviceAvailable()) {
-            try {
-                return SpeechRecognizer.createOnDeviceSpeechRecognizer(context)
-            } catch (error: RuntimeException) {
-                // A service may disappear between the capability check and creation.
-                if (!SpeechRecognizer.isRecognitionAvailable(context)) throw error
-            }
-        }
-        return SpeechRecognizer.createSpeechRecognizer(context)
-    }
+    fun isAvailable(): Boolean = platform.isAvailable()
 
     /**
      * Start listening for voice input.
@@ -71,13 +56,20 @@ class SpeechRecognitionManager @Inject constructor(
             activeCleanup?.invoke()
             var recognizer: SpeechRecognizer? = null
             var finished = false
-            val finish: () -> Unit = {
+            var finalTimeout: Runnable? = null
+            lateinit var finish: () -> Unit
+            finish = {
                 if (!finished) {
                     finished = true
-                    activeCleanup = null
-                    _isListening.value = false
-                    _amplitudeData.value = AudioAmplitudeData.Empty
-                    lastAmplitudeEmitUptimeMs = 0L
+                    finalTimeout?.let { platform.removeCallbacks(it) }
+                    finalTimeout = null
+                    if (activeCleanup === finish) {
+                        activeCleanup = null
+                        activeStop = null
+                        _isListening.value = false
+                        _amplitudeData.value = AudioAmplitudeData.Empty
+                        lastAmplitudeEmitUptimeMs = 0L
+                    }
                     val ownedRecognizer = recognizer
                     recognizer = null
                     runCatching { ownedRecognizer?.cancel() }
@@ -97,8 +89,36 @@ class SpeechRecognitionManager @Inject constructor(
                     return@withContext
                 }
 
-                val engine = createRecognizer()
+                val engine = platform.createRecognizer()
                 recognizer = engine
+                fun awaitFinalResult() {
+                    if (finished || finalTimeout != null) return
+                    val timeout = Runnable {
+                        if (!finished) {
+                            trySend(SpeechRecognitionResult.Error(
+                                "Speech recognition did not finish. Please try again.",
+                                SpeechRecognitionErrors.ERROR_CLIENT
+                            ))
+                            finish()
+                        }
+                    }
+                    finalTimeout = timeout
+                    platform.postDelayed(timeout, 8_000L)
+                }
+                activeStop = {
+                    if (!finished && finalTimeout == null) {
+                        awaitFinalResult()
+                        try {
+                            engine.stopListening()
+                        } catch (error: RuntimeException) {
+                            trySend(SpeechRecognitionResult.Error(
+                                "Could not finish speech recognition. Please try again.",
+                                SpeechRecognitionErrors.ERROR_CLIENT
+                            ))
+                            finish()
+                        }
+                    }
+                }
 
                 val listener = object : RecognitionListener {
                     override fun onReadyForSpeech(params: Bundle?) {
@@ -128,6 +148,7 @@ class SpeechRecognitionManager @Inject constructor(
                         if (finished) return
                         _isListening.value = false
                         trySend(SpeechRecognitionResult.SpeechEnded)
+                        awaitFinalResult()
                     }
 
                     override fun onError(error: Int) {
@@ -198,26 +219,20 @@ class SpeechRecognitionManager @Inject constructor(
         }
         awaitClose {
             // Capture this flow's cleanup: an old collector must not cancel a newer session.
-            mainHandler.post { cleanup?.invoke() }
+            platform.post { cleanup?.invoke() }
         }
     }
 
-    /**
-     * Stop listening for voice input.
-     */
+    /** Finish the current utterance, retaining callbacks for its final transcript. */
     fun stopListening() {
-        if (Looper.myLooper() == Looper.getMainLooper()) {
-            activeCleanup?.invoke()
-        } else {
-            mainHandler.post { activeCleanup?.invoke() }
-        }
+        val ownedStop = activeStop
+        platform.dispatch { ownedStop?.invoke() }
     }
 
-    /**
-     * Cancel ongoing recognition.
-     */
+    /** Abort the captured session; a delayed cancellation must not affect its successor. */
     fun cancel() {
-        stopListening()
+        val ownedCleanup = activeCleanup
+        platform.dispatch { ownedCleanup?.invoke() }
     }
 
     /**
@@ -254,7 +269,7 @@ class SpeechRecognitionManager @Inject constructor(
      * Release resources.
      */
     fun release() {
-        stopListening()
+        cancel()
     }
 }
 
@@ -291,4 +306,35 @@ sealed class SpeechRecognitionResult {
      * Recognition error.
      */
     data class Error(val message: String, val errorCode: Int) : SpeechRecognitionResult()
+}
+
+/** Android operations only; session ownership and terminal events stay in the manager. */
+internal interface RecognitionPlatform {
+    fun isAvailable(): Boolean
+    fun createRecognizer(): SpeechRecognizer
+    fun dispatch(action: () -> Unit)
+    fun post(action: () -> Unit)
+    fun postDelayed(action: Runnable, delayMillis: Long)
+    fun removeCallbacks(action: Runnable)
+}
+
+private class AndroidRecognitionPlatform(private val context: Context) : RecognitionPlatform {
+    private val handler = Handler(Looper.getMainLooper())
+    private fun isOnDeviceAvailable() = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
+        SpeechRecognizer.isOnDeviceRecognitionAvailable(context)
+    override fun isAvailable() = isOnDeviceAvailable() || SpeechRecognizer.isRecognitionAvailable(context)
+    override fun createRecognizer(): SpeechRecognizer {
+        // Prefer the configured recognition service, including network-backed models.
+        if (SpeechRecognizer.isRecognitionAvailable(context)) {
+            return SpeechRecognizer.createSpeechRecognizer(context)
+        }
+        check(isOnDeviceAvailable()) { "Speech recognition not available" }
+        return SpeechRecognizer.createOnDeviceSpeechRecognizer(context)
+    }
+    override fun dispatch(action: () -> Unit) {
+        if (Looper.myLooper() == Looper.getMainLooper()) action() else post(action)
+    }
+    override fun post(action: () -> Unit) { handler.post { action() } }
+    override fun postDelayed(action: Runnable, delayMillis: Long) { handler.postDelayed(action, delayMillis) }
+    override fun removeCallbacks(action: Runnable) { handler.removeCallbacks(action) }
 }

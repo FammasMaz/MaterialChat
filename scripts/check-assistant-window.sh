@@ -58,7 +58,19 @@ grep -q 'Hide keyboard' "$out/keyboard-ui.xml"
 grep -Eq "mInputShown=true|isInputViewShown=true|inputShown=true" "$out/keyboard-input-method.txt"
 
 # Fail closed on covered controls or a second keyboard-sized gap.
-python3 - "$out/keyboard-ui.xml" "$out/keyboard-windows.txt" "$out/keyboard-input-method.txt" <<'PYGEOMETRY'
+adb shell wm density > "$out/density.txt"
+previous_geometry=""
+stable_samples=0
+for sample in $(seq 1 8); do
+  adb shell dumpsys input_method > "$out/keyboard-input-method.txt"
+  adb shell dumpsys window > "$out/keyboard-windows.txt"
+  adb shell uiautomator dump /sdcard/assistant-keyboard.xml >/dev/null
+  adb pull /sdcard/assistant-keyboard.xml "$out/keyboard-ui.xml" >/dev/null
+  cp "$out/keyboard-windows.txt" "$out/keyboard-windows-$sample.txt"
+  cp "$out/keyboard-input-method.txt" "$out/keyboard-input-method-$sample.txt"
+  cp "$out/keyboard-ui.xml" "$out/keyboard-ui-$sample.xml"
+  if geometry=$(
+python3 - "$out/keyboard-ui.xml" "$out/keyboard-windows.txt" "$out/keyboard-input-method.txt" "$out/density.txt" <<'PYGEOMETRY'
 import re, sys, xml.etree.ElementTree as ET
 nodes=list(ET.parse(sys.argv[1]).iter('node'))
 def bounds(n): return list(map(int,re.findall(r'\d+',n.get('bounds',''))))
@@ -78,9 +90,36 @@ controls=[n for n in nodes if n.get('text')=='Hide keyboard']
 assert len(controls)==1, 'Missing keyboard control'
 b= bounds(controls[0])
 assert b[3] <= top, f'Keyboard covers assistant controls: {b}, IME top={top}'
-assert 0 <= top-b[3] <= 64, f'Excessive keyboard gap: {top-b[3]}px'
-print(f'Keyboard geometry passed: control bottom={b[3]}, IME top={top}')
+sheets=[n for n in nodes if n.get('resource-id','').split('/')[-1]=='assistant_sheet']
+assert len(sheets)==1, 'Missing unique assistant sheet boundary'
+sheet=bounds(sheets[0])
+densities=re.findall(r'(?:Physical|Override) density:\s*(\d+)',open(sys.argv[4]).read())
+assert densities, 'Cannot establish display density'
+scale=int(densities[-1])/160
+assert sheet[2]>sheet[0] and sheet[3]>sheet[1], f'Empty sheet: {sheet}'
+gap=(top-sheet[3])/scale
+assert abs(gap-8)<=2, f'Incorrect card-to-keyboard gap: {gap:.2f}dp; sheet={sheet}, IME top={top}'
+assert sheet[0]<=b[0]<b[2]<=sheet[2] and sheet[1]<=b[1]<b[3]<=sheet[3], 'Keyboard control outside sheet'
+print(f'Keyboard geometry passed: card gap={gap:.2f}dp, sheet={sheet}, IME top={top}, density={scale}')
 PYGEOMETRY
+  ); then
+    printf '%s\n' "$geometry" | tee "$out/keyboard-geometry-$sample.txt"
+    if [ "$geometry" = "$previous_geometry" ]; then
+      stable_samples=$((stable_samples + 1))
+    else
+      stable_samples=1
+    fi
+    previous_geometry="$geometry"
+    if [ "$stable_samples" -ge 3 ]; then break; fi
+  else
+    stable_samples=0
+    previous_geometry=""
+  fi
+  sleep 1
+done
+[ "$stable_samples" -ge 3 ] || { echo 'Assistant keyboard geometry did not settle into three valid identical samples' >&2; exit 1; }
+adb exec-out screencap -p > "$out/keyboard-screen.png"
+
 
 # Submit through the real assistant; no provider credentials are configured.
 adb shell input text 'set%salarm%sat%s7%sam'

@@ -6,6 +6,8 @@ import androidx.compose.animation.animateContentSize
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.testTagsAsResourceId
+import androidx.compose.ui.platform.testTag
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.animation.AnimatedVisibility
@@ -27,11 +29,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.navigationBars
-import androidx.compose.foundation.layout.ime
-import androidx.compose.foundation.layout.union
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -42,6 +39,12 @@ import androidx.compose.material3.MaterialTheme
 import com.materialchat.ui.components.seaglass.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.platform.LocalDensity
+import android.graphics.Rect
+import android.view.ViewTreeObserver
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
@@ -99,6 +102,28 @@ fun AssistantOverlay(
     val showTrigger by viewModel.showTrigger.collectAsStateWithLifecycle()
 
     val context = LocalContext.current
+    val host = LocalView.current
+    val density = LocalDensity.current
+    var bottomObstructionPx by remember(host) { mutableIntStateOf(0) }
+    // Both values are screen coordinates. A resized host already above the IME
+    // needs no additional padding; a full-height host reserves only its overlap.
+    DisposableEffect(host) {
+        val frame = Rect()
+        val location = IntArray(2)
+        val listener = ViewTreeObserver.OnGlobalLayoutListener {
+            host.getWindowVisibleDisplayFrame(frame)
+            host.getLocationOnScreen(location)
+            bottomObstructionPx = (location[1] + host.height - frame.bottom)
+                .coerceIn(0, host.height)
+        }
+        host.viewTreeObserver.addOnGlobalLayoutListener(listener)
+        listener.onGlobalLayout()
+        onDispose {
+            if (host.viewTreeObserver.isAlive) {
+                host.viewTreeObserver.removeOnGlobalLayoutListener(listener)
+            }
+        }
+    }
 
     // Follow the user's appearance preferences (mode, palette, dynamic color)
     val themeMode by viewModel.appPreferences.themeMode.collectAsStateWithLifecycle(
@@ -112,11 +137,17 @@ fun AssistantOverlay(
     )
 
     // Check permission state (we can't request it here, only check)
-    val hasMicPermission = remember {
+    val hasMicPermission = remember(showTrigger) {
         ContextCompat.checkSelfPermission(
             context,
             Manifest.permission.RECORD_AUDIO
         ) == PackageManager.PERMISSION_GRANTED
+    }
+
+    // One attempt per visible invocation, after preference loading. Recomposition and
+    // recognition completion must not reopen the microphone automatically.
+    LaunchedEffect(showTrigger) {
+        viewModel.requestAutoListen(showTrigger, hasMicPermission)
     }
 
     // Handle events
@@ -145,9 +176,7 @@ fun AssistantOverlay(
                 ) {
                     viewModel.dismiss()
                 }
-                // The framework owns the full-screen session. Reserve IME space once
-                // here; do not combine this with framework content fitting.
-                .windowInsetsPadding(WindowInsets.ime.union(WindowInsets.navigationBars))
+                .padding(bottom = with(density) { bottomObstructionPx.toDp() })
         ) {
             // Use showTrigger as key to force recomposition and animation restart
             key(showTrigger) {
@@ -173,7 +202,7 @@ fun AssistantOverlay(
                         viewModel.cancelStreaming()
                         viewModel.stopSpeaking()
                     },
-                    onStopVoice = viewModel::stopVoiceInput,
+                    onStopVoice = viewModel::finishVoiceInput,
                     onSendClick = { viewModel.sendQuery() },
                     onOpenInApp = viewModel::openInApp,
                     onDismiss = viewModel::dismiss,
@@ -259,7 +288,9 @@ private fun AssistantOverlayContent(
                 scaleX = sheetScale
                 scaleY = sheetScale
             }
-            .alpha(alpha),
+            .alpha(alpha)
+            .semantics { testTagsAsResourceId = true }
+            .testTag("assistant_sheet"),
         shape = RoundedCornerShape(32.dp),
         color = MaterialTheme.colorScheme.surfaceContainer,
         tonalElevation = 8.dp,

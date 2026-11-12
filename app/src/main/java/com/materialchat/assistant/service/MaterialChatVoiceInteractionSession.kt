@@ -63,6 +63,8 @@ class MaterialChatVoiceInteractionSession(
     override val viewModelStore: ViewModelStore get() = viewModelStoreInstance
     override val savedStateRegistry: SavedStateRegistry get() = savedStateRegistryController.savedStateRegistry
 
+    private var overlayShown = false
+    private var pendingShow = false
     private var composeView: ComposeView? = null
     private var assistantViewModel: AssistantViewModel? = null
 
@@ -81,11 +83,16 @@ class MaterialChatVoiceInteractionSession(
         lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_START)
         lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_RESUME)
 
-        // Notify ViewModel that overlay is being shown (for timeout check and animation reset)
-        assistantViewModel?.onOverlayShown()
+        if (!overlayShown) {
+            overlayShown = true
+            val model = assistantViewModel
+            if (model == null) pendingShow = true else model.onOverlayShown()
+        }
     }
 
     override fun onHide() {
+        overlayShown = false
+        pendingShow = false
         assistantViewModel?.clearConversation()
         lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_PAUSE)
         lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_STOP)
@@ -123,6 +130,10 @@ class MaterialChatVoiceInteractionSession(
             applicationScope = CoroutineScope(Dispatchers.IO + SupervisorJob()),
             deviceActionHandler = DeviceActionHandler(context.applicationContext)
         ) } })[AssistantViewModel::class.java]
+        if (pendingShow && overlayShown) {
+            pendingShow = false
+            assistantViewModel?.onOverlayShown()
+        }
 
         return ComposeView(context).apply {
             composeView = this

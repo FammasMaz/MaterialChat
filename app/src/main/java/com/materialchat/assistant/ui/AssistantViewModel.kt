@@ -97,6 +97,8 @@ class AssistantViewModel(
     private var ttsJob: Job? = null
     private var turn = 0L
     private var recognition = 0L
+    private var overlayVisible = false
+    private var autoListenConsumed = -1
     private var speechQueue: AssistantSpeechQueue? = null
     private var speechStopped = false
 
@@ -153,6 +155,8 @@ class AssistantViewModel(
      * Also triggers animation reset in the UI.
      */
     fun onOverlayShown() {
+        if (overlayVisible) return
+        overlayVisible = true
         val now = System.currentTimeMillis()
         val timeSinceLastActivity = now - lastActivityTimestamp
 
@@ -166,6 +170,22 @@ class AssistantViewModel(
 
         // Increment show trigger to reset animations in UI
         _showTrigger.value++
+    }
+
+    /** Recheck retained invocation ownership after preferences suspend. Main-thread only. */
+    suspend fun requestAutoListen(invocation: Int, hasPermission: Boolean) {
+        if (!hasPermission || !overlayVisible || invocation != _showTrigger.value ||
+            autoListenConsumed == invocation) return
+        val enabled = appPreferences.assistantVoiceEnabled.first()
+        if (!enabled || !overlayVisible || invocation != _showTrigger.value ||
+            autoListenConsumed == invocation) return
+        autoListenConsumed = invocation
+        startVoiceInput()
+    }
+
+    fun onOverlayHidden() {
+        overlayVisible = false
+        clearConversation()
     }
 
     /**
@@ -243,13 +263,15 @@ class AssistantViewModel(
         }
     }
 
-    /**
-     * Stop voice input.
-     */
+    /** Keep the collector alive so Android's final result is submitted normally. */
+    fun finishVoiceInput() {
+        speechRecognitionManager.stopListening()
+    }
+
     fun stopVoiceInput() {
         recognition++
         voiceInputJob?.cancel()
-        speechRecognitionManager.stopListening()
+        speechRecognitionManager.cancel()
         _voiceState.value = VoiceState.Idle
     }
 
@@ -608,6 +630,7 @@ class AssistantViewModel(
      * Note: This clears state but does NOT reset messages - use startNewChat() for that.
      */
     fun clearConversation() {
+        overlayVisible = false
         cancelStreaming()
         stopSpeaking()
         _uiState.update {
