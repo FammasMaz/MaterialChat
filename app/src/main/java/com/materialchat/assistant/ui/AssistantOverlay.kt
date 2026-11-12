@@ -288,9 +288,7 @@ private fun AssistantOverlayContent(
                 scaleX = sheetScale
                 scaleY = sheetScale
             }
-            .alpha(alpha)
-            .semantics { testTagsAsResourceId = true }
-            .testTag("assistant_sheet"),
+            .alpha(alpha),
         shape = RoundedCornerShape(32.dp),
         color = MaterialTheme.colorScheme.surfaceContainer,
         tonalElevation = 8.dp,
@@ -299,6 +297,8 @@ private fun AssistantOverlayContent(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                .semantics { testTagsAsResourceId = true }
+                .testTag("assistant_sheet")
                 .padding(horizontal = 16.dp)
                 .padding(top = 12.dp, bottom = 12.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
