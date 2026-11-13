@@ -27,12 +27,19 @@ public final class ContractRecognitionService extends RecognitionService {
             listener.error(SpeechRecognizer.ERROR_CLIENT);
             return;
         }
-        listener.readyForSpeech(new Bundle());
-        ArrayList<String> results = new ArrayList<>();
-        results.add("verified Android recognition request");
-        Bundle bundle = new Bundle();
-        bundle.putStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION, results);
-        listener.results(bundle);
+        try {
+            listener.readyForSpeech(new Bundle());
+            ArrayList<String> results = new ArrayList<>();
+            results.add("verified Android recognition request");
+            Bundle bundle = new Bundle();
+            bundle.putStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION, results);
+            listener.results(bundle);
+        } catch (android.os.RemoteException e) {
+            try {
+                listener.error(SpeechRecognizer.ERROR_CLIENT);
+            } catch (android.os.RemoteException ignored) {
+            }
+        }
     }
 
     @Override
