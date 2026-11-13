@@ -5,11 +5,18 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asAndroidBitmap
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.testTag
@@ -31,6 +38,7 @@ import com.materialchat.data.local.preferences.AppPreferences
 import com.materialchat.ui.theme.LocalNeuralExpressiveRenderControl
 import com.materialchat.ui.theme.MaterialChatTheme
 import com.materialchat.ui.theme.NeuralExpressiveRenderControl
+import com.materialchat.ui.theme.neuralExpressiveGlowAround
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -167,13 +175,23 @@ class AssistantNeuralExpressiveTest {
 
 @androidx.compose.runtime.Composable
 private fun Specimen() {
-    Box(Modifier.fillMaxSize().background(Color(0xFF17151C)).testTag("assistant_host")) {
+    // Mirrors the production AssistantOverlay host: the full-size box draws the decoration
+    // around the card rect the card reports, so the halo can escape the card's own bounds.
+    var cardBoundsInRoot by remember { mutableStateOf<Rect?>(null) }
+    var hostOriginInRoot by remember { mutableStateOf(Offset.Zero) }
+    val decorationRect = cardBoundsInRoot?.translate(-hostOriginInRoot.x, -hostOriginInRoot.y)
+    Box(
+        Modifier.fillMaxSize().background(Color(0xFF17151C)).testTag("assistant_host")
+            .onGloballyPositioned { hostOriginInRoot = it.boundsInRoot().topLeft }
+            .neuralExpressiveGlowAround(decorationRect)
+    ) {
         AssistantOverlayContent(
             uiState = AssistantUiState(), voiceState = VoiceState.Idle,
             amplitudeData = AudioAmplitudeData.Empty, messages = emptyList(),
             hasMicPermission = true, hasContent = false,
             onTextChange = {}, onVoiceClick = {}, onInterrupt = {}, onStopVoice = {},
             onSendClick = {}, onOpenInApp = {}, onDismiss = {}, onNewChat = {},
+            onCardBoundsChange = { cardBoundsInRoot = it },
             modifier = Modifier.align(Alignment.BottomCenter)
         )
     }

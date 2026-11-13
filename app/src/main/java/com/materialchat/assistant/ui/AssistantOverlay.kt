@@ -43,7 +43,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.LocalDensity
-import android.graphics.Rect
+import android.graphics.Rect as AndroidRect
 import android.view.ViewTreeObserver
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -51,6 +51,9 @@ import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -69,7 +72,7 @@ import com.materialchat.ui.components.ExpressiveFilledIconButton
 import com.materialchat.ui.theme.ExpressiveMotion
 import com.materialchat.ui.theme.MaterialChatTheme
 import com.materialchat.ui.theme.isDynamicColorSupported
-import com.materialchat.ui.theme.neuralExpressiveGlow
+import com.materialchat.ui.theme.neuralExpressiveGlowAround
 
 /**
  * M3 Expressive Assistant Overlay.
@@ -109,7 +112,7 @@ fun AssistantOverlay(
     // Both values are screen coordinates. A resized host already above the IME
     // needs no additional padding; a full-height host reserves only its overlap.
     DisposableEffect(host) {
-        val frame = Rect()
+        val frame = AndroidRect()
         val location = IntArray(2)
         val listener = ViewTreeObserver.OnGlobalLayoutListener {
             host.getWindowVisibleDisplayFrame(frame)
@@ -157,6 +160,12 @@ fun AssistantOverlay(
         viewModel.requestAutoListen(showTrigger, hasMicPermission)
     }
 
+    // The card reports its bounds in root coordinates; the scrim draws the halo around it in
+    // its own coordinate space, so the card rect is translated by the scrim's root origin.
+    var cardBoundsInRoot by remember { mutableStateOf<Rect?>(null) }
+    var scrimOriginInRoot by remember { mutableStateOf(androidx.compose.ui.geometry.Offset.Zero) }
+    val decorationRect = cardBoundsInRoot?.translate(-scrimOriginInRoot.x, -scrimOriginInRoot.y)
+
     // Handle events
     LaunchedEffect(Unit) {
         viewModel.events.collect { event ->
@@ -186,6 +195,11 @@ fun AssistantOverlay(
                     viewModel.dismiss()
                 }
                 .padding(bottom = with(density) { bottomObstructionPx.toDp() })
+                .onGloballyPositioned { scrimOriginInRoot = it.boundsInRoot().topLeft }
+                // Below API 28 a node's drawing is clipped to its own bounds, so a card-sized
+                // node can never draw an outward halo there. The full-window scrim draws the
+                // decoration around the card rect (reported in this node's coordinate space).
+                .neuralExpressiveGlowAround(decorationRect)
         ) {
             // Use showTrigger as key to force recomposition and animation restart
             key(showTrigger) {
@@ -216,6 +230,7 @@ fun AssistantOverlay(
                     onOpenInApp = viewModel::openInApp,
                     onDismiss = viewModel::dismiss,
                     onNewChat = viewModel::startNewChat,
+                    onCardBoundsChange = { cardBoundsInRoot = it },
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
                         .clickable(
@@ -244,6 +259,7 @@ internal fun AssistantOverlayContent(
     onOpenInApp: () -> Unit,
     onDismiss: () -> Unit,
     onNewChat: () -> Unit,
+    onCardBoundsChange: (Rect) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     var isVisible by remember { mutableStateOf(false) }
@@ -295,10 +311,6 @@ internal fun AssistantOverlayContent(
             .padding(horizontal = 12.dp, vertical = 8.dp)
             .heightIn(max = 600.dp)
             .offset { IntOffset(0, offsetY.roundToPx()) }
-            // The halo must draw OUTSIDE the entrance graphics layer: below API 28 that layer
-            // clips drawing beyond its bounds even with clip = false, leaving the decoration
-            // invisible. Drawing before the layer keeps card bounds and layout identical.
-            .neuralExpressiveGlow(cornerRadius = 32.dp)
             .graphicsLayer {
                 scaleX = sheetScale
                 scaleY = sheetScale
@@ -306,6 +318,7 @@ internal fun AssistantOverlayContent(
                 clip = false
                 compositingStrategy = CompositingStrategy.ModulateAlpha
             }
+            .onGloballyPositioned { onCardBoundsChange(it.boundsInRoot()) }
     ) {
         Surface(
             modifier = Modifier

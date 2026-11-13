@@ -36,6 +36,7 @@ import androidx.compose.ui.graphics.ClipOp
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.clipPath
+import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.Dp
@@ -66,12 +67,26 @@ internal val LocalNeuralExpressiveRenderControl = staticCompositionLocalOf {
  * An outward soft edge and a scattered particle band. Apply to an UNCLIPPED parent of a Surface,
  * not inside its opaque fill or alpha/offscreen layer. Drawing has no effect on measured bounds.
  *
+ * On older API levels a layout node's drawing is clipped to its own bounds, so a decoration that
+ * must overflow a card must be drawn by a LARGER node: apply [neuralExpressiveGlowAround] to a
+ * full-window parent with the card's rect in that node's coordinate space.
+ *
  * Linear edge gradients and radial corner gradients work on hardware canvases back to API 26;
  * no BlurMaskFilter, RenderEffect, software layer, or newer layer-outset API is needed.
  * The Essentials reference informed the outward band/falloff, not the implementation.
  */
 @Composable
 fun Modifier.neuralExpressiveGlow(
+    enabled: Boolean = LocalNeuralExpressiveEnabled.current,
+    cornerRadius: Dp = 32.dp,
+    color: Color = MaterialTheme.colorScheme.primary,
+    dotCount: Int = 96,
+    visible: Boolean = true
+): Modifier = neuralExpressiveGlowAround(null, enabled, cornerRadius, color, dotCount, visible)
+
+@Composable
+fun Modifier.neuralExpressiveGlowAround(
+    targetRect: Rect?,
     enabled: Boolean = LocalNeuralExpressiveEnabled.current,
     cornerRadius: Dp = 32.dp,
     color: Color = MaterialTheme.colorScheme.primary,
@@ -169,12 +184,18 @@ fun Modifier.neuralExpressiveGlow(
 
     val secondary = MaterialTheme.colorScheme.tertiary
     return drawWithCache {
-        val width = size.width
-        val height = size.height
+        val nodeWidth = size.width
+        val nodeHeight = size.height
+        val hasTarget = targetRect != null && targetRect.width > 0f && targetRect.height > 0f
+        val target = if (hasTarget) targetRect!! else Rect(Offset.Zero, size)
+        val width = target.width
+        val height = target.height
         val radius = cornerRadius.toPx().coerceIn(0f, minOf(width, height) / 2f)
         val spread = 16.dp.toPx()
         val cutout = Path().apply {
-            addRoundRect(RoundRect(Rect(Offset.Zero, size), CornerRadius(radius)))
+            addRoundRect(RoundRect(
+                target.left, target.top, target.right, target.bottom, CornerRadius(radius)
+            ))
         }
         val halo = color.copy(alpha = color.alpha * 0.48f)
         val clear = color.copy(alpha = 0f)
@@ -196,24 +217,28 @@ fun Modifier.neuralExpressiveGlow(
         val corners = cornerCenters.map { Brush.radialGradient(*cornerStops, center = it, radius = cornerExtent) }
         val seeds = neuralExpressiveSeeds(dotCount.coerceAtMost(240))
         onDrawBehind {
-            if (width <= 0f || height <= 0f || !started || !viewVisible || !interactive) return@onDrawBehind
+            if (nodeWidth <= 0f || nodeHeight <= 0f || width <= 0f || height <= 0f ||
+                !started || !viewVisible || !interactive
+            ) return@onDrawBehind
             clipPath(cutout, ClipOp.Difference) {
-                drawRect(top, Offset(radius, -spread), Size((width - 2f * radius).coerceAtLeast(0f), spread))
-                drawRect(bottom, Offset(radius, height), Size((width - 2f * radius).coerceAtLeast(0f), spread))
-                drawRect(left, Offset(-spread, radius), Size(spread, (height - 2f * radius).coerceAtLeast(0f)))
-                drawRect(right, Offset(width, radius), Size(spread, (height - 2f * radius).coerceAtLeast(0f)))
-                corners.forEachIndexed { index, brush ->
-                    drawArc(
-                        brush = brush, startAngle = 180f + index * 90f, sweepAngle = 90f,
-                        useCenter = true, topLeft = cornerCenters[index] - Offset(cornerExtent, cornerExtent),
-                        size = Size(cornerExtent * 2f, cornerExtent * 2f)
-                    )
-                }
-                val time = control.timeSeconds?.takeIf { it.isFinite() } ?: elapsed
-                seeds.forEach { seed ->
-                    val particle = neuralExpressiveParticle(seed, width, height, radius, density, time)
-                    val tint = if (seed.accent) secondary else color
-                    drawCircle(tint.copy(alpha = tint.alpha * particle.alpha), particle.radius, particle.center)
+                translate(left = target.left, top = target.top) {
+                    drawRect(top, Offset(radius, -spread), Size((width - 2f * radius).coerceAtLeast(0f), spread))
+                    drawRect(bottom, Offset(radius, height), Size((width - 2f * radius).coerceAtLeast(0f), spread))
+                    drawRect(left, Offset(-spread, radius), Size(spread, (height - 2f * radius).coerceAtLeast(0f)))
+                    drawRect(right, Offset(width, radius), Size(spread, (height - 2f * radius).coerceAtLeast(0f)))
+                    corners.forEachIndexed { index, brush ->
+                        drawArc(
+                            brush = brush, startAngle = 180f + index * 90f, sweepAngle = 90f,
+                            useCenter = true, topLeft = cornerCenters[index] - Offset(cornerExtent, cornerExtent),
+                            size = Size(cornerExtent * 2f, cornerExtent * 2f)
+                        )
+                    }
+                    val time = control.timeSeconds?.takeIf { it.isFinite() } ?: elapsed
+                    seeds.forEach { seed ->
+                        val particle = neuralExpressiveParticle(seed, width, height, radius, density, time)
+                        val tint = if (seed.accent) secondary else color
+                        drawCircle(tint.copy(alpha = tint.alpha * particle.alpha), particle.radius, particle.center)
+                    }
                 }
             }
         }
