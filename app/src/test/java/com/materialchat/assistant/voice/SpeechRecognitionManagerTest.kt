@@ -32,8 +32,18 @@ class SpeechRecognitionManagerTest {
         val deadlines = linkedMapOf<Runnable, Long>()
         var now = 0L
         var queueDispatch = false
+        var fallbackAvailable = false
+        var fallbackCalls = 0
+        var creationFailure: RuntimeException? = null
         override fun isAvailable() = true
-        override fun createRecognizer() = Engine().also { engines += it }.recognizer
+        override fun createRecognizer(): SpeechRecognizer {
+            creationFailure?.let { throw it }
+            return Engine().also { engines += it }.recognizer
+        }
+        override fun createFallbackRecognizer(): SpeechRecognizer? {
+            fallbackCalls++
+            return if (fallbackAvailable) Engine().also { engines += it }.recognizer else null
+        }
         override fun dispatch(action: () -> Unit) { if (queueDispatch) posted += action else action() }
         override fun post(action: () -> Unit) { posted += action }
         override fun postDelayed(action: Runnable, delayMillis: Long) { deadlines[action] = now + delayMillis }
@@ -165,6 +175,125 @@ class SpeechRecognitionManagerTest {
         verify(exactly = 0) { current.recognizer.cancel() }
         current.result("successor")
         assertEquals(SpeechRecognitionResult.FinalResult("successor"), second.await().last())
+    }
+
+    @Test fun `silent startup terminates without leaving pending callbacks`() = runTest {
+        val (platform, manager) = setup()
+        val result = async { manager.startListening().toList() }
+        runCurrent()
+        platform.advance(7_999)
+        runCurrent()
+        assertFalse(result.isCompleted)
+        platform.advance(1)
+        assertEquals("Speech recognizer did not start. Please try again.",
+            (result.await().single() as SpeechRecognitionResult.Error).message)
+        assertEquals(1, platform.fallbackCalls)
+        assertTrue(platform.deadlines.isEmpty())
+        verify(exactly = 1) { platform.engines.single().recognizer.destroy() }
+    }
+
+    @Test fun `invalid startup retries once and ignores the old engine callbacks`() = runTest {
+        val (platform, manager) = setup()
+        platform.fallbackAvailable = true
+        val result = async { manager.startListening().toList() }
+        runCurrent()
+        val old = platform.engines.single()
+        old.listener.onError(10) // Android can also report an invalid service with this code.
+        val current = platform.engines.last()
+        assertEquals(2, platform.engines.size)
+        old.listener.onReadyForSpeech(null)
+        old.result("obsolete")
+        old.listener.onError(SpeechRecognitionErrors.ERROR_CLIENT)
+        assertFalse(manager.isListening.value)
+        current.listener.onReadyForSpeech(null)
+        current.result("fallback transcript")
+        assertEquals(listOf(SpeechRecognitionResult.Ready,
+            SpeechRecognitionResult.FinalResult("fallback transcript")), result.await())
+        assertEquals(1, platform.fallbackCalls)
+        assertTrue(platform.deadlines.isEmpty())
+        verify(exactly = 1) { old.recognizer.destroy() }
+        verify(exactly = 1) { current.recognizer.destroy() }
+    }
+
+    @Test fun `two silent engines have a bounded total startup time`() = runTest {
+        val (platform, manager) = setup()
+        platform.fallbackAvailable = true
+        val result = async { manager.startListening().toList() }
+        runCurrent()
+        platform.advance(8_000)
+        runCurrent()
+        assertEquals(2, platform.engines.size)
+        assertFalse(result.isCompleted)
+        platform.advance(8_000)
+        assertTrue(result.await().single() is SpeechRecognitionResult.Error)
+        assertEquals(1, platform.fallbackCalls)
+        assertTrue(platform.deadlines.isEmpty())
+        platform.engines.forEach { verify(exactly = 1) { it.recognizer.destroy() } }
+    }
+
+    @Test fun `creation failure can recover through the one fallback`() = runTest {
+        val (platform, manager) = setup()
+        platform.creationFailure = IllegalStateException("private service internals")
+        platform.fallbackAvailable = true
+        val result = async { manager.startListening().toList() }
+        runCurrent()
+        platform.engines.single().result("recovered")
+        assertEquals(listOf(SpeechRecognitionResult.FinalResult("recovered")), result.await())
+        assertEquals(1, platform.fallbackCalls)
+    }
+
+    @Test fun `permission and busy errors must not try another engine`() = runTest {
+        for (code in listOf(9, 8, 6, 7)) {
+            val (platform, manager) = setup()
+            platform.fallbackAvailable = true
+            val result = async { manager.startListening().toList() }
+            runCurrent()
+            platform.engines.single().listener.onError(code)
+            assertEquals(code, (result.await().single() as SpeechRecognitionResult.Error).errorCode)
+            assertEquals(0, platform.fallbackCalls)
+            assertTrue(platform.deadlines.isEmpty())
+        }
+    }
+
+    @Test fun `error after ready cannot restart and truncate the utterance`() = runTest {
+        val (platform, manager) = setup()
+        platform.fallbackAvailable = true
+        val result = async { manager.startListening().toList() }
+        runCurrent()
+        platform.engines.single().listener.onReadyForSpeech(null)
+        platform.engines.single().listener.onError(SpeechRecognitionErrors.ERROR_SERVER)
+        assertEquals(SpeechRecognitionErrors.ERROR_SERVER,
+            (result.await().last() as SpeechRecognitionResult.Error).errorCode)
+        assertEquals(0, platform.fallbackCalls)
+        assertTrue(platform.deadlines.isEmpty())
+    }
+
+    @Test fun `stop before ready never falls back or leaves the startup deadline`() = runTest {
+        val (platform, manager) = setup()
+        platform.fallbackAvailable = true
+        val result = async { manager.startListening().toList() }
+        runCurrent()
+        manager.stopListening()
+        platform.engines.single().listener.onError(SpeechRecognitionErrors.ERROR_CLIENT)
+        assertTrue(result.await().single() is SpeechRecognitionResult.Error)
+        assertEquals(0, platform.fallbackCalls)
+        assertTrue(platform.deadlines.isEmpty())
+    }
+
+    @Test fun `cancel during fallback prevents all late callbacks and timers`() = runTest {
+        val (platform, manager) = setup()
+        platform.fallbackAvailable = true
+        val result = async { manager.startListening().toList() }
+        runCurrent()
+        platform.advance(8_000)
+        manager.cancel()
+        val current = platform.engines.last()
+        current.listener.onReadyForSpeech(null)
+        current.result("cancelled fallback")
+        platform.advance(16_000)
+        assertTrue(result.await().isEmpty())
+        assertTrue(platform.deadlines.isEmpty())
+        assertFalse(manager.isListening.value)
     }
 
     @Test fun `cancelled collector queued cleanup cannot reset replacement state`() = runTest {

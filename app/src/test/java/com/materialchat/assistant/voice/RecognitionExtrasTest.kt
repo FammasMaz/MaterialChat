@@ -4,14 +4,9 @@ import android.speech.RecognizerIntent
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
-import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/**
- * The recognition request is what separates a usable transcript from a poor one: without an
- * explicit language the service falls back to its own default, and without formatting and silence
- * thresholds the keyboard-grade engine still returns unpunctuated, truncated text.
- */
+/** Checks the public recognizer request contract, without assuming keyboard feature parity. */
 class RecognitionExtrasTest {
     @Test fun `language is always sent explicitly`() {
         val extras = recognitionExtras(RecognitionOptions(languageTag = "en-US"), deviceLanguageTag = "fr-FR")
@@ -36,29 +31,25 @@ class RecognitionExtrasTest {
         assertEquals(false, extras[RecognizerIntent.EXTRA_PREFER_OFFLINE])
     }
 
-    @Test fun `silence thresholds do not cut a sentence short`() {
+    @Test fun `installed recognizer owns silence timing`() {
         val extras = recognitionExtras(RecognitionOptions(), deviceLanguageTag = "en-US")
-        val complete = extras[RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS] as Int
-        val possiblyComplete = extras[RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS] as Int
-        assertTrue("complete silence threshold must be long enough to survive a pause", complete >= 1_500)
-        assertTrue(possiblyComplete < complete)
+        assertNull(extras[RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS])
+        assertNull(extras[RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS])
+        assertNull(extras[RecognizerIntent.EXTRA_SPEECH_INPUT_MINIMUM_LENGTH_MILLIS])
     }
 
-    @Test fun `language switching is requested only while the language is not pinned`() {
-        val automatic = recognitionExtras(RecognitionOptions(), deviceLanguageTag = "en-US")
+    @Test fun `optional language switching uses the documented sensitivity string`() {
+        val automatic = recognitionExtras(RecognitionOptions(allowLanguageSwitch = true), deviceLanguageTag = "en-US")
         assertEquals(true, automatic[RecognizerIntent.EXTRA_ENABLE_LANGUAGE_DETECTION])
-        assertEquals(true, automatic[RecognizerIntent.EXTRA_ENABLE_LANGUAGE_SWITCH])
+        assertEquals(RecognizerIntent.LANGUAGE_SWITCH_BALANCED, automatic[RecognizerIntent.EXTRA_ENABLE_LANGUAGE_SWITCH])
 
-        val pinned = recognitionExtras(RecognitionOptions(languageTag = "en-US"), deviceLanguageTag = "en-US")
+        val pinned = recognitionExtras(RecognitionOptions(languageTag = "en-US", allowLanguageSwitch = true), deviceLanguageTag = "en-US")
         assertNull(pinned[RecognizerIntent.EXTRA_ENABLE_LANGUAGE_DETECTION])
         assertNull(pinned[RecognizerIntent.EXTRA_ENABLE_LANGUAGE_SWITCH])
     }
 
-    @Test fun `switching can be disabled explicitly`() {
-        val extras = recognitionExtras(
-            RecognitionOptions(allowLanguageSwitch = false),
-            deviceLanguageTag = "en-US"
-        )
+    @Test fun `switching is not required for normal speech input`() {
+        val extras = recognitionExtras(RecognitionOptions(), deviceLanguageTag = "en-US")
         assertNull(extras[RecognizerIntent.EXTRA_ENABLE_LANGUAGE_SWITCH])
         assertFalse(extras.containsKey(RecognizerIntent.EXTRA_ENABLE_LANGUAGE_DETECTION))
     }

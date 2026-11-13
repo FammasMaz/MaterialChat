@@ -91,13 +91,15 @@ fun AssistantVoiceSettingsPanel(viewModel: AssistantVoiceSettingsViewModel = hil
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
-                Text("Blank follows the device language (${Locale.getDefault().toLanguageTag()}). The system recognizer is asked for formatting and language switching, the way the keyboard does.")
+                Text("Blank follows the device language (${Locale.getDefault().toLanguageTag()}). The installed recognizer controls speech timing; automatic language switching is not required.")
                 val engineReport = remember { recognitionEngineReport(context) }
                 Text(
-                    if (engineReport.usesOnDeviceFallback) {
-                        "Recognition engine: on-device fallback only. The installed speech service is not visible to the app, so transcription is less accurate."
-                    } else {
-                        "Recognition engine: ${engineReport.defaultComponent ?: "system default"} (${engineReport.visibleServiceCount} service(s) visible)"
+                    when {
+                        engineReport.selectedComponent != null ->
+                            "Recognition engine: ${engineReport.selectedComponent}"
+                        engineReport.usesOnDeviceFallback ->
+                            "Recognition engine: Android on-device fallback. No usable external speech service was found."
+                        else -> "No usable speech recognition engine found. Enable an Android speech recognition service in system settings."
                     }
                 )
                 HorizontalDivider()
