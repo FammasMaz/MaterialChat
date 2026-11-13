@@ -10,6 +10,8 @@ data class AssistantVoiceSettings(
     val backend: AssistantSpeechBackend = AssistantSpeechBackend.ANDROID,
     val androidVoiceId: String? = null,
     val languageTag: String? = null,
+    /** BCP-47 language for speech input; null follows the device language. */
+    val recognitionLanguageTag: String? = null,
     val speechRate: Float = 1f,
     // Intentionally no undocumented model/voice defaults; users supply supported identifiers.
     val geminiModel: String = "",
@@ -20,6 +22,7 @@ data class AssistantVoiceSettings(
         model = model?.trim()?.takeIf { it.isNotEmpty() },
         androidVoiceId = androidVoiceId?.trim()?.takeIf { it.isNotEmpty() },
         languageTag = languageTag?.trim()?.takeIf { it.isNotEmpty() },
+        recognitionLanguageTag = recognitionLanguageTag?.trim()?.takeIf { it.isNotEmpty() },
         speechRate = if (speechRate.isFinite()) speechRate.coerceIn(0.25f, 2f) else 1f,
         geminiModel = geminiModel.trim(),
         geminiVoice = geminiVoice.trim()

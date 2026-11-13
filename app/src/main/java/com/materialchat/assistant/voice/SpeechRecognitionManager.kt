@@ -6,9 +6,12 @@ import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.os.Bundle
+import android.provider.Settings
 import android.speech.RecognitionListener
+import android.speech.RecognitionService
 import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
+import java.util.Locale
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -50,7 +53,7 @@ class SpeechRecognitionManager internal constructor(
      *
      * @return Flow of recognition results (partial and final)
      */
-    fun startListening(): Flow<SpeechRecognitionResult> = callbackFlow {
+    fun startListening(options: RecognitionOptions = RecognitionOptions()): Flow<SpeechRecognitionResult> = callbackFlow {
         var cleanup: (() -> Unit)? = null
         withContext(Dispatchers.Main.immediate) {
             activeCleanup?.invoke()
@@ -199,10 +202,13 @@ class SpeechRecognitionManager internal constructor(
                 engine.setRecognitionListener(listener)
 
                 val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
-                    putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-                    putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
-                    putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
-                    // Omitting language lets the service use the device default.
+                    recognitionExtras(options).forEach { (key, value) ->
+                        when (value) {
+                            is Boolean -> putExtra(key, value)
+                            is Int -> putExtra(key, value)
+                            else -> putExtra(key, value.toString())
+                        }
+                    }
                 }
 
                 engine.startListening(intent)
@@ -308,6 +314,80 @@ sealed class SpeechRecognitionResult {
     data class Error(val message: String, val errorCode: Int) : SpeechRecognitionResult()
 }
 
+/**
+ * Recognition request tuning.
+ *
+ * The system recognizer only does its best work when the caller asks for it the way the keyboard
+ * and the built-in assistant do: an explicit language, formatting, and silence thresholds that do
+ * not cut a sentence off at the first pause.
+ */
+data class RecognitionOptions(
+    /** BCP-47 tag such as `en-US`. Null follows the device language. */
+    val languageTag: String? = null,
+    /** Let the recognizer detect and switch languages mid-utterance (API 34+). */
+    val allowLanguageSwitch: Boolean = true
+)
+
+/**
+ * Extras for [RecognizerIntent.ACTION_RECOGNIZE_SPEECH].
+ *
+ * Pure so the request shape is testable without a recognition service. Unknown extras are ignored
+ * by older services, so newer keys are always included rather than gated per API level.
+ */
+internal fun recognitionExtras(
+    options: RecognitionOptions,
+    deviceLanguageTag: String = Locale.getDefault().toLanguageTag()
+): Map<String, Any> {
+    val explicitLanguage = options.languageTag?.trim()?.takeIf { it.isNotEmpty() }
+    val extras = linkedMapOf<String, Any>(
+        RecognizerIntent.EXTRA_LANGUAGE_MODEL to RecognizerIntent.LANGUAGE_MODEL_FREE_FORM,
+        RecognizerIntent.EXTRA_LANGUAGE to (explicitLanguage ?: deviceLanguageTag),
+        RecognizerIntent.EXTRA_PARTIAL_RESULTS to true,
+        RecognizerIntent.EXTRA_MAX_RESULTS to 1,
+        RecognizerIntent.EXTRA_PREFER_OFFLINE to false,
+        // Punctuation and capitalisation, as the keyboard produces (API 33+; older services ignore it).
+        RecognizerIntent.EXTRA_ENABLE_FORMATTING to RecognizerIntent.FORMATTING_OPTIMIZE_QUALITY,
+        // Do not end the utterance at the first short pause.
+        RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS to 800,
+        RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS to 1_500,
+        RecognizerIntent.EXTRA_SPEECH_INPUT_MINIMUM_LENGTH_MILLIS to 1_000
+    )
+    // Auto-switching is only useful while the language is not pinned by the user.
+    if (options.allowLanguageSwitch && explicitLanguage == null) {
+        extras[RecognizerIntent.EXTRA_ENABLE_LANGUAGE_DETECTION] = true
+        extras[RecognizerIntent.EXTRA_ENABLE_LANGUAGE_SWITCH] = true
+    }
+    return extras
+}
+
+/** What the system will actually use for recognition; surfaced in the voice settings panel. */
+data class RecognitionEngineReport(
+    val defaultComponent: String?,
+    val visibleServiceCount: Int,
+    val usesOnDeviceFallback: Boolean
+)
+
+fun recognitionEngineReport(context: Context): RecognitionEngineReport {
+    val default = runCatching {
+        // Settings.Secure.VOICE_RECOGNITION_SERVICE is not in the public SDK; this is its key.
+        Settings.Secure.getString(context.contentResolver, "voice_recognition_service")
+    }.getOrNull()
+    // Package visibility decides this: an empty list means the app cannot see the installed
+    // recognizer, which forces the less accurate on-device model.
+    val visible = runCatching {
+        context.packageManager
+            .queryIntentServices(Intent(RecognitionService.SERVICE_INTERFACE), 0)
+            .size
+    }.getOrDefault(0)
+    val onDeviceAvailable = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
+        SpeechRecognizer.isOnDeviceRecognitionAvailable(context)
+    return RecognitionEngineReport(
+        defaultComponent = default?.takeIf { it.isNotBlank() },
+        visibleServiceCount = visible,
+        usesOnDeviceFallback = visible == 0 && onDeviceAvailable
+    )
+}
+
 /** Android operations only; session ownership and terminal events stay in the manager. */
 internal interface RecognitionPlatform {
     fun isAvailable(): Boolean
@@ -324,7 +404,8 @@ private class AndroidRecognitionPlatform(private val context: Context) : Recogni
         SpeechRecognizer.isOnDeviceRecognitionAvailable(context)
     override fun isAvailable() = isOnDeviceAvailable() || SpeechRecognizer.isRecognitionAvailable(context)
     override fun createRecognizer(): SpeechRecognizer {
-        // Prefer the configured recognition service, including network-backed models.
+        // The system default is the same engine the keyboard uses (network-backed and accurate).
+        // The on-device model is only a fallback: it works offline but transcribes noticeably worse.
         if (SpeechRecognizer.isRecognitionAvailable(context)) {
             return SpeechRecognizer.createSpeechRecognizer(context)
         }

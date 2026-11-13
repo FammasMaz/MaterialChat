@@ -10,10 +10,12 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.materialchat.assistant.voice.recognitionEngineReport
 import com.materialchat.data.local.preferences.AssistantSpeechBackend
 import com.materialchat.domain.model.ReasoningEffort
 
@@ -21,6 +23,7 @@ import com.materialchat.domain.model.ReasoningEffort
 @Composable
 fun AssistantVoiceSettingsPanel(viewModel: AssistantVoiceSettingsViewModel = hiltViewModel()) {
     var open by remember { mutableStateOf(false) }
+    val context = LocalContext.current
     OutlinedButton(onClick = { open = true }, modifier = Modifier.fillMaxWidth()) {
         Text("Voice configuration")
     }
@@ -79,6 +82,24 @@ fun AssistantVoiceSettingsPanel(viewModel: AssistantVoiceSettingsViewModel = hil
                     listOf(null to "Inherit") + ReasoningEffort.entries.map { it to it.displayName }) {
                     draft = draft.copy(reasoningEffort = it)
                 }
+                HorizontalDivider()
+                Text("Speech input", style = MaterialTheme.typography.titleMedium)
+                OutlinedTextField(
+                    draft.recognitionLanguageTag.orEmpty(),
+                    { draft = draft.copy(recognitionLanguageTag = it) },
+                    label = { Text("Recognition language (e.g. en-US)") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Text("Blank follows the device language (${Locale.getDefault().toLanguageTag()}). The system recognizer is asked for formatting and language switching, the way the keyboard does.")
+                val engineReport = remember { recognitionEngineReport(context) }
+                Text(
+                    if (engineReport.usesOnDeviceFallback) {
+                        "Recognition engine: on-device fallback only. The installed speech service is not visible to the app, so transcription is less accurate."
+                    } else {
+                        "Recognition engine: ${engineReport.defaultComponent ?: "system default"} (${engineReport.visibleServiceCount} service(s) visible)"
+                    }
+                )
                 HorizontalDivider()
                 Text("Speech output", style = MaterialTheme.typography.titleMedium)
                 VoiceChoice("Backend", draft.backend.name, AssistantSpeechBackend.entries.map { it to it.name }) {

@@ -7,6 +7,7 @@ import com.materialchat.assistant.actions.DeviceActionHandler
 import com.materialchat.assistant.actions.DeviceActionParser
 import androidx.lifecycle.viewModelScope
 import com.materialchat.assistant.voice.AudioAmplitudeData
+import com.materialchat.assistant.voice.RecognitionOptions
 import com.materialchat.assistant.voice.SpeechRecognitionManager
 import com.materialchat.assistant.voice.SpeechRecognitionResult
 import com.materialchat.assistant.voice.TextToSpeechManager
@@ -235,7 +236,10 @@ class AssistantViewModel(
         voiceInputJob = viewModelScope.launch {
             previousTurn?.join()
             if (token != recognition) return@launch
-            speechRecognitionManager.startListening().collect { result ->
+            val recognitionSettings = appPreferences.assistantVoiceSettings.first()
+            speechRecognitionManager.startListening(
+                RecognitionOptions(languageTag = recognitionSettings.recognitionLanguageTag)
+            ).collect { result ->
                 if (token != recognition) return@collect
                 when (result) {
                     is SpeechRecognitionResult.Ready -> {

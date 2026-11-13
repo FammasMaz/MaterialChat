@@ -35,6 +35,18 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
 
+    <!--
+        Package visibility for speech recognition (required from API 30 / targetSdk 30+).
+        Without this, queryIntentServices() cannot see the installed recognition service, so
+        SpeechRecognizer.isRecognitionAvailable() reports false and recognition silently falls
+        back to the on-device model instead of the system default the keyboard uses.
+    -->
+    <queries>
+        <intent>
+            <action android:name="android.speech.RecognitionService" />
+        </intent>
+    </queries>
+
     <application
         android:name=".MaterialChatApplication"
         android:allowBackup="false"
