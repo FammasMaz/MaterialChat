@@ -6,10 +6,9 @@
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <application>
         <!-- Test-only external engine. Never packaged in the shipped app. No android:permission:
-             on API < 31 the old SpeechRecognizer binds the service DIRECTLY from the app process,
-             and an app cannot hold the signature-level BIND_SPEECH_RECOGNITION permission, so a
-             guarded fixture would fail to bind with SecurityException (surfacing as error 9).
-             The API 31+ path binds through system_server, which is unaffected. -->
+             the platform defines no bind permission for recognition services, and on API < 31
+             the old SpeechRecognizer binds the service DIRECTLY from the app process, so a
+             signature-guarded fixture could never bind (surfacing as error 9). -->
         <service
             android:name="com.materialchat.assistant.voice.ContractRecognitionService"
             android:exported="true">

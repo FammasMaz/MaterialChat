@@ -8,7 +8,7 @@ class RecognitionEngineSelectionTest {
     private val google = candidate("com.google.speech", system = true)
     private val other = candidate("com.example.speech")
     private fun candidate(pkg: String, system: Boolean = false) = RecognitionServiceCandidate(
-        "$pkg/$pkg.RecognitionService", pkg, true, true, RECOGNITION_BIND_PERMISSION, system
+        "$pkg/$pkg.RecognitionService", pkg, true, true, null, system
     )
     private fun select(default: String?, vararg candidates: RecognitionServiceCandidate) =
         selectRecognitionService(default, "com.materialchat", candidates.toList())
@@ -24,9 +24,14 @@ class RecognitionEngineSelectionTest {
         assertEquals(google, select(null, google, other))
     }
     @Test fun unsafeDefaultIsNotUsed() {
-        listOf(other.copy(enabled = false), other.copy(exported = false),
-            other.copy(permission = null), other.copy(permission = "unexpected.permission"))
+        listOf(other.copy(enabled = false), other.copy(exported = false))
             .forEach { unsafe -> assertEquals(google, select(unsafe.component, unsafe, google)) }
+    }
+    @Test fun bindPermissionGuardDoesNotDisqualifyService() {
+        // No platform bind permission exists for recognition services; an engine's own guard
+        // is enforced at bind time and must not reject it during selection.
+        val guarded = other.copy(permission = "com.example.vendor.BIND_MY_ENGINE")
+        assertEquals(guarded, select(guarded.component, guarded, google))
     }
     @Test fun ownPackageIsNeverSelectedAsExternalRecognizer() {
         val own = candidate("com.materialchat", system = true)

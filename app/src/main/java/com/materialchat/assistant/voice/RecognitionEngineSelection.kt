@@ -12,8 +12,6 @@ import android.provider.Settings
 import android.speech.RecognitionService
 import android.speech.SpeechRecognizer
 
-internal const val RECOGNITION_BIND_PERMISSION = "android.permission.BIND_SPEECH_RECOGNITION"
-
 /** A service returned by the installed recognition-service query, not an arbitrary component. */
 internal data class RecognitionServiceCandidate(
     val component: String,
@@ -31,8 +29,10 @@ internal fun selectRecognitionService(
     candidates: List<RecognitionServiceCandidate>
 ): RecognitionServiceCandidate? {
     val valid = candidates.filter {
-        it.packageName != ownPackage && it.enabled && it.exported &&
-            it.permission == RECOGNITION_BIND_PERMISSION
+        // No platform bind permission exists for recognition services (only
+        // BIND_VOICE_INTERACTION / BIND_MUSIC_RECOGNITION_SERVICE do); recognizer engines
+        // declare none or their own guard, and the platform enforces it at bind time.
+        it.packageName != ownPackage && it.enabled && it.exported
     }
     return valid.firstOrNull { it.component == configuredComponent }
         ?: valid.sortedWith(compareByDescending<RecognitionServiceCandidate> { it.systemApp }
