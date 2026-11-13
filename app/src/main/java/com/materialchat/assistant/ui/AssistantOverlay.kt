@@ -53,8 +53,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.IntOffset
@@ -126,7 +126,7 @@ fun AssistantOverlay(
         }
     }
 
-    // Follow the user's appearance preferences (mode, palette, dynamic color)
+    // The session has its own composition; propagate the same saved appearance as the activity.
     val themeMode by viewModel.appPreferences.themeMode.collectAsStateWithLifecycle(
         initialValue = AppPreferences.ThemeMode.SYSTEM
     )
@@ -135,6 +135,12 @@ fun AssistantOverlay(
     )
     val themePalette by viewModel.appPreferences.themePalette.collectAsStateWithLifecycle(
         initialValue = AppPreferences.DEFAULT_THEME_PALETTE
+    )
+    val pitchBlackDark by viewModel.appPreferences.pitchBlackDark.collectAsStateWithLifecycle(
+        initialValue = AppPreferences.DEFAULT_PITCH_BLACK_DARK
+    )
+    val neuralExpressive by viewModel.appPreferences.neuralExpressive.collectAsStateWithLifecycle(
+        initialValue = AppPreferences.DEFAULT_NEURAL_EXPRESSIVE
     )
 
     // Check permission state (we can't request it here, only check)
@@ -165,7 +171,9 @@ fun AssistantOverlay(
     MaterialChatTheme(
         themeMode = themeMode,
         dynamicColor = dynamicColorEnabled && isDynamicColorSupported(),
-        themePalette = themePalette
+        themePalette = themePalette,
+        pitchBlack = pitchBlackDark,
+        neuralExpressive = neuralExpressive
     ) {
         Box(
             modifier = Modifier
@@ -221,7 +229,7 @@ fun AssistantOverlay(
 }
 
 @Composable
-private fun AssistantOverlayContent(
+internal fun AssistantOverlayContent(
     uiState: AssistantUiState,
     voiceState: VoiceState,
     amplitudeData: com.materialchat.assistant.voice.AudioAmplitudeData,
@@ -278,207 +286,217 @@ private fun AssistantOverlayContent(
         label = "sheetAlpha"
     )
 
-    Surface(
+    // Keep the exact card bounds/padding. The parent draws outside the opaque Surface, without
+    // reserving additional space above the IME. ModulateAlpha avoids an offscreen alpha texture
+    // clipping the outward halo while the sheet enters; the card's own shape still clips content.
+    Box(
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 12.dp, vertical = 8.dp)
             .heightIn(max = 600.dp)
-            .animateContentSize(animationSpec = ExpressiveMotion.Spatial.container())
-            .offset { IntOffset(0, offsetY.roundToPx()) }  // Animate entrance only
+            .offset { IntOffset(0, offsetY.roundToPx()) }
             .graphicsLayer {
                 scaleX = sheetScale
                 scaleY = sheetScale
+                this.alpha = alpha
+                clip = false
+                compositingStrategy = CompositingStrategy.ModulateAlpha
             }
-            .alpha(alpha)
-            .neuralExpressiveGlow(cornerRadius = 32.dp),
-        shape = RoundedCornerShape(32.dp),
-        color = MaterialTheme.colorScheme.surfaceContainer,
-        tonalElevation = 8.dp,
-        shadowElevation = 24.dp
+            .neuralExpressiveGlow(cornerRadius = 32.dp)
     ) {
-        Column(
+        Surface(
             modifier = Modifier
                 .fillMaxWidth()
-                .semantics { testTagsAsResourceId = true }
-                .testTag("assistant_sheet")
-                .padding(horizontal = 16.dp)
-                .padding(top = 12.dp, bottom = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+                .animateContentSize(animationSpec = ExpressiveMotion.Spatial.container()),
+            shape = RoundedCornerShape(32.dp),
+            color = MaterialTheme.colorScheme.surfaceContainer,
+            tonalElevation = 8.dp,
+            shadowElevation = 24.dp
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .semantics { testTagsAsResourceId = true }
+                    .testTag("assistant_sheet")
+                    .padding(horizontal = 16.dp)
+                    .padding(top = 12.dp, bottom = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Column(modifier = Modifier.weight(1f).padding(start = 8.dp)) {
-                    Text("Material Chat", style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text(status, style = MaterialTheme.typography.titleLarge,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
-                }
-                ExpressiveFilledIconButton(
-                    onClick = { expanded = !expanded },
-                    icon = if (expanded) Icons.Default.ExpandMore else Icons.Default.ExpandLess,
-                    contentDescription = if (expanded) "Collapse assistant" else "Expand assistant",
-                    modifier = Modifier.size(48.dp),
-                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
-                )
-                ExpressiveFilledIconButton(
-                    onClick = { onInterrupt(); onDismiss() },
-                    icon = Icons.Default.Close,
-                    contentDescription = "End assistant session",
-                    modifier = Modifier.size(48.dp),
-                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
-                )
-            }
-
-            if (!expanded) {
-                val preview = if (capturing) uiState.textInput else messages.lastOrNull()?.content.orEmpty()
-                if (preview.isNotBlank()) {
-                    Text(
-                        text = preview,
-                        maxLines = 2,
-                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(horizontal = 8.dp)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f).padding(start = 8.dp)) {
+                        Text("Material Chat", style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(status, style = MaterialTheme.typography.titleLarge,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
+                    }
+                    ExpressiveFilledIconButton(
+                        onClick = { expanded = !expanded },
+                        icon = if (expanded) Icons.Default.ExpandMore else Icons.Default.ExpandLess,
+                        contentDescription = if (expanded) "Collapse assistant" else "Expand assistant",
+                        modifier = Modifier.size(48.dp),
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+                    )
+                    ExpressiveFilledIconButton(
+                        onClick = { onInterrupt(); onDismiss() },
+                        icon = Icons.Default.Close,
+                        contentDescription = "End assistant session",
+                        modifier = Modifier.size(48.dp),
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
                     )
                 }
-            }
 
-            if (expanded) {
-                Box(Modifier.fillMaxWidth().height(64.dp), contentAlignment = Alignment.Center) {
-                    if (capturing) {
-                        com.materialchat.assistant.ui.components.VoiceWaveform(
-                            amplitudeData = amplitudeData, maxBarHeight = 48.dp)
-                    } else {
-                        Text(if (busy) "One moment…" else "Tap the microphone to speak",
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                if (!expanded) {
+                    val preview = if (capturing) uiState.textInput else messages.lastOrNull()?.content.orEmpty()
+                    if (preview.isNotBlank()) {
+                        Text(
+                            text = preview,
+                            maxLines = 2,
+                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(horizontal = 8.dp)
+                        )
                     }
                 }
-                if (capturing && uiState.textInput.isNotBlank()) {
-                    Text(uiState.textInput, style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurface)
-                }
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    androidx.compose.material3.TextButton(onClick = onNewChat,
-                        modifier = Modifier.heightIn(min = 48.dp)) { Text("New chat") }
-                    if (hasContent) {
-                        androidx.compose.material3.TextButton(onClick = onOpenInApp,
-                            modifier = Modifier.heightIn(min = 48.dp)) { Text("Open in app") }
+
+                if (expanded) {
+                    Box(Modifier.fillMaxWidth().height(64.dp), contentAlignment = Alignment.Center) {
+                        if (capturing) {
+                            com.materialchat.assistant.ui.components.VoiceWaveform(
+                                amplitudeData = amplitudeData, maxBarHeight = 48.dp)
+                        } else {
+                            Text(if (busy) "One moment…" else "Tap the microphone to speak",
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                    if (capturing && uiState.textInput.isNotBlank()) {
+                        Text(uiState.textInput, style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurface)
+                    }
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        androidx.compose.material3.TextButton(onClick = onNewChat,
+                            modifier = Modifier.heightIn(min = 48.dp)) { Text("New chat") }
+                        if (hasContent) {
+                            androidx.compose.material3.TextButton(onClick = onOpenInApp,
+                                modifier = Modifier.heightIn(min = 48.dp)) { Text("Open in app") }
+                        }
                     }
                 }
-            }
 
-            // Response card - flexible height that shrinks when keyboard appears
-            AnimatedVisibility(
-                visible = expanded && (messages.isNotEmpty() || uiState.isLoading),
-                enter = fadeIn(animationSpec = ExpressiveMotion.Effects.alpha()) +
-                        slideInVertically(
-                            animationSpec = ExpressiveMotion.Spatial.default(),
-                            initialOffsetY = { it / 2 }
-                        ),
-                exit = fadeOut(animationSpec = ExpressiveMotion.Effects.alpha()) +
-                        slideOutVertically(
-                            animationSpec = ExpressiveMotion.Spatial.default(),
-                            targetOffsetY = { it / 2 }
-                        ),
-                modifier = Modifier.weight(1f, fill = false)
-            ) {
-                AssistantResponseCard(
-                    messages = messages,
-                    isLoading = uiState.isLoading,
-                    onOpenInApp = onOpenInApp,
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-
-            // Error message
-            AnimatedVisibility(
-                visible = uiState.error != null,
-                enter = fadeIn(animationSpec = ExpressiveMotion.Effects.alpha()),
-                exit = fadeOut(animationSpec = ExpressiveMotion.Effects.alpha())
-            ) {
-                uiState.error?.let { error ->
-                    ErrorMessage(message = error)
+                // Response card - flexible height that shrinks when keyboard appears
+                AnimatedVisibility(
+                    visible = expanded && (messages.isNotEmpty() || uiState.isLoading),
+                    enter = fadeIn(animationSpec = ExpressiveMotion.Effects.alpha()) +
+                            slideInVertically(
+                                animationSpec = ExpressiveMotion.Spatial.default(),
+                                initialOffsetY = { it / 2 }
+                            ),
+                    exit = fadeOut(animationSpec = ExpressiveMotion.Effects.alpha()) +
+                            slideOutVertically(
+                                animationSpec = ExpressiveMotion.Spatial.default(),
+                                targetOffsetY = { it / 2 }
+                            ),
+                    modifier = Modifier.weight(1f, fill = false)
+                ) {
+                    AssistantResponseCard(
+                        messages = messages,
+                        isLoading = uiState.isLoading,
+                        onOpenInApp = onOpenInApp,
+                        modifier = Modifier.fillMaxWidth()
+                    )
                 }
-            }
 
-            // Voice state indicator
-            AnimatedVisibility(
-                visible = voiceState is VoiceState.Error && uiState.error != (voiceState as? VoiceState.Error)?.message,
-                enter = fadeIn(animationSpec = ExpressiveMotion.Effects.alpha()),
-                exit = fadeOut(animationSpec = ExpressiveMotion.Effects.alpha())
-            ) {
-                (voiceState as? VoiceState.Error)?.let { errorState ->
-                    ErrorMessage(message = errorState.message)
+                // Error message
+                AnimatedVisibility(
+                    visible = uiState.error != null,
+                    enter = fadeIn(animationSpec = ExpressiveMotion.Effects.alpha()),
+                    exit = fadeOut(animationSpec = ExpressiveMotion.Effects.alpha())
+                ) {
+                    uiState.error?.let { error ->
+                        ErrorMessage(message = error)
+                    }
                 }
-            }
 
-            if (!hasMicPermission || !uiState.isVoiceInputEnabled) {
-                Text(
-                    if (!hasMicPermission) "Enable microphone permission in system settings to speak."
-                    else "Voice input is disabled in settings.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            if (keyboardMode) {
-                AssistantInputBar(
-                    textInput = uiState.textInput,
-                    onTextChange = onTextChange,
-                    voiceState = voiceState,
-                    amplitudeData = amplitudeData,
-                    onVoiceClick = {
-                        keyboardMode = false
-                        focusManager.clearFocus()
-                        keyboard?.hide()
-                        if (hasMicPermission && uiState.isVoiceInputEnabled) {
-                            onInterrupt()
-                            expanded = true
-                            onVoiceClick()
-                        }
-                    },
-                    onSendClick = { onInterrupt(); expanded = true; onSendClick() },
-                    onStopVoice = onStopVoice,
-                    voiceEnabled = hasMicPermission && uiState.isVoiceInputEnabled,
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                androidx.compose.material3.TextButton(
-                    onClick = {
-                        onInterrupt()
-                        if (keyboardMode) {
-                            focusManager.clearFocus()
-                            keyboard?.hide()
-                        }
-                        keyboardMode = !keyboardMode
-                    },
-                    modifier = Modifier.heightIn(min = 48.dp)
-                ) { Text(if (keyboardMode) "Hide keyboard" else "Keyboard") }
-                Spacer(Modifier.weight(1f))
-                if (busy) {
-                    androidx.compose.material3.FilledTonalButton(
-                        onClick = onInterrupt, modifier = Modifier.heightIn(min = 48.dp)
-                    ) { Text("Interrupt") }
-                } else {
-                    androidx.compose.material3.FilledTonalButton(
-                        onClick = {
+                // Voice state indicator
+                AnimatedVisibility(
+                    visible = voiceState is VoiceState.Error && uiState.error != (voiceState as? VoiceState.Error)?.message,
+                    enter = fadeIn(animationSpec = ExpressiveMotion.Effects.alpha()),
+                    exit = fadeOut(animationSpec = ExpressiveMotion.Effects.alpha())
+                ) {
+                    (voiceState as? VoiceState.Error)?.let { errorState ->
+                        ErrorMessage(message = errorState.message)
+                    }
+                }
+
+                if (!hasMicPermission || !uiState.isVoiceInputEnabled) {
+                    Text(
+                        if (!hasMicPermission) "Enable microphone permission in system settings to speak."
+                        else "Voice input is disabled in settings.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                if (keyboardMode) {
+                    AssistantInputBar(
+                        textInput = uiState.textInput,
+                        onTextChange = onTextChange,
+                        voiceState = voiceState,
+                        amplitudeData = amplitudeData,
+                        onVoiceClick = {
                             keyboardMode = false
                             focusManager.clearFocus()
                             keyboard?.hide()
-                            expanded = true
-                            if (capturing) onStopVoice() else { onInterrupt(); onVoiceClick() }
+                            if (hasMicPermission && uiState.isVoiceInputEnabled) {
+                                onInterrupt()
+                                expanded = true
+                                onVoiceClick()
+                            }
                         },
-                        enabled = capturing || (hasMicPermission && uiState.isVoiceInputEnabled),
+                        onSendClick = { onInterrupt(); expanded = true; onSendClick() },
+                        onStopVoice = onStopVoice,
+                        voiceEnabled = hasMicPermission && uiState.isVoiceInputEnabled,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    androidx.compose.material3.TextButton(
+                        onClick = {
+                            onInterrupt()
+                            if (keyboardMode) {
+                                focusManager.clearFocus()
+                                keyboard?.hide()
+                            }
+                            keyboardMode = !keyboardMode
+                        },
                         modifier = Modifier.heightIn(min = 48.dp)
-                    ) { Text(if (capturing) "Stop listening" else "Microphone") }
+                    ) { Text(if (keyboardMode) "Hide keyboard" else "Keyboard") }
+                    Spacer(Modifier.weight(1f))
+                    if (busy) {
+                        androidx.compose.material3.FilledTonalButton(
+                            onClick = onInterrupt, modifier = Modifier.heightIn(min = 48.dp)
+                        ) { Text("Interrupt") }
+                    } else {
+                        androidx.compose.material3.FilledTonalButton(
+                            onClick = {
+                                keyboardMode = false
+                                focusManager.clearFocus()
+                                keyboard?.hide()
+                                expanded = true
+                                if (capturing) onStopVoice() else { onInterrupt(); onVoiceClick() }
+                            },
+                            enabled = capturing || (hasMicPermission && uiState.isVoiceInputEnabled),
+                            modifier = Modifier.heightIn(min = 48.dp)
+                        ) { Text(if (capturing) "Stop listening" else "Microphone") }
+                    }
                 }
             }
         }
