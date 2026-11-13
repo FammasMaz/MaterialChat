@@ -72,7 +72,7 @@ import com.materialchat.ui.components.ExpressiveFilledIconButton
 import com.materialchat.ui.theme.ExpressiveMotion
 import com.materialchat.ui.theme.MaterialChatTheme
 import com.materialchat.ui.theme.isDynamicColorSupported
-import com.materialchat.ui.theme.neuralExpressiveGlowAround
+import com.materialchat.ui.theme.particles.neuralParticleField
 
 /**
  * M3 Expressive Assistant Overlay.
@@ -160,8 +160,8 @@ fun AssistantOverlay(
         viewModel.requestAutoListen(showTrigger, hasMicPermission)
     }
 
-    // The card reports its bounds in root coordinates; the scrim draws the halo around it in
-    // its own coordinate space, so the card rect is translated by the scrim's root origin.
+    // The card reports its bounds in root coordinates; the scrim draws the particle field around
+    // it in its own coordinate space, so the card rect is translated by the scrim's root origin.
     var cardBoundsInRoot by remember { mutableStateOf<Rect?>(null) }
     var scrimOriginInRoot by remember { mutableStateOf(androidx.compose.ui.geometry.Offset.Zero) }
     val decorationRect = cardBoundsInRoot?.translate(-scrimOriginInRoot.x, -scrimOriginInRoot.y)
@@ -197,9 +197,17 @@ fun AssistantOverlay(
                 .padding(bottom = with(density) { bottomObstructionPx.toDp() })
                 .onGloballyPositioned { scrimOriginInRoot = it.boundsInRoot().topLeft }
                 // Below API 28 a node's drawing is clipped to its own bounds, so a card-sized
-                // node can never draw an outward halo there. The full-window scrim draws the
-                // decoration around the card rect (reported in this node's coordinate space).
-                .neuralExpressiveGlowAround(decorationRect)
+                // node can never draw an outward particle band there. The full-window scrim hosts
+                // the field and targets the card rect (reported in this node's coordinate space),
+                // which also keeps the whole outer band inside the drawing node.
+                .neuralParticleField(
+                    capsuleRect = decorationRect,
+                    cornerRadius = 32.dp,
+                    color = Color.White,
+                    enabled = neuralExpressive,
+                    // The card reports its rect; until it does, there is nothing to decorate.
+                    capsuleInset = null
+                )
         ) {
             // Use showTrigger as key to force recomposition and animation restart
             key(showTrigger) {

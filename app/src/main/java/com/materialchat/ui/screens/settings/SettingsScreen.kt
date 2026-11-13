@@ -991,7 +991,7 @@ private fun SuccessContent(
             }
         }
 
-        // Soft glowing boundary with drifting dots around floating surfaces
+        // Drifting particle field around the assistant window
         item {
             NeuralExpressiveToggle(
                 enabled = uiState.neuralExpressive,
@@ -2104,7 +2104,7 @@ private fun NeuralExpressiveToggle(
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
-                    text = "Soft glowing boundary with drifting dots around floating surfaces",
+                    text = "Drifting particle field around the floating assistant card",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

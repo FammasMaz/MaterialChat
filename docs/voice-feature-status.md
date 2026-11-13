@@ -32,3 +32,25 @@ The test service returns a known transcript and is not an acoustic recognition b
 ## Review and remaining work
 
 The initial independent review identified invalid default selection and missing startup bounds. A follow-up Sol/Upstage review failed because credentials were exhausted; no successful independent approval is claimed. Direct review and local checks completed. Hosted test execution, screenshot inspection, signed release, and actual phone transcription remain pending.
+
+## Particle field replaced with the essentials port
+
+The gradient halo plus fixed outward particle field was removed and replaced by a faithful port of
+the essentials `GeminiParticlePill` effect, which now exists only on the assistant window and is
+absent from the chat input.
+
+- `ui/theme/particles/`: `NeuralParticleField.kt` (modifier/composable, lifecycle, power-save,
+  visibility and animation-scale gating), `NeuralParticleShader.kt` (AGSL), `RuntimeParticlePainter.kt`
+  (AGSL `drawVertices` painter on API 33+, static Path painter below), `CapsuleParticleGeometry.kt`,
+  `PoissonDisk.kt`, `ParticleFieldMath.kt`, `ParticleFieldStyle.kt`.
+- Style defaults match the reference: minDistance 6dp, radius 0-1.5dp, displacement 12dp,
+  outerBand 64dp, innerBand 48dp, opacity 0.35, falloff 4.
+- The full-window scrim parent hosts the field and targets the card rect the card reports, because
+  below API 28 a node's drawing is clipped to its own bounds.
+- Deviations from the reference: no camera cutout geometry, no camera clip, no tap-to-hide folding,
+  and the field is anchored to the assistant card rect rather than a pill's own bounds.
+- Gate: `scripts/check-assistant-window.sh` now requires the production draw-path marker for the
+  painter expected on the API level, plus a two-frame band check (animating band with a static
+  control band on API 33+, non-animating band below). `AssistantNeuralParticleFieldTest` asserts
+  visible band coverage, unchanged card bounds, no painting inside the card, painter selection and
+  motion gates on API 26 and 35.

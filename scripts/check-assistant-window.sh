@@ -38,6 +38,105 @@ if grep -E 'FATAL EXCEPTION|Unable to add window|BadTokenException' "$out/logcat
   exit 1
 fi
 
+# --- Neural particle field (assistant window only) --------------------------------
+# The decoration is the ported essentials particle field: an AGSL runtime painter on
+# API 33+ and a static Path painter below. Production logs one line per painter/capsule
+# signature from inside the draw path, so this marker proves the real assistant window
+# resolved the expected painter and drew the field with a valid capsule.
+sdk=$(adb shell getprop ro.build.version.sdk | tr -d '\r')
+if [ "$sdk" -ge 33 ]; then expected_painter=runtime; else expected_painter=static; fi
+for attempt in $(seq 1 20); do
+  adb logcat -d > "$out/logcat-particles.txt"
+  if grep -q "NeuralParticles painter=$expected_painter" "$out/logcat-particles.txt"; then break; fi
+  sleep 1
+done
+grep -q "NeuralParticles painter=$expected_painter" "$out/logcat-particles.txt"
+grep "NeuralParticles" "$out/logcat-particles.txt" | tail -5 | tee "$out/particle-painter.txt"
+
+# Two raw frames prove the field is live around the real card: on API 33+ the AGSL
+# painter must animate the band just outside the card while a control band far from
+# the card stays static; below 33 the static painter must draw without animating.
+# Visible pixel coverage of the static painter on API 26 is asserted by
+# AssistantNeuralParticleFieldTest, which renders the production card and decoration
+# host on the same API level and compares enabled/disabled captures.
+adb shell wm density > "$out/density.txt"
+adb exec-out screencap > "$out/particles-frame-a.raw"
+sleep 1
+adb exec-out screencap > "$out/particles-frame-b.raw"
+python3 - "$out/ui.xml" "$out/particles-frame-a.raw" "$out/particles-frame-b.raw" "$out/density.txt" "$sdk" <<'PYPARTICLES' | tee "$out/particle-band.txt"
+import re, struct, sys, xml.etree.ElementTree as ET
+
+ui, raw_a, raw_b, density_path, sdk = sys.argv[1:6]
+
+
+def load(path):
+    data = open(path, 'rb').read()
+    width, height, fmt = struct.unpack('<III', data[:12])
+    assert fmt == 1, f'unexpected screencap format {fmt}'
+    body = data[12:]
+    assert len(body) >= width * height * 4, f'truncated screencap: {len(body)}'
+    return width, height, body
+
+
+def bounds(node):
+    return list(map(int, re.findall(r'\d+', node.get('bounds', ''))))
+
+
+sheets = [n for n in ET.parse(ui).iter('node')
+          if n.get('resource-id', '').split('/')[-1] == 'assistant_sheet']
+assert len(sheets) == 1, 'Missing unique assistant sheet boundary'
+left, top, right, bottom = bounds(sheets[0])
+densities = re.findall(r'(?:Physical|Override) density:\s*(\d+)', open(density_path).read())
+assert densities, 'Cannot establish display density'
+scale = int(densities[-1]) / 160.0
+
+wa, ha, a = load(raw_a)
+wb, hb, b = load(raw_b)
+assert (wa, ha) == (wb, hb), 'Screenshot sizes differ between frames'
+w, h = wa, ha
+
+
+def diff_ratio(x0, y0, x1, y1, threshold=12):
+    x0 = max(0, min(x0, w - 1))
+    x1 = max(x0 + 1, min(x1, w))
+    y0 = max(0, min(y0, h - 1))
+    y1 = max(y0 + 1, min(y1, h))
+    changed = total = 0
+    for y in range(y0, y1):
+        off = (y * w + x0) * 4
+        span = (x1 - x0) * 4
+        row_a = a[off:off + span]
+        row_b = b[off:off + span]
+        for i in range(0, span, 4):
+            delta = abs(row_a[i] - row_b[i]) + abs(row_a[i + 1] - row_b[i + 1]) + abs(row_a[i + 2] - row_b[i + 2])
+            if delta >= threshold:
+                changed += 1
+            total += 1
+    return changed, total
+
+
+bx0 = int(left + (right - left) * 0.1)
+bx1 = int(right - (right - left) * 0.1)
+by0 = max(0, int(top - 56 * scale))
+by1 = max(by0 + 1, int(top - 2 * scale))
+cy0 = int(h * 0.12)
+cy1 = int(h * 0.22)
+
+band_changed, band_total = diff_ratio(bx0, by0, bx1, by1)
+ctrl_changed, ctrl_total = diff_ratio(bx0, cy0, bx1, cy1)
+band_ratio = band_changed / band_total
+ctrl_ratio = ctrl_changed / ctrl_total
+print(f'Particle band {bx0},{by0}-{bx1},{by1}: changed={band_ratio:.4f} ({band_changed}/{band_total})')
+print(f'Control band {bx0},{cy0}-{bx1},{cy1}: changed={ctrl_ratio:.4f} ({ctrl_changed}/{ctrl_total})')
+print(f'Card bounds={left},{top},{right},{bottom} density={scale} sdk={sdk}')
+assert ctrl_ratio <= 0.005, f'Control band must stay static: {ctrl_ratio:.4f}'
+if int(sdk) >= 33:
+    assert band_ratio >= 0.015, f'AGSL particle field must animate around the card: {band_ratio:.4f}'
+else:
+    assert band_ratio <= 0.005, f'Static painter must not animate the band: {band_ratio:.4f}'
+print(f'Neural particle field passed on API {sdk}')
+PYPARTICLES
+
 # Exercise the actual keyboard state, not only initial overlay visibility.
 python3 - "$out/ui.xml" <<'PYTAP' | xargs adb shell input tap
 import sys, re, xml.etree.ElementTree as ET
