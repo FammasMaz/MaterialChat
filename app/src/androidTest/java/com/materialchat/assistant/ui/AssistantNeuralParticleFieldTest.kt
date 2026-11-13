@@ -41,6 +41,8 @@ import com.materialchat.ui.theme.MaterialChatTheme
 import com.materialchat.ui.theme.particles.LocalNeuralParticleRenderControl
 import com.materialchat.ui.theme.particles.NeuralParticlePainterKind
 import com.materialchat.ui.theme.particles.NeuralParticleRenderControl
+import com.materialchat.ui.theme.particles.ParticleEdgeTreatment
+import com.materialchat.ui.theme.particles.ParticleFadeSpec
 import com.materialchat.ui.theme.particles.neuralParticleField
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -54,7 +56,8 @@ import kotlin.math.roundToInt
 
 /**
  * Renders the real assistant card inside the production decoration host (the full-window parent
- * that targets the card rect) and proves the ported particle field is visible, bounded and gated.
+ * that targets the card rect) and proves the ported particle field is visible, bounded, gated,
+ * softened at the capsule edge, and retired by the presence fade.
  */
 @RunWith(AndroidJUnit4::class)
 class AssistantNeuralParticleFieldTest {
@@ -62,10 +65,12 @@ class AssistantNeuralParticleFieldTest {
 
     @Test fun particleFieldRendersAroundTheCardWithoutChangingItsBounds() {
         val enabled = mutableStateOf(false)
+        val active = mutableStateOf(true)
         val forceFallback = mutableStateOf(false)
         var density = 1f
         var hardwareAccelerated = false
         var painterKind: NeuralParticlePainterKind? = null
+        var edgeTreatment: ParticleEdgeTreatment? = null
         var tileReady = false
         compose.setContent {
             density = LocalDensity.current.density
@@ -79,9 +84,10 @@ class AssistantNeuralParticleFieldTest {
                     LocalNeuralParticleRenderControl provides NeuralParticleRenderControl(
                         timeSeconds = 4f,
                         onPainterResolved = { painterKind = it },
-                        onTileReady = { tileReady = true }
+                        onTileReady = { tileReady = true },
+                        onEdgeTreatmentResolved = { edgeTreatment = it }
                     )
-                ) { Specimen(forceFallback.value) }
+                ) { Specimen(forceFallback = forceFallback.value, active = active.value) }
             }
         }
         compose.waitForIdle()
@@ -90,13 +96,16 @@ class AssistantNeuralParticleFieldTest {
         val expectedPainter =
             if (Build.VERSION.SDK_INT >= 33) NeuralParticlePainterKind.Runtime else NeuralParticlePainterKind.Static
         assertEquals("The AGSL painter must be used on API 33+", expectedPainter, painterKind)
+        val expectedEdge =
+            if (Build.VERSION.SDK_INT >= 31) ParticleEdgeTreatment.Blur else ParticleEdgeTreatment.Gradient
+        assertEquals("The RenderEffect blur must soften the field on API 31+", expectedEdge, edgeTreatment)
 
         for (expanded in listOf(false, true)) {
             if (expanded) {
                 compose.onNodeWithContentDescription("Expand assistant").performClick()
                 compose.waitForIdle()
             }
-            compose.runOnIdle { enabled.value = false }
+            compose.runOnIdle { enabled.value = false; active.value = true }
             compose.waitForIdle()
             // The expand click leaves a platform ripple fading on the button inside the card; it
             // runs on the RenderThread, outside the Compose test clock, and otherwise differs
@@ -125,42 +134,48 @@ class AssistantNeuralParticleFieldTest {
                 plain.height - decoratedBounds.bottom,
                 2f * density
             )
-            // The band just outside the card's top edge: inside the outer band, outside the card.
             val left = (decoratedBounds.left + decoratedBounds.width * 0.1f).roundToInt()
             val right = (decoratedBounds.right - decoratedBounds.width * 0.1f).roundToInt()
+            // The band just outside the card's top edge: inside the outer band, outside the card.
             val top = (decoratedBounds.top - 18f * density).roundToInt().coerceAtLeast(0)
             val bottom = (decoratedBounds.top - 1f * density).roundToInt()
-            var changed = 0
-            var samples = 0
-            for (y in top until bottom) for (x in left until right) {
-                if (rgbDelta(plain.getPixel(x, y), decorated.getPixel(x, y)) >= 12) changed++
-                samples++
-            }
+            val bandChanged = changedRatio(plain, decorated, left, right, top, bottom)
             assertTrue(
-                "Particle field must visibly change the band around the card: $changed/$samples",
-                samples > 0 && changed.toFloat() / samples >= 0.05f
+                "Particle field must visibly change the band around the card: $bandChanged",
+                bandChanged >= 0.05f
+            )
+            // The halo hugs the edge: the first 1..6dp outside the card is a continuous glow, not
+            // sparse particles, on both the gradient (API 26) and blurred (API 31+) treatments.
+            val haloTop = (decoratedBounds.top - 6f * density).roundToInt().coerceAtLeast(0)
+            val haloChanged = changedRatio(plain, decorated, left, right, haloTop, bottom)
+            assertTrue(
+                "Blurred halo must be visible just outside the card edge: $haloChanged",
+                haloChanged >= 0.6f
             )
             // Nothing may be painted deep inside the opaque card region.
             val innerTop = (decoratedBounds.top + 40f * density).roundToInt()
             val innerBottom = (decoratedBounds.bottom - 40f * density).roundToInt()
-            var inside = 0
-            var insideSamples = 0
-            if (innerBottom > innerTop) {
-                for (y in innerTop until innerBottom) for (x in left until right) {
-                    if (rgbDelta(plain.getPixel(x, y), decorated.getPixel(x, y)) >= 12) inside++
-                    insideSamples++
-                }
-            }
-            assertTrue(
-                "Particle field must not paint inside the card: $inside/$insideSamples",
-                insideSamples == 0 || inside.toFloat() / insideSamples < 0.01f
-            )
+            val inside = if (innerBottom > innerTop) changedRatio(plain, decorated, left, right, innerTop, innerBottom) else 0f
+            assertTrue("Particle field must not paint inside the card: $inside", inside < 0.01f)
+
+            // Presence: once the field is inactive and the fade has completed, nothing of the
+            // field (halo or particles) remains anywhere outside the card.
+            compose.runOnIdle { active.value = false }
+            compose.waitForIdle() // The auto-advancing clock runs the fade-out to completion.
+            val faded = capture()
+            saveEvidence("$state-faded", faded)
+            val fadedBounds = compose.onNodeWithTag("assistant_sheet").fetchSemanticsNode().boundsInRoot
+            assertEquals("Fading must not change the card layout", plainBounds, fadedBounds)
+            val remaining = changedRatio(plain, faded, left, right, top, bottom)
+            assertTrue("Faded field must leave the band around the card untouched: $remaining", remaining < 0.01f)
         }
     }
 
     @Test fun actualCardStopsParticleFramesForMotionDisabledPreferenceAndLifecycle() {
         val enabled = mutableStateOf(true)
         val motion = mutableStateOf(true)
+        val active = mutableStateOf(true)
+        val idleTimeout = mutableStateOf<Long?>(null)
         val frames = AtomicInteger()
         var tileReady = false
         var painterKind: NeuralParticlePainterKind? = null
@@ -176,7 +191,14 @@ class AssistantNeuralParticleFieldTest {
                         onPainterResolved = { painterKind = it },
                         onTileReady = { tileReady = true }
                     )
-                ) { Specimen() }
+                ) {
+                    Specimen(
+                        active = active.value,
+                        idleTimeoutMillis = idleTimeout.value,
+                        // Short fades keep the test fast even under a 10x animator scale.
+                        fadeSpec = ParticleFadeSpec(fadeInMillis = 200, fadeOutMillis = 200)
+                    )
+                }
             }
         }
         compose.waitForIdle()
@@ -188,9 +210,29 @@ class AssistantNeuralParticleFieldTest {
             // The static painter (below API 33 or AGSL failure) draws once and never animates.
             assertEquals("The static painter must never request particle frames", 0, frames.get())
             assertFramesStop(frames)
+            // A presence fade requests a bounded run of frames and then stops; the field must not
+            // keep ticking once fully faded out or fully faded back in.
+            compose.runOnUiThread { active.value = false }
+            assertFadeSettles(frames)
+            compose.runOnUiThread { active.value = true }
+            assertFadeSettles(frames)
+            compose.runOnUiThread { idleTimeout.value = 500 }
+            assertFadeSettles(frames)
             return
         }
         assertTrue("The live field must request frames before the gates are exercised", frames.get() > 0)
+        // Presence: inactive fades out, then no frames at all (battery); active fades back in
+        // and the motion loop resumes.
+        compose.runOnUiThread { active.value = false }
+        assertFadeSettles(frames)
+        compose.runOnUiThread { active.value = true }
+        assertFramesResume(frames)
+        // Idle timeout: still active, but the field retires itself after the timeout and stops.
+        compose.runOnUiThread { idleTimeout.value = 500 }
+        compose.mainClock.advanceTimeBy(500)
+        assertFadeSettles(frames)
+        compose.runOnUiThread { idleTimeout.value = null }
+        assertFramesResume(frames)
         // Devices with animations globally disabled or power saver on correctly emit no frames;
         // the JVM gate tests cover those branches exhaustively.
         compose.runOnUiThread { motion.value = false }
@@ -211,6 +253,31 @@ class AssistantNeuralParticleFieldTest {
         compose.mainClock.advanceTimeBy(500)
         compose.waitForIdle()
         assertEquals("Blocked decoration must not request continuing particle frames", stopped, frames.get())
+    }
+
+    /** Lets a 200ms fade finish under any animator scale up to 10x, then requires silence. */
+    private fun assertFadeSettles(frames: AtomicInteger) {
+        compose.mainClock.advanceTimeBy(2_500)
+        compose.waitForIdle()
+        assertFramesStop(frames)
+    }
+
+    private fun assertFramesResume(frames: AtomicInteger) {
+        val before = frames.get()
+        compose.mainClock.advanceTimeBy(2_500)
+        compose.waitForIdle()
+        assertTrue("Active decoration must request frames again", frames.get() > before)
+    }
+
+    private fun changedRatio(a: Bitmap, b: Bitmap, left: Int, right: Int, top: Int, bottom: Int): Float {
+        var changed = 0
+        var samples = 0
+        for (y in top until bottom) for (x in left until right) {
+            if (rgbDelta(a.getPixel(x, y), b.getPixel(x, y)) >= 12) changed++
+            samples++
+        }
+        assertTrue("Sample region must not be empty", samples > 0)
+        return changed.toFloat() / samples
     }
 
     private fun capture(): Bitmap = compose.onNodeWithTag("assistant_host")
@@ -253,7 +320,12 @@ class AssistantNeuralParticleFieldTest {
 }
 
 @androidx.compose.runtime.Composable
-private fun Specimen(forceFallback: Boolean = false) {
+private fun Specimen(
+    forceFallback: Boolean = false,
+    active: Boolean = true,
+    idleTimeoutMillis: Long? = null,
+    fadeSpec: ParticleFadeSpec = ParticleFadeSpec(),
+) {
     // Mirrors the production AssistantOverlay host: the full-size box hosts the particle field
     // around the card rect the card reports, so the band escapes the card's own bounds.
     var cardBoundsInRoot by remember { mutableStateOf<Rect?>(null) }
@@ -268,7 +340,10 @@ private fun Specimen(forceFallback: Boolean = false) {
                 color = Color.White,
                 enabled = LocalNeuralExpressiveEnabled.current,
                 capsuleInset = null,
-                forceFallback = forceFallback
+                forceFallback = forceFallback,
+                active = active,
+                idleTimeoutMillis = idleTimeoutMillis,
+                fadeSpec = fadeSpec
             )
     ) {
         AssistantOverlayContent(
