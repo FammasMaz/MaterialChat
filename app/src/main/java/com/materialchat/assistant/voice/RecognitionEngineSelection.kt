@@ -23,7 +23,8 @@ internal data class RecognitionServiceCandidate(
 )
 
 /**
- * Ranks recognizer engines by transcription quality, never alphabetically.
+ * Ranks recognizer engines by transcription quality, never alphabetically. A usable external
+ * configured default wins (except Android System Intelligence's on-device model).
  *
  * While MaterialChat is the default assistant, Android points `voice_recognition_service` at the
  * assistant's own declared recognitionService (a component inside this package), so the
@@ -62,8 +63,10 @@ internal const val GOOGLE_SPEECH_SERVICES_PACKAGE = "com.google.android.tts"
 internal const val ANDROID_SYSTEM_INTELLIGENCE_PACKAGE = "com.google.android.as"
 
 private fun recognitionQualityRank(candidate: RecognitionServiceCandidate, configured: String?): Int = when {
-    candidate.packageName == GOOGLE_APP_PACKAGE -> 0
-    candidate.component == configured -> 1
+    // A usable external default is an explicit system/user choice. While MaterialChat is the
+    // assistant the default points into our own package and is already filtered out.
+    candidate.component == configured && candidate.packageName != ANDROID_SYSTEM_INTELLIGENCE_PACKAGE -> 0
+    candidate.packageName == GOOGLE_APP_PACKAGE -> 1
     candidate.packageName == GOOGLE_SPEECH_SERVICES_PACKAGE -> 2
     candidate.packageName == ANDROID_SYSTEM_INTELLIGENCE_PACKAGE -> 5
     candidate.systemApp -> 3

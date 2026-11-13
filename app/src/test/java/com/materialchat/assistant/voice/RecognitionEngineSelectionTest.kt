@@ -64,8 +64,11 @@ class RecognitionEngineSelectionTest {
     @Test fun withoutGoogleAppSpeechServicesBeatsOnDeviceSystemIntelligence() {
         assertEquals(speechServices, select(ownDeclaredDefault, systemIntelligence, speechServices))
     }
-    @Test fun googleAppBeatsAThirdPartyConfiguredDefault() {
-        assertEquals(googleApp, select(other.component, other, googleApp))
+    @Test fun usableExternalConfiguredDefaultBeatsGoogleApp() {
+        assertEquals(other, select(other.component, other, googleApp))
+    }
+    @Test fun configuredOnDeviceSystemIntelligenceDoesNotBeatGoogleApp() {
+        assertEquals(googleApp, select(systemIntelligence.component, systemIntelligence, googleApp))
     }
     @Test fun userChosenEngineOverridesRanking() {
         assertEquals(speechServices, selectRecognitionService(

@@ -47,10 +47,10 @@ sdk=$(adb shell getprop ro.build.version.sdk | tr -d '\r')
 if [ "$sdk" -ge 33 ]; then expected_painter=runtime; else expected_painter=static; fi
 for attempt in $(seq 1 20); do
   adb logcat -d > "$out/logcat-particles.txt"
-  if grep -q "NeuralParticles painter=$expected_painter" "$out/logcat-particles.txt"; then break; fi
+  if grep -q "NeuralParticles: painter=$expected_painter" "$out/logcat-particles.txt"; then break; fi
   sleep 1
 done
-grep -q "NeuralParticles painter=$expected_painter" "$out/logcat-particles.txt"
+grep -q "NeuralParticles: painter=$expected_painter" "$out/logcat-particles.txt"
 grep "NeuralParticles" "$out/logcat-particles.txt" | tail -5 | tee "$out/particle-painter.txt"
 
 # Two raw frames prove the field is live around the real card: on API 33+ the AGSL
