@@ -93,4 +93,14 @@ class AssistantKeyboardSpacingTest {
             Regex("""b\[3\]\s*<=\s*top""").containsMatchIn(source)
         )
     }
+
+    @Test
+    fun `ime insets drive spacing only from api 30 where the session window delivers them`() {
+        // Regression: API 26 hosted gate showed the keyboard covering the card when the
+        // IME-inset path ran on a window that receives no IME inset below API 30.
+        org.junit.Assert.assertFalse(AssistantKeyboardSpacing.usesImeInsets(26))
+        org.junit.Assert.assertFalse(AssistantKeyboardSpacing.usesImeInsets(29))
+        org.junit.Assert.assertTrue(AssistantKeyboardSpacing.usesImeInsets(30))
+        org.junit.Assert.assertTrue(AssistantKeyboardSpacing.usesImeInsets(35))
+    }
 }

@@ -40,6 +40,12 @@ import com.materialchat.ui.components.seaglass.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalView
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.mutableIntStateOf
+import android.graphics.Rect as AndroidRect
+import android.os.Build
+import android.view.ViewTreeObserver
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.navigationBars
@@ -109,10 +115,38 @@ fun AssistantOverlay(
     // full-height host. Reserving the IME's own height keeps the card directly above the keyboard,
     // and the navigation bar is the only obstruction left once it closes. The IME covers the
     // navigation bar, so the two are alternatives rather than additive.
-    val bottomObstructionPx = AssistantKeyboardSpacing.bottomPaddingPx(
+    val insetObstructionPx = AssistantKeyboardSpacing.bottomPaddingPx(
         imeBottomPx = WindowInsets.ime.getBottom(density),
         navigationBarBottomPx = WindowInsets.navigationBars.getBottom(density)
     )
+    // API 26-29 deliver no IME inset to this ADJUST_RESIZE session window, so keep the legacy
+    // measurement there (proven by the hosted API 26 gate): the host's overlap with the visible
+    // display frame. API 30+ uses the IME inset above, because on modern devices the legacy frame
+    // over-reported the keyboard and pushed the card to the top of the screen.
+    val host = LocalView.current
+    var legacyObstructionPx by remember(host) { mutableIntStateOf(0) }
+    if (!AssistantKeyboardSpacing.usesImeInsets(Build.VERSION.SDK_INT)) {
+        DisposableEffect(host) {
+            val frame = AndroidRect()
+            val location = IntArray(2)
+            val listener = ViewTreeObserver.OnGlobalLayoutListener {
+                host.getWindowVisibleDisplayFrame(frame)
+                host.getLocationOnScreen(location)
+                legacyObstructionPx = (location[1] + host.height - frame.bottom)
+                    .coerceIn(0, host.height)
+            }
+            host.viewTreeObserver.addOnGlobalLayoutListener(listener)
+            listener.onGlobalLayout()
+            onDispose {
+                if (host.viewTreeObserver.isAlive) {
+                    host.viewTreeObserver.removeOnGlobalLayoutListener(listener)
+                }
+            }
+        }
+    }
+    val bottomObstructionPx =
+        if (AssistantKeyboardSpacing.usesImeInsets(Build.VERSION.SDK_INT)) insetObstructionPx
+        else legacyObstructionPx
 
     // The session has its own composition; propagate the same saved appearance as the activity.
     val themeMode by viewModel.appPreferences.themeMode.collectAsStateWithLifecycle(

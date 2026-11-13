@@ -32,4 +32,11 @@ internal object AssistantKeyboardSpacing {
      */
     fun bottomPaddingPx(imeBottomPx: Int, navigationBarBottomPx: Int): Int =
         maxOf(imeBottomPx, navigationBarBottomPx, 0)
+
+    /**
+     * API 30+ reports the IME as a WindowInsets.ime inset of the non-resizing session window.
+     * API 26-29 do not deliver an IME inset to this window, so they resize it instead and measure
+     * the remaining overlap from the visible display frame.
+     */
+    fun usesImeInsets(sdkInt: Int): Boolean = sdkInt >= 30
 }
