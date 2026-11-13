@@ -98,6 +98,10 @@ class AssistantNeuralParticleFieldTest {
             }
             compose.runOnIdle { enabled.value = false }
             compose.waitForIdle()
+            // The expand click leaves a platform ripple fading on the button inside the card; it
+            // runs on the RenderThread, outside the Compose test clock, and otherwise differs
+            // between the two captures (hosted run 43440221939: every in-card delta was darker).
+            awaitStableCapture()
             val plainBounds = compose.onNodeWithTag("assistant_sheet").fetchSemanticsNode().boundsInRoot
             val plain = capture()
             compose.runOnIdle { enabled.value = true }
@@ -159,6 +163,7 @@ class AssistantNeuralParticleFieldTest {
         val motion = mutableStateOf(true)
         val frames = AtomicInteger()
         var tileReady = false
+        var painterKind: NeuralParticlePainterKind? = null
         lateinit var owner: TestOwner
         compose.setContent {
             owner = remember { TestOwner() }
@@ -168,6 +173,7 @@ class AssistantNeuralParticleFieldTest {
                     LocalNeuralParticleRenderControl provides NeuralParticleRenderControl(
                         motionEnabled = motion.value,
                         onFrame = { frames.incrementAndGet() },
+                        onPainterResolved = { painterKind = it },
                         onTileReady = { tileReady = true }
                     )
                 ) { Specimen() }
@@ -178,6 +184,12 @@ class AssistantNeuralParticleFieldTest {
         compose.mainClock.autoAdvance = false
         compose.mainClock.advanceTimeBy(2_000)
         compose.waitForIdle()
+        if (painterKind != NeuralParticlePainterKind.Runtime) {
+            // The static painter (below API 33 or AGSL failure) draws once and never animates.
+            assertEquals("The static painter must never request particle frames", 0, frames.get())
+            assertFramesStop(frames)
+            return
+        }
         assertTrue("The live field must request frames before the gates are exercised", frames.get() > 0)
         // Devices with animations globally disabled or power saver on correctly emit no frames;
         // the JVM gate tests cover those branches exhaustively.
@@ -203,6 +215,20 @@ class AssistantNeuralParticleFieldTest {
 
     private fun capture(): Bitmap = compose.onNodeWithTag("assistant_host")
         .captureToImage().asAndroidBitmap()
+
+    /** Waits (real time) until two consecutive captures are identical. */
+    private fun awaitStableCapture() {
+        var previous = capture()
+        val deadline = System.currentTimeMillis() + 5_000
+        while (System.currentTimeMillis() < deadline) {
+            Thread.sleep(150)
+            compose.waitForIdle()
+            val next = capture()
+            if (next.sameAs(previous)) return
+            previous = next
+        }
+        throw AssertionError("Assistant host never reached a stable frame")
+    }
 
     private fun saveEvidence(name: String, bitmap: Bitmap) {
         val instrumentation = InstrumentationRegistry.getInstrumentation()

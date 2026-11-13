@@ -48,7 +48,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
-import androidx.lifecycle.findViewTreeLifecycleOwner
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
@@ -103,20 +103,22 @@ fun Modifier.neuralParticleField(
     }
     val latestActivation by rememberUpdatedState(activation)
     val latestColor by rememberUpdatedState(color)
-    var started by remember(view) { mutableStateOf(false) }
+    // The composition's lifecycle owner, not the view tree's: it defaults to the window owner
+    // but honours an overriding provider, so a host that stops its content stops the frame loop.
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+    var started by remember(view, lifecycle) { mutableStateOf(false) }
     var powerSave by remember(context) {
         mutableStateOf(context.getSystemService(PowerManager::class.java)?.isPowerSaveMode == true)
     }
     var animationScale by remember(context) { mutableStateOf(readAnimationScale(context)) }
-    DisposableEffect(view) {
-        val lifecycle = view.findViewTreeLifecycleOwner()?.lifecycle
+    DisposableEffect(view, lifecycle) {
         fun update() {
-            started = lifecycle?.currentState?.isAtLeast(Lifecycle.State.STARTED) ?: view.isShown
+            started = lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)
         }
         val observer = LifecycleEventObserver { _, _ -> update() }
-        lifecycle?.addObserver(observer)
+        lifecycle.addObserver(observer)
         update()
-        onDispose { lifecycle?.removeObserver(observer) }
+        onDispose { lifecycle.removeObserver(observer) }
     }
     DisposableEffect(context) {
         val receiver = object : BroadcastReceiver() {
