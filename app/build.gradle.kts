@@ -53,8 +53,8 @@ android {
         applicationId = "com.materialchat"
         minSdk = 26
         targetSdk = 36
-        versionCode = 173
-        versionName = "2.29.25"
+        versionCode = 174
+        versionName = "2.29.26"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 

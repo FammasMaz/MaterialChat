@@ -102,7 +102,6 @@ import com.materialchat.ui.theme.ExpressiveShapeToken
 import com.materialchat.ui.theme.LocalChatButtonShape
 import com.materialchat.ui.theme.MaterialChatMotion
 import com.materialchat.ui.theme.expressiveControlShape
-import com.materialchat.ui.theme.neuralExpressiveGlow
 import com.materialchat.ui.theme.toExpressiveShapeToken
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -315,7 +314,7 @@ fun MessageInput(
             }
 
             Surface(
-                modifier = pillModifier.neuralExpressiveGlow(cornerRadius = 999.dp),
+                modifier = pillModifier,
                 shape = CustomShapes.MessageInputContainer,
                 color = MaterialTheme.colorScheme.surfaceContainerHighest,
                 // Match FAB elevation so the morph does not pop flat after landing.

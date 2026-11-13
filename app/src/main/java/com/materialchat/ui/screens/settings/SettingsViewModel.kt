@@ -1003,7 +1003,7 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
-    /** Enables the soft glowing boundary around floating surfaces. */
+    /** Enables the particle field around the assistant window. */
     fun updateNeuralExpressive(enabled: Boolean) {
         viewModelScope.launch {
             try {

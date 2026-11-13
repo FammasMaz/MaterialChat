@@ -132,6 +132,9 @@ fun isDynamicColorSupported(): Boolean = Build.VERSION.SDK_INT >= Build.VERSION_
  * @param content The composable content to apply the theme to
  */
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
+/** Assistant-window particle decoration preference (Settings → Appearance). */
+val LocalNeuralExpressiveEnabled = staticCompositionLocalOf { true }
+
 @Composable
 fun MaterialChatTheme(
     themeMode: AppPreferences.ThemeMode = AppPreferences.ThemeMode.SYSTEM,
