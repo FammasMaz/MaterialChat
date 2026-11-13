@@ -18,19 +18,19 @@ import androidx.compose.ui.unit.dp
  */
 val MaterialChatShapes = Shapes(
     // Extra small - chips, small badges (M3 Expressive: 4dp)
-    extraSmall = RoundedCornerShape(4.dp),
+    extraSmall = RoundedCornerShape(6.dp),
 
     // Small - buttons, text fields (M3 Expressive: 8dp)
-    small = RoundedCornerShape(8.dp),
+    small = RoundedCornerShape(12.dp),
 
     // Medium - cards, dialogs (smooth 16dp containers)
-    medium = RoundedCornerShape(16.dp),
+    medium = RoundedCornerShape(18.dp),
 
     // Large - bottom sheets, navigation drawers, list cards
-    large = RoundedCornerShape(24.dp),
+    large = RoundedCornerShape(26.dp),
 
     // Extra large - full-screen dialogs, hero containers, page sheets
-    extraLarge = RoundedCornerShape(32.dp)
+    extraLarge = RoundedCornerShape(34.dp)
 )
 
 /**

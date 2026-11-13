@@ -326,6 +326,7 @@ fun SettingsScreen(
     val onChatBubbleStyleChange = remember(viewModel) { { style: AppPreferences.ChatBubbleStyle -> viewModel.updateChatBubbleStyle(style) } }
     val onControlShapeStyleChange = remember(viewModel) { { style: AppPreferences.ControlShapeStyle -> viewModel.updateControlShapeStyle(style) } }
     val onDynamicColorChange = remember(viewModel) { { enabled: Boolean -> viewModel.updateDynamicColorEnabled(enabled) } }
+    val onPitchBlackChange = remember(viewModel) { { enabled: Boolean -> viewModel.updatePitchBlackDark(enabled) } }
     val onHapticsChange = remember(viewModel) { { enabled: Boolean -> viewModel.updateHapticsEnabled(enabled) } }
     val onFontSizeScaleChange = remember(viewModel) { { scale: Float -> viewModel.updateFontSizeScale(scale) } }
     val onNotificationsChange = remember(context, notificationPermissionLauncher, viewModel) {
@@ -456,6 +457,7 @@ fun SettingsScreen(
             onChatBubbleStyleChange = onChatBubbleStyleChange,
             onControlShapeStyleChange = onControlShapeStyleChange,
             onDynamicColorChange = onDynamicColorChange,
+            onPitchBlackChange = onPitchBlackChange,
             onHapticsChange = onHapticsChange,
             onFontSizeScaleChange = onFontSizeScaleChange,
             onNotificationsChange = onNotificationsChange,
@@ -653,6 +655,7 @@ private fun SettingsContent(
     onChatBubbleStyleChange: (AppPreferences.ChatBubbleStyle) -> Unit,
     onControlShapeStyleChange: (AppPreferences.ControlShapeStyle) -> Unit,
     onDynamicColorChange: (Boolean) -> Unit,
+    onPitchBlackChange: (Boolean) -> Unit,
     onHapticsChange: (Boolean) -> Unit,
     onFontSizeScaleChange: (Float) -> Unit,
     onNotificationsChange: (Boolean) -> Unit,
@@ -727,6 +730,7 @@ private fun SettingsContent(
                     onChatBubbleStyleChange = onChatBubbleStyleChange,
                     onControlShapeStyleChange = onControlShapeStyleChange,
                     onDynamicColorChange = onDynamicColorChange,
+                    onPitchBlackChange = onPitchBlackChange,
                     onHapticsChange = onHapticsChange,
                     onFontSizeScaleChange = onFontSizeScaleChange,
                     onNotificationsChange = onNotificationsChange,
@@ -807,6 +811,7 @@ private fun SuccessContent(
     onChatBubbleStyleChange: (AppPreferences.ChatBubbleStyle) -> Unit,
     onControlShapeStyleChange: (AppPreferences.ControlShapeStyle) -> Unit,
     onDynamicColorChange: (Boolean) -> Unit,
+    onPitchBlackChange: (Boolean) -> Unit,
     onHapticsChange: (Boolean) -> Unit,
     onFontSizeScaleChange: (Float) -> Unit,
     onNotificationsChange: (Boolean) -> Unit,
@@ -967,6 +972,16 @@ private fun SuccessContent(
                 DynamicColorToggle(
                     enabled = uiState.dynamicColorEnabled,
                     onToggle = onDynamicColorChange
+                )
+            }
+        }
+
+        // True black surfaces in dark mode, as on OLED panels
+        if (uiState.themeMode != AppPreferences.ThemeMode.LIGHT) {
+            item {
+                PitchBlackToggle(
+                    enabled = uiState.pitchBlackDark,
+                    onToggle = onPitchBlackChange
                 )
             }
         }
@@ -2044,6 +2059,48 @@ private fun previewBubbleShape(
             RoundedCornerShape(18.dp, 4.dp, 18.dp, 10.dp)
         } else {
             RoundedCornerShape(4.dp, 18.dp, 10.dp, 18.dp)
+        }
+    }
+}
+
+@Composable
+private fun PitchBlackToggle(
+    enabled: Boolean,
+    onToggle: (Boolean) -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag("pitch-black-toggle"),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+        ),
+        shape = RoundedCornerShape(24.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "Pitch black dark mode",
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = "Uses true black surfaces in dark mode for OLED screens",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            ExpressiveSwitch(
+                checked = enabled,
+                onCheckedChange = onToggle,
+                modifier = Modifier.testTag("pitch-black-switch")
+            )
         }
     }
 }

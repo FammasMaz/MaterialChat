@@ -84,6 +84,7 @@ class AppPreferences(private val context: Context) {
         val ALWAYS_SHOW_THINKING = booleanPreferencesKey("always_show_thinking")
         val SHOW_TOKEN_COUNTER = booleanPreferencesKey("show_token_counter")
         val FONT_SIZE_SCALE = stringPreferencesKey("font_size_scale")
+        val PITCH_BLACK_DARK = booleanPreferencesKey("pitch_black_dark")
         // Web search settings
         val WEB_SEARCH_ENABLED = booleanPreferencesKey("web_search_enabled")
         val WEB_SEARCH_PROVIDER = stringPreferencesKey("web_search_provider")
@@ -163,6 +164,7 @@ class AppPreferences(private val context: Context) {
         val DEFAULT_CONTROL_SHAPE_STYLE = ControlShapeStyle.BALANCED
         val DEFAULT_COMPONENT_BUTTON_SHAPE = ComponentButtonShape.SYSTEM
         const val DEFAULT_DYNAMIC_COLOR_ENABLED = true
+        const val DEFAULT_PITCH_BLACK_DARK = false
         const val DEFAULT_HAPTICS_ENABLED = true
         const val DEFAULT_NOTIFICATIONS_ENABLED = false
         const val DEFAULT_AI_GENERATED_TITLES_ENABLED = true
@@ -735,6 +737,19 @@ class AppPreferences(private val context: Context) {
     val assistantVoiceEnabled: Flow<Boolean> = dataStore.data.map { preferences ->
         preferences[Keys.ASSISTANT_VOICE_ENABLED] ?: true
     }.distinctUntilChanged()
+
+    /**
+     * Pitch-black surfaces for dark mode, as on OLED panels.
+     */
+    val pitchBlackDark: Flow<Boolean> = dataStore.data.map { preferences ->
+        preferences[Keys.PITCH_BLACK_DARK] ?: DEFAULT_PITCH_BLACK_DARK
+    }.distinctUntilChanged()
+
+    suspend fun setPitchBlackDark(enabled: Boolean) {
+        dataStore.edit { preferences ->
+            preferences[Keys.PITCH_BLACK_DARK] = enabled
+        }
+    }
 
     /**
      * Set whether voice input is enabled for the assistant.

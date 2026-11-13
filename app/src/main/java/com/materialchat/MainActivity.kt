@@ -155,6 +155,9 @@ class MainActivity : ComponentActivity() {
             val chatFontSizeScale by appPreferences.fontSizeScale.collectAsState(
                 initial = AppPreferences.DEFAULT_FONT_SIZE_SCALE_VALUE
             )
+            val pitchBlackDark by appPreferences.pitchBlackDark.collectAsState(
+                initial = AppPreferences.DEFAULT_PITCH_BLACK_DARK
+            )
 
             MaterialChatTheme(
                 themeMode = themeMode,
@@ -165,7 +168,8 @@ class MainActivity : ComponentActivity() {
                 mainButtonShape = mainButtonShape,
                 chatButtonShape = chatButtonShape,
                 navigationHapticsEnabled = hapticsEnabled && navigationHapticsEnabled,
-                gestureHapticsEnabled = hapticsEnabled && gestureHapticsEnabled
+                gestureHapticsEnabled = hapticsEnabled && gestureHapticsEnabled,
+                pitchBlack = pitchBlackDark
             ) {
                 // Provide chat-specific font size via CompositionLocal
                 CompositionLocalProvider(
