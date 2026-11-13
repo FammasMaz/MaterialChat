@@ -7,6 +7,8 @@ import android.os.Build
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.materialchat.assistant.service.AssistantBindingDetector
+import com.materialchat.assistant.service.AssistantRebinder
+import com.materialchat.assistant.service.RebindResult
 import com.materialchat.assistant.service.AssistantBindingStatus
 import com.materialchat.data.auth.NativeAuthCredential
 import com.materialchat.data.auth.NativeAuthManager
@@ -57,6 +59,7 @@ class SettingsViewModel @Inject constructor(
     private val monetizationManager: MonetizationManager,
     private val backupRepository: BackupRepository,
     private val assistantBindingDetector: AssistantBindingDetector,
+    private val assistantRebinder: AssistantRebinder,
     @ApplicationContext private val context: Context
 ) : ViewModel() {
 
@@ -117,9 +120,18 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
-    /** Re-asserting the assistant selection is what makes Android rebuild its binding. */
+    /** Repairs the binding silently; only falls back to the system picker if that fails. */
     fun reconnectAssistant() {
         viewModelScope.launch {
+            val repaired = runCatching { assistantRebinder.rebindIfNeeded() }
+                .getOrDefault(RebindResult.StillDisconnected)
+            if (repaired == RebindResult.Reconnected || repaired == RebindResult.AlreadyConnected) {
+                refreshAssistantBinding()
+                _events.emit(
+                    SettingsEvent.ShowSnackbar(message = "Assistant reconnected")
+                )
+                return@launch
+            }
             runCatching {
                 val intent = assistantBindingDetector.reconnectIntent()
                 intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
@@ -199,13 +211,15 @@ class SettingsViewModel @Inject constructor(
                         appPreferences.dynamicColorEnabled,
                         appPreferences.themePalette,
                         appPreferences.chatBubbleStyle,
-                        appPreferences.controlShapeStyle
-                    ) { dynamicColorEnabled, themePalette, chatBubbleStyle, controlShapeStyle ->
+                        appPreferences.controlShapeStyle,
+                        appPreferences.pitchBlackDark
+                    ) { dynamicColorEnabled, themePalette, chatBubbleStyle, controlShapeStyle, pitchBlackDark ->
                         AppearancePrefs(
                             dynamicColorEnabled,
                             themePalette,
                             chatBubbleStyle,
-                            controlShapeStyle
+                            controlShapeStyle,
+                            pitchBlackDark
                         )
                     },
                     combine(
@@ -262,6 +276,7 @@ class SettingsViewModel @Inject constructor(
                         themePalette = appearancePrefs.themePalette,
                         chatBubbleStyle = appearancePrefs.chatBubbleStyle,
                         controlShapeStyle = appearancePrefs.controlShapeStyle,
+                        pitchBlackDark = appearancePrefs.pitchBlackDark,
                         hapticsEnabled = toggles.haptics,
                         notificationsEnabled = toggles.notifications,
                         aiGeneratedTitlesEnabled = toggles.aiTitles,
@@ -347,6 +362,7 @@ class SettingsViewModel @Inject constructor(
                         themePalette = data.themePalette,
                         chatBubbleStyle = data.chatBubbleStyle,
                         controlShapeStyle = data.controlShapeStyle,
+                        pitchBlackDark = data.pitchBlackDark,
                         dynamicColorEnabled = data.dynamicColorEnabled,
                         isDynamicColorSupported = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S,
                         hapticsEnabled = data.hapticsEnabled,
@@ -979,6 +995,19 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
+    /** Enables true-black surfaces in dark mode. */
+    fun updatePitchBlackDark(enabled: Boolean) {
+        viewModelScope.launch {
+            try {
+                appPreferences.setPitchBlackDark(enabled)
+            } catch (e: Exception) {
+                _events.emit(SettingsEvent.ShowSnackbar(
+                    message = "Failed to save theme setting"
+                ))
+            }
+        }
+    }
+
     /**
      * Updates the haptic feedback setting.
      */
@@ -1407,6 +1436,7 @@ class SettingsViewModel @Inject constructor(
         val themePalette: AppPreferences.ThemePalette,
         val chatBubbleStyle: AppPreferences.ChatBubbleStyle,
         val controlShapeStyle: AppPreferences.ControlShapeStyle,
+        val pitchBlackDark: Boolean = false,
         val hapticsEnabled: Boolean,
         val notificationsEnabled: Boolean,
         val aiGeneratedTitlesEnabled: Boolean,
@@ -1438,7 +1468,8 @@ class SettingsViewModel @Inject constructor(
         val dynamicColorEnabled: Boolean,
         val themePalette: AppPreferences.ThemePalette,
         val chatBubbleStyle: AppPreferences.ChatBubbleStyle,
-        val controlShapeStyle: AppPreferences.ControlShapeStyle
+        val controlShapeStyle: AppPreferences.ControlShapeStyle,
+        val pitchBlackDark: Boolean
     )
 
     /**

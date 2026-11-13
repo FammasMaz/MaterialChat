@@ -85,6 +85,15 @@
                 android:resource="@xml/file_paths" />
         </provider>
 
+        <!-- Android drops its assistant binding on update; repair it without user action. -->
+        <receiver
+            android:name=".assistant.service.AssistantRebindReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
+
         <service
             android:name=".notifications.ImageGenerationForegroundService"
             android:exported="false"
