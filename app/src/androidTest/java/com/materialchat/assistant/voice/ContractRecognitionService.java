@@ -24,7 +24,10 @@ public final class ContractRecognitionService extends RecognitionService {
                 && !intent.hasExtra(
                         RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS);
         if (!valid) {
-            listener.error(SpeechRecognizer.ERROR_CLIENT);
+            try {
+                listener.error(SpeechRecognizer.ERROR_CLIENT);
+            } catch (android.os.RemoteException ignored) {
+            }
             return;
         }
         try {
