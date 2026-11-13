@@ -1,5 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- The test package runs the fixture RecognitionService in-process; the base class checks
+         RECORD_AUDIO against ITS OWN context on the direct-bind path (API < 31), so the test
+         package must declare and hold the permission too. -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <application>
         <!-- Test-only external engine. Never packaged in the shipped app. -->
         <service

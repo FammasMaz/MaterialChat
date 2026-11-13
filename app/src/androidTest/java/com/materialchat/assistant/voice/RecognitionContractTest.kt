@@ -41,10 +41,7 @@ class RecognitionContractTest {
         val original = shell("settings get secure voice_recognition_service").trim()
         try {
             shell("settings put secure voice_recognition_service $component")
-            // pm grant is unreliable on some emulator images; the UiAutomation binder call is synchronous.
-            instrumentation.uiAutomation.grantRuntimePermission(
-                context.packageName, android.Manifest.permission.RECORD_AUDIO
-            )
+            grantMicrophone()
             val report = recognitionEngineReport(context)
             assertEquals("Production resolution must select the installed external fixture", component, report.selectedComponent)
             val manager = SpeechRecognitionManager(context)
@@ -60,6 +57,28 @@ class RecognitionContractTest {
             else shell("settings put secure voice_recognition_service $original")
             // Do not revoke a runtime permission in-process: Android kills the target UID.
             // The hosted runner uninstalls this disposable test target after instrumentation.
+        }
+    }
+
+    /**
+     * Both packages need RECORD_AUDIO: the app is the recognizer caller, and on the direct-bind
+     * path (API < 31) the fixture service's base class checks the permission against the TEST
+     * package's own context. grantRuntimePermission(String, String) only exists from API 28.
+     */
+    private fun grantMicrophone() {
+        val packages = listOf(instrumentation.targetContext.packageName, instrumentation.context.packageName).distinct()
+        for (packageName in packages) {
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+                instrumentation.uiAutomation.grantRuntimePermission(packageName, android.Manifest.permission.RECORD_AUDIO)
+            } else {
+                shell("pm grant $packageName android.permission.RECORD_AUDIO")
+            }
+        }
+        for (packageName in packages) {
+            val granted = instrumentation.context.packageManager
+                .checkPermission(android.Manifest.permission.RECORD_AUDIO, packageName) ==
+                android.content.pm.PackageManager.PERMISSION_GRANTED
+            assertTrue("pm grant did not take effect for $packageName", granted)
         }
     }
 
