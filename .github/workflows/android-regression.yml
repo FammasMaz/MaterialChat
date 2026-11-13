@@ -66,7 +66,7 @@ jobs:
           disable-animations: false
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -camera-front none
           script: |
-            ./gradlew :app:connectedGithubDebugAndroidTest --no-daemon --max-workers=2 -Pkotlin.compiler.execution.strategy=in-process -Dorg.gradle.jvmargs=-Xmx2g -Pandroid.testInstrumentationRunnerArguments.class=com.materialchat.util.AttachmentImporterTest,com.materialchat.util.GeneratedImageActionsTest,com.materialchat.data.repository.ConversationAttachmentCleanupTest,com.materialchat.ui.screens.chat.ChatViewModelAttachmentCleanupTest,com.materialchat.assistant.service.MaterialChatVoiceInteractionSessionTest
+            ./gradlew :app:connectedGithubDebugAndroidTest --no-daemon --max-workers=2 -Pkotlin.compiler.execution.strategy=in-process -Dorg.gradle.jvmargs=-Xmx2g -Pandroid.testInstrumentationRunnerArguments.class=com.materialchat.util.AttachmentImporterTest,com.materialchat.util.GeneratedImageActionsTest,com.materialchat.data.repository.ConversationAttachmentCleanupTest,com.materialchat.ui.screens.chat.ChatViewModelAttachmentCleanupTest,com.materialchat.assistant.service.MaterialChatVoiceInteractionSessionTest,com.materialchat.assistant.voice.RecognitionContractTest,com.materialchat.assistant.ui.AssistantNeuralExpressiveTest
             bash scripts/check-assistant-window.sh test-evidence/assistant
 
 
@@ -87,5 +87,6 @@ jobs:
             test-evidence/
             app/build/reports/androidTests/
             app/build/outputs/androidTest-results/
+            app/build/outputs/connected_android_test_additional_output/
             app/build/reports/tests/testGithubDebugUnitTest/
             app/build/test-results/testGithubDebugUnitTest/

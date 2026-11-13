@@ -1,22 +1,34 @@
 # Assistant correction status
 
-Updated: 2026-11-12
+Updated: 2026-11-13T10:00:15Z
 
-## Current changes
+## Current goal
 
-- Recognition prefers Android's configured service rather than forcing on-device recognition. This does not establish Gemini/Gboard accuracy parity.
-- Finish-speaking preserves final results; cancellation rejects stale callbacks. Stop exceptions and an eight-second final-result deadline terminate cleanly.
-- Automatic listening is consumed once per visible invocation, with permission and preference checks repeated across suspended loading. Hide invalidates pending startup.
-- Keyboard spacing reserves only obstruction remaining inside the measured host. The hosted check measures the sheet edge in density-adjusted units and requires three stable valid samples.
+Repair the reported loss of speech input and missing neural-expressive assistant decoration. Deliver the correction through GitHub, not only local commits.
+
+## Timeline and findings
+
+- v2.29.18 changed recognition requests and selection. v2.29.19 added the first edge decoration. The user reports speech input now fails entirely and assistant decoration is absent.
+- Source review proved the language-switch extra used a Boolean where Android requires a sensitivity string. Visibility of some installed recognizer does not validate the configured default. Earlier claims that the entire assistant-metadata/default-recognizer chain was proved were too strong.
+- The original decoration used hardware-sensitive blur behind the opaque assistant card; the separate assistant composition also omitted saved pitch-black/neural preferences.
+
+## Correction written
+
+- Validate installed recognition-service candidates and use the explicit-component Android factory. Prefer a valid configured component, then a deterministic external service. Do not modify the user's selected recognizer.
+- Bound initial startup to eight seconds, with at most one available on-device fallback before capture begins. Preserve final results after Stop and reject stale callbacks.
+- Use documented Android extra types. Multilingual switching is opt-in; the installed recognizer owns silence timing.
+- Propagate saved assistant appearance preferences. Draw a gradient halo and outward particles on an unclipped parent outside the opaque card. Preserve card bounds and keyboard spacing; stop decorative animation when hidden, reduced-motion or power-saving conditions apply.
 
 ## Verified locally
 
-243 JVM tests passed with zero failures, errors, or skips. Android instrumentation sources compile. Recognition tests cover stop completion, stop exceptions, missing final callbacks, repeated end-of-speech, replacement callbacks, delayed stop/cancel, and cancelled-collector cleanup. ViewModel tests cover once-only auto-listening, hide/loading races, permission denial and disabled voice input.
+271 JVM tests passed, zero failures/errors/skips. Production Kotlin and Android instrumentation tests compile. These tests do not establish phone transcription quality.
 
-## Independent review
+## Hosted acceptance added
 
-Sol/Upstage reviewers identified lifecycle, timeout and geometry-verification defects. Lifecycle ownership and recognition termination were revised with deterministic regression tests. Final rendered-window acceptance remains required.
+Android 26 and 35: real Android Intent/Bundle request types; production explicit-component binding to a deterministic test-only RecognitionService; compact/expanded production assistant card rendering with enabled/disabled screenshots; motion gates; actual system-assistant invocation and keyboard-edge geometry.
 
-## Outstanding
+The test service returns a known transcript and is not an acoustic recognition benchmark. Screenshot tests use production card content; the separate system-invocation check is still necessary to establish the actual assistant window.
 
-Hosted API 26/35 attached assistant-window checks have not yet verified these changes. Actual recognition accuracy and microphone startup using the phone's installed recognition service remain unverified. No corrective release has been published for these changes. Do not equate JVM tests or callback-only instrumentation with visible system-assistant acceptance.
+## Review and remaining work
+
+The initial independent review identified invalid default selection and missing startup bounds. A follow-up Sol/Upstage review failed because credentials were exhausted; no successful independent approval is claimed. Direct review and local checks completed. Hosted test execution, screenshot inspection, signed release, and actual phone transcription remain pending.
