@@ -2,10 +2,7 @@ package com.materialchat.assistant.voice
 
 import android.content.ComponentName
 import android.content.Intent
-import android.os.Bundle
-import android.speech.RecognitionService
 import android.speech.RecognizerIntent
-import android.speech.SpeechRecognizer
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import java.io.FileInputStream
@@ -43,8 +40,11 @@ class RecognitionContractTest {
             ContractRecognitionService::class.java.name).flattenToString()
         val original = shell("settings get secure voice_recognition_service").trim()
         try {
-            shell("pm grant ${context.packageName} android.permission.RECORD_AUDIO")
             shell("settings put secure voice_recognition_service $component")
+            // pm grant is unreliable on some emulator images; the UiAutomation binder call is synchronous.
+            instrumentation.uiAutomation.grantRuntimePermission(
+                context.packageName, android.Manifest.permission.RECORD_AUDIO
+            )
             val report = recognitionEngineReport(context)
             assertEquals("Production resolution must select the installed external fixture", component, report.selectedComponent)
             val manager = SpeechRecognitionManager(context)
@@ -67,26 +67,4 @@ class RecognitionContractTest {
         .executeShellCommand(command).use { descriptor ->
             FileInputStream(descriptor.fileDescriptor).bufferedReader().use { it.readText() }
         }
-}
-
-/** Deterministic contract fixture, not an acoustic transcription engine or accuracy benchmark. */
-class ContractRecognitionService : RecognitionService() {
-    override fun onStartListening(intent: Intent, listener: Callback) {
-        val valid = intent.action == RecognizerIntent.ACTION_RECOGNIZE_SPEECH &&
-            intent.getStringExtra(RecognizerIntent.EXTRA_LANGUAGE) == "en-US" &&
-            intent.getBooleanExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, false) &&
-            !intent.hasExtra(RecognizerIntent.EXTRA_ENABLE_LANGUAGE_SWITCH) &&
-            !intent.hasExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS)
-        if (!valid) {
-            listener.error(SpeechRecognizer.ERROR_CLIENT)
-            return
-        }
-        listener.readyForSpeech(Bundle())
-        listener.results(Bundle().apply {
-            putStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION,
-                arrayListOf("verified Android recognition request"))
-        })
-    }
-    override fun onStopListening(listener: Callback) = Unit
-    override fun onCancel(listener: Callback) = Unit
 }
