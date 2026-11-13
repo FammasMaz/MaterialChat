@@ -295,6 +295,10 @@ internal fun AssistantOverlayContent(
             .padding(horizontal = 12.dp, vertical = 8.dp)
             .heightIn(max = 600.dp)
             .offset { IntOffset(0, offsetY.roundToPx()) }
+            // The halo must draw OUTSIDE the entrance graphics layer: below API 28 that layer
+            // clips drawing beyond its bounds even with clip = false, leaving the decoration
+            // invisible. Drawing before the layer keeps card bounds and layout identical.
+            .neuralExpressiveGlow(cornerRadius = 32.dp)
             .graphicsLayer {
                 scaleX = sheetScale
                 scaleY = sheetScale
@@ -302,7 +306,6 @@ internal fun AssistantOverlayContent(
                 clip = false
                 compositingStrategy = CompositingStrategy.ModulateAlpha
             }
-            .neuralExpressiveGlow(cornerRadius = 32.dp)
     ) {
         Surface(
             modifier = Modifier
