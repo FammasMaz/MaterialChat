@@ -39,12 +39,10 @@ import androidx.compose.material3.MaterialTheme
 import com.materialchat.ui.components.seaglass.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.LocalDensity
-import android.graphics.Rect as AndroidRect
-import android.view.ViewTreeObserver
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.ime
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
@@ -106,28 +104,15 @@ fun AssistantOverlay(
     val showTrigger by viewModel.showTrigger.collectAsStateWithLifecycle()
 
     val context = LocalContext.current
-    val host = LocalView.current
     val density = LocalDensity.current
-    var bottomObstructionPx by remember(host) { mutableIntStateOf(0) }
-    // Both values are screen coordinates. A resized host already above the IME
-    // needs no additional padding; a full-height host reserves only its overlap.
-    DisposableEffect(host) {
-        val frame = AndroidRect()
-        val location = IntArray(2)
-        val listener = ViewTreeObserver.OnGlobalLayoutListener {
-            host.getWindowVisibleDisplayFrame(frame)
-            host.getLocationOnScreen(location)
-            bottomObstructionPx = (location[1] + host.height - frame.bottom)
-                .coerceIn(0, host.height)
-        }
-        host.viewTreeObserver.addOnGlobalLayoutListener(listener)
-        listener.onGlobalLayout()
-        onDispose {
-            if (host.viewTreeObserver.isAlive) {
-                host.viewTreeObserver.removeOnGlobalLayoutListener(listener)
-            }
-        }
-    }
+    // The session window never resizes for the IME, so the keyboard arrives as an inset of the
+    // full-height host. Reserving the IME's own height keeps the card directly above the keyboard,
+    // and the navigation bar is the only obstruction left once it closes. The IME covers the
+    // navigation bar, so the two are alternatives rather than additive.
+    val bottomObstructionPx = AssistantKeyboardSpacing.bottomPaddingPx(
+        imeBottomPx = WindowInsets.ime.getBottom(density),
+        navigationBarBottomPx = WindowInsets.navigationBars.getBottom(density)
+    )
 
     // The session has its own composition; propagate the same saved appearance as the activity.
     val themeMode by viewModel.appPreferences.themeMode.collectAsStateWithLifecycle(
@@ -308,7 +293,10 @@ internal fun AssistantOverlayContent(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 12.dp, vertical = 8.dp)
+            .padding(
+                horizontal = 12.dp,
+                vertical = AssistantKeyboardSpacing.GAP_DP.dp
+            )
             .heightIn(max = 600.dp)
             .offset { IntOffset(0, offsetY.roundToPx()) }
             .graphicsLayer {

@@ -156,7 +156,12 @@ class MaterialChatVoiceInteractionSession(
                         if (view.isAttachedToWindow) {
                             window.window?.let { attachedWindow ->
                                 val policy = attachedWindow.attributes
-                                policy.softInputMode = WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE
+                                // The session never resizes for the IME: Compose is the only
+                                // IME-inset owner. A resized window would double-count on
+                                // API 26-29, where the IME height is still reported as a
+                                // system window inset after the window has shrunk.
+                                policy.softInputMode =
+                                    WindowManager.LayoutParams.SOFT_INPUT_ADJUST_NOTHING
                                 if (android.os.Build.VERSION.SDK_INT >= 30) policy.setFitInsetsTypes(0)
                                 attachedWindow.attributes = policy
                                 view.requestApplyInsets()
