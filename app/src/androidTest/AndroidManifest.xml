@@ -5,11 +5,14 @@
          package must declare and hold the permission too. -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <application>
-        <!-- Test-only external engine. Never packaged in the shipped app. -->
+        <!-- Test-only external engine. Never packaged in the shipped app. No android:permission:
+             on API < 31 the old SpeechRecognizer binds the service DIRECTLY from the app process,
+             and an app cannot hold the signature-level BIND_SPEECH_RECOGNITION permission, so a
+             guarded fixture would fail to bind with SecurityException (surfacing as error 9).
+             The API 31+ path binds through system_server, which is unaffected. -->
         <service
             android:name="com.materialchat.assistant.voice.ContractRecognitionService"
-            android:exported="true"
-            android:permission="android.permission.BIND_SPEECH_RECOGNITION">
+            android:exported="true">
             <intent-filter>
                 <action android:name="android.speech.RecognitionService" />
             </intent-filter>
