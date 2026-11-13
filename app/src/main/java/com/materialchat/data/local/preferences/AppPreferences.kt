@@ -73,6 +73,7 @@ class AppPreferences(private val context: Context) {
         val VOICE_ANDROID_ID = stringPreferencesKey("assistant_voice_android_id")
         val VOICE_LANGUAGE = stringPreferencesKey("assistant_voice_language")
         val VOICE_RECOGNITION_LANGUAGE = stringPreferencesKey("assistant_voice_recognition_language")
+        val VOICE_RECOGNITION_ENGINE = stringPreferencesKey("assistant_voice_recognition_engine")
         val VOICE_RATE = floatPreferencesKey("assistant_voice_rate")
         val VOICE_GEMINI_MODEL = stringPreferencesKey("assistant_voice_gemini_model")
         val VOICE_GEMINI_VOICE = stringPreferencesKey("assistant_voice_gemini_voice")
@@ -688,6 +689,7 @@ class AppPreferences(private val context: Context) {
             androidVoiceId = p[Keys.VOICE_ANDROID_ID],
             languageTag = p[Keys.VOICE_LANGUAGE],
             recognitionLanguageTag = p[Keys.VOICE_RECOGNITION_LANGUAGE],
+            recognitionEngine = p[Keys.VOICE_RECOGNITION_ENGINE],
             speechRate = p[Keys.VOICE_RATE] ?: 1f,
             geminiModel = p[Keys.VOICE_GEMINI_MODEL].orEmpty(),
             geminiVoice = p[Keys.VOICE_GEMINI_VOICE].orEmpty()
@@ -707,6 +709,7 @@ class AppPreferences(private val context: Context) {
             optional(Keys.VOICE_ANDROID_ID, value.androidVoiceId)
             optional(Keys.VOICE_LANGUAGE, value.languageTag)
             optional(Keys.VOICE_RECOGNITION_LANGUAGE, value.recognitionLanguageTag)
+            optional(Keys.VOICE_RECOGNITION_ENGINE, value.recognitionEngine)
             p[Keys.VOICE_BACKEND] = value.backend.name
             p[Keys.VOICE_RATE] = value.speechRate
             p[Keys.VOICE_GEMINI_MODEL] = value.geminiModel

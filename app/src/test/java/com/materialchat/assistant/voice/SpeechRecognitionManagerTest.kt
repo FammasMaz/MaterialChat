@@ -36,7 +36,7 @@ class SpeechRecognitionManagerTest {
         var fallbackCalls = 0
         var creationFailure: RuntimeException? = null
         override fun isAvailable() = true
-        override fun createRecognizer(): SpeechRecognizer {
+        override fun createRecognizer(preferredComponent: String?): SpeechRecognizer {
             creationFailure?.let { throw it }
             return Engine().also { engines += it }.recognizer
         }

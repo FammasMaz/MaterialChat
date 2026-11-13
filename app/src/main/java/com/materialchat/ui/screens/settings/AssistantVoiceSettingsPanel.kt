@@ -16,6 +16,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.materialchat.assistant.voice.recognitionEngineReport
+import com.materialchat.assistant.voice.recognitionEngineLabel
 import com.materialchat.data.local.preferences.AssistantSpeechBackend
 import com.materialchat.domain.model.ReasoningEffort
 
@@ -92,13 +93,23 @@ fun AssistantVoiceSettingsPanel(viewModel: AssistantVoiceSettingsViewModel = hil
                     modifier = Modifier.fillMaxWidth()
                 )
                 Text("Blank follows the device language (${Locale.getDefault().toLanguageTag()}). The installed recognizer controls speech timing; automatic language switching is not required.")
-                val engineReport = remember { recognitionEngineReport(context) }
+                val engineReport = remember(draft.recognitionEngine) {
+                    recognitionEngineReport(context, draft.recognitionEngine)
+                }
+                if (engineReport.availableComponents.isNotEmpty()) {
+                    VoiceChoice(
+                        "Recognition engine",
+                        draft.recognitionEngine?.let(::recognitionEngineLabel) ?: "Automatic (best available)",
+                        listOf(null to "Automatic (best available)") +
+                            engineReport.availableComponents.map { it to recognitionEngineLabel(it) }
+                    ) { draft = draft.copy(recognitionEngine = it) }
+                }
                 Text(
                     when {
                         engineReport.selectedComponent != null ->
-                            "Recognition engine: ${engineReport.selectedComponent}"
+                            "In use: ${recognitionEngineLabel(engineReport.selectedComponent)}"
                         engineReport.usesOnDeviceFallback ->
-                            "Recognition engine: Android on-device fallback. No usable external speech service was found."
+                            "In use: Android on-device fallback. No usable external speech service was found."
                         else -> "No usable speech recognition engine found. Enable an Android speech recognition service in system settings."
                     }
                 )

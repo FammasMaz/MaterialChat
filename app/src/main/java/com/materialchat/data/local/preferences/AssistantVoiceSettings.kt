@@ -12,6 +12,8 @@ data class AssistantVoiceSettings(
     val languageTag: String? = null,
     /** BCP-47 language for speech input; null follows the device language. */
     val recognitionLanguageTag: String? = null,
+    /** Recognizer service component; null picks the best installed engine automatically. */
+    val recognitionEngine: String? = null,
     val speechRate: Float = 1f,
     // Intentionally no undocumented model/voice defaults; users supply supported identifiers.
     val geminiModel: String = "",
@@ -23,6 +25,7 @@ data class AssistantVoiceSettings(
         androidVoiceId = androidVoiceId?.trim()?.takeIf { it.isNotEmpty() },
         languageTag = languageTag?.trim()?.takeIf { it.isNotEmpty() },
         recognitionLanguageTag = recognitionLanguageTag?.trim()?.takeIf { it.isNotEmpty() },
+        recognitionEngine = recognitionEngine?.trim()?.takeIf { it.isNotEmpty() },
         speechRate = if (speechRate.isFinite()) speechRate.coerceIn(0.25f, 2f) else 1f,
         geminiModel = geminiModel.trim(),
         geminiVoice = geminiVoice.trim()

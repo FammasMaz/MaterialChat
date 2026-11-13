@@ -22,21 +22,63 @@ internal data class RecognitionServiceCandidate(
     val systemApp: Boolean
 )
 
-/** Availability of some service does not establish that Android's configured default is valid. */
+/**
+ * Ranks recognizer engines by transcription quality, never alphabetically.
+ *
+ * While MaterialChat is the default assistant, Android points `voice_recognition_service` at the
+ * assistant's own declared recognitionService (a component inside this package), so the
+ * configured default is unusable and must not drive the choice. The Google app's recognizer is
+ * the server-backed engine Gemini and Google Assistant use; it is preferred over Speech Services
+ * by Google and over Android System Intelligence's small on-device model, which an alphabetical
+ * pick ("com.google.android.as" < "com.google.android.googlequicksearchbox") silently chose.
+ */
 internal fun selectRecognitionService(
     configuredComponent: String?,
     ownPackage: String,
-    candidates: List<RecognitionServiceCandidate>
+    candidates: List<RecognitionServiceCandidate>,
+    preferredComponent: String? = null
 ): RecognitionServiceCandidate? {
-    val valid = candidates.filter {
-        // No platform bind permission exists for recognition services (only
-        // BIND_VOICE_INTERACTION / BIND_MUSIC_RECOGNITION_SERVICE do); recognizer engines
-        // declare none or their own guard, and the platform enforces it at bind time.
-        it.packageName != ownPackage && it.enabled && it.exported
+    // No platform bind permission exists for recognition services (only BIND_VOICE_INTERACTION /
+    // BIND_MUSIC_RECOGNITION_SERVICE do); engines declare none or their own guard, enforced at bind.
+    val ranked = rankRecognitionServices(configuredComponent, ownPackage, candidates)
+    return ranked.firstOrNull { preferredComponent != null && it.component == preferredComponent }
+        ?: ranked.firstOrNull()
+}
+
+/** Usable external engines, best transcription quality first. */
+internal fun rankRecognitionServices(
+    configuredComponent: String?,
+    ownPackage: String,
+    candidates: List<RecognitionServiceCandidate>
+): List<RecognitionServiceCandidate> = candidates
+    .filter { it.packageName != ownPackage && it.enabled && it.exported }
+    .sortedWith(
+        compareBy<RecognitionServiceCandidate> { recognitionQualityRank(it, configuredComponent) }
+            .thenBy { it.component }
+    )
+
+internal const val GOOGLE_APP_PACKAGE = "com.google.android.googlequicksearchbox"
+internal const val GOOGLE_SPEECH_SERVICES_PACKAGE = "com.google.android.tts"
+internal const val ANDROID_SYSTEM_INTELLIGENCE_PACKAGE = "com.google.android.as"
+
+private fun recognitionQualityRank(candidate: RecognitionServiceCandidate, configured: String?): Int = when {
+    candidate.packageName == GOOGLE_APP_PACKAGE -> 0
+    candidate.component == configured -> 1
+    candidate.packageName == GOOGLE_SPEECH_SERVICES_PACKAGE -> 2
+    candidate.packageName == ANDROID_SYSTEM_INTELLIGENCE_PACKAGE -> 5
+    candidate.systemApp -> 3
+    else -> 4
+}
+
+/** Human label for a recognizer component, for settings and diagnostics. */
+fun recognitionEngineLabel(component: String): String {
+    val pkg = component.substringBefore('/')
+    return when (pkg) {
+        GOOGLE_APP_PACKAGE -> "Google app (same engine as Gemini)"
+        GOOGLE_SPEECH_SERVICES_PACKAGE -> "Speech Services by Google"
+        ANDROID_SYSTEM_INTELLIGENCE_PACKAGE -> "Android System Intelligence (on-device)"
+        else -> component
     }
-    return valid.firstOrNull { it.component == configuredComponent }
-        ?: valid.sortedWith(compareByDescending<RecognitionServiceCandidate> { it.systemApp }
-            .thenBy { it.component }).firstOrNull()
 }
 
 private data class RecognitionServices(
@@ -45,7 +87,7 @@ private data class RecognitionServices(
     val selected: RecognitionServiceCandidate?
 )
 
-private fun installedRecognitionServices(context: Context): RecognitionServices {
+private fun installedRecognitionServices(context: Context, preferred: String? = null): RecognitionServices {
     val manager = context.packageManager
     val configured = runCatching {
         Settings.Secure.getString(context.contentResolver, "voice_recognition_service")
@@ -72,7 +114,7 @@ private fun installedRecognitionServices(context: Context): RecognitionServices 
             )
         }
     return RecognitionServices(configured, candidates,
-        selectRecognitionService(configured, context.packageName, candidates))
+        selectRecognitionService(configured, context.packageName, candidates, preferred))
 }
 
 private fun onDeviceRecognitionAvailable(context: Context): Boolean =
@@ -84,16 +126,21 @@ data class RecognitionEngineReport(
     val defaultComponent: String?,
     val visibleServiceCount: Int,
     val usesOnDeviceFallback: Boolean,
-    val selectedComponent: String? = null
+    val selectedComponent: String? = null,
+    /** Every usable engine, best first; lets the user override the automatic choice. */
+    val availableComponents: List<String> = emptyList()
 )
 
-fun recognitionEngineReport(context: Context): RecognitionEngineReport {
-    val services = runCatching { installedRecognitionServices(context) }.getOrNull()
+fun recognitionEngineReport(context: Context, preferredComponent: String? = null): RecognitionEngineReport {
+    val services = runCatching { installedRecognitionServices(context, preferredComponent) }.getOrNull()
     return RecognitionEngineReport(
         defaultComponent = services?.configured,
         visibleServiceCount = services?.candidates?.size ?: 0,
         usesOnDeviceFallback = services?.selected == null && onDeviceRecognitionAvailable(context),
-        selectedComponent = services?.selected?.component
+        selectedComponent = services?.selected?.component,
+        availableComponents = services?.let {
+            rankRecognitionServices(it.configured, context.packageName, it.candidates)
+        }.orEmpty().map { it.component }
     )
 }
 
@@ -107,9 +154,10 @@ internal class AndroidRecognitionPlatform(context: Context) : RecognitionPlatfor
         runCatching { installedRecognitionServices(context).selected != null }.getOrDefault(false) ||
             onDeviceRecognitionAvailable(context)
 
-    override fun createRecognizer(): SpeechRecognizer {
+    override fun createRecognizer(preferredComponent: String?): SpeechRecognizer {
         primaryWasOnDevice = false
-        val service = installedRecognitionServices(context).selected
+        val service = installedRecognitionServices(context, preferredComponent).selected
+        android.util.Log.i("MaterialChatSpeech", "recognizer=${service?.component ?: "on-device"}")
         if (service != null) {
             return SpeechRecognizer.createSpeechRecognizer(context,
                 requireNotNull(ComponentName.unflattenFromString(service.component)))

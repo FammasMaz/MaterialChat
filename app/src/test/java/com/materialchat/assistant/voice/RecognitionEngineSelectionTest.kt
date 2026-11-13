@@ -41,4 +41,47 @@ class RecognitionEngineSelectionTest {
         assertNull(select(null))
         assertNull(select(other.component, other.copy(enabled = false)))
     }
+
+    private val googleApp = RecognitionServiceCandidate(
+        "com.google.android.googlequicksearchbox/com.google.android.voicesearch.serviceapi.GoogleRecognitionService",
+        "com.google.android.googlequicksearchbox", true, true, null, true
+    )
+    private val speechServices = RecognitionServiceCandidate(
+        "com.google.android.tts/com.google.android.apps.speech.tts.googletts.service.GoogleTTSRecognitionService",
+        "com.google.android.tts", true, true, null, true
+    )
+    private val systemIntelligence = RecognitionServiceCandidate(
+        "com.google.android.as/com.google.android.apps.miphone.aiai.speech.AiAiRecognitionService",
+        "com.google.android.as", true, true, null, true
+    )
+    private val ownDeclaredDefault = "com.materialchat/android.speech.RecognitionService"
+
+    @Test fun whileMaterialChatIsAssistantTheGoogleAppEngineWinsNotAlphabeticalOnDevice() {
+        // Regression: the configured default points into our own package while we are the
+        // assistant, and alphabetical order picked Android System Intelligence's on-device model.
+        assertEquals(googleApp, select(ownDeclaredDefault, systemIntelligence, speechServices, googleApp))
+    }
+    @Test fun withoutGoogleAppSpeechServicesBeatsOnDeviceSystemIntelligence() {
+        assertEquals(speechServices, select(ownDeclaredDefault, systemIntelligence, speechServices))
+    }
+    @Test fun googleAppBeatsAThirdPartyConfiguredDefault() {
+        assertEquals(googleApp, select(other.component, other, googleApp))
+    }
+    @Test fun userChosenEngineOverridesRanking() {
+        assertEquals(speechServices, selectRecognitionService(
+            ownDeclaredDefault, "com.materialchat", listOf(googleApp, speechServices), speechServices.component))
+    }
+    @Test fun unusableUserChoiceFallsBackToBestEngine() {
+        assertEquals(googleApp, selectRecognitionService(
+            ownDeclaredDefault, "com.materialchat",
+            listOf(googleApp, speechServices.copy(enabled = false)), speechServices.component))
+    }
+    @Test fun rankingListsBestFirstAndExcludesUnusable() {
+        assertEquals(
+            listOf(googleApp, speechServices, systemIntelligence).map { it.component },
+            rankRecognitionServices(ownDeclaredDefault, "com.materialchat",
+                listOf(systemIntelligence, speechServices, googleApp, other.copy(exported = false)))
+                .map { it.component }
+        )
+    }
 }

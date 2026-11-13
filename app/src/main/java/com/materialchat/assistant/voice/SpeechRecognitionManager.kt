@@ -144,7 +144,7 @@ class SpeechRecognitionManager internal constructor(
                 ready = false
                 destroyRecognizer()
                 try {
-                    val engine = if (fallback) platform.createFallbackRecognizer() else platform.createRecognizer()
+                    val engine = if (fallback) platform.createFallbackRecognizer() else platform.createRecognizer(options.preferredEngine)
                     if (engine == null) {
                         fail(originalCode, originalMessage)
                         return@start
@@ -324,7 +324,9 @@ data class RecognitionOptions(
     /** BCP-47 tag such as `en-US`. Null follows the device language. */
     val languageTag: String? = null,
     /** Switching can require downloaded language models, so do not enable it by default. */
-    val allowLanguageSwitch: Boolean = false
+    val allowLanguageSwitch: Boolean = false,
+    /** Recognizer component chosen in settings; null picks the best installed engine. */
+    val preferredEngine: String? = null
 )
 
 internal fun recognitionExtras(
@@ -366,7 +368,7 @@ internal fun recognitionIntent(options: RecognitionOptions): Intent =
 /** Android operations only; session ownership and terminal events stay in the manager. */
 internal interface RecognitionPlatform {
     fun isAvailable(): Boolean
-    fun createRecognizer(): SpeechRecognizer
+    fun createRecognizer(preferredComponent: String? = null): SpeechRecognizer
     fun createFallbackRecognizer(): SpeechRecognizer? = null
     fun dispatch(action: () -> Unit)
     fun post(action: () -> Unit)

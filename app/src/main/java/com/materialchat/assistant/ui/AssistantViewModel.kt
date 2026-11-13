@@ -238,7 +238,10 @@ class AssistantViewModel(
             if (token != recognition) return@launch
             val recognitionSettings = appPreferences.assistantVoiceSettings.first()
             speechRecognitionManager.startListening(
-                RecognitionOptions(languageTag = recognitionSettings.recognitionLanguageTag)
+                RecognitionOptions(
+                    languageTag = recognitionSettings.recognitionLanguageTag,
+                    preferredEngine = recognitionSettings.recognitionEngine
+                )
             ).collect { result ->
                 if (token != recognition) return@collect
                 when (result) {
