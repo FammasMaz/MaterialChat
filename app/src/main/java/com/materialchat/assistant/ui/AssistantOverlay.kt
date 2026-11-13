@@ -226,13 +226,9 @@ fun AssistantOverlay(
                     enabled = neuralExpressive,
                     // The card reports its rect; until it does, there is nothing to decorate.
                     capsuleInset = null,
-                    // Particles live only while the assistant is working, then fade out
-                    // (800 ms) and stop requesting frames.
-                    active = voiceState is VoiceState.Listening ||
-                        voiceState is VoiceState.Processing ||
-                        voiceState is VoiceState.Thinking ||
-                        voiceState is VoiceState.Responding ||
-                        voiceState is VoiceState.Speaking ||
+                    // Particles show from invocation until the answer is done, then fade out
+                    // (800 ms) and stop requesting frames. Any new turn brings them back.
+                    active = (voiceState !is VoiceState.Complete && voiceState !is VoiceState.Error) ||
                         uiState.isLoading || uiState.isStreaming || uiState.isSpeaking
                 )
         ) {

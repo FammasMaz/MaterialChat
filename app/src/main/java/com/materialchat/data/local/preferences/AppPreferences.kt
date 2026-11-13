@@ -81,6 +81,7 @@ class AppPreferences(private val context: Context) {
         val ASSISTANT_ENABLED = booleanPreferencesKey("assistant_enabled")
         val ASSISTANT_VOICE_ENABLED = booleanPreferencesKey("assistant_voice_enabled")
         val ASSISTANT_TTS_ENABLED = booleanPreferencesKey("assistant_tts_enabled")
+        val ASSISTANT_CONTINUATION = stringPreferencesKey("assistant_continuation")
         val BEAUTIFUL_MODEL_NAMES = booleanPreferencesKey("beautiful_model_names")
         val ALWAYS_SHOW_THINKING = booleanPreferencesKey("always_show_thinking")
         val SHOW_TOKEN_COUNTER = booleanPreferencesKey("show_token_counter")
@@ -791,6 +792,20 @@ class AppPreferences(private val context: Context) {
     suspend fun setAssistantTtsEnabled(enabled: Boolean) {
         dataStore.edit { preferences ->
             preferences[Keys.ASSISTANT_TTS_ENABLED] = enabled
+        }
+    }
+
+    /**
+     * How long after its last activity an assistant chat is continued by a new invocation.
+     * Defaults to [AssistantContinuation.NEVER]: every invocation starts fresh.
+     */
+    val assistantContinuation: Flow<AssistantContinuation> = dataStore.data.map { preferences ->
+        AssistantContinuation.fromStored(preferences[Keys.ASSISTANT_CONTINUATION])
+    }.distinctUntilChanged()
+
+    suspend fun setAssistantContinuation(value: AssistantContinuation) {
+        dataStore.edit { preferences ->
+            preferences[Keys.ASSISTANT_CONTINUATION] = value.name
         }
     }
 
