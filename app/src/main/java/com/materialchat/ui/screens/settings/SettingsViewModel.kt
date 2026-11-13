@@ -212,14 +212,20 @@ class SettingsViewModel @Inject constructor(
                         appPreferences.themePalette,
                         appPreferences.chatBubbleStyle,
                         appPreferences.controlShapeStyle,
-                        appPreferences.pitchBlackDark
-                    ) { dynamicColorEnabled, themePalette, chatBubbleStyle, controlShapeStyle, pitchBlackDark ->
+                        combine(
+                            appPreferences.pitchBlackDark,
+                            appPreferences.neuralExpressive
+                        ) { pitchBlackDark, neuralExpressive ->
+                            pitchBlackDark to neuralExpressive
+                        }
+                    ) { dynamicColorEnabled, themePalette, chatBubbleStyle, controlShapeStyle, surfaceFlags ->
                         AppearancePrefs(
                             dynamicColorEnabled,
                             themePalette,
                             chatBubbleStyle,
                             controlShapeStyle,
-                            pitchBlackDark
+                            surfaceFlags.first,
+                            surfaceFlags.second
                         )
                     },
                     combine(
@@ -277,6 +283,7 @@ class SettingsViewModel @Inject constructor(
                         chatBubbleStyle = appearancePrefs.chatBubbleStyle,
                         controlShapeStyle = appearancePrefs.controlShapeStyle,
                         pitchBlackDark = appearancePrefs.pitchBlackDark,
+                        neuralExpressive = appearancePrefs.neuralExpressive,
                         hapticsEnabled = toggles.haptics,
                         notificationsEnabled = toggles.notifications,
                         aiGeneratedTitlesEnabled = toggles.aiTitles,
@@ -363,6 +370,7 @@ class SettingsViewModel @Inject constructor(
                         chatBubbleStyle = data.chatBubbleStyle,
                         controlShapeStyle = data.controlShapeStyle,
                         pitchBlackDark = data.pitchBlackDark,
+                        neuralExpressive = data.neuralExpressive,
                         dynamicColorEnabled = data.dynamicColorEnabled,
                         isDynamicColorSupported = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S,
                         hapticsEnabled = data.hapticsEnabled,
@@ -995,6 +1003,19 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
+    /** Enables the soft glowing boundary around floating surfaces. */
+    fun updateNeuralExpressive(enabled: Boolean) {
+        viewModelScope.launch {
+            try {
+                appPreferences.setNeuralExpressive(enabled)
+            } catch (e: Exception) {
+                _events.emit(SettingsEvent.ShowSnackbar(
+                    message = "Failed to save theme setting"
+                ))
+            }
+        }
+    }
+
     /** Enables true-black surfaces in dark mode. */
     fun updatePitchBlackDark(enabled: Boolean) {
         viewModelScope.launch {
@@ -1437,6 +1458,7 @@ class SettingsViewModel @Inject constructor(
         val chatBubbleStyle: AppPreferences.ChatBubbleStyle,
         val controlShapeStyle: AppPreferences.ControlShapeStyle,
         val pitchBlackDark: Boolean = false,
+        val neuralExpressive: Boolean = AppPreferences.DEFAULT_NEURAL_EXPRESSIVE,
         val hapticsEnabled: Boolean,
         val notificationsEnabled: Boolean,
         val aiGeneratedTitlesEnabled: Boolean,
@@ -1469,7 +1491,8 @@ class SettingsViewModel @Inject constructor(
         val themePalette: AppPreferences.ThemePalette,
         val chatBubbleStyle: AppPreferences.ChatBubbleStyle,
         val controlShapeStyle: AppPreferences.ControlShapeStyle,
-        val pitchBlackDark: Boolean
+        val pitchBlackDark: Boolean,
+        val neuralExpressive: Boolean
     )
 
     /**

@@ -144,6 +144,7 @@ fun MaterialChatTheme(
     navigationHapticsEnabled: Boolean = true,
     gestureHapticsEnabled: Boolean = true,
     pitchBlack: Boolean = false,
+    neuralExpressive: Boolean = true,
     content: @Composable () -> Unit
 ) {
     // Determine if we should use dark theme
@@ -191,7 +192,8 @@ fun MaterialChatTheme(
         LocalMainButtonShape provides mainButtonShape,
         LocalChatButtonShape provides chatButtonShape,
         LocalNavigationHapticsEnabled provides navigationHapticsEnabled,
-        LocalGestureHapticsEnabled provides gestureHapticsEnabled
+        LocalGestureHapticsEnabled provides gestureHapticsEnabled,
+        LocalNeuralExpressiveEnabled provides neuralExpressive
     ) {
         MaterialTheme(
             colorScheme = colorScheme,

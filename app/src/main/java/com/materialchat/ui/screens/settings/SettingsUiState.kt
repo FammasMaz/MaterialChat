@@ -47,6 +47,7 @@ sealed interface SettingsUiState {
         val chatBubbleStyle: AppPreferences.ChatBubbleStyle = AppPreferences.DEFAULT_CHAT_BUBBLE_STYLE,
         val controlShapeStyle: AppPreferences.ControlShapeStyle = AppPreferences.DEFAULT_CONTROL_SHAPE_STYLE,
         val pitchBlackDark: Boolean = AppPreferences.DEFAULT_PITCH_BLACK_DARK,
+        val neuralExpressive: Boolean = AppPreferences.DEFAULT_NEURAL_EXPRESSIVE,
         val dynamicColorEnabled: Boolean,
         val isDynamicColorSupported: Boolean,
         val hapticsEnabled: Boolean = true,

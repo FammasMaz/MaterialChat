@@ -158,6 +158,9 @@ class MainActivity : ComponentActivity() {
             val pitchBlackDark by appPreferences.pitchBlackDark.collectAsState(
                 initial = AppPreferences.DEFAULT_PITCH_BLACK_DARK
             )
+            val neuralExpressive by appPreferences.neuralExpressive.collectAsState(
+                initial = AppPreferences.DEFAULT_NEURAL_EXPRESSIVE
+            )
 
             MaterialChatTheme(
                 themeMode = themeMode,
@@ -169,7 +172,8 @@ class MainActivity : ComponentActivity() {
                 chatButtonShape = chatButtonShape,
                 navigationHapticsEnabled = hapticsEnabled && navigationHapticsEnabled,
                 gestureHapticsEnabled = hapticsEnabled && gestureHapticsEnabled,
-                pitchBlack = pitchBlackDark
+                pitchBlack = pitchBlackDark,
+                neuralExpressive = neuralExpressive
             ) {
                 // Provide chat-specific font size via CompositionLocal
                 CompositionLocalProvider(

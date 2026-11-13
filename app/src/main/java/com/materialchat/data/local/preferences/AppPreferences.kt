@@ -85,6 +85,7 @@ class AppPreferences(private val context: Context) {
         val SHOW_TOKEN_COUNTER = booleanPreferencesKey("show_token_counter")
         val FONT_SIZE_SCALE = stringPreferencesKey("font_size_scale")
         val PITCH_BLACK_DARK = booleanPreferencesKey("pitch_black_dark")
+        val NEURAL_EXPRESSIVE = booleanPreferencesKey("neural_expressive")
         // Web search settings
         val WEB_SEARCH_ENABLED = booleanPreferencesKey("web_search_enabled")
         val WEB_SEARCH_PROVIDER = stringPreferencesKey("web_search_provider")
@@ -165,6 +166,7 @@ class AppPreferences(private val context: Context) {
         val DEFAULT_COMPONENT_BUTTON_SHAPE = ComponentButtonShape.SYSTEM
         const val DEFAULT_DYNAMIC_COLOR_ENABLED = true
         const val DEFAULT_PITCH_BLACK_DARK = false
+        const val DEFAULT_NEURAL_EXPRESSIVE = true
         const val DEFAULT_HAPTICS_ENABLED = true
         const val DEFAULT_NOTIFICATIONS_ENABLED = false
         const val DEFAULT_AI_GENERATED_TITLES_ENABLED = true
@@ -737,6 +739,19 @@ class AppPreferences(private val context: Context) {
     val assistantVoiceEnabled: Flow<Boolean> = dataStore.data.map { preferences ->
         preferences[Keys.ASSISTANT_VOICE_ENABLED] ?: true
     }.distinctUntilChanged()
+
+    /**
+     * Soft glowing boundary with drifting dots around floating surfaces.
+     */
+    val neuralExpressive: Flow<Boolean> = dataStore.data.map { preferences ->
+        preferences[Keys.NEURAL_EXPRESSIVE] ?: DEFAULT_NEURAL_EXPRESSIVE
+    }.distinctUntilChanged()
+
+    suspend fun setNeuralExpressive(enabled: Boolean) {
+        dataStore.edit { preferences ->
+            preferences[Keys.NEURAL_EXPRESSIVE] = enabled
+        }
+    }
 
     /**
      * Pitch-black surfaces for dark mode, as on OLED panels.

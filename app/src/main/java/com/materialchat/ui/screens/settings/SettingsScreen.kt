@@ -327,6 +327,7 @@ fun SettingsScreen(
     val onControlShapeStyleChange = remember(viewModel) { { style: AppPreferences.ControlShapeStyle -> viewModel.updateControlShapeStyle(style) } }
     val onDynamicColorChange = remember(viewModel) { { enabled: Boolean -> viewModel.updateDynamicColorEnabled(enabled) } }
     val onPitchBlackChange = remember(viewModel) { { enabled: Boolean -> viewModel.updatePitchBlackDark(enabled) } }
+    val onNeuralExpressiveChange = remember(viewModel) { { enabled: Boolean -> viewModel.updateNeuralExpressive(enabled) } }
     val onHapticsChange = remember(viewModel) { { enabled: Boolean -> viewModel.updateHapticsEnabled(enabled) } }
     val onFontSizeScaleChange = remember(viewModel) { { scale: Float -> viewModel.updateFontSizeScale(scale) } }
     val onNotificationsChange = remember(context, notificationPermissionLauncher, viewModel) {
@@ -458,6 +459,7 @@ fun SettingsScreen(
             onControlShapeStyleChange = onControlShapeStyleChange,
             onDynamicColorChange = onDynamicColorChange,
             onPitchBlackChange = onPitchBlackChange,
+            onNeuralExpressiveChange = onNeuralExpressiveChange,
             onHapticsChange = onHapticsChange,
             onFontSizeScaleChange = onFontSizeScaleChange,
             onNotificationsChange = onNotificationsChange,
@@ -656,6 +658,7 @@ private fun SettingsContent(
     onControlShapeStyleChange: (AppPreferences.ControlShapeStyle) -> Unit,
     onDynamicColorChange: (Boolean) -> Unit,
     onPitchBlackChange: (Boolean) -> Unit,
+    onNeuralExpressiveChange: (Boolean) -> Unit,
     onHapticsChange: (Boolean) -> Unit,
     onFontSizeScaleChange: (Float) -> Unit,
     onNotificationsChange: (Boolean) -> Unit,
@@ -731,6 +734,7 @@ private fun SettingsContent(
                     onControlShapeStyleChange = onControlShapeStyleChange,
                     onDynamicColorChange = onDynamicColorChange,
                     onPitchBlackChange = onPitchBlackChange,
+                    onNeuralExpressiveChange = onNeuralExpressiveChange,
                     onHapticsChange = onHapticsChange,
                     onFontSizeScaleChange = onFontSizeScaleChange,
                     onNotificationsChange = onNotificationsChange,
@@ -812,6 +816,7 @@ private fun SuccessContent(
     onControlShapeStyleChange: (AppPreferences.ControlShapeStyle) -> Unit,
     onDynamicColorChange: (Boolean) -> Unit,
     onPitchBlackChange: (Boolean) -> Unit,
+    onNeuralExpressiveChange: (Boolean) -> Unit,
     onHapticsChange: (Boolean) -> Unit,
     onFontSizeScaleChange: (Float) -> Unit,
     onNotificationsChange: (Boolean) -> Unit,
@@ -984,6 +989,14 @@ private fun SuccessContent(
                     onToggle = onPitchBlackChange
                 )
             }
+        }
+
+        // Soft glowing boundary with drifting dots around floating surfaces
+        item {
+            NeuralExpressiveToggle(
+                enabled = uiState.neuralExpressive,
+                onToggle = onNeuralExpressiveChange
+            )
         }
 
         // Font Size Selector
@@ -2059,6 +2072,48 @@ private fun previewBubbleShape(
             RoundedCornerShape(18.dp, 4.dp, 18.dp, 10.dp)
         } else {
             RoundedCornerShape(4.dp, 18.dp, 10.dp, 18.dp)
+        }
+    }
+}
+
+@Composable
+private fun NeuralExpressiveToggle(
+    enabled: Boolean,
+    onToggle: (Boolean) -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag("neural-expressive-toggle"),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+        ),
+        shape = RoundedCornerShape(24.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "Neural expressive edges",
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = "Soft glowing boundary with drifting dots around floating surfaces",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            ExpressiveSwitch(
+                checked = enabled,
+                onCheckedChange = onToggle,
+                modifier = Modifier.testTag("neural-expressive-switch")
+            )
         }
     }
 }

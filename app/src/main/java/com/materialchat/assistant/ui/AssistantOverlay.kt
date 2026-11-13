@@ -69,6 +69,7 @@ import com.materialchat.ui.components.ExpressiveFilledIconButton
 import com.materialchat.ui.theme.ExpressiveMotion
 import com.materialchat.ui.theme.MaterialChatTheme
 import com.materialchat.ui.theme.isDynamicColorSupported
+import com.materialchat.ui.theme.neuralExpressiveGlow
 
 /**
  * M3 Expressive Assistant Overlay.
@@ -288,7 +289,8 @@ private fun AssistantOverlayContent(
                 scaleX = sheetScale
                 scaleY = sheetScale
             }
-            .alpha(alpha),
+            .alpha(alpha)
+            .neuralExpressiveGlow(cornerRadius = 32.dp),
         shape = RoundedCornerShape(32.dp),
         color = MaterialTheme.colorScheme.surfaceContainer,
         tonalElevation = 8.dp,
