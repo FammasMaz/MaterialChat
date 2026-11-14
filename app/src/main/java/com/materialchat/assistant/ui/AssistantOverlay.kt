@@ -17,8 +17,10 @@ import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInVertically
@@ -420,6 +422,7 @@ fun AssistantOverlay(
                     onNewChat = viewModel::startNewChat,
                     onCardBoundsChange = { cardBoundsInRoot = it },
                     softEdges = neuralExpressive,
+                    leaving = leaving,
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
                         .clickable(
@@ -484,6 +487,8 @@ internal fun AssistantOverlayContent(
     onNewChat: () -> Unit,
     /** Soft-edged pill: no own fill or shadow; the parent paints a blurred fill behind it. */
     softEdges: Boolean = false,
+    /** The session is dismissing: the sheet drops and shrinks out before the window hides. */
+    leaving: Boolean = false,
     onCardBoundsChange: (Rect) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
@@ -545,22 +550,35 @@ internal fun AssistantOverlayContent(
         }
     }
 
-    // Animate sheet entrance with bounce (M3 Expressive spatial spring)
+    // Entrance: the sheet rises from below the screen edge on the container spring and settles
+    // with a visible overshoot (M3 Expressive spatial). Exit: it drops a short way and shrinks
+    // toward its bottom anchor on a critically damped spring, so it leaves without bouncing back
+    // into view, and settles inside AssistantExitMotion's window before the window hides.
+    val shown = isVisible && !leaving
     val offsetY by animateDpAsState(
-        targetValue = if (isVisible) 0.dp else 400.dp,
-        animationSpec = AssistantMotion.container(),
+        targetValue = when {
+            shown -> 0.dp
+            leaving -> 120.dp
+            else -> 400.dp
+        },
+        animationSpec = if (leaving) AssistantMotion.exit() else AssistantMotion.container(),
         label = "sheetOffset"
     )
 
-    // Sheet scale for depth effect (M3 Expressive playful spring)
+    // Scale anchored to the bottom centre: the surface grows up out of the pill's resting spot on
+    // arrival (playful hero spring) and sinks back into it on departure.
     val sheetScale by animateFloatAsState(
-        targetValue = if (isVisible) 1f else 0.95f,
-        animationSpec = AssistantMotion.playful(),
+        targetValue = when {
+            shown -> 1f
+            leaving -> 0.9f
+            else -> 0.95f
+        },
+        animationSpec = if (leaving) AssistantMotion.exit() else AssistantMotion.playful(),
         label = "sheetScale"
     )
 
     val alpha by animateFloatAsState(
-        targetValue = if (isVisible) 1f else 0f,
+        targetValue = if (shown) 1f else 0f,
         animationSpec = AssistantMotion.effect(),
         label = "sheetAlpha"
     )
@@ -580,6 +598,7 @@ internal fun AssistantOverlayContent(
             .graphicsLayer {
                 scaleX = sheetScale
                 scaleY = sheetScale
+                transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0.5f, 1f)
                 this.alpha = alpha
                 clip = false
                 compositingStrategy = CompositingStrategy.ModulateAlpha
@@ -921,8 +940,16 @@ internal fun AssistantOverlayContent(
                         }
                     }
 
-                    // Session close lives here only while there is no response surface.
-                    if (!hasResponse) {
+                    // Session close lives here only while there is no response surface. When the
+                    // answer surface takes it over (compact -> expanded) it folds away sideways on
+                    // the state-switch spring so the pill's row reflows instead of jumping.
+                    AnimatedVisibility(
+                        visible = !hasResponse,
+                        enter = fadeIn(animationSpec = AssistantMotion.effect()) +
+                            expandHorizontally(animationSpec = AssistantMotion.stateSwitch()),
+                        exit = fadeOut(animationSpec = AssistantMotion.effect()) +
+                            shrinkHorizontally(animationSpec = AssistantMotion.stateSwitch())
+                    ) {
                         IconButton(onClick = endSession) {
                             Icon(Icons.Default.Close, contentDescription = "End assistant session")
                         }
