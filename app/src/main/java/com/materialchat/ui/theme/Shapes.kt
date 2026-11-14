@@ -67,6 +67,29 @@ object ExpressiveShapes {
 
     /** Selected menu/list rows inside a sheet or dropdown. */
     val MenuSelection = SquircleShape(16.dp)
+
+    /** Dialogs: M3 extraLarge (28dp) as a squircle so they match [Card]. */
+    val Dialog = SquircleShape(28.dp)
+
+    /** Expanded disclosure panels inside bubbles (memory references, sources). */
+    val DisclosurePanel = SquircleShape(20.dp)
+
+    /**
+     * Screen content surface that rounds into the top app bar. Only the top
+     * corners are rounded, so this stays a [RoundedCornerShape].
+     */
+    val ScreenContainer = RoundedCornerShape(
+        topStart = 28.dp,
+        topEnd = 28.dp,
+        bottomStart = 0.dp,
+        bottomEnd = 0.dp
+    )
+
+    /** Swipe-reveal action buttons: resting radius and the emphasised (armed) radius. */
+    object SwipeAction {
+        val Resting = 22.dp
+        val Emphasized = 28.dp
+    }
 }
 
 /**

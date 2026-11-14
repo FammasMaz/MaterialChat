@@ -6,6 +6,7 @@ import androidx.compose.animation.core.SpringSpec
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntSize
 
 /**
  * Material 3 Expressive Motion System for MaterialChat.
@@ -126,6 +127,44 @@ object ExpressiveMotion {
             dampingRatio = 0.68f,
             stiffness = 520f
         )
+
+        /**
+         * Expand of disclosure content (thinking blocks, branch lists, attachment
+         * rows, memory references). M3E default-speed spatial; damping high enough
+         * that revealed content settles without shoving neighbours past rest.
+         */
+        fun <T> expand(): SpringSpec<T> = spring(
+            dampingRatio = 0.75f,
+            stiffness = 420f
+        )
+
+        /**
+         * Collapse of disclosure content. Critically damped so a shrinking panel
+         * never re-expands past zero on its way out.
+         */
+        fun <T> collapse(): SpringSpec<T> = spring(
+            dampingRatio = 1.0f,
+            stiffness = 420f
+        )
+
+        /**
+         * Container size changes driven by `animateContentSize` on sheets, settings
+         * lists, pill labels and the chat title block. Light overshoot. Streaming
+         * bubbles keep their own critically-damped spec because they retarget
+         * every frame.
+         */
+        fun <T> contentSize(): SpringSpec<T> = spring(
+            dampingRatio = 0.8f,
+            stiffness = 450f
+        )
+
+        /**
+         * Screen-level slide (sibling conversation switch). M3E slow spatial.
+         */
+        fun <T> screenSlide(): SpringSpec<T> = spring(
+            dampingRatio = 0.75f,
+            stiffness = 200f
+        )
     }
 
     /**
@@ -177,6 +216,26 @@ object ExpressiveMotion {
             dampingRatio = 1.0f,
             stiffness = 400f
         )
+
+        /**
+         * Fade paired with [Spatial.expand]/[Spatial.collapse] so disclosure
+         * content fades slightly faster than it grows.
+         */
+        fun <T> reveal(): SpringSpec<T> = spring(
+            dampingRatio = 1.0f,
+            stiffness = 500f
+        )
+    }
+
+    /**
+     * Specs for `AnimatedVisibility(expandVertically/shrinkVertically + fade)` so
+     * every expand/collapse disclosure in the app shares one physics.
+     */
+    object Disclosure {
+        val Expand: SpringSpec<IntSize> = Spatial.expand()
+        val Shrink: SpringSpec<IntSize> = Spatial.collapse()
+        val FadeIn: SpringSpec<Float> = Effects.reveal()
+        val FadeOut: SpringSpec<Float> = Effects.reveal()
     }
 
     /**
