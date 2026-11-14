@@ -40,7 +40,9 @@ import com.materialchat.ui.theme.particles.LocalNeuralParticleRenderControl
 import com.materialchat.ui.theme.particles.NeuralParticlePainterKind
 import com.materialchat.ui.theme.particles.NeuralParticleRenderControl
 import com.materialchat.ui.theme.particles.ParticleEdgeTreatment
+import androidx.compose.material3.MaterialTheme
 import com.materialchat.ui.theme.particles.ParticleFadeSpec
+import com.materialchat.ui.theme.particles.ParticleFieldStyle
 import com.materialchat.ui.theme.particles.neuralParticleField
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -54,8 +56,9 @@ import kotlin.math.roundToInt
 
 /**
  * Renders the real assistant card inside the production decoration host (the full-window parent
- * that targets the card rect) and proves the ported particle field is visible, bounded, gated,
- * softened at the capsule edge, and retired by the presence fade.
+ * that targets the card rect, paints the pill's soft-edged fill and inner glow, and draws the
+ * accent dots in front) and proves the field is visible, bounded, gated, soft at the capsule
+ * edge, and retired by the presence fade while the resting pill stays.
  */
 @RunWith(AndroidJUnit4::class)
 class AssistantNeuralParticleFieldTest {
@@ -99,7 +102,9 @@ class AssistantNeuralParticleFieldTest {
         assertEquals("The RenderEffect blur must soften the field on API 31+", expectedEdge, edgeTreatment)
 
         // The pill has no expanded state; the response surface only appears with messages, which
-        // this specimen never has. One pass over the idle pill.
+        // this specimen never has. One pass over the idle pill: plain (decoration off: the pill
+        // paints its own hard fill and shadow), resting (decoration on but inactive: only the
+        // soft-edged fill), decorated (active: fill, inner glow and dots), then faded again.
         run {
             compose.runOnIdle { enabled.value = false; active.value = true }
             compose.waitForIdle()
@@ -109,10 +114,13 @@ class AssistantNeuralParticleFieldTest {
             awaitStableCapture()
             val plainBounds = compose.onNodeWithTag("assistant_sheet").fetchSemanticsNode().boundsInRoot
             val plain = capture()
+            // Inactive while hidden settles the presence silently, so the resting capture has no
+            // dots or glow, only the soft fill the pill keeps between turns.
+            compose.runOnIdle { active.value = false }
+            compose.waitForIdle()
             compose.runOnIdle { enabled.value = true }
             compose.waitForIdle()
-            val decoratedBounds = compose.onNodeWithTag("assistant_sheet").fetchSemanticsNode().boundsInRoot
-            val decorated = runCatching { capture() }.getOrElse {
+            val rest = runCatching { capture() }.getOrElse {
                 // A software-canvas capture cannot execute the AGSL runtime shader on every
                 // device; assert the pixels through the static painter instead. The AGSL path is
                 // proven by the painter assertion above and by the real-window gate.
@@ -120,8 +128,13 @@ class AssistantNeuralParticleFieldTest {
                 compose.waitForIdle()
                 capture()
             }
+            compose.runOnIdle { active.value = true }
+            compose.waitForIdle() // The auto-advancing clock runs the fade-in to completion.
+            val decoratedBounds = compose.onNodeWithTag("assistant_sheet").fetchSemanticsNode().boundsInRoot
+            val decorated = capture()
             val state = "pill"
             saveEvidence("$state-disabled", plain)
+            saveEvidence("$state-resting", rest)
             saveEvidence("$state-enabled", decorated)
             assertEquals("Decoration must not change the card layout", plainBounds, decoratedBounds)
             assertEquals(
@@ -137,33 +150,41 @@ class AssistantNeuralParticleFieldTest {
             val bottom = (decoratedBounds.top - 1f * density).roundToInt()
             val bandChanged = changedRatio(plain, decorated, left, right, top, bottom)
             assertTrue(
-                "Particle field must visibly change the band around the card: $bandChanged",
+                "Decoration must visibly change the band around the card: $bandChanged",
                 bandChanged >= 0.05f
             )
-            // The halo hugs the edge: the first 1..6dp outside the card is a continuous glow, not
-            // sparse particles, on both the gradient (API 26) and blurred (API 31+) treatments.
-            val haloTop = (decoratedBounds.top - 6f * density).roundToInt().coerceAtLeast(0)
-            val haloChanged = changedRatio(plain, decorated, left, right, haloTop, bottom)
+            // The dots and glow are the live part: the active field differs from the resting
+            // pill in the band, not only from the plain one.
+            val dotsChanged = changedRatio(rest, decorated, left, right, top, bottom)
             assertTrue(
-                "Blurred halo must be visible just outside the card edge: $haloChanged",
-                haloChanged >= 0.6f
+                "Dots must be visible around the resting pill: $dotsChanged",
+                dotsChanged >= 0.02f
+            )
+            // The soft edge: the first 1..5dp outside the card is the pill's own colour bleeding
+            // out continuously (RenderEffect blur on API 31+, geometric feather below), present
+            // even while the field rests, instead of the plain pill's hard boundary.
+            val edgeTop = (decoratedBounds.top - 5f * density).roundToInt().coerceAtLeast(0)
+            val edgeChanged = changedRatio(plain, rest, left, right, edgeTop, bottom, threshold = 6)
+            assertTrue(
+                "Soft edge must be visible just outside the card edge: $edgeChanged",
+                edgeChanged >= 0.6f
             )
             // Nothing may be painted deep inside the opaque card region.
             val innerTop = (decoratedBounds.top + 40f * density).roundToInt()
             val innerBottom = (decoratedBounds.bottom - 40f * density).roundToInt()
-            val inside = if (innerBottom > innerTop) changedRatio(plain, decorated, left, right, innerTop, innerBottom) else 0f
-            assertTrue("Particle field must not paint inside the card: $inside", inside < 0.01f)
+            val inside = if (innerBottom > innerTop) changedRatio(rest, decorated, left, right, innerTop, innerBottom) else 0f
+            assertTrue("Particle field must not paint deep inside the card: $inside", inside < 0.01f)
 
             // Presence: once the field is inactive and the fade has completed, nothing of the
-            // field (halo or particles) remains anywhere outside the card.
+            // field (glow or particles) remains; only the resting soft-edged pill is left.
             compose.runOnIdle { active.value = false }
             compose.waitForIdle() // The auto-advancing clock runs the fade-out to completion.
             val faded = capture()
             saveEvidence("$state-faded", faded)
             val fadedBounds = compose.onNodeWithTag("assistant_sheet").fetchSemanticsNode().boundsInRoot
             assertEquals("Fading must not change the card layout", plainBounds, fadedBounds)
-            val remaining = changedRatio(plain, faded, left, right, top, bottom)
-            assertTrue("Faded field must leave the band around the card untouched: $remaining", remaining < 0.01f)
+            val remaining = changedRatio(rest, faded, left, right, top, bottom)
+            assertTrue("Faded field must leave only the resting pill: $remaining", remaining < 0.01f)
         }
     }
 
@@ -265,11 +286,13 @@ class AssistantNeuralParticleFieldTest {
         assertTrue("Active decoration must request frames again", frames.get() > before)
     }
 
-    private fun changedRatio(a: Bitmap, b: Bitmap, left: Int, right: Int, top: Int, bottom: Int): Float {
+    private fun changedRatio(
+        a: Bitmap, b: Bitmap, left: Int, right: Int, top: Int, bottom: Int, threshold: Int = 12,
+    ): Float {
         var changed = 0
         var samples = 0
         for (y in top until bottom) for (x in left until right) {
-            if (rgbDelta(a.getPixel(x, y), b.getPixel(x, y)) >= 12) changed++
+            if (rgbDelta(a.getPixel(x, y), b.getPixel(x, y)) >= threshold) changed++
             samples++
         }
         assertTrue("Sample region must not be empty", samples > 0)
@@ -323,18 +346,22 @@ private fun Specimen(
     fadeSpec: ParticleFadeSpec = ParticleFadeSpec(),
 ) {
     // Mirrors the production AssistantOverlay host: the full-size box hosts the particle field
-    // around the card rect the card reports, so the band escapes the card's own bounds.
+    // around the pill rect the pill reports (soft-edged fill in its own colour, accent glow and
+    // accent dots), so the band escapes the pill's own bounds; the pill paints no fill of its own.
     var cardBoundsInRoot by remember { mutableStateOf<Rect?>(null) }
     var hostOriginInRoot by remember { mutableStateOf(Offset.Zero) }
     val decorationRect = cardBoundsInRoot?.translate(-hostOriginInRoot.x, -hostOriginInRoot.y)
+    val enabled = LocalNeuralExpressiveEnabled.current
     Box(
         Modifier.fillMaxSize().background(Color(0xFF17151C)).testTag("assistant_host")
             .onGloballyPositioned { hostOriginInRoot = it.boundsInRoot().topLeft }
             .neuralParticleField(
                 capsuleRect = decorationRect,
-                cornerRadius = 32.dp,
-                color = Color.White,
-                enabled = LocalNeuralExpressiveEnabled.current,
+                cornerRadius = 38.dp,
+                featherColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                style = ParticleFieldStyle(innerBand = 20.dp),
+                color = MaterialTheme.colorScheme.primary,
+                enabled = enabled,
                 capsuleInset = null,
                 forceFallback = forceFallback,
                 active = active,
@@ -349,6 +376,7 @@ private fun Specimen(
             onTextChange = {}, onVoiceClick = {}, onInterrupt = {}, onStopVoice = {},
             onSendClick = {}, onOpenInApp = {}, onDismiss = {}, onNewChat = {},
             onCardBoundsChange = { cardBoundsInRoot = it },
+            softEdges = enabled,
             modifier = Modifier.align(Alignment.BottomCenter)
         )
     }

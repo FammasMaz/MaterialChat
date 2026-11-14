@@ -71,6 +71,8 @@ import com.materialchat.data.local.preferences.AppPreferences
 import com.materialchat.ui.theme.ExpressiveMotion
 import com.materialchat.ui.theme.MaterialChatTheme
 import com.materialchat.ui.theme.isDynamicColorSupported
+import com.materialchat.ui.theme.particles.CapsuleBackdropBlur
+import com.materialchat.ui.theme.particles.CapsuleBackdropBlurSupport
 import com.materialchat.ui.theme.particles.ParticleFieldStyle
 import com.materialchat.ui.theme.particles.neuralParticleField
 import androidx.compose.foundation.layout.PaddingValues
@@ -283,12 +285,14 @@ fun AssistantOverlay(
                 .neuralParticleField(
                     capsuleRect = decorationRect,
                     cornerRadius = 38.dp,
-                    // Drawn in front of the pill: its edge is feathered with its own colour and the
-                    // dots sit over the boundary, as in essentials' Gemini pill. A shallow inner band
-                    // keeps dots near the edge, clear of the pill's text and buttons.
+                    // As in essentials' Gemini pill: the pill's own colour is painted as a
+                    // soft-edged capsule with the accent glowing inside along the edge, and
+                    // accent-tinted dots float across the boundary in front of everything. The
+                    // inner band matches the pill's content padding, so dots cross the edge but
+                    // stay off the text and buttons.
                     featherColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                    style = ParticleFieldStyle(innerBand = 14.dp),
-                    color = Color.White,
+                    style = ParticleFieldStyle(innerBand = 20.dp),
+                    color = MaterialTheme.colorScheme.primary,
                     enabled = neuralExpressive,
                     // The card reports its rect; until it does, there is nothing to decorate.
                     capsuleInset = null,
@@ -298,6 +302,22 @@ fun AssistantOverlay(
                         uiState.isLoading || uiState.isStreaming || uiState.isSpeaking
                 )
         ) {
+            // essentials additionally blurs what is behind the window inside the pill's rect.
+            // That region blur is a hidden API; the probe attaches only where it resolves and
+            // logs its status either way (NeuralParticles: backdrop=...).
+            if (neuralExpressive && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                val backdropStatus = remember(context) { CapsuleBackdropBlurSupport.status(context) }
+                if (backdropStatus == CapsuleBackdropBlurSupport.Status.Available) {
+                    CapsuleBackdropBlur(
+                        rect = { decorationRect },
+                        cornerRadius = with(density) { 38.dp.toPx() },
+                        radiusPx = with(density) { 40.dp.toPx() },
+                        modifier = Modifier.matchParentSize()
+                    )
+                } else {
+                    LaunchedEffect(backdropStatus) { CapsuleBackdropBlurSupport.log(backdropStatus) }
+                }
+            }
             // Use showTrigger as key to force recomposition and animation restart
             key(showTrigger) {
                 // Main overlay content

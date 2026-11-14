@@ -1,16 +1,54 @@
 /*
  * Ported from sameerasw/essentials (MIT) — island/plugins/media/particles/GeminiParticlePill.kt
  *
- * A Poisson-disk particle field around a capsule (rounded-rect signed distance), animated with
- * curl noise. The drawing node must fully contain the outer band: MaterialChat applies this to the
- * full-window scrim parent and passes the assistant card's rect, because below API 28 a node's
- * drawing is clipped to its own bounds (project memory #3904).
+ * VISUAL SPEC of the reference (essentials island, "neural expressive" media pill), read from
+ * IslandRoot.kt, MediaSurfaceBackdrop.kt, GeminiParticlePill.kt, ParticleFieldStyle.kt,
+ * ParticleFieldMath.kt, GeminiParticleShader.kt and IslandBackdropBlur.kt:
  *
- * MaterialChat additions over the reference:
- *  - a soft edge: a glow halo hugging the capsule plus a RenderEffect blur of the whole field on
- *    API 31+ (see CapsuleHalo.kt; a pure stroke-gradient halo below API 31);
- *  - presence: the field fades out when [active] turns false or after [idleTimeoutMillis], and
- *    stops requesting frames once fully faded (see ParticleFade.kt).
+ *  Layer order (bottom to top), all drawn by one full-window parent around the pill rect:
+ *   1. Backdrop blur (optional, off by default, 40dp): a SurfaceFlinger region blur of what is
+ *      behind the WINDOW inside the pill's rounded rect (ViewRootImpl.createBackgroundBlurDrawable,
+ *      hidden API reached through HiddenApiBypass). It blurs the wallpaper/app, never the pill.
+ *   2. Pill fill (MediaSurface): a radial gradient of BLACK, opaque at the camera/top and ~50%
+ *      (0x80) at the far edge, so the pill is a translucent dark glass. An inner glow of the
+ *      ACCENT colour (item accent, else Material primary) sits inside the pill along its edge:
+ *      BlurMaskFilter 20dp, alpha 0.6, shifted 14dp upward, plus a 3dp rim at 0.5; both clipped
+ *      to the pill. The fill+glow are then blurred as a whole by a progressive RenderEffect
+ *      (2dp at the pill's top edge to 16dp at its bottom, scaled by the 1450ms pulse) with
+ *      Unbounded edge treatment: THIS is the "blurry edge" — the pill's own boundary is
+ *      softened, nothing glows outward.
+ *   3. Pill content (icons/text), crisp, on top of the fill.
+ *   4. Dots (GeminiParticlePill) drawn LAST, in front of the content and over the edge:
+ *      - colour = the same accent (`glow`), not white; alpha = 0.35 × pulse activation;
+ *      - Poisson-disk field, min spacing 6dp, radius 0..1.5dp (shrinks with speed);
+ *      - band: 64dp outside, 48dp inside the edge, smoothstep envelope raised to the 4th power,
+ *        so visibly dense within ~10dp of the edge, sparse by ~30dp out / ~25dp in, gone beyond;
+ *        dots cross the boundary freely and lie over the fill, over the content, and outside;
+ *      - motion: curl noise (fbm Perlin), 12dp displacement, ~83dp noise scale, speed 1;
+ *      - crisp: the AGSL shader gives each dot a 1px smoothstep edge; dots are never blurred;
+ *      - presence: alpha follows the surface pulse (fades in/out with it), not a constant.
+ *
+ *  So "blurry edges + floating dots" means: soft-edged dark translucent pill, accent glow
+ *  inside it, accent dots floating across its boundary in front of everything. No white fog.
+ *
+ * GAPS of v2.29.34 against that spec, fixed here:
+ *   a. White 20dp outward halo at 0.45 alpha, blurred 14dp: the reference has no outward glow at
+ *      all — this was the "white fog ring". Removed (haloSteps default 0).
+ *   b. Dots were white; the reference tints them with the accent. Now colorScheme.primary.
+ *   c. The fill blur was 14dp, twice the reference's deepest edge, so the whole pill boundary
+ *      smeared ~1cm. Now 7dp (12dp geometric feather below API 31).
+ *   d. No inner accent glow, so the pill was a flat grey blob. Added, recorded into the same
+ *      blurred layer as the fill so it shares the soft edge.
+ *   e. innerBand 14dp kept every dot outside; the reference lets dots 48dp inside. Raised to
+ *      20dp, the pill's own content padding, so dots cross the edge but stay off text/buttons.
+ *   f. No backdrop blur: probed through the reference's mechanism (CapsuleBackdropBlur.kt) and
+ *      logged; expected unavailable without a hidden-API exemption (see that file).
+ *
+ * The drawing node must fully contain the outer band: MaterialChat applies this to the
+ * full-window scrim parent and passes the assistant card's rect, because below API 28 a node's
+ * drawing is clipped to its own bounds (project memory #3904). Presence: the field fades out
+ * when [active] turns false or after [idleTimeoutMillis], and stops requesting frames once
+ * fully faded (ParticleFade.kt).
  */
 package com.materialchat.ui.theme.particles
 
@@ -45,8 +83,8 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.BlurEffect
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.TileMode
-import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.layer.drawLayer
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onSizeChanged
@@ -100,12 +138,12 @@ val LocalNeuralParticleRenderControl = staticCompositionLocalOf { NeuralParticle
  * time [active] (or the field's visibility) flips back to true. The first composition snaps to
  * the current target so the field never fades in on its initial appearance.
  *
- * Intended assistant wiring: `active = voiceState is Listening/Thinking/Speaking || streaming`,
- * with `idleTimeoutMillis` of a few seconds so the glow retires shortly after a response ends.
- *
- * Edge: [edgeStyle] adds a glow halo hugging the capsule and, on API 31+ with a hardware canvas,
- * blurs the recorded field (halo + particles) with a RenderEffect. The blur never touches the
- * card content: only this node's own background drawing is recorded into the blurred layer.
+ * Draw order, as in essentials: with [featherColor] set, the capsule is filled with that colour
+ * (its boundary blurred on API 31+, feathered geometrically below) and the accent inner glow is
+ * recorded into the same layer, then this node's content is drawn crisp on top, then the dots
+ * are drawn last so they float over the edge in front of everything. The blur never touches the
+ * content: only this node's own background drawing is recorded into the blurred layer. Without
+ * [featherColor] only the dots (and the optional outward halo) are drawn, still in front.
  */
 fun Modifier.neuralParticleField(
     capsuleRect: Rect? = null,
@@ -120,13 +158,10 @@ fun Modifier.neuralParticleField(
     idleTimeoutMillis: Long? = null,
     fadeSpec: ParticleFadeSpec = ParticleFadeSpec(),
     edgeStyle: ParticleEdgeStyle = ParticleEdgeStyle(),
-    /**
-     * When set, the field draws IN FRONT of this node's content: the capsule's boundary is
-     * feathered by a blurred stroke of this colour (normally the capsule's own surface colour), so
-     * the card edge melts into the background, and the particles sit on top of the edge.
-     */
+    /** The capsule's own surface colour; when set the field paints the soft-edged fill. */
     featherColor: Color? = null,
-    featherWidth: Dp = 22.dp,
+    /** Width of the geometric feather used where no RenderEffect blur exists (API 26-30). */
+    featherWidth: Dp = 12.dp,
 ): Modifier = composed {
     val context = LocalContext.current
     val view = LocalView.current
@@ -260,75 +295,64 @@ fun Modifier.neuralParticleField(
                 Build.VERSION.SDK_INT, blurRadiusPx, view.isHardwareAccelerated
             )
             control.onEdgeTreatmentResolved?.invoke(edgeTreatment)
-            val rings = haloRings(edgeStyle.haloWidth.toPx(), edgeStyle.haloSteps, edgeStyle.haloOpacity)
+            val blurred = edgeTreatment == ParticleEdgeTreatment.Blur
+            val haloRings = haloRings(edgeStyle.haloWidth.toPx(), edgeStyle.haloSteps, edgeStyle.haloOpacity)
+            val glowRings = innerGlowRings(
+                edgeStyle.innerGlowWidth.toPx(), edgeStyle.innerGlowSteps, edgeStyle.innerGlowOpacity
+            )
             val featherPx = featherWidth.toPx()
-            val featherLayer = if (featherColor != null && edgeTreatment == ParticleEdgeTreatment.Blur) {
+            val glowClip = Path()
+            // Decal: the fill fades into transparency at the layer edge instead of smearing the
+            // last row of pixels outward.
+            val blurLayer = if (blurred && (featherColor != null || haloRings.isNotEmpty())) {
                 obtainGraphicsLayer().also {
                     it.renderEffect = BlurEffect(blurRadiusPx, blurRadiusPx, TileMode.Decal)
                 }
             } else null
-            val blurLayer = if (edgeTreatment == ParticleEdgeTreatment.Blur) {
-                obtainGraphicsLayer().also {
-                    // Decal: the field fades into transparency at the layer edge instead of
-                    // smearing the last row of pixels outward.
-                    it.renderEffect = BlurEffect(blurRadiusPx, blurRadiusPx, TileMode.Decal)
-                }
-            } else null
-            val drawDecoration: androidx.compose.ui.graphics.drawscope.ContentDrawScope.() -> Unit = drawDecoration@{
+            onDrawWithContent {
                 // No rect and no inset means the caller has nothing to decorate yet.
-                if (capsuleRect == null && capsuleInset == null) return@drawDecoration
-                val capsule = CapsuleParticleGeometry.create(
-                    size,
-                    capsuleInset?.toPx() ?: 0f,
-                    cornerRadius.toPx(),
-                    capsuleRect
-                )
-                val strength = if (visible) particleActivation(latestActivation()) * presence else 0f
+                val capsule = if (capsuleRect == null && capsuleInset == null) null
+                else CapsuleParticleGeometry.create(size, capsuleInset?.toPx() ?: 0f, cornerRadius.toPx(), capsuleRect)
+                val strength = if (visible && capsule != null) particleActivation(latestActivation()) * presence else 0f
                 val alpha = strength * style.opacity
                 val samples = tile
+                if (capsule != null) {
+                    if (featherColor != null) {
+                        // Soft-edged pill: its own colour, boundary blurred (or feathered), with the
+                        // accent glowing inside along the edge. Recorded together so the glow's edge
+                        // is as soft as the fill's.
+                        val drawFill: androidx.compose.ui.graphics.drawscope.DrawScope.() -> Unit = {
+                            drawCapsuleSoftFill(capsule, featherColor, featherPx, blurred = blurred)
+                            drawCapsuleInnerGlow(
+                                capsule, latestColor, strength, glowRings,
+                                clipInset = if (blurred) 0f else featherPx / 2f, clip = glowClip
+                            )
+                        }
+                        if (blurLayer != null) {
+                            blurLayer.record { drawFill() }
+                            drawLayer(blurLayer)
+                        } else {
+                            drawFill()
+                        }
+                    } else if (strength > 0f && haloRings.isNotEmpty()) {
+                        if (blurLayer != null) {
+                            blurLayer.record { drawCapsuleHalo(capsule, latestColor, strength, haloRings) }
+                            drawLayer(blurLayer)
+                        } else {
+                            drawCapsuleHalo(capsule, latestColor, strength, haloRings)
+                        }
+                    }
+                }
+                drawContent()
+                // Dots last: in front of the content and over the edge, never blurred.
                 if (capsule != null && samples != null && strength > 0f) {
                     NeuralParticleDiagnostics.record(painter.kind, edgeTreatment, capsule)
                     val time = control.timeSeconds?.takeIf { it.isFinite() } ?: elapsed
-                    // The glow is blurred into a soft edge; particles stay crisp on top, as in
-                    // essentials where the blur softens the pill boundary, not the dots.
-                    if (featherColor != null) {
-                        // The halo is replaced by the capsule's own soft fill, drawn behind content.
-} else if (blurLayer != null) {
-                        // Only this node's background is recorded: the card content drawn on
-                        // top is never part of the blurred layer.
-                        blurLayer.record { drawCapsuleHalo(capsule, latestColor, strength, rings) }
-                        drawLayer(blurLayer)
-                    } else {
-                        drawCapsuleHalo(capsule, latestColor, strength, rings)
-                    }
                     if (alpha > 0f) {
                         with(painter) {
                             paint(capsule, time, alpha, latestColor, pixels, screenOrigin, samples)
                         }
                     }
-                }
-            }
-            if (featherColor != null) {
-                onDrawWithContent {
-                    // Soft-edged capsule: a blurred fill of the capsule colour behind the content,
-                    // so the boundary itself is blurry; particles are drawn in front of it.
-                    val fillCapsule = if (capsuleRect == null && capsuleInset == null) null
-                    else CapsuleParticleGeometry.create(size, capsuleInset?.toPx() ?: 0f, cornerRadius.toPx(), capsuleRect)
-                    if (fillCapsule != null) {
-                        if (featherLayer != null) {
-                            featherLayer.record { drawCapsuleSoftFill(fillCapsule, featherColor, featherPx, blurred = true) }
-                            drawLayer(featherLayer)
-                        } else {
-                            drawCapsuleSoftFill(fillCapsule, featherColor, featherPx, blurred = false)
-                        }
-                    }
-                    drawContent()
-                    drawDecoration()
-                }
-            } else {
-                onDrawWithContent {
-                    drawDecoration()
-                    drawContent()
                 }
             }
         }
