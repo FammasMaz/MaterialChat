@@ -10,6 +10,8 @@ import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.compose.ui.platform.testTag
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Animatable
@@ -105,6 +107,9 @@ import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.LoadingIndicator
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.SolidColor
@@ -114,7 +119,6 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextOverflow
 import com.materialchat.assistant.ui.components.VoiceWaveform
 import com.materialchat.domain.model.MessageRole
-import com.materialchat.ui.screens.chat.components.TypingIndicator
 
 /**
  * M3 Expressive Assistant Overlay.
@@ -428,8 +432,8 @@ fun AssistantOverlay(
     }
 }
 
-/** The pill's leading glyph follows one of these phases; switches animate with a spring. */
-private enum class AssistantPhase { Capturing, Thinking, Speaking, Idle }
+/** One line of the pill's text area; [kind] decides whether a change animates or updates in place. */
+private data class AssistantStateLine(val text: String, val emphasised: Boolean, val kind: String)
 
 /** Timing of the staged exit: decorations animate out for this long before the window hides. */
 internal object AssistantExitMotion {
@@ -461,6 +465,7 @@ internal object AssistantExitMotion {
  * - Gates: resource-id `assistant_sheet` is the column wrapping the response surface and the pill,
  *   so its bottom edge is the pill's bottom edge, 8dp above the IME.
  */
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 internal fun AssistantOverlayContent(
     uiState: AssistantUiState,
@@ -663,57 +668,83 @@ internal fun AssistantOverlayContent(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(start = 20.dp, end = 10.dp),
+                        .padding(start = 18.dp, end = 10.dp),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    // Leading state glyph. Each phase change (listening -> thinking -> speaking)
-                    // pops the new glyph in with a springy scale instead of a hard swap.
+                    // Leading state glyph inside its own 40dp container. The container is the
+                    // state signal beyond colour alone: transparent at rest, it fills with the
+                    // phase's tonal container (primary while capturing, secondary while thinking,
+                    // tertiary while speaking) and morphs from a circle to the M3 selected
+                    // rounded square while thinking, on the fast spatial spring. The glyph
+                    // itself pops in on each phase change instead of a hard swap.
                     val phase = when {
                         capturing -> AssistantPhase.Capturing
                         thinking -> AssistantPhase.Thinking
                         speaking -> AssistantPhase.Speaking
                         else -> AssistantPhase.Idle
                     }
-                    AnimatedContent(
-                        targetState = phase,
-                        transitionSpec = {
-                            (fadeIn(animationSpec = AssistantMotion.effect()) +
-                                scaleIn(animationSpec = AssistantMotion.stateSwitch(), initialScale = 0.6f))
-                                .togetherWith(
-                                    fadeOut(animationSpec = AssistantMotion.effect()) +
-                                        scaleOut(animationSpec = AssistantMotion.stateSwitch(), targetScale = 0.6f)
-                                )
-                        },
-                        contentAlignment = Alignment.Center,
-                        modifier = Modifier.size(32.dp),
-                        label = "assistantGlyph"
-                    ) { current ->
-                        Box(modifier = Modifier.size(32.dp), contentAlignment = Alignment.Center) {
-                            when (current) {
-                                AssistantPhase.Capturing -> VoiceWaveform(
-                                    amplitudeData = amplitudeData,
-                                    barCount = 5,
-                                    barWidth = 3.dp,
-                                    barSpacing = 2.dp,
-                                    minBarHeight = 4.dp,
-                                    maxBarHeight = 22.dp
-                                )
-                                AssistantPhase.Thinking -> TypingIndicator(
-                                    dotSize = 6.dp,
-                                    dotSpacing = 3.dp,
-                                    color = MaterialTheme.colorScheme.primary
-                                )
-                                AssistantPhase.Speaking -> Icon(
-                                    imageVector = Icons.Default.GraphicEq,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary
-                                )
-                                AssistantPhase.Idle -> Icon(
-                                    imageVector = Icons.Default.AutoAwesome,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary
-                                )
+                    val glyphCorner by animateDpAsState(
+                        targetValue = if (phase == AssistantPhase.Thinking) AssistantShapes.GlyphSquareCorner
+                        else AssistantShapes.GlyphRoundCorner,
+                        animationSpec = AssistantMotion.morph(),
+                        label = "glyphCorner"
+                    )
+                    val glyphContainer by animateColorAsState(
+                        targetValue = AssistantColors.glyphContainer(MaterialTheme.colorScheme, phase),
+                        animationSpec = AssistantMotion.effect(),
+                        label = "glyphContainer"
+                    )
+                    val glyphContent = AssistantColors.glyphContent(MaterialTheme.colorScheme, phase)
+                    Box(
+                        modifier = Modifier
+                            .size(40.dp)
+                            .clip(RoundedCornerShape(glyphCorner))
+                            .background(glyphContainer),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        AnimatedContent(
+                            targetState = phase,
+                            transitionSpec = {
+                                (fadeIn(animationSpec = AssistantMotion.effect()) +
+                                    scaleIn(animationSpec = AssistantMotion.stateSwitch(), initialScale = 0.6f))
+                                    .togetherWith(
+                                        fadeOut(animationSpec = AssistantMotion.effect()) +
+                                            scaleOut(animationSpec = AssistantMotion.stateSwitch(), targetScale = 0.6f)
+                                    )
+                            },
+                            contentAlignment = Alignment.Center,
+                            modifier = Modifier.size(32.dp),
+                            label = "assistantGlyph"
+                        ) { current ->
+                            Box(modifier = Modifier.size(32.dp), contentAlignment = Alignment.Center) {
+                                when (current) {
+                                    AssistantPhase.Capturing -> VoiceWaveform(
+                                        amplitudeData = amplitudeData,
+                                        barColor = glyphContent,
+                                        barCount = 5,
+                                        barWidth = 3.dp,
+                                        barSpacing = 2.dp,
+                                        minBarHeight = 4.dp,
+                                        maxBarHeight = 22.dp
+                                    )
+                                    // The M3 Expressive loading indicator: polygons morphing into
+                                    // one another, the spec's "working" motion, inside the square.
+                                    AssistantPhase.Thinking -> LoadingIndicator(
+                                        modifier = Modifier.size(28.dp),
+                                        color = glyphContent
+                                    )
+                                    AssistantPhase.Speaking -> Icon(
+                                        imageVector = Icons.Default.GraphicEq,
+                                        contentDescription = null,
+                                        tint = glyphContent
+                                    )
+                                    AssistantPhase.Idle -> Icon(
+                                        imageVector = Icons.Default.AutoAwesome,
+                                        contentDescription = null,
+                                        tint = glyphContent
+                                    )
+                                }
                             }
                         }
                     }
@@ -757,31 +788,48 @@ internal fun AssistantOverlayContent(
                                 keyboardActions = KeyboardActions(onSend = { submitTyped() })
                             )
                         } else {
-                            val (line, emphasised) = when {
-                                capturing && partialTranscript.isNotBlank() -> partialTranscript to true
-                                capturing -> "Listening\u2026" to false
-                                thinking -> "Thinking\u2026" to false
-                                speaking -> "Speaking\u2026" to false
-                                voiceState is VoiceState.Error -> "Try again" to false
-                                else -> "Ask anything" to false
+                            val line = when {
+                                capturing && partialTranscript.isNotBlank() ->
+                                    AssistantStateLine(partialTranscript, emphasised = true, kind = "transcript")
+                                capturing -> AssistantStateLine("Listening\u2026", false, "listening")
+                                thinking -> AssistantStateLine("Thinking\u2026", false, "thinking")
+                                speaking -> AssistantStateLine("Speaking\u2026", false, "speaking")
+                                voiceState is VoiceState.Error -> AssistantStateLine("Try again", false, "error")
+                                else -> AssistantStateLine("Ask anything", false, "idle")
                             }
                             // Weight contrast: the recognised words are large and semibold, the
-                            // phase words and the resting prompt are light.
-                            val lineColor by animateColorAsState(
-                                targetValue = if (emphasised) MaterialTheme.colorScheme.onSurface
-                                else MaterialTheme.colorScheme.onSurfaceVariant,
-                                animationSpec = AssistantMotion.effect(),
-                                label = "stateLineColor"
-                            )
-                            Text(
-                                text = line,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                                style = if (emphasised) AssistantTypography.transcript(MaterialTheme.typography)
-                                else AssistantTypography.prompt(MaterialTheme.typography),
-                                color = lineColor,
-                                modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite }
-                            )
+                            // phase words and the resting prompt are light. A phase change slides
+                            // the new line up from under the old one (state-switch spring); the
+                            // growing transcript updates in place, keyed by kind, so each new word
+                            // does not restart the transition.
+                            AnimatedContent(
+                                targetState = line,
+                                contentKey = { it.kind },
+                                transitionSpec = {
+                                    (fadeIn(animationSpec = AssistantMotion.effect()) +
+                                        slideInVertically(animationSpec = AssistantMotion.stateSwitch()) { it / 2 })
+                                        .togetherWith(
+                                            fadeOut(animationSpec = snap()) +
+                                                slideOutVertically(animationSpec = AssistantMotion.effect()) { -it / 3 }
+                                        )
+                                        .using(SizeTransform(clip = false))
+                                },
+                                contentAlignment = Alignment.CenterStart,
+                                label = "stateLine"
+                            ) { current ->
+                                Text(
+                                    text = current.text,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    style = if (current.emphasised) AssistantTypography.transcript(MaterialTheme.typography)
+                                    else AssistantTypography.prompt(MaterialTheme.typography),
+                                    color = if (current.emphasised) MaterialTheme.colorScheme.onSurface
+                                    else MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .semantics { liveRegion = LiveRegionMode.Polite }
+                                )
+                            }
                         }
                     }
 
