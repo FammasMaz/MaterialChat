@@ -347,6 +347,12 @@ fun AssistantOverlay(
                     viewModel.dismiss()
                 }
                 .padding(bottom = with(density) { bottomObstructionPx.toDp() })
+                // The backdrop texture, after Gemini Live: a bottom-anchored scrim band with a
+                // uniform dot lattice (1dp dots, 7dp pitch) fading upward, edge to edge. Drawn
+                // from this full-window node (API 26 clips a node's drawing to its own bounds),
+                // under the edge light's foreground and under the pill. It fades in on arrival
+                // and out while leaving and never animates in between.
+                .assistantDotLattice(visible = !leaving, enabled = neuralExpressive)
                 .onGloballyPositioned { scrimOriginInRoot = it.boundsInRoot().topLeft }
                 // Below API 28 a node's drawing is clipped to its own bounds, so a card-sized
                 // node can never draw an outward particle band there. The full-window scrim hosts
