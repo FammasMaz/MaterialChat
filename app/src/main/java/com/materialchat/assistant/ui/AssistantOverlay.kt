@@ -8,13 +8,20 @@ import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.compose.ui.platform.testTag
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -70,7 +77,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.materialchat.assistant.ui.components.AssistantResponseCard
 import com.materialchat.assistant.voice.VoiceState
 import com.materialchat.data.local.preferences.AppPreferences
-import com.materialchat.ui.theme.ExpressiveMotion
 import com.materialchat.ui.theme.MaterialChatTheme
 import com.materialchat.ui.theme.isDynamicColorSupported
 import com.materialchat.ui.theme.particles.CapsuleBackdropBlur
@@ -96,10 +102,10 @@ import androidx.compose.material.icons.filled.KeyboardHide
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.FilledIconButton
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
-import androidx.compose.material3.TextButton
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.SolidColor
@@ -429,6 +435,9 @@ fun AssistantOverlay(
     }
 }
 
+/** The pill's leading glyph follows one of these phases; switches animate with a spring. */
+private enum class AssistantPhase { Capturing, Thinking, Speaking, Idle }
+
 /** Timing of the staged exit: decorations animate out for this long before the window hides. */
 internal object AssistantExitMotion {
     private const val BASE_MILLIS = 320L
@@ -541,20 +550,20 @@ internal fun AssistantOverlayContent(
     // Animate sheet entrance with bounce (M3 Expressive spatial spring)
     val offsetY by animateDpAsState(
         targetValue = if (isVisible) 0.dp else 400.dp,
-        animationSpec = ExpressiveMotion.Spatial.container(),
+        animationSpec = AssistantMotion.container(),
         label = "sheetOffset"
     )
 
     // Sheet scale for depth effect (M3 Expressive playful spring)
     val sheetScale by animateFloatAsState(
         targetValue = if (isVisible) 1f else 0.95f,
-        animationSpec = ExpressiveMotion.Spatial.playful(),
+        animationSpec = AssistantMotion.playful(),
         label = "sheetScale"
     )
 
     val alpha by animateFloatAsState(
         targetValue = if (isVisible) 1f else 0f,
-        animationSpec = ExpressiveMotion.Effects.alpha(),
+        animationSpec = AssistantMotion.effect(),
         label = "sheetAlpha"
     )
 
@@ -587,17 +596,29 @@ internal fun AssistantOverlayContent(
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             // Response surface above the pill: latest exchange, action row, close.
+            // The answer surface rises out of the pill: a weighty spring settle with a slight
+            // scale-up, anchored to its bottom edge where the pill is.
             AnimatedVisibility(
                 visible = hasResponse,
-                enter = fadeIn(animationSpec = ExpressiveMotion.Effects.alpha()) +
+                enter = fadeIn(animationSpec = AssistantMotion.effect()) +
                     slideInVertically(
-                        animationSpec = ExpressiveMotion.Spatial.default(),
+                        animationSpec = AssistantMotion.surfaceReveal(),
                         initialOffsetY = { it / 2 }
+                    ) +
+                    scaleIn(
+                        animationSpec = AssistantMotion.surfaceReveal(),
+                        initialScale = 0.92f,
+                        transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0.5f, 1f)
                     ),
-                exit = fadeOut(animationSpec = ExpressiveMotion.Effects.alpha()) +
+                exit = fadeOut(animationSpec = AssistantMotion.effect()) +
                     slideOutVertically(
-                        animationSpec = ExpressiveMotion.Spatial.default(),
+                        animationSpec = AssistantMotion.surfaceReveal(),
                         targetOffsetY = { it / 2 }
+                    ) +
+                    scaleOut(
+                        animationSpec = AssistantMotion.surfaceReveal(),
+                        targetScale = 0.92f,
+                        transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0.5f, 1f)
                     ),
                 modifier = Modifier.weight(1f, fill = false)
             ) {
@@ -623,8 +644,10 @@ internal fun AssistantOverlayContent(
             // One short line for errors and the microphone hint when there is no response surface.
             AnimatedVisibility(
                 visible = !hasResponse && notice != null,
-                enter = fadeIn(animationSpec = ExpressiveMotion.Effects.alpha()),
-                exit = fadeOut(animationSpec = ExpressiveMotion.Effects.alpha())
+                enter = fadeIn(animationSpec = AssistantMotion.effect()) +
+                    scaleIn(animationSpec = AssistantMotion.stateSwitch(), initialScale = 0.9f),
+                exit = fadeOut(animationSpec = AssistantMotion.effect()) +
+                    scaleOut(animationSpec = AssistantMotion.stateSwitch(), targetScale = 0.9f)
             ) {
                 AssistantNoticeSurface(message = notice.orEmpty(), isError = isError)
             }
@@ -637,7 +660,7 @@ internal fun AssistantOverlayContent(
                     .testTag("assistant_pill")
                     // The particle field and soft fill wrap the pill itself.
                     .onGloballyPositioned { onCardBoundsChange(it.boundsInRoot()) },
-                shape = RoundedCornerShape(38.dp),
+                shape = AssistantShapes.Pill,
                 color = if (softEdges) Color.Transparent else MaterialTheme.colorScheme.surfaceContainerHigh,
                 // A transparent Surface would otherwise pick black content (icons were black).
                 contentColor = MaterialTheme.colorScheme.onSurface,
@@ -651,32 +674,54 @@ internal fun AssistantOverlayContent(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    // Leading state glyph.
-                    Box(modifier = Modifier.size(32.dp), contentAlignment = Alignment.Center) {
-                        when {
-                            capturing -> VoiceWaveform(
-                                amplitudeData = amplitudeData,
-                                barCount = 5,
-                                barWidth = 3.dp,
-                                barSpacing = 2.dp,
-                                minBarHeight = 4.dp,
-                                maxBarHeight = 22.dp
-                            )
-                            thinking -> TypingIndicator(
-                                dotSize = 6.dp,
-                                dotSpacing = 3.dp,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                            speaking -> Icon(
-                                imageVector = Icons.Default.GraphicEq,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary
-                            )
-                            else -> Icon(
-                                imageVector = Icons.Default.AutoAwesome,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary
-                            )
+                    // Leading state glyph. Each phase change (listening -> thinking -> speaking)
+                    // pops the new glyph in with a springy scale instead of a hard swap.
+                    val phase = when {
+                        capturing -> AssistantPhase.Capturing
+                        thinking -> AssistantPhase.Thinking
+                        speaking -> AssistantPhase.Speaking
+                        else -> AssistantPhase.Idle
+                    }
+                    AnimatedContent(
+                        targetState = phase,
+                        transitionSpec = {
+                            (fadeIn(animationSpec = AssistantMotion.effect()) +
+                                scaleIn(animationSpec = AssistantMotion.stateSwitch(), initialScale = 0.6f))
+                                .togetherWith(
+                                    fadeOut(animationSpec = AssistantMotion.effect()) +
+                                        scaleOut(animationSpec = AssistantMotion.stateSwitch(), targetScale = 0.6f)
+                                )
+                        },
+                        contentAlignment = Alignment.Center,
+                        modifier = Modifier.size(32.dp),
+                        label = "assistantGlyph"
+                    ) { current ->
+                        Box(modifier = Modifier.size(32.dp), contentAlignment = Alignment.Center) {
+                            when (current) {
+                                AssistantPhase.Capturing -> VoiceWaveform(
+                                    amplitudeData = amplitudeData,
+                                    barCount = 5,
+                                    barWidth = 3.dp,
+                                    barSpacing = 2.dp,
+                                    minBarHeight = 4.dp,
+                                    maxBarHeight = 22.dp
+                                )
+                                AssistantPhase.Thinking -> TypingIndicator(
+                                    dotSize = 6.dp,
+                                    dotSpacing = 3.dp,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                                AssistantPhase.Speaking -> Icon(
+                                    imageVector = Icons.Default.GraphicEq,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                                AssistantPhase.Idle -> Icon(
+                                    imageVector = Icons.Default.AutoAwesome,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                            }
                         }
                     }
 
@@ -697,7 +742,7 @@ internal fun AssistantOverlayContent(
                                     text = "Ask anything",
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis,
-                                    style = MaterialTheme.typography.titleMedium,
+                                    style = AssistantTypography.prompt(MaterialTheme.typography),
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
@@ -707,7 +752,7 @@ internal fun AssistantOverlayContent(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .focusRequester(focusRequester),
-                                textStyle = MaterialTheme.typography.titleMedium.copy(
+                                textStyle = AssistantTypography.input(MaterialTheme.typography).copy(
                                     color = MaterialTheme.colorScheme.onSurface
                                 ),
                                 singleLine = true,
@@ -727,13 +772,21 @@ internal fun AssistantOverlayContent(
                                 voiceState is VoiceState.Error -> "Try again" to false
                                 else -> "Ask anything" to false
                             }
+                            // Weight contrast: the recognised words are large and semibold, the
+                            // phase words and the resting prompt are light.
+                            val lineColor by animateColorAsState(
+                                targetValue = if (emphasised) MaterialTheme.colorScheme.onSurface
+                                else MaterialTheme.colorScheme.onSurfaceVariant,
+                                animationSpec = AssistantMotion.effect(),
+                                label = "stateLineColor"
+                            )
                             Text(
                                 text = line,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
-                                style = MaterialTheme.typography.titleMedium,
-                                color = if (emphasised) MaterialTheme.colorScheme.onSurface
-                                else MaterialTheme.colorScheme.onSurfaceVariant,
+                                style = if (emphasised) AssistantTypography.transcript(MaterialTheme.typography)
+                                else AssistantTypography.prompt(MaterialTheme.typography),
+                                color = lineColor,
                                 modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite }
                             )
                         }
@@ -747,18 +800,53 @@ internal fun AssistantOverlayContent(
                         )
                     }
 
-                    // Primary action: Send / Stop / Mic.
-                    val primaryModifier = Modifier.size(56.dp)
+                    // Primary action: Send / Stop / Mic. Like an M3 Expressive toggled icon button
+                    // it morphs from a circle (listen, send) to a rounded square (stop) and pops
+                    // when its role changes; the fill is the bold primary while idle and sending,
+                    // the primary container while capturing, tonal while interrupting.
+                    val primaryRole = when {
+                        keyboardMode && hasText -> "send"
+                        capturing -> "stop"
+                        busy -> "interrupt"
+                        else -> "mic"
+                    }
+                    val primaryPop = remember { Animatable(1f) }
+                    var lastPrimaryRole by remember { mutableStateOf(primaryRole) }
+                    LaunchedEffect(primaryRole) {
+                        if (primaryRole != lastPrimaryRole) {
+                            lastPrimaryRole = primaryRole
+                            primaryPop.snapTo(0.8f)
+                            primaryPop.animateTo(1f, AssistantMotion.pop())
+                        }
+                    }
+                    val primaryCorner by animateDpAsState(
+                        targetValue = if (capturing || busy) 18.dp else 28.dp,
+                        animationSpec = AssistantMotion.stateSwitch(),
+                        label = "primaryCorner"
+                    )
+                    val primaryShape = RoundedCornerShape(primaryCorner)
+                    val primaryModifier = Modifier
+                        .size(56.dp)
+                        .graphicsLayer {
+                            scaleX = primaryPop.value
+                            scaleY = primaryPop.value
+                        }
                     when {
                         keyboardMode && hasText -> FilledIconButton(
                             onClick = submitTyped,
-                            modifier = primaryModifier
+                            modifier = primaryModifier,
+                            shape = primaryShape,
+                            colors = IconButtonDefaults.filledIconButtonColors(
+                                containerColor = MaterialTheme.colorScheme.primary,
+                                contentColor = MaterialTheme.colorScheme.onPrimary
+                            )
                         ) {
                             Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "Send")
                         }
                         capturing -> FilledIconButton(
                             onClick = onStopVoice,
                             modifier = primaryModifier,
+                            shape = primaryShape,
                             colors = IconButtonDefaults.filledIconButtonColors(
                                 containerColor = MaterialTheme.colorScheme.primaryContainer,
                                 contentColor = MaterialTheme.colorScheme.onPrimaryContainer
@@ -769,6 +857,7 @@ internal fun AssistantOverlayContent(
                         busy -> FilledIconButton(
                             onClick = onInterrupt,
                             modifier = primaryModifier,
+                            shape = primaryShape,
                             colors = IconButtonDefaults.filledTonalIconButtonColors()
                         ) {
                             Icon(Icons.Default.Stop, contentDescription = "Interrupt")
@@ -780,7 +869,12 @@ internal fun AssistantOverlayContent(
                                 onVoiceClick()
                             },
                             enabled = voiceEnabled,
-                            modifier = primaryModifier
+                            modifier = primaryModifier,
+                            shape = primaryShape,
+                            colors = IconButtonDefaults.filledIconButtonColors(
+                                containerColor = MaterialTheme.colorScheme.primary,
+                                contentColor = MaterialTheme.colorScheme.onPrimary
+                            )
                         ) {
                             Icon(Icons.Default.Mic, contentDescription = "Microphone")
                         }
@@ -812,19 +906,23 @@ private fun AssistantResponseSurface(
 ) {
     val maxHeight = (LocalConfiguration.current.screenHeightDp * 0.5f).dp
     val hasAssistantText = messages.any { it.role == MessageRole.ASSISTANT && it.content.isNotBlank() }
+    // The answer surface: an accent-tinted high container with wide organic top corners, growing
+    // with the streamed reply on a soft spring.
     Surface(
         modifier = Modifier
             .fillMaxWidth()
             .heightIn(max = maxHeight),
-        shape = RoundedCornerShape(28.dp),
-        color = MaterialTheme.colorScheme.surfaceContainer,
+        shape = AssistantShapes.Answer,
+        color = AssistantColors.answerSurface(MaterialTheme.colorScheme),
+        contentColor = MaterialTheme.colorScheme.onSurface,
         tonalElevation = 4.dp,
         shadowElevation = 12.dp
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(start = 12.dp, end = 4.dp, top = 4.dp, bottom = 12.dp),
+                .animateContentSize(animationSpec = AssistantMotion.contentSize())
+                .padding(start = 12.dp, end = 4.dp, top = 8.dp, bottom = 14.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             Row(
@@ -832,9 +930,11 @@ private fun AssistantResponseSurface(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 if (showOpenInApp) {
-                    TextButton(
+                    FilledTonalButton(
                         onClick = onOpenInApp,
-                        contentPadding = PaddingValues(horizontal = 8.dp)
+                        shape = AssistantShapes.Chip,
+                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
+                        modifier = Modifier.height(36.dp)
                     ) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.OpenInNew,
@@ -842,7 +942,7 @@ private fun AssistantResponseSurface(
                             modifier = Modifier.size(16.dp)
                         )
                         Spacer(Modifier.size(6.dp))
-                        Text("Open in app", style = MaterialTheme.typography.labelLarge)
+                        Text("Open in app", style = AssistantTypography.action(MaterialTheme.typography))
                     }
                 }
                 Spacer(Modifier.weight(1f))
@@ -873,7 +973,7 @@ private fun AssistantResponseSurface(
                     text = notice,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
-                    style = MaterialTheme.typography.bodySmall,
+                    style = AssistantTypography.notice(MaterialTheme.typography),
                     color = if (isError) MaterialTheme.colorScheme.error
                     else MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(start = 4.dp, end = 12.dp)
@@ -887,16 +987,16 @@ private fun AssistantResponseSurface(
 private fun AssistantNoticeSurface(message: String, isError: Boolean) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp),
+        shape = AssistantShapes.Notice,
         color = if (isError) MaterialTheme.colorScheme.errorContainer
-        else MaterialTheme.colorScheme.surfaceContainer,
+        else MaterialTheme.colorScheme.surfaceContainerHigh,
         tonalElevation = 2.dp
     ) {
         Text(
             text = message,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
-            style = MaterialTheme.typography.bodySmall,
+            style = AssistantTypography.notice(MaterialTheme.typography),
             color = if (isError) MaterialTheme.colorScheme.onErrorContainer
             else MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp)
