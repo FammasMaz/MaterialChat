@@ -176,8 +176,8 @@ class AppPreferences(private val context: Context) {
         const val DEFAULT_HAPTICS_ENABLED = true
         const val DEFAULT_NOTIFICATIONS_ENABLED = false
         const val DEFAULT_AI_GENERATED_TITLES_ENABLED = true
-        const val DEFAULT_PREFER_ON_DEVICE_TITLE_MODEL = false
         const val DEFAULT_PREFER_ON_DEVICE_BACKGROUND_TASKS = true
+        const val DEFAULT_PREFER_ON_DEVICE_TITLE_MODEL = DEFAULT_PREFER_ON_DEVICE_BACKGROUND_TASKS
         val DEFAULT_REASONING_EFFORT = ReasoningEffort.HIGH
         const val DEFAULT_REMEMBER_LAST_MODEL = true
         const val DEFAULT_IMAGE_GENERATION_MODEL = "codex/gpt-image-2-medium"
@@ -497,19 +497,6 @@ class AppPreferences(private val context: Context) {
         }
     }
 
-    /**
-     * Prefer the smallest available on-device model for title generation.
-     */
-    val preferOnDeviceTitleModel: Flow<Boolean> = dataStore.data.map { preferences ->
-        preferences[Keys.PREFER_ON_DEVICE_TITLE_MODEL] ?: DEFAULT_PREFER_ON_DEVICE_TITLE_MODEL
-    }.distinctUntilChanged()
-
-    suspend fun setPreferOnDeviceTitleModel(enabled: Boolean) {
-        dataStore.edit { preferences ->
-            preferences[Keys.PREFER_ON_DEVICE_TITLE_MODEL] = enabled
-        }
-    }
-
     // ========== Title Generation Model ==========
 
     /**
@@ -545,6 +532,18 @@ class AppPreferences(private val context: Context) {
             preferences[Keys.PREFER_ON_DEVICE_TITLE_MODEL] = enabled
         }
     }
+
+    /**
+     * Prefer the smallest available on-device model for title generation.
+     *
+     * This is the same policy as [preferOnDeviceBackgroundTasks] and reads and writes the same
+     * key: the settings toggle and the model-assignments toggle used to write different keys
+     * with opposite defaults, so one of them silently did nothing.
+     */
+    val preferOnDeviceTitleModel: Flow<Boolean> = preferOnDeviceBackgroundTasks
+
+    suspend fun setPreferOnDeviceTitleModel(enabled: Boolean) =
+        setPreferOnDeviceBackgroundTasks(enabled)
 
     val memoryExtractionModel: Flow<String> = dataStore.data.map { preferences ->
         preferences[Keys.MEMORY_EXTRACTION_MODEL] ?: ""

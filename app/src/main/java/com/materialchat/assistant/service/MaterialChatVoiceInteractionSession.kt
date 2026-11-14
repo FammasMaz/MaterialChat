@@ -38,9 +38,13 @@ import com.materialchat.assistant.di.AssistantEntryPoint
 import com.materialchat.assistant.ui.AssistantOverlay
 import com.materialchat.assistant.ui.AssistantViewModel
 import dagger.hilt.android.EntryPointAccessors
+import android.widget.Toast
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 
 /**
  * Voice interaction session that handles individual assistant invocations.
@@ -65,6 +69,9 @@ class MaterialChatVoiceInteractionSession(
     override val lifecycle: Lifecycle get() = lifecycleRegistry
     override val viewModelStore: ViewModelStore get() = viewModelStoreInstance
     override val savedStateRegistry: SavedStateRegistry get() = savedStateRegistryController.savedStateRegistry
+
+    /** Outlives a single show/hide cycle; cancelled with the session. */
+    private val sessionScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
     private var overlayShown = false
     private var pendingShow = false
@@ -99,6 +106,30 @@ class MaterialChatVoiceInteractionSession(
             val model = assistantViewModel
             if (model == null) pendingShow = true else model.onOverlayShown()
         }
+        enforceEnabledSetting()
+    }
+
+    /**
+     * The Settings switch used to only hide the setup card, so turning the assistant off did
+     * nothing. Honour it: close the session with an explanation. A preference read failure is
+     * treated as enabled so a transient error cannot silently disable the assistant.
+     */
+    private fun enforceEnabledSetting() {
+        sessionScope.launch {
+            val preferences = runCatching {
+                EntryPointAccessors.fromApplication(context.applicationContext, AssistantEntryPoint::class.java)
+                    .appPreferences()
+            }.getOrNull() ?: return@launch
+            val enabled = runCatching { preferences.assistantEnabled.first() }.getOrNull()
+                ?: return@launch
+            if (enabled || !overlayShown) return@launch
+            Toast.makeText(
+                context,
+                "MaterialChat assistant is turned off in Settings",
+                Toast.LENGTH_LONG
+            ).show()
+            hide()
+        }
     }
 
     override fun onHide() {
@@ -121,6 +152,7 @@ class MaterialChatVoiceInteractionSession(
     }
 
     override fun onDestroy() {
+        sessionScope.cancel()
         releaseScreenshot()
         lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_DESTROY)
         viewModelStoreInstance.clear()

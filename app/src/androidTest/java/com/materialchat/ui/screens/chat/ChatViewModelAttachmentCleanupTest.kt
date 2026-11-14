@@ -420,7 +420,7 @@ class ChatViewModelAttachmentCleanupTest {
                 managePersonasUseCase = ManagePersonasUseCase(personas),
                 appPreferences = preferences,
                 encryptedPreferences = encryptedPreferences,
-                appNotificationManager = AppNotificationManager(context),
+                appNotificationManager = AppNotificationManager(context, preferences),
                 ioDispatcher = Dispatchers.IO,
                 applicationScope = applicationScope,
                 appContext = context

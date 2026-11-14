@@ -15,17 +15,20 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import com.materialchat.MainActivity
 import com.materialchat.R
+import com.materialchat.data.local.preferences.AppPreferences
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.math.abs
+import kotlinx.coroutines.flow.first
 
 /**
  * Handles local notifications for app-level events.
  */
 @Singleton
 class AppNotificationManager @Inject constructor(
-    @ApplicationContext private val context: Context
+    @ApplicationContext private val context: Context,
+    private val appPreferences: AppPreferences
 ) {
 
     companion object {
@@ -49,9 +52,15 @@ class AppNotificationManager @Inject constructor(
      * Shows a notification when a regular chat AI response completes in the background.
      * Only shows when the app is not in the foreground.
      */
-    fun notifyChatResponseComplete(conversationId: String, preview: String) {
-        if (!canPostNotifications()) return
-        if (isAppInForeground()) return
+    suspend fun notifyChatResponseComplete(conversationId: String, preview: String) {
+        // The Settings switch used to be read only to draw itself, so users saw "off" while
+        // still receiving these. Honour it, and fail closed if the preference cannot be read.
+        val enabled = try {
+            appPreferences.notificationsEnabled.first()
+        } catch (_: Exception) {
+            false
+        }
+        if (!shouldNotifyChatComplete(enabled, canPostNotifications(), isAppInForeground())) return
 
         ensureChannels()
 
@@ -148,3 +157,15 @@ class AppNotificationManager @Inject constructor(
         return previous != null && (now - previous) < 20_000L
     }
 }
+
+/**
+ * Whether a "response ready" notification may be posted.
+ *
+ * Kept pure so the gating can be tested without a device: the Settings switch, the system
+ * permission and the foreground state must all allow it.
+ */
+internal fun shouldNotifyChatComplete(
+    switchEnabled: Boolean,
+    canPostNotifications: Boolean,
+    appInForeground: Boolean
+): Boolean = switchEnabled && canPostNotifications && !appInForeground
