@@ -298,9 +298,9 @@ class MaterialChatVoiceInteractionSession(
      */
     override fun onHandleScreenshot(screenshot: Bitmap?) {
         super.onHandleScreenshot(screenshot)
-        if (screenshot !== assistScreenshot.value) releaseScreenshot()
-        assistScreenshot.value = screenshot
-        Log.i(TAG, "assist screenshot=" + (screenshot?.let { "${it.width}x${it.height}" } ?: "none"))
+        // The shrinking backdrop is disabled, so the screenshot is not held (it is a full-screen
+        // bitmap). Kept as a hook for the planned press pulse.
+        Log.i(TAG, "assist screenshot=" + (screenshot?.let { "${it.width}x${it.height}" } ?: "none") + " (unused)")
     }
 
     private companion object {

@@ -297,10 +297,9 @@ fun AssistantOverlay(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                // The screen the assistant was opened over, shrunk to 92% with rounded corners
-                // under the dim scrim (Gemini's shrinking screen), springing back while leaving.
-                // Only when the platform delivered a screenshot; otherwise nothing is drawn.
-                .assistScreenshotBackdrop(screenshot = assistScreenshot, shrunk = !leaving)
+                // The shrinking screenshot backdrop is disabled: a persistent shrink did not read
+                // as the intended press pulse (shrink, then spring back). assistScreenshotBackdrop
+                // stays available for that follow-up.
                 .background(Color.Black.copy(alpha = 0.42f))
                 // The edge light frames the whole window (before the keyboard padding) and sits
                 // under the pill and its particle field (before them in the chain). The hosted
