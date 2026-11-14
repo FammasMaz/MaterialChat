@@ -46,10 +46,13 @@ import com.materialchat.ui.theme.particles.ParticleFieldStyle
 import com.materialchat.ui.theme.particles.neuralParticleField
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
+import androidx.test.espresso.IdlingPolicies
+import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import java.io.File
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.math.abs
 import kotlin.math.roundToInt
@@ -63,6 +66,16 @@ import kotlin.math.roundToInt
 @RunWith(AndroidJUnit4::class)
 class AssistantNeuralParticleFieldTest {
     @get:Rule val compose = createComposeRule()
+
+    /**
+     * The first composition compiles the AGSL runtime shader and generates its tiles, which can
+     * take several seconds on a loaded CI emulator; the default 5 s idling budget then fails the
+     * test before any assertion runs. The wait budget is raised here; no assertion is relaxed.
+     */
+    @Before fun allowSlowShaderSetup() {
+        IdlingPolicies.setIdlingResourceTimeout(60, TimeUnit.SECONDS)
+        IdlingPolicies.setMasterPolicyTimeout(60, TimeUnit.SECONDS)
+    }
 
     @Test fun particleFieldRendersAroundTheCardWithoutChangingItsBounds() {
         val enabled = mutableStateOf(false)
@@ -222,7 +235,7 @@ class AssistantNeuralParticleFieldTest {
             }
         }
         compose.waitForIdle()
-        compose.waitUntil(10_000) { tileReady }
+        compose.waitUntil(60_000) { tileReady }
         compose.mainClock.autoAdvance = false
         compose.mainClock.advanceTimeBy(2_000)
         compose.waitForIdle()
