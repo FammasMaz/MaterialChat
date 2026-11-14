@@ -110,6 +110,9 @@ class MaterialChatVoiceInteractionSession(
             val model = assistantViewModel
             if (model == null) pendingShow = true else model.onOverlayShown()
         }
+        // The overlay composes before the session window is shown, so re-assert the state now
+        // that the window the user sees exists.
+        setKeepAwake(keepScreenOn)
         enforceEnabledSetting()
     }
 
@@ -175,6 +178,32 @@ class MaterialChatVoiceInteractionSession(
         // session); the acceptance script asserts the real FLAG_KEEP_SCREEN_ON on that window.
         runCatching { super.setKeepAwake(keepAwake) }
             .onFailure { Log.w(TAG, "Session window unavailable for setKeepAwake($keepAwake)", it) }
+        // super.setKeepAwake() only reaches the dialog window the platform created for us, and
+        // it silently does nothing when that window was not attached yet (the overlay composes
+        // before the session is shown). Apply the flag to the window directly as well, so the
+        // display is held from the first frame the user sees.
+        applyKeepScreenOnFlag(keepAwake)
+    }
+
+    /**
+     * Applies FLAG_KEEP_SCREEN_ON to the session window itself and reports the resulting mask,
+     * so the acceptance script can prove the display is actually held rather than trusting that
+     * the platform call took effect.
+     */
+    private fun applyKeepScreenOnFlag(keepAwake: Boolean) {
+        runCatching {
+            val window = window?.window ?: return@runCatching
+            if (keepAwake) {
+                window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+            } else {
+                window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+            }
+            Log.i(
+                TAG,
+                "keep-awake window=$keepAwake flags=0x" +
+                    Integer.toHexString(window.attributes.flags)
+            )
+        }.onFailure { Log.w(TAG, "Session window unavailable for keep-awake=$keepAwake", it) }
     }
 
     override fun onHide() {
