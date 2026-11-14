@@ -576,6 +576,8 @@ internal fun AssistantOverlayContent(
                             if (uiState.textInput.isEmpty()) {
                                 Text(
                                     text = "Ask anything",
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
                                     style = MaterialTheme.typography.titleMedium,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
