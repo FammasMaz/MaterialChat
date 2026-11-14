@@ -1,76 +1,29 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  MaterialChat launcher foreground: the assistant pill as a speech bubble.
+  Source of truth: docs/icon/ic_launcher.svg (re-render with docs/icon/render.sh).
+-->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
 
-    <!-- 75% scale keeps the adaptive icon safely inside the mask. -->
+    <!-- 75% scale keeps the content inside the adaptive-icon safe zone (centre 66 of 108). -->
     <group
         android:pivotX="54"
         android:pivotY="54"
         android:scaleX="0.75"
         android:scaleY="0.75">
 
-        <!-- M3 Expressive clover/cookie forms -->
+        <!-- Near-black capsule pill with a speech-bubble tail (same surface as the assistant pill). -->
         <path
-            android:fillColor="#6750A4"
-            android:pathData="M54,17
-                C66,17 70,30 67,39
-                C76,34 91,38 94,50
-                C97,63 85,72 75,72
-                C82,82 78,96 66,100
-                C54,104 46,92 45,82
-                C36,91 20,88 14,77
-                C8,66 18,55 28,53
-                C18,47 15,31 25,23
-                C35,15 48,23 54,32
-                C55,27 49,17 54,17Z" />
+            android:fillColor="#1C1B1F"
+            android:pathData="M34,34 H74 A20,20 0 0 1 74,74 H48 L30,92 L34,74 A20,20 0 0 1 34,34 Z" />
 
+        <!-- Three waveform bars, the pill's live listening glyph. -->
         <path
             android:fillColor="#D0BCFF"
-            android:pathData="M35,38
-                C27,38 22,44 22,52
-                C22,61 29,68 39,68
-                H51
-                L61,78
-                C63,80 66,78 65,75
-                L64,68
-                H70
-                C80,68 86,61 86,52
-                C86,44 80,38 72,38
-                H35Z" />
-
-        <path
-            android:fillColor="#21005D"
-            android:pathData="M39,53m-4,0a4,4 0,1 1,8 0a4,4 0,1 1,-8 0" />
-        <path
-            android:fillColor="#21005D"
-            android:pathData="M54,53m-4,0a4,4 0,1 1,8 0a4,4 0,1 1,-8 0" />
-        <path
-            android:fillColor="#21005D"
-            android:pathData="M69,53m-4,0a4,4 0,1 1,8 0a4,4 0,1 1,-8 0" />
-
-        <path
-            android:fillColor="#FFD8E4"
-            android:pathData="M78,22
-                L83,34
-                L95,39
-                L83,44
-                L78,56
-                L73,44
-                L61,39
-                L73,34Z" />
-
-        <path
-            android:fillColor="#7D5260"
-            android:pathData="M78,31
-                L80,38
-                L87,40
-                L80,43
-                L78,50
-                L75,43
-                L68,40
-                L75,38Z" />
+            android:pathData="M38,51 a4,4 0 0 1 8,0 v6 a4,4 0 0 1 -8,0 z M50,45 a4,4 0 0 1 8,0 v18 a4,4 0 0 1 -8,0 z M62,49 a4,4 0 0 1 8,0 v10 a4,4 0 0 1 -8,0 z" />
     </group>
 </vector>

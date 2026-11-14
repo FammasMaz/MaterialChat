@@ -1,10 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  Themed-icon silhouette: the pill-bubble with the three waveform bars cut out as negative space,
+  so the glyph still reads when the launcher tints it a single colour.
+  Source of truth: docs/icon/ic_launcher_mono.svg.
+-->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-
     <group
         android:pivotX="54"
         android:pivotY="54"
@@ -13,41 +17,6 @@
         <path
             android:fillColor="#000000"
             android:fillType="evenOdd"
-            android:pathData="M54,17
-                C66,17 70,30 67,39
-                C76,34 91,38 94,50
-                C97,63 85,72 75,72
-                C82,82 78,96 66,100
-                C54,104 46,92 45,82
-                C36,91 20,88 14,77
-                C8,66 18,55 28,53
-                C18,47 15,31 25,23
-                C35,15 48,23 54,32
-                C55,27 49,17 54,17Z
-                M35,38
-                C27,38 22,44 22,52
-                C22,61 29,68 39,68
-                H51
-                L61,78
-                C63,80 66,78 65,75
-                L64,68
-                H70
-                C80,68 86,61 86,52
-                C86,44 80,38 72,38
-                H35Z
-                M39,53m-4,0a4,4 0,1 0,8 0a4,4 0,1 0,-8 0
-                M54,53m-4,0a4,4 0,1 0,8 0a4,4 0,1 0,-8 0
-                M69,53m-4,0a4,4 0,1 0,8 0a4,4 0,1 0,-8 0" />
-
-        <path
-            android:fillColor="#000000"
-            android:pathData="M78,22
-                L83,34
-                L95,39
-                L83,44
-                L78,56
-                L73,44
-                L61,39
-                L73,34Z" />
+            android:pathData="M34,34 H74 A20,20 0 0 1 74,74 H48 L30,92 L34,74 A20,20 0 0 1 34,34 Z M38,51 a4,4 0 0 1 8,0 v6 a4,4 0 0 1 -8,0 z M50,45 a4,4 0 0 1 8,0 v18 a4,4 0 0 1 -8,0 z M62,49 a4,4 0 0 1 8,0 v10 a4,4 0 0 1 -8,0 z" />
     </group>
 </vector>
