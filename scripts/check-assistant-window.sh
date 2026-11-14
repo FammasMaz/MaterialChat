@@ -117,12 +117,20 @@ def diff_ratio(x0, y0, x1, y1, threshold=12):
     return changed, total
 
 
-bx0 = int(left + (right - left) * 0.1)
-bx1 = int(right - (right - left) * 0.1)
+# The screen-edge light (EdgeGlowStyle.reach, 56dp) breathes along all four window borders
+# while the assistant is up. Both bands are kept more than that (plus a margin) away from
+# every edge: the particle band is clamped horizontally, and the control band sits in the
+# middle of the screen, far from the card and from the edges, so it must stay static on
+# every API level.
+edge = int(72 * scale)
+bx0 = max(int(left + (right - left) * 0.1), edge)
+bx1 = min(int(right - (right - left) * 0.1), w - edge)
+assert bx1 > bx0 + 8, f'Particle band too narrow after the edge-light margin: {bx0}..{bx1}'
 by0 = max(0, int(top - 56 * scale))
 by1 = max(by0 + 1, int(top - 2 * scale))
-cy0 = int(h * 0.12)
-cy1 = int(h * 0.22)
+cy0 = int(h * 0.30)
+cy1 = int(h * 0.40)
+assert cy1 < by0, f'Control band must lie above the particle band: {cy1} >= {by0}'
 
 band_changed, band_total = diff_ratio(bx0, by0, bx1, by1)
 ctrl_changed, ctrl_total = diff_ratio(bx0, cy0, bx1, cy1)

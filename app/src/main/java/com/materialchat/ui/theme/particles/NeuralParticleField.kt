@@ -395,7 +395,7 @@ fun NeuralParticleField(
     )
 }
 
-private fun readAnimationScale(context: Context): Float = runCatching {
+internal fun readAnimationScale(context: Context): Float = runCatching {
     Settings.Global.getFloat(context.contentResolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f)
 }.getOrDefault(1f)
 

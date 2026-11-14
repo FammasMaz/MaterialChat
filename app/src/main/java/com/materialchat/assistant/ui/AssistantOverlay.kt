@@ -73,8 +73,12 @@ import com.materialchat.ui.theme.MaterialChatTheme
 import com.materialchat.ui.theme.isDynamicColorSupported
 import com.materialchat.ui.theme.particles.CapsuleBackdropBlur
 import com.materialchat.ui.theme.particles.CapsuleBackdropBlurSupport
+import com.materialchat.ui.theme.particles.EdgeGlowPhase
 import com.materialchat.ui.theme.particles.ParticleFieldStyle
 import com.materialchat.ui.theme.particles.neuralParticleField
+import com.materialchat.ui.theme.particles.readAnimationScale
+import com.materialchat.ui.theme.particles.screenEdgeGlow
+import kotlinx.coroutines.delay
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
@@ -248,15 +252,36 @@ fun AssistantOverlay(
     var scrimOriginInRoot by remember { mutableStateOf(androidx.compose.ui.geometry.Offset.Zero) }
     val decorationRect = cardBoundsInRoot?.translate(-scrimOriginInRoot.x, -scrimOriginInRoot.y)
 
+    // Leaving: a dismiss first lets the window's decorations (edge light, screenshot backdrop)
+    // animate out, then hides. Every new invocation starts with the decorations present.
+    val leavingState = remember { mutableStateOf(false) }
+    val leaving = leavingState.value
+    LaunchedEffect(showTrigger) { leavingState.value = false }
+
     // Handle events
     LaunchedEffect(Unit) {
         viewModel.events.collect { event ->
             when (event) {
                 is AssistantEvent.OpenClock -> onOpenClock(event)
                 is AssistantEvent.OpenInApp -> onOpenInApp(event.conversationId)
-                is AssistantEvent.Dismiss -> onDismiss()
+                is AssistantEvent.Dismiss -> {
+                    leavingState.value = true
+                    delay(AssistantExitMotion.durationMillis(readAnimationScale(context)))
+                    onDismiss()
+                }
             }
         }
+    }
+
+    // The screen-edge light follows the session's phase: full while capturing speech, calmer
+    // while thinking, answering or speaking, a gentle frame while waiting, out when leaving.
+    val edgeGlowPhase = when {
+        leaving -> EdgeGlowPhase.Hidden
+        voiceState is VoiceState.Listening || voiceState is VoiceState.Processing -> EdgeGlowPhase.Listening
+        uiState.isLoading || uiState.isStreaming || uiState.isSpeaking ||
+            voiceState is VoiceState.Thinking || voiceState is VoiceState.Responding ||
+            voiceState is VoiceState.Speaking -> EdgeGlowPhase.Busy
+        else -> EdgeGlowPhase.Idle
     }
 
     MaterialChatTheme(
@@ -270,6 +295,18 @@ fun AssistantOverlay(
             modifier = Modifier
                 .fillMaxSize()
                 .background(Color.Black.copy(alpha = 0.42f))
+                // The edge light frames the whole window (before the keyboard padding) and sits
+                // under the pill and its particle field (before them in the chain). The hosted
+                // gate's control band stays outside its reach; see scripts/check-assistant-window.sh.
+                .screenEdgeGlow(
+                    phase = edgeGlowPhase,
+                    colors = listOf(
+                        MaterialTheme.colorScheme.primary,
+                        MaterialTheme.colorScheme.inversePrimary,
+                        MaterialTheme.colorScheme.primaryContainer
+                    ),
+                    enabled = neuralExpressive
+                )
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null
@@ -358,6 +395,17 @@ fun AssistantOverlay(
                 )
             }
         }
+    }
+}
+
+/** Timing of the staged exit: decorations animate out for this long before the window hides. */
+internal object AssistantExitMotion {
+    private const val BASE_MILLIS = 320L
+
+    /** Scaled by the animator duration scale; zero (animations off) hides at once. */
+    fun durationMillis(animationScale: Float): Long {
+        val scale = if (animationScale.isFinite() && animationScale > 0f) animationScale.coerceAtMost(10f) else 0f
+        return (BASE_MILLIS * scale).toLong()
     }
 }
 
