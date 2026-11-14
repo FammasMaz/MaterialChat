@@ -58,6 +58,25 @@ class ReminderParserTest {
         ).forEach { assertNull(it, ReminderParser.parse(it, now)) }
     }
 
+    /**
+     * The utterance from the user's screenshot (refused by v2.29.34's model prompt) and its
+     * spoken variants resolve locally to a labelled timer, through the full first pass
+     * ([AssistantCommandParser]), so no model is ever asked and nothing can refuse them.
+     */
+    @Test fun spokenTimerRemindersResolveLocallyThroughTheFullFirstPass() {
+        mapOf(
+            "remind me to call someone in 10 minutes" to ClockCommand.Timer(600, "Call someone"),
+            "remind me to call mum in ten minutes" to ClockCommand.Timer(600, "Call mum"),
+            "can you remind me in 10 min to call someone" to ClockCommand.Timer(600, "Call someone"),
+            "set a reminder to call someone in 10 minutes" to ClockCommand.Timer(600, "Call someone"),
+            "remind me in an hour to stretch" to ClockCommand.Timer(3600, "Stretch"),
+            "Remind me to call someone in 10 minutes." to ClockCommand.Timer(600, "Call someone"),
+            "hey can you please remind me to call someone in 10 minutes please" to ClockCommand.Timer(600, "Call someone")
+        ).forEach { (utterance, expected) ->
+            assertEquals(utterance, AssistantAction.Clock(expected), AssistantCommandParser.parse(utterance, now))
+        }
+    }
+
     @Test fun fillerIsIgnoredMidConversation() {
         assertEquals(
             AssistantAction.Clock(ClockCommand.Timer(600, "Check the pasta")),

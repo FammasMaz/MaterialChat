@@ -194,6 +194,33 @@ class AssistantViewModelTest {
         verify(exactly = 1) { chat.sendMessage(any(), any(), any(), any(), any(), any(), any(), any()) }
     }
 
+    /**
+     * The screenshot case: an earlier turn of the same conversation ended in a refusal, then the
+     * user asks the exact utterance again. The local first pass must run the reminder as a
+     * labelled timer, and no model call (which could repeat the refusal) may happen.
+     */
+    @Test fun `reminder after an earlier refusal runs locally without any model call`() = runTest {
+        val vm = createViewModel()
+        val events = mutableListOf<AssistantEvent>()
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.events.collect { events += it } }
+        vm.sendQuery("can you set reminders")
+        runCurrent()
+        states.send(StreamingState.Completed("I can't set reminders or timers, so I can't do that for you.", messageId = "a"))
+        runCurrent()
+        verify(exactly = 1) { chat.sendMessage(any(), any(), any(), any(), any(), any(), any(), any()) }
+        assertEquals(2, vm.messages.value.size)
+        vm.sendQuery("remind me to call someone in 10 minutes")
+        runCurrent()
+        val event = events.single() as AssistantEvent.OpenClock
+        assertEquals(com.materialchat.assistant.actions.ClockCommand.Timer(600, "Call someone"), event.command)
+        verify(exactly = 1) { chat.sendMessage(any(), any(), any(), any(), any(), any(), any(), any()) }
+        assertFalse(vm.uiState.value.isLoading)
+        assertEquals(null, vm.uiState.value.error)
+        vm.onClockHandoff(event.token, null)
+        assertTrue(vm.messages.value.last().content.contains("Opened the clock"))
+        assertFalse(vm.messages.value.last().content.contains("can't"))
+    }
+
     @Test fun `provider model and reasoning overrides are independent`() = runTest {
         val vm = createViewModel()
         val cases = listOf(
