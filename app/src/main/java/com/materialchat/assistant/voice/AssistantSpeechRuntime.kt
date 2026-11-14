@@ -57,19 +57,13 @@ internal class AssistantSpeechQueue(
 class AssistantSpeechRuntime(
     private val android: TextToSpeechManager,
     private val gemini: GeminiTtsBackend,
-    private val credentials: EncryptedPreferences
+    private val credentials: EncryptedPreferences,
+    private val sherpa: SherpaTtsBackend? = null
 ) {
     suspend fun speak(text: String, settings: AssistantVoiceSettings, event: (TtsEvent) -> Unit) {
         try {
             when (settings.backend) {
-                AssistantSpeechBackend.ANDROID -> {
-                    if (android.initialize().first() !is TtsInitResult.Success ||
-                        android.configure(settings).first() !is TtsInitResult.Success) {
-                        event(TtsEvent.Error("Android voice unavailable. Check voice settings."))
-                        return
-                    }
-                    android.enqueue(text).collect(event)
-                }
+                AssistantSpeechBackend.ANDROID -> speakAndroid(text, settings, event)
                 AssistantSpeechBackend.GEMINI -> {
                     val key = credentials.getAssistantGeminiTtsApiKey()
                     if (key.isNullOrBlank()) {
@@ -78,12 +72,58 @@ class AssistantSpeechRuntime(
                     }
                     gemini.speak(text, settings, key).collect(event)
                 }
+                AssistantSpeechBackend.SHERPA -> speakSherpa(text, settings, event)
             }
         } catch (cancelled: CancellationException) {
             throw cancelled
         } catch (_: Exception) {
             // Credentials and engine exceptions must not cancel sibling generation or leak details.
             event(TtsEvent.Error("Speech unavailable. Check voice settings and retry."))
+        }
+    }
+
+    private suspend fun speakAndroid(text: String, settings: AssistantVoiceSettings, event: (TtsEvent) -> Unit) {
+        if (android.initialize().first() !is TtsInitResult.Success ||
+            android.configure(settings).first() !is TtsInitResult.Success) {
+            event(TtsEvent.Error("Android voice unavailable. Check voice settings."))
+            return
+        }
+        android.enqueue(text).collect(event)
+    }
+
+    /**
+     * The neural voice is used only when its model is installed and starts producing audio; otherwise
+     * the Android voice speaks instead and a [TtsEvent.Notice] says why. A failure after speech has
+     * started is reported as an error rather than re-spoken.
+     */
+    private suspend fun speakSherpa(text: String, settings: AssistantVoiceSettings, event: (TtsEvent) -> Unit) {
+        val model = SherpaTtsModel.fromId(settings.sherpaModel)
+        val backend = sherpa
+        if (backend == null) {
+            event(TtsEvent.Notice("Neural voice is not available in this build. Using the Android voice."))
+            speakAndroid(text, settings, event)
+            return
+        }
+        val reason = backend.unavailableReason(model)
+        if (reason != null) {
+            event(TtsEvent.Notice(reason))
+            speakAndroid(text, settings, event)
+            return
+        }
+        var started = false
+        var fallbackReason: String? = null
+        backend.speak(text, settings, model).collect { value ->
+            when {
+                value is TtsEvent.Error && !started -> fallbackReason = value.message
+                else -> {
+                    if (value is TtsEvent.Started) started = true
+                    event(value)
+                }
+            }
+        }
+        fallbackReason?.let {
+            event(TtsEvent.Notice("$it Using the Android voice."))
+            speakAndroid(text, settings, event)
         }
     }
 }

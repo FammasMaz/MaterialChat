@@ -84,3 +84,6 @@
     public static int v(...);
     public static int w(...);
 }
+
+# sherpa-onnx configs are read by JNI via reflection; keep their field names.
+-keep class com.k2fsa.sherpa.onnx.** { *; }

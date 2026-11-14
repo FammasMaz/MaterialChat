@@ -216,7 +216,8 @@ class AssistantViewModel(
                 response = "",
                 isLoading = false,
                 isStreaming = false,
-                error = null
+                error = null,
+                notice = null
             )
         }
         _voiceState.value = VoiceState.Idle
@@ -316,7 +317,8 @@ class AssistantViewModel(
                 response = "",
                 isLoading = true,
                 isStreaming = false,
-                error = null
+                error = null,
+                notice = null
             )
         }
         _pendingAttachments.value = emptyList()
@@ -374,6 +376,7 @@ class AssistantViewModel(
                                             _uiState.update { it.copy(isSpeaking = true) }
                                             _voiceState.value = VoiceState.Speaking(chunk)
                                         }
+                                        is TtsEvent.Notice -> _uiState.update { it.copy(notice = event.message) }
                                         is TtsEvent.Error -> {
                                             speechStopped = true
                                             _uiState.update { it.copy(isSpeaking = false, error = event.message) }
@@ -623,6 +626,7 @@ class AssistantViewModel(
                     if (token == turn) {
                         when (event) {
                             TtsEvent.Started -> _uiState.update { it.copy(isSpeaking = true) }
+                            is TtsEvent.Notice -> _uiState.update { it.copy(notice = event.message) }
                             is TtsEvent.Error -> {
                                 _uiState.update { it.copy(isSpeaking = false, error = event.message) }
                             }
@@ -705,7 +709,8 @@ class AssistantViewModel(
                 response = "",
                 isLoading = false,
                 isStreaming = false,
-                error = null
+                error = null,
+                notice = null
             )
         }
         _voiceState.value = VoiceState.Idle
@@ -781,7 +786,9 @@ data class AssistantUiState(
     val isVoiceInputEnabled: Boolean = true,
     val isTtsEnabled: Boolean = true,
     val isTtsAvailable: Boolean = false,
-    val error: String? = null
+    val error: String? = null,
+    /** Informational, non-error message (e.g. neural voice unavailable, Android voice used instead). */
+    val notice: String? = null
 )
 
 /**

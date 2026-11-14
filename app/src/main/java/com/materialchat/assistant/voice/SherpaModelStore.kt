@@ -47,7 +47,7 @@ class SherpaModelStore(
 ) {
     private val lock = Any()
     private val jobs = HashMap<SherpaTtsModel, Job>()
-    private val removalListeners = CopyOnWriteArrayList<(SherpaTtsModel) -> Unit>()
+    private val removalListeners = CopyOnWriteArrayList<suspend (SherpaTtsModel) -> Unit>()
     private val _states = MutableStateFlow(scan())
     val states: StateFlow<Map<SherpaTtsModel, SherpaModelState>> = _states.asStateFlow()
 
@@ -61,7 +61,7 @@ class SherpaModelStore(
     fun installedDir(model: SherpaTtsModel): File? = installDir(model).takeIf { state(model).isInstalled }
 
     /** Called after a model's files were deleted so a loaded synthesizer can be released. */
-    fun onRemoved(listener: (SherpaTtsModel) -> Unit) { removalListeners += listener }
+    fun onRemoved(listener: suspend (SherpaTtsModel) -> Unit) { removalListeners += listener }
 
     /** Starts (or restarts after failure) the install; a no-op while installing or installed. */
     fun download(model: SherpaTtsModel) {

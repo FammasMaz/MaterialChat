@@ -21,7 +21,9 @@ data class AssistantVoiceSettings(
     val continueChatMinutes: Int = 0,
     // Intentionally no undocumented model/voice defaults; users supply supported identifiers.
     val geminiModel: String = "",
-    val geminiVoice: String = ""
+    val geminiVoice: String = "",
+    /** On-device neural model id (see SherpaTtsModel); blank uses the catalog default. */
+    val sherpaModel: String = ""
 ) {
     fun normalized() = copy(
         providerId = providerId?.trim()?.takeIf { it.isNotEmpty() },
@@ -34,11 +36,13 @@ data class AssistantVoiceSettings(
         continueChatMinutes = continueChatMinutes.takeIf { it in CONTINUE_CHAT_CHOICES } ?: 0,
         speechRate = if (speechRate.isFinite()) speechRate.coerceIn(0.25f, 2f) else 1f,
         geminiModel = geminiModel.trim(),
-        geminiVoice = geminiVoice.trim()
+        geminiVoice = geminiVoice.trim(),
+        sherpaModel = sherpaModel.trim()
     )
 }
 
-enum class AssistantSpeechBackend { ANDROID, GEMINI }
+/** ANDROID: system engine. GEMINI: cloud. SHERPA: on-device neural model (sherpa-onnx), downloaded on demand. */
+enum class AssistantSpeechBackend { ANDROID, GEMINI, SHERPA }
 
 /** Allowed "continue previous assistant chat" windows, in minutes; 0 = never. */
 val CONTINUE_CHAT_CHOICES = listOf(0, 1, 5, 15, 60)

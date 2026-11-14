@@ -80,6 +80,7 @@ class AppPreferences(private val context: Context) {
         val ASSISTANT_CONTINUE_CHAT_MINUTES = intPreferencesKey("assistant_continue_chat_minutes")
         val VOICE_GEMINI_MODEL = stringPreferencesKey("assistant_voice_gemini_model")
         val VOICE_GEMINI_VOICE = stringPreferencesKey("assistant_voice_gemini_voice")
+        val VOICE_SHERPA_MODEL = stringPreferencesKey("assistant_voice_sherpa_model")
         // Assistant settings
         val ASSISTANT_ENABLED = booleanPreferencesKey("assistant_enabled")
         val ASSISTANT_VOICE_ENABLED = booleanPreferencesKey("assistant_voice_enabled")
@@ -698,7 +699,8 @@ class AppPreferences(private val context: Context) {
             speechRate = p[Keys.VOICE_RATE] ?: 1f,
             continueChatMinutes = p[Keys.ASSISTANT_CONTINUE_CHAT_MINUTES] ?: 0,
             geminiModel = p[Keys.VOICE_GEMINI_MODEL].orEmpty(),
-            geminiVoice = p[Keys.VOICE_GEMINI_VOICE].orEmpty()
+            geminiVoice = p[Keys.VOICE_GEMINI_VOICE].orEmpty(),
+            sherpaModel = p[Keys.VOICE_SHERPA_MODEL].orEmpty()
         ).normalized()
     }.distinctUntilChanged()
 
@@ -722,6 +724,7 @@ class AppPreferences(private val context: Context) {
             p[Keys.ASSISTANT_CONTINUE_CHAT_MINUTES] = value.continueChatMinutes
             p[Keys.VOICE_GEMINI_MODEL] = value.geminiModel
             p[Keys.VOICE_GEMINI_VOICE] = value.geminiVoice
+            p[Keys.VOICE_SHERPA_MODEL] = value.sherpaModel
         }
     }
 

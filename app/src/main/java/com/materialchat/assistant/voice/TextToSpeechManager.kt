@@ -278,4 +278,6 @@ sealed class TtsEvent {
     data object Completed : TtsEvent()
     data object Stopped : TtsEvent()
     data class Error(val message: String) : TtsEvent()
+    /** Informational, e.g. a fallback to another voice; speech continues and no state changes. */
+    data class Notice(val message: String) : TtsEvent()
 }

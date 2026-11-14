@@ -476,6 +476,7 @@ internal fun AssistantOverlayContent(
     val isError = uiState.error != null || voiceState is VoiceState.Error
     val notice = uiState.error
         ?: (voiceState as? VoiceState.Error)?.message
+        ?: uiState.notice
         ?: when {
             !hasMicPermission -> "Enable microphone permission in system settings to speak."
             !uiState.isVoiceInputEnabled -> "Voice input is disabled in settings."

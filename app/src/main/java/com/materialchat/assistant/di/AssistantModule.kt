@@ -5,6 +5,15 @@ import com.materialchat.assistant.service.AssistantBindingDetector
 import com.materialchat.assistant.voice.AssistantSpeechRuntime
 import com.materialchat.assistant.voice.GeminiTtsBackend
 import com.materialchat.assistant.voice.AudioTrackPcmPlayer
+import com.materialchat.assistant.voice.AudioTrackSherpaPlayer
+import com.materialchat.assistant.voice.OkHttpSherpaArtifactFetcher
+import com.materialchat.assistant.voice.OnnxSherpaSynthesizerFactory
+import com.materialchat.assistant.voice.SherpaModelStore
+import com.materialchat.assistant.voice.SherpaTtsBackend
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import java.io.File
 import com.materialchat.data.local.preferences.EncryptedPreferences
 import com.materialchat.assistant.voice.SpeechRecognitionManager
 import com.materialchat.assistant.voice.TextToSpeechManager
@@ -34,8 +43,26 @@ import javax.inject.Singleton
 object AssistantModule {
 
     @Provides
-    fun provideAssistantSpeechRuntime(android: TextToSpeechManager, credentials: EncryptedPreferences): AssistantSpeechRuntime =
-        AssistantSpeechRuntime(android, GeminiTtsBackend(player = AudioTrackPcmPlayer()), credentials)
+    fun provideAssistantSpeechRuntime(
+        android: TextToSpeechManager,
+        credentials: EncryptedPreferences,
+        sherpa: SherpaTtsBackend
+    ): AssistantSpeechRuntime =
+        AssistantSpeechRuntime(android, GeminiTtsBackend(player = AudioTrackPcmPlayer()), credentials, sherpa)
+
+    /** Neural voice models live in filesDir/tts/<model>/ and are never bundled in the APK. */
+    @Provides
+    @Singleton
+    fun provideSherpaModelStore(@ApplicationContext context: Context): SherpaModelStore = SherpaModelStore(
+        File(context.filesDir, "tts"),
+        OkHttpSherpaArtifactFetcher(),
+        CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    )
+
+    @Provides
+    @Singleton
+    fun provideSherpaTtsBackend(store: SherpaModelStore): SherpaTtsBackend =
+        SherpaTtsBackend(store, OnnxSherpaSynthesizerFactory(), AudioTrackSherpaPlayer())
 
     @Provides
     @Singleton
