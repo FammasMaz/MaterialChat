@@ -103,4 +103,30 @@ class AssistantKeyboardSpacingTest {
         org.junit.Assert.assertTrue(AssistantKeyboardSpacing.usesImeInsets(30))
         org.junit.Assert.assertTrue(AssistantKeyboardSpacing.usesImeInsets(35))
     }
+
+    @Test
+    fun `full height host reserves the whole keyboard`() {
+        assertEquals(1218, AssistantKeyboardSpacing.remainingObstructionPx(
+            hostBottomOnScreen = 2992, rootBottomOnScreen = 2992, rootImeBottomPx = 1218, rootNavigationBarBottomPx = 67))
+    }
+
+    @Test
+    fun `host already shortened above the keyboard is not padded again`() {
+        // Regression: a host the framework already lifted above Gboard got the full IME height
+        // again, leaving a keyboard-sized gap between the card and the keyboard.
+        assertEquals(0, AssistantKeyboardSpacing.remainingObstructionPx(
+            hostBottomOnScreen = 2992 - 1218, rootBottomOnScreen = 2992, rootImeBottomPx = 1218, rootNavigationBarBottomPx = 67))
+    }
+
+    @Test
+    fun `host shortened only by the navigation bar reserves the rest of the keyboard`() {
+        assertEquals(1218 - 67, AssistantKeyboardSpacing.remainingObstructionPx(
+            hostBottomOnScreen = 2992 - 67, rootBottomOnScreen = 2992, rootImeBottomPx = 1218, rootNavigationBarBottomPx = 67))
+    }
+
+    @Test
+    fun `closed keyboard on a full height host reserves the navigation bar`() {
+        assertEquals(67, AssistantKeyboardSpacing.remainingObstructionPx(
+            hostBottomOnScreen = 2992, rootBottomOnScreen = 2992, rootImeBottomPx = 0, rootNavigationBarBottomPx = 67))
+    }
 }

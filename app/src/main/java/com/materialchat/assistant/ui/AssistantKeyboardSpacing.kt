@@ -39,4 +39,23 @@ internal object AssistantKeyboardSpacing {
      * the remaining overlap from the visible display frame.
      */
     fun usesImeInsets(sdkInt: Int): Boolean = sdkInt >= 30
+
+    /**
+     * Obstruction that remains inside the Compose host, all values in screen pixels.
+     *
+     * Window insets are relative to the window's root view, so the keyboard top on screen is
+     * `rootBottom - max(ime, navigationBar)`. Only the part of the host below that line needs
+     * padding. A host that the framework already shortened (a fitting parent, a resize, or a
+     * content frame inset) therefore reserves only what still overlaps instead of the full IME
+     * height again, which was the remaining "gap above the keyboard" on real phones.
+     */
+    fun remainingObstructionPx(
+        hostBottomOnScreen: Int,
+        rootBottomOnScreen: Int,
+        rootImeBottomPx: Int,
+        rootNavigationBarBottomPx: Int
+    ): Int {
+        val obstructionTop = rootBottomOnScreen - bottomPaddingPx(rootImeBottomPx, rootNavigationBarBottomPx)
+        return (hostBottomOnScreen - obstructionTop).coerceAtLeast(0)
+    }
 }

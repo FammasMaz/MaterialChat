@@ -83,6 +83,12 @@ fun AssistantVoiceSettingsPanel(viewModel: AssistantVoiceSettingsViewModel = hil
                     listOf(null to "Inherit") + ReasoningEffort.entries.map { it to it.displayName }) {
                     draft = draft.copy(reasoningEffort = it)
                 }
+                fun continueLabel(m: Int) = when (m) { 0 -> "Never (always start fresh)"; 60 -> "Within 1 hour"; 1 -> "Within 1 minute"; else -> "Within $m minutes" }
+                VoiceChoice("Continue previous assistant chat", continueLabel(draft.continueChatMinutes),
+                    com.materialchat.data.local.preferences.CONTINUE_CHAT_CHOICES.map { it to continueLabel(it) }) {
+                    draft = draft.copy(continueChatMinutes = it)
+                }
+                Text("Past assistant chats always stay in your chat list.")
                 HorizontalDivider()
                 Text("Speech input", style = MaterialTheme.typography.titleMedium)
                 OutlinedTextField(

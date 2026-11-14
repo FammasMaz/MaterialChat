@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.floatPreferencesKey
+import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.edit
@@ -75,6 +76,7 @@ class AppPreferences(private val context: Context) {
         val VOICE_RECOGNITION_LANGUAGE = stringPreferencesKey("assistant_voice_recognition_language")
         val VOICE_RECOGNITION_ENGINE = stringPreferencesKey("assistant_voice_recognition_engine")
         val VOICE_RATE = floatPreferencesKey("assistant_voice_rate")
+        val ASSISTANT_CONTINUE_CHAT_MINUTES = intPreferencesKey("assistant_continue_chat_minutes")
         val VOICE_GEMINI_MODEL = stringPreferencesKey("assistant_voice_gemini_model")
         val VOICE_GEMINI_VOICE = stringPreferencesKey("assistant_voice_gemini_voice")
         // Assistant settings
@@ -692,6 +694,7 @@ class AppPreferences(private val context: Context) {
             recognitionLanguageTag = p[Keys.VOICE_RECOGNITION_LANGUAGE],
             recognitionEngine = p[Keys.VOICE_RECOGNITION_ENGINE],
             speechRate = p[Keys.VOICE_RATE] ?: 1f,
+            continueChatMinutes = p[Keys.ASSISTANT_CONTINUE_CHAT_MINUTES] ?: 0,
             geminiModel = p[Keys.VOICE_GEMINI_MODEL].orEmpty(),
             geminiVoice = p[Keys.VOICE_GEMINI_VOICE].orEmpty()
         ).normalized()
@@ -713,6 +716,7 @@ class AppPreferences(private val context: Context) {
             optional(Keys.VOICE_RECOGNITION_ENGINE, value.recognitionEngine)
             p[Keys.VOICE_BACKEND] = value.backend.name
             p[Keys.VOICE_RATE] = value.speechRate
+            p[Keys.ASSISTANT_CONTINUE_CHAT_MINUTES] = value.continueChatMinutes
             p[Keys.VOICE_GEMINI_MODEL] = value.geminiModel
             p[Keys.VOICE_GEMINI_VOICE] = value.geminiVoice
         }

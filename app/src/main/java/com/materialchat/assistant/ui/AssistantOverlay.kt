@@ -115,10 +115,41 @@ fun AssistantOverlay(
     // full-height host. Reserving the IME's own height keeps the card directly above the keyboard,
     // and the navigation bar is the only obstruction left once it closes. The IME covers the
     // navigation bar, so the two are alternatives rather than additive.
-    val insetObstructionPx = AssistantKeyboardSpacing.bottomPaddingPx(
-        imeBottomPx = WindowInsets.ime.getBottom(density),
-        navigationBarBottomPx = WindowInsets.navigationBars.getBottom(density)
-    )
+    // Compose's inset values only trigger recomposition; the geometry below uses the window's own
+    // insets and screen positions so a host the framework already shortened is not padded twice.
+    val composeImePx = WindowInsets.ime.getBottom(density)
+    val composeNavPx = WindowInsets.navigationBars.getBottom(density)
+    var layoutPass by remember { mutableIntStateOf(0) }
+    val hostView = LocalView.current
+    DisposableEffect(hostView) {
+        val listener = ViewTreeObserver.OnGlobalLayoutListener { layoutPass++ }
+        hostView.viewTreeObserver.addOnGlobalLayoutListener(listener)
+        onDispose {
+            if (hostView.viewTreeObserver.isAlive) hostView.viewTreeObserver.removeOnGlobalLayoutListener(listener)
+        }
+    }
+    val insetObstructionPx = remember(composeImePx, composeNavPx, layoutPass, hostView) {
+        val rootInsets = if (Build.VERSION.SDK_INT >= 30) hostView.rootWindowInsets else null
+        if (rootInsets == null || Build.VERSION.SDK_INT < 30) {
+            AssistantKeyboardSpacing.bottomPaddingPx(composeImePx, composeNavPx)
+        } else {
+            val root = hostView.rootView
+            val hostLoc = IntArray(2).also(hostView::getLocationOnScreen)
+            val rootLoc = IntArray(2).also(root::getLocationOnScreen)
+            val ime = rootInsets.getInsets(android.view.WindowInsets.Type.ime()).bottom
+            val nav = rootInsets.getInsets(android.view.WindowInsets.Type.navigationBars()).bottom
+            AssistantKeyboardSpacing.remainingObstructionPx(
+                hostBottomOnScreen = hostLoc[1] + hostView.height,
+                rootBottomOnScreen = rootLoc[1] + root.height,
+                rootImeBottomPx = ime,
+                rootNavigationBarBottomPx = nav
+            ).also { padding ->
+                if (ime > 0) android.util.Log.i("MaterialChatAssistant",
+                    "keyboard ime=$ime nav=$nav hostBottom=${hostLoc[1] + hostView.height} " +
+                        "rootBottom=${rootLoc[1] + root.height} composeIme=$composeImePx padding=$padding")
+            }
+        }
+    }
     // API 26-29 deliver no IME inset to this ADJUST_RESIZE session window, so keep the legacy
     // measurement there (proven by the hosted API 26 gate): the host's overlap with the visible
     // display frame. API 30+ uses the IME inset above, because on modern devices the legacy frame

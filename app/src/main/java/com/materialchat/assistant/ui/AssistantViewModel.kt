@@ -20,6 +20,7 @@ import com.materialchat.domain.model.Message
 import com.materialchat.domain.model.MessageRole
 import com.materialchat.domain.model.StreamingState
 import com.materialchat.domain.repository.ChatRepository
+import com.materialchat.data.local.preferences.shouldContinueAssistantChat
 import com.materialchat.domain.repository.ConversationRepository
 import com.materialchat.domain.repository.ProviderRepository
 import com.materialchat.domain.usecase.CreateConversationUseCase
@@ -106,15 +107,16 @@ class AssistantViewModel(
     /** The persistent conversation ID - created on first query */
     private var currentConversationId: String? = null
 
-    /** Timestamp of last activity for auto-reset after 1 minute */
+    /** Timestamp of last assistant activity; decides whether an invocation resumes the chat. */
     private var lastActivityTimestamp: Long = System.currentTimeMillis()
 
-    /** Timeout in milliseconds (1 minute) */
-    private companion object {
-        const val SESSION_TIMEOUT_MS = 60_000L
-    }
+    /** Cached "continue previous assistant chat" window, in minutes (0 = always start fresh). */
+    @Volatile private var continueChatMinutes: Int = 0
 
     init {
+        viewModelScope.launch {
+            appPreferences.assistantVoiceSettings.collect { continueChatMinutes = it.continueChatMinutes }
+        }
         // Initialize TTS
         viewModelScope.launch {
             textToSpeechManager.initialize().collect { result ->
@@ -159,10 +161,12 @@ class AssistantViewModel(
         if (overlayVisible) return
         overlayVisible = true
         val now = System.currentTimeMillis()
-        val timeSinceLastActivity = now - lastActivityTimestamp
 
-        // Auto-reset if more than 1 minute has passed
-        if (timeSinceLastActivity > SESSION_TIMEOUT_MS && _messages.value.isNotEmpty()) {
+        // Start fresh unless the user chose to continue recent chats. The saved conversation
+        // stays in the chat list either way; only the assistant's view of it resets.
+        if (!shouldContinueAssistantChat(continueChatMinutes, lastActivityTimestamp, now) &&
+            (_messages.value.isNotEmpty() || currentConversationId != null)
+        ) {
             startNewChat()
         }
 
@@ -187,6 +191,7 @@ class AssistantViewModel(
     fun onOverlayHidden() {
         overlayVisible = false
         clearConversation()
+        lastActivityTimestamp = System.currentTimeMillis()
     }
 
     /**
