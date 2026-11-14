@@ -5,7 +5,12 @@ mkdir -p "$out"
 component=com.materialchat/com.materialchat.assistant.service.MaterialChatVoiceInteractionService
 # Connected tests uninstall their target APK on completion; restore it for system invocation.
 adb install -r app/build/outputs/apk/github/debug/app-github-debug.apk
+# The test APK carries a deterministic recognition fixture (ContractRecognitionService) that
+# the gate binds as the assistant's engine so the session genuinely reaches the listening
+# state through the production path. Connected tests uninstall it too, so restore both.
+adb install -r app/build/outputs/apk/androidTest/github/debug/app-github-debug-androidTest.apk
 adb shell pm path com.materialchat > "$out/package.txt"
+adb shell pm path com.materialchat.test > "$out/test-package.txt"
 # Select only after installation. Older Android clears unavailable service choices.
 adb shell settings put secure voice_interaction_service "$component"
 adb shell settings put secure assistant "$component"
@@ -15,6 +20,22 @@ for attempt in $(seq 1 20); do
   sleep 1
 done
 grep -q 'mComponent=com.materialchat/' "$out/activation.txt"
+
+# Listening is part of the gate: the accent dots and their painter log exist only while the
+# assistant listens (they follow recognition, not the whole session). The hosted runner has
+# no microphone permission and no usable engine, so the gate grants RECORD_AUDIO to the app
+# (and to the test package, whose fixture checks it against its own context on the
+# direct-bind path below API 31), points the configured default recognizer at the fixture,
+# and puts the fixture in hold mode: it reports ready and keeps the session open until the
+# Keyboard button cancels it. This proves listening-driven rendering, not acoustics.
+fixture=com.materialchat.test/com.materialchat.assistant.voice.ContractRecognitionService
+adb shell pm grant com.materialchat android.permission.RECORD_AUDIO
+adb shell pm grant com.materialchat.test android.permission.RECORD_AUDIO
+# Selecting the assistant rewrote the default recognizer to our own declaration, so the
+# fixture is set only now, after that selection has settled.
+adb shell settings put secure voice_recognition_service "$fixture"
+adb shell settings put global materialchat_contract_recognizer_hold 1
+trap 'adb shell settings delete global materialchat_contract_recognizer_hold >/dev/null 2>&1 || true' EXIT
 adb logcat -c || true
 adb shell input keyevent KEYCODE_HOME
 # Changing the selected assistant restarts SystemUI on API 26. Wait for its
@@ -25,11 +46,16 @@ for attempt in $(seq 1 30); do
   sleep 1
 done
 adb shell input keyevent KEYCODE_ASSIST
-sleep 4
+# Wait for the rendered controls AND the listening state: auto-listen binds the fixture,
+# which reports ready, so the pill shows its Stop-listening button while it holds.
+for attempt in $(seq 1 20); do
+  sleep 1
+  adb shell uiautomator dump /sdcard/assistant-window.xml >/dev/null 2>&1 || continue
+  adb pull /sdcard/assistant-window.xml "$out/ui.xml" >/dev/null 2>&1 || continue
+  if grep -q 'End assistant session' "$out/ui.xml" && grep -q 'Stop listening' "$out/ui.xml"; then break; fi
+done
 adb shell dumpsys voiceinteraction > "$out/voiceinteraction.txt"
 adb shell dumpsys window > "$out/windows.txt"
-adb shell uiautomator dump /sdcard/assistant-window.xml
-adb pull /sdcard/assistant-window.xml "$out/ui.xml"
 adb exec-out screencap -p > "$out/screen.png"
 adb logcat -d > "$out/logcat.txt"
 # Require rendered assistant controls, not merely a live service or lifecycle callback.
@@ -37,12 +63,19 @@ grep -q 'End assistant session' "$out/ui.xml"
 if grep -E 'FATAL EXCEPTION|Unable to add window|BadTokenException' "$out/logcat.txt"; then
   exit 1
 fi
+# The fixture must be the engine the production selection bound, and the session must be
+# listening through it; otherwise there are no dots to check and the gate fails here with
+# the reason instead of on the painter marker.
+grep 'MaterialChatSpeech' "$out/logcat.txt" | tail -5 | tee "$out/recognizer.txt"
+grep -q 'ContractRecognitionService' "$out/recognizer.txt"
+grep -q 'Stop listening' "$out/ui.xml"
 
 # --- Neural particle field (assistant window only) --------------------------------
 # The decoration is the ported essentials particle field: an AGSL runtime painter on
 # API 33+ and a static Path painter below. Production logs one line per painter/capsule
-# signature from inside the draw path, so this marker proves the real assistant window
-# resolved the expected painter and drew the field with a valid capsule.
+# signature from inside the dots' draw path, which only runs while the dots are present
+# (while listening, see above), so this marker proves the real assistant window resolved
+# the expected painter and drew the dots around a valid capsule.
 sdk=$(adb shell getprop ro.build.version.sdk | tr -d '\r')
 if [ "$sdk" -ge 33 ]; then expected_painter=runtime; else expected_painter=static; fi
 for attempt in $(seq 1 20); do
@@ -60,6 +93,9 @@ grep "NeuralParticles" "$out/logcat-particles.txt" | tail -5 | tee "$out/particl
 # AssistantNeuralParticleFieldTest, which renders the production card and decoration
 # host on the same API level and compares enabled/disabled captures.
 adb shell wm density > "$out/density.txt"
+# The dots fade in (600 ms, scaled by the animator scale) when listening starts; let that
+# settle so the static painter's frames below are compared at rest.
+sleep 2
 adb exec-out screencap > "$out/particles-frame-a.raw"
 sleep 1
 adb exec-out screencap > "$out/particles-frame-b.raw"
@@ -151,7 +187,9 @@ PYPARTICLES
 python3 - "$out/ui.xml" <<'PYTAP' | xargs adb shell input tap
 import sys, re, xml.etree.ElementTree as ET
 nodes=ET.parse(sys.argv[1]).iter('node')
-# The pill's keyboard toggle is an icon button: match its content description.
+# The pill's keyboard toggle is an icon button: match its content description. Entering
+# keyboard mode cancels listening (the fixture releases its hold), so the keyboard and
+# alarm steps below run exactly as they did before listening was part of the gate.
 n=next(n for n in nodes if n.get('content-desc') == 'Keyboard')
 x1,y1,x2,y2=map(int,re.findall(r'\d+',n.get('bounds')))
 print((x1+x2)//2,(y1+y2)//2)

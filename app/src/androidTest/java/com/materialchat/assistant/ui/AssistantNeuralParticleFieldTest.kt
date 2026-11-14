@@ -266,6 +266,85 @@ class AssistantNeuralParticleFieldTest {
         assertFramesStop(frames)
     }
 
+    /**
+     * The assistant's dots follow listening: their first appearance fades in rather than
+     * snapping, the fade requests a bounded run of frames even with the static painter, and the
+     * pill keeps its inner glow (resting floor) once the dots have faded out.
+     */
+    @Test fun firstAppearanceFadesInAndTheRestingGlowOutlivesTheDots() {
+        val fadeIn = mutableStateOf(false)
+        val active = mutableStateOf(true)
+        val restingGlow = mutableStateOf(0f)
+        val generation = mutableStateOf(0)
+        val frames = AtomicInteger()
+        val tiles = AtomicInteger()
+        var density = 1f
+        compose.setContent {
+            density = LocalDensity.current.density
+            MaterialChatTheme(themeMode = AppPreferences.ThemeMode.DARK, dynamicColor = false, neuralExpressive = true) {
+                CompositionLocalProvider(
+                    LocalNeuralParticleRenderControl provides NeuralParticleRenderControl(
+                        onFrame = { frames.incrementAndGet() },
+                        onTileReady = { tiles.incrementAndGet() }
+                    )
+                ) {
+                    // A new generation is a fresh first appearance of the field.
+                    androidx.compose.runtime.key(generation.value) {
+                        Specimen(
+                            // The static painter never requests motion frames on any API level,
+                            // so every frame counted here belongs to a presence fade.
+                            forceFallback = true,
+                            active = active.value,
+                            fadeSpec = ParticleFadeSpec(fadeInMillis = 200, fadeOutMillis = 200),
+                            fadeInOnFirstAppearance = fadeIn.value,
+                            restingGlow = restingGlow.value
+                        )
+                    }
+                }
+            }
+        }
+        compose.waitForIdle()
+        compose.waitUntil(10_000) { tiles.get() >= 1 }
+        compose.waitForIdle()
+        // Default: the first composition snaps to the active target, so no fade frame at all.
+        compose.mainClock.autoAdvance = false
+        assertFramesStop(frames)
+        assertEquals("A snapped first appearance must request no frames", 0, frames.get())
+
+        // Requested: the first appearance fades in (frames) and then settles (silence).
+        compose.mainClock.autoAdvance = true
+        compose.runOnIdle { fadeIn.value = true; generation.value++ }
+        compose.waitUntil(10_000) { tiles.get() >= 2 }
+        compose.waitForIdle()
+        assertTrue("The first appearance must fade in, not snap", frames.get() > 0)
+        compose.mainClock.autoAdvance = false
+        assertFadeSettles(frames)
+
+        // Listening stops: the dots fade out and the pill keeps a resting glow inside its edge.
+        compose.mainClock.autoAdvance = true
+        compose.runOnIdle { active.value = false }
+        compose.waitForIdle()
+        awaitStableCapture()
+        val bounds = compose.onNodeWithTag("assistant_sheet").fetchSemanticsNode().boundsInRoot
+        val withoutGlow = capture()
+        compose.runOnIdle { restingGlow.value = 0.6f }
+        compose.waitForIdle()
+        awaitStableCapture()
+        val withGlow = capture()
+        saveEvidence("pill-faded-no-glow", withoutGlow)
+        saveEvidence("pill-faded-resting-glow", withGlow)
+        val left = (bounds.left + bounds.width * 0.1f).roundToInt()
+        val right = (bounds.right - bounds.width * 0.1f).roundToInt()
+        val glowTop = (bounds.top + 2f * density).roundToInt()
+        val glowBottom = (bounds.top + 14f * density).roundToInt()
+        val glowChanged = changedRatio(withoutGlow, withGlow, left, right, glowTop, glowBottom)
+        assertTrue("The resting glow must stay visible inside the pill edge after the dots fade: $glowChanged", glowChanged >= 0.1f)
+        assertEquals("The resting glow must not change the card layout", bounds,
+            compose.onNodeWithTag("assistant_sheet").fetchSemanticsNode().boundsInRoot)
+        compose.mainClock.autoAdvance = false
+        assertFramesStop(frames)
+    }
+
     private fun assertFramesStop(frames: AtomicInteger) {
         compose.mainClock.advanceTimeBy(100) // Apply recomposition and cancel the previous frame loop.
         compose.waitForIdle()
@@ -347,6 +426,8 @@ private fun Specimen(
     active: Boolean = true,
     idleTimeoutMillis: Long? = null,
     fadeSpec: ParticleFadeSpec = ParticleFadeSpec(),
+    fadeInOnFirstAppearance: Boolean = false,
+    restingGlow: Float = 0f,
 ) {
     // Mirrors the production AssistantOverlay host: the full-size box hosts the particle field
     // around the pill rect the pill reports (soft-edged fill in its own colour, accent glow and
@@ -369,7 +450,9 @@ private fun Specimen(
                 forceFallback = forceFallback,
                 active = active,
                 idleTimeoutMillis = idleTimeoutMillis,
-                fadeSpec = fadeSpec
+                fadeSpec = fadeSpec,
+                fadeInOnFirstAppearance = fadeInOnFirstAppearance,
+                restingGlow = restingGlow
             )
     ) {
         AssistantOverlayContent(

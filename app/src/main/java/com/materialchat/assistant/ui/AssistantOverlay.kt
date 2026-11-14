@@ -340,10 +340,13 @@ fun AssistantOverlay(
                     enabled = neuralExpressive,
                     // The card reports its rect; until it does, there is nothing to decorate.
                     capsuleInset = null,
-                    // Particles show from invocation until the answer is done, then fade out
-                    // (800 ms) and stop requesting frames. Any new turn brings them back.
-                    active = (voiceState !is VoiceState.Complete && voiceState !is VoiceState.Error) ||
-                        uiState.isLoading || uiState.isStreaming || uiState.isSpeaking
+                    // The dots follow listening only: they fade in (600 ms) when recognition
+                    // starts, fade out (800 ms) when it stops, and request no frames in between.
+                    // Their first appearance fades in too. The pill keeps its soft fill and
+                    // a resting inner glow regardless; only the dots come and go.
+                    active = voiceState is VoiceState.Listening || voiceState is VoiceState.Processing,
+                    fadeInOnFirstAppearance = true,
+                    restingGlow = 0.6f
                 )
         ) {
             // essentials additionally blurs what is behind the window inside the pill's rect.

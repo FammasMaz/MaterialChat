@@ -28,6 +28,16 @@ internal fun fadeEase(t: Float): Float {
 internal fun fadeTarget(active: Boolean, idleExpired: Boolean): Float =
     if (active && !idleExpired) 1f else 0f
 
+/**
+ * The inner glow's presence: never below [restingGlow] (0..1), so a capsule keeps its glow while
+ * the dots are faded. An invalid floor counts as none.
+ */
+internal fun glowPresence(presence: Float, restingGlow: Float): Float {
+    val floor = if (restingGlow.isFinite()) restingGlow.coerceIn(0f, 1f) else 0f
+    val p = if (presence.isFinite()) presence.coerceIn(0f, 1f) else 0f
+    return maxOf(p, floor)
+}
+
 /** An idle timeout is only armed when positive; null or a non-positive value disables it. */
 internal fun effectiveIdleTimeout(idleTimeoutMillis: Long?): Long? =
     idleTimeoutMillis?.takeIf { it > 0L }

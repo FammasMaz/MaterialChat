@@ -28,6 +28,15 @@ class ParticleFadeTest {
         }
     }
 
+    @Test fun glowNeverDropsBelowItsRestingFloor() {
+        assertEquals(0f, glowPresence(0f, 0f), 0f)
+        assertEquals(0.6f, glowPresence(0f, 0.6f), 0f)
+        assertEquals(1f, glowPresence(1f, 0.6f), 0f)
+        assertEquals(0.8f, glowPresence(0.8f, 0.6f), 0f)
+        assertEquals(0f, glowPresence(0f, Float.NaN), 0f)
+        assertEquals(1f, glowPresence(0f, 5f), 0f)
+    }
+
     @Test fun targetIsOnlyShownWhileActiveAndNotIdleExpired() {
         assertEquals(1f, fadeTarget(active = true, idleExpired = false), 0f)
         assertEquals(0f, fadeTarget(active = false, idleExpired = false), 0f)

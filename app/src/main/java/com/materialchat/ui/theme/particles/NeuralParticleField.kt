@@ -135,8 +135,13 @@ val LocalNeuralParticleRenderControl = staticCompositionLocalOf { NeuralParticle
  * over [ParticleFadeSpec.fadeOutMillis] and then requests no further frames; when it turns true
  * again it fades back in. With a positive [idleTimeoutMillis] the field also fades out that long
  * after it last became active and visible, even if [active] is still true; it reappears the next
- * time [active] (or the field's visibility) flips back to true. The first composition snaps to
- * the current target so the field never fades in on its initial appearance.
+ * time [active] (or the field's visibility) flips back to true. By default the first
+ * composition snaps to the current target; with [fadeInOnFirstAppearance] the field starts
+ * invisible and fades in the first time it becomes active and visible.
+ *
+ * The soft-edged fill is drawn whenever [featherColor] is set, independent of presence, and the
+ * inner glow never drops below [restingGlow], so a capsule keeps its fill and glow while the
+ * dots are faded.
  *
  * Draw order, as in essentials: with [featherColor] set, the capsule is filled with that colour
  * (its boundary blurred on API 31+, feathered geometrically below) and the accent inner glow is
@@ -162,6 +167,10 @@ fun Modifier.neuralParticleField(
     featherColor: Color? = null,
     /** Width of the geometric feather used where no RenderEffect blur exists (API 26-30). */
     featherWidth: Dp = 24.dp,
+    /** Start invisible and fade in on the first appearance instead of snapping to the target. */
+    fadeInOnFirstAppearance: Boolean = false,
+    /** Inner-glow strength floor (0..1) kept while the dots are faded. */
+    restingGlow: Float = 0f,
 ): Modifier = composed {
     val context = LocalContext.current
     val view = LocalView.current
@@ -237,14 +246,17 @@ fun Modifier.neuralParticleField(
         idleExpired = true
     }
     val target = fadeTarget(active, idleExpired)
-    // Snap on first composition: the field must not fade in on its initial appearance.
-    var presence by remember { mutableFloatStateOf(target) }
+    // By default the first composition snaps to the current target; a caller that wants the
+    // first appearance to fade in starts from zero instead.
+    var presence by remember { mutableFloatStateOf(if (fadeInOnFirstAppearance) 0f else target) }
     val fadeScale = if (control.motionEnabled) animationScale else 0f
     LaunchedEffect(target, visible, fadeSpec, fadeScale) {
         if (presence == target) return@LaunchedEffect
         if (!visible) {
-            // Nothing is drawn while hidden, so a fade would only burn frames: settle silently.
-            presence = target
+            // Nothing is drawn while hidden, so a fade-out would only burn frames: settle
+            // silently. A fade-in waits for visibility (the host may not be STARTED yet on the
+            // first composition) so it is never lost to a snap.
+            if (target == 0f) presence = target
             return@LaunchedEffect
         }
         val from = presence
@@ -314,6 +326,9 @@ fun Modifier.neuralParticleField(
                 val capsule = if (capsuleRect == null && capsuleInset == null) null
                 else CapsuleParticleGeometry.create(size, capsuleInset?.toPx() ?: 0f, cornerRadius.toPx(), capsuleRect)
                 val strength = if (visible && capsule != null) particleActivation(latestActivation()) * presence else 0f
+                // The glow keeps its resting floor while the dots are faded.
+                val glowStrength = if (visible && capsule != null)
+                    particleActivation(latestActivation()) * glowPresence(presence, restingGlow) else 0f
                 val alpha = strength * style.opacity
                 val samples = tile
                 if (capsule != null) {
@@ -324,7 +339,7 @@ fun Modifier.neuralParticleField(
                         val drawFill: androidx.compose.ui.graphics.drawscope.DrawScope.() -> Unit = {
                             drawCapsuleSoftFill(capsule, featherColor, featherPx, blurred = blurred)
                             drawCapsuleInnerGlow(
-                                capsule, latestColor, strength, glowRings,
+                                capsule, latestColor, glowStrength, glowRings,
                                 clipInset = if (blurred) 0f else featherPx / 2f, clip = glowClip
                             )
                         }
