@@ -47,7 +47,8 @@ class OnnxSherpaSynthesizerFactory : SherpaSynthesizerFactory {
             override fun synthesize(text: String, speed: Float, language: String, onSamples: (FloatArray) -> Boolean) {
                 val config = GenerationConfig(speed = speed)
                 if (model.family == SherpaModelFamily.SUPERTONIC) config.extra = mapOf("lang" to language)
-                tts.generateWithConfigAndCallback(text, config) { samples -> if (onSamples(samples)) 1 else 0 }
+                // Must be SherpaSampleCallback, never a lambda: see its KDoc (native crash otherwise).
+                tts.generateWithConfigAndCallback(text, config, SherpaSampleCallback { onSamples(it) })
             }
             override fun close() = tts.release()
         }

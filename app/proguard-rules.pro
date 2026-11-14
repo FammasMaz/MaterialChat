@@ -87,3 +87,7 @@
 
 # sherpa-onnx configs are read by JNI via reflection; keep their field names.
 -keep class com.k2fsa.sherpa.onnx.** { *; }
+
+# sherpa-onnx calls back into this class from native code by exact method descriptor.
+-keep class com.materialchat.assistant.voice.SherpaSampleCallback { *; }
+-keep interface com.materialchat.assistant.voice.SherpaSampleCallback$Sink { *; }
