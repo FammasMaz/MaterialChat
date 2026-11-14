@@ -109,6 +109,23 @@ object ExpressiveMotion {
             dampingRatio = 0.6f,
             stiffness = 500f
         )
+
+        /**
+         * List item placement/entrance spring. Slight overshoot so rows settle
+         * into place with a physical feel without visibly bouncing past neighbours.
+         */
+        fun <T> listEntrance(): SpringSpec<T> = spring(
+            dampingRatio = 0.72f,
+            stiffness = 380f
+        )
+
+        /**
+         * Menu/sheet open spring for scale and offset of popups and dropdowns.
+         */
+        fun <T> menuOpen(): SpringSpec<T> = spring(
+            dampingRatio = 0.68f,
+            stiffness = 520f
+        )
     }
 
     /**
@@ -151,6 +168,25 @@ object ExpressiveMotion {
             dampingRatio = 1.0f,
             stiffness = 300f
         )
+
+        /**
+         * Fade for list item appearance/removal. Slightly faster than [alpha]
+         * so entrance is driven by placement, not by the fade.
+         */
+        fun <T> listFade(): SpringSpec<T> = spring(
+            dampingRatio = 1.0f,
+            stiffness = 400f
+        )
+    }
+
+    /**
+     * Specs for `LazyList.animateItem` so every list in the app enters, moves and
+     * leaves with the same physics.
+     */
+    object ListItem {
+        val Placement: SpringSpec<IntOffset> = Spatial.listEntrance()
+        val FadeIn: SpringSpec<Float> = Effects.listFade()
+        val FadeOut: SpringSpec<Float> = Effects.listFade()
     }
     
     /**

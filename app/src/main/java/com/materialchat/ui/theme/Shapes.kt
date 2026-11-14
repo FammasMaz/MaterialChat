@@ -3,7 +3,71 @@ package com.materialchat.ui.theme
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Shapes
+import androidx.compose.runtime.Stable
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.geometry.toRect
+import androidx.compose.ui.graphics.Outline
+import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.asComposePath
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
+import androidx.graphics.shapes.CornerRounding
+import androidx.graphics.shapes.RoundedPolygon
+import androidx.graphics.shapes.rectangle
+import androidx.graphics.shapes.toPath
+
+/**
+ * M3 Expressive squircle: a rounded rectangle whose corners are smoothed with a
+ * continuous curve instead of a circular arc. Reads softer than [RoundedCornerShape]
+ * at the same radius, which is what M3E uses for cards, sheets and leading tiles.
+ *
+ * @param cornerRadius Corner radius; clamped to half the shorter side.
+ * @param smoothing 0 = plain circular corner, 1 = maximum G2 smoothing.
+ */
+@Stable
+class SquircleShape(
+    private val cornerRadius: Dp,
+    private val smoothing: Float = 0.65f
+) : Shape {
+    override fun createOutline(size: Size, layoutDirection: LayoutDirection, density: Density): Outline {
+        if (size.width <= 0f || size.height <= 0f) return Outline.Rectangle(size.toRect())
+        val radiusPx = with(density) { cornerRadius.toPx() }
+            .coerceIn(0f, minOf(size.width, size.height) / 2f)
+        val polygon = RoundedPolygon.rectangle(
+            width = size.width,
+            height = size.height,
+            rounding = CornerRounding(radius = radiusPx, smoothing = smoothing.coerceIn(0f, 1f)),
+            centerX = size.width / 2f,
+            centerY = size.height / 2f
+        )
+        return Outline.Generic(polygon.toPath().asComposePath())
+    }
+
+    override fun equals(other: Any?): Boolean =
+        other is SquircleShape && other.cornerRadius == cornerRadius && other.smoothing == smoothing
+
+    override fun hashCode(): Int = cornerRadius.hashCode() * 31 + smoothing.hashCode()
+}
+
+/**
+ * Expressive container shape tokens. Use these for cards, sheets and leading tiles
+ * where a squircle fits; keep [MaterialChatShapes] for component defaults.
+ */
+object ExpressiveShapes {
+    /** Leading icon tiles in list rows (48dp). */
+    val Tile = SquircleShape(18.dp)
+
+    /** Cards and grouped list containers. */
+    val Card = SquircleShape(28.dp)
+
+    /** Modal and bottom sheets. */
+    val Sheet = SquircleShape(32.dp)
+
+    /** Selected menu/list rows inside a sheet or dropdown. */
+    val MenuSelection = SquircleShape(16.dp)
+}
 
 /**
  * Material 3 Expressive Shape system for MaterialChat.

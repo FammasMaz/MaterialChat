@@ -228,16 +228,17 @@ fun buildTypography(
     ),
 
     // Title - Card titles, dialog titles, top bar
+    // M3 Expressive: titles carry real weight so they contrast with Medium labels.
     titleLarge = TextStyle(
         fontFamily = fontFamily,
-        fontWeight = FontWeight.SemiBold,
+        fontWeight = FontWeight.Bold,
         fontSize = (22 * sizeScale).sp,
         lineHeight = (28 * sizeScale).sp,
         letterSpacing = 0.sp
     ),
     titleMedium = TextStyle(
         fontFamily = fontFamily,
-        fontWeight = FontWeight.Medium,
+        fontWeight = FontWeight.SemiBold,
         fontSize = (16 * sizeScale).sp,
         lineHeight = (24 * sizeScale).sp,
         letterSpacing = 0.15.sp
@@ -273,24 +274,25 @@ fun buildTypography(
         letterSpacing = 0.4.sp
     ),
 
-    // Label - Buttons, chips, tabs, captions
+    // Label - Buttons, chips, tabs, captions.
+    // M3 Expressive keeps labels at Medium so display/headline/title weight reads as emphasis.
     labelLarge = TextStyle(
         fontFamily = fontFamily,
-        fontWeight = FontWeight.Bold,
+        fontWeight = FontWeight.Medium,
         fontSize = (14 * sizeScale).sp,
         lineHeight = (20 * sizeScale).sp,
         letterSpacing = 0.1.sp
     ),
     labelMedium = TextStyle(
         fontFamily = fontFamily,
-        fontWeight = FontWeight.SemiBold,
+        fontWeight = FontWeight.Medium,
         fontSize = (12 * sizeScale).sp,
         lineHeight = (16 * sizeScale).sp,
         letterSpacing = 0.5.sp
     ),
     labelSmall = TextStyle(
         fontFamily = fontFamily,
-        fontWeight = FontWeight.SemiBold,
+        fontWeight = FontWeight.Medium,
         fontSize = (11 * sizeScale).sp,
         lineHeight = (16 * sizeScale).sp,
         letterSpacing = 0.5.sp
