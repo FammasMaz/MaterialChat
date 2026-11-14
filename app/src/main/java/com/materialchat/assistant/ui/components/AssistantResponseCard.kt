@@ -185,51 +185,32 @@ private fun AssistantBubble(
     response: String,
     isStreaming: Boolean
 ) {
-    val configuration = LocalConfiguration.current
-    val maxBubbleWidth = (configuration.screenWidthDp * 0.82f).dp
-
-    // Color blending matching MessageBubble.kt exactly
-    val surfaceBase = MaterialTheme.colorScheme.surfaceContainer
-    val assistantBubbleColor = lerp(surfaceBase, MaterialTheme.colorScheme.surfaceContainerHigh, 0.7f)
-
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.Start  // Left-aligned
+    // The answer is plain text on the response surface, like Gemini; only the question is a bubble.
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 4.dp, vertical = 4.dp)
+            .animateContentSize(
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioNoBouncy,
+                    stiffness = Spring.StiffnessMediumLow
+                )
+            ),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        Surface(
-            modifier = Modifier
-                .widthIn(min = 40.dp, max = maxBubbleWidth)
-                .animateContentSize(
-                    animationSpec = spring(
-                        dampingRatio = Spring.DampingRatioMediumBouncy,
-                        stiffness = Spring.StiffnessMediumLow  // Matches main chat
-                    )
-                ),
-            shape = MessageBubbleShapes.AssistantBubble,  // Theme shape: 8dp/28dp/28dp/28dp
-            color = assistantBubbleColor,
-            tonalElevation = 1.dp
-        ) {
-            Column(
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                if (response.isNotEmpty()) {
-                    MarkdownText(
-                        markdown = response,
-                        textColor = MaterialTheme.colorScheme.onSurface,
-                        style = MaterialTheme.typography.bodyLarge  // Matches main chat
-                    )
-                }
-
-                // Streaming indicator using TypingIndicator (M3 shape morphing - matches main chat)
-                if (isStreaming) {
-                    TypingIndicator(
-                        dotSize = 7.dp,
-                        dotSpacing = 4.dp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                    )
-                }
-            }
+        if (response.isNotEmpty()) {
+            MarkdownText(
+                markdown = response,
+                textColor = MaterialTheme.colorScheme.onSurface,
+                style = MaterialTheme.typography.bodyLarge
+            )
+        }
+        if (isStreaming) {
+            TypingIndicator(
+                dotSize = 7.dp,
+                dotSpacing = 4.dp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+            )
         }
     }
 }
@@ -240,31 +221,12 @@ private fun AssistantBubble(
  */
 @Composable
 private fun AssistantLoadingBubble() {
-    val surfaceBase = MaterialTheme.colorScheme.surfaceContainer
-    val assistantBubbleColor = lerp(surfaceBase, MaterialTheme.colorScheme.surfaceContainerHigh, 0.7f)
-
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.Start
-    ) {
-        Surface(
-            modifier = Modifier.widthIn(min = 80.dp),
-            shape = MessageBubbleShapes.AssistantBubble,  // Theme shape
-            color = assistantBubbleColor,
-            tonalElevation = 1.dp
-        ) {
-            Box(
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                // M3 Expressive TypingIndicator with shape morphing (matches main chat)
-                TypingIndicator(
-                    dotSize = 8.dp,
-                    dotSpacing = 3.dp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        }
+    Box(modifier = Modifier.padding(horizontal = 4.dp, vertical = 8.dp)) {
+        TypingIndicator(
+            dotSize = 7.dp,
+            dotSpacing = 4.dp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }
 

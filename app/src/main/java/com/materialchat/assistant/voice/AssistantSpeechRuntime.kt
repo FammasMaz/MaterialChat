@@ -17,22 +17,34 @@ import kotlinx.coroutines.launch
 /** A single consumer preserves utterance order without blocking model generation. */
 internal class AssistantSpeechQueue(
     scope: CoroutineScope,
+    private val onDrained: () -> Unit = {},
     private val speak: suspend (String) -> Unit
 ) {
     private val chunks = Channel<String>(64)
-    val job: Job = scope.launch { for (chunk in chunks) speak(chunk) }
+    private val pendingCount = java.util.concurrent.atomic.AtomicInteger(0)
+    /** Chunks enqueued and not yet finished speaking, including the one being spoken. */
+    val pending: Int get() = pendingCount.get()
+    val job: Job = scope.launch {
+        for (chunk in chunks) {
+            try { speak(chunk) } finally { pendingCount.decrementAndGet() }
+        }
+        onDrained()
+    }
     suspend fun enqueue(text: String) {
         // Both backends accept bounded utterances. Never split a surrogate pair.
         var remaining = text
         while (remaining.isNotBlank()) {
             var end = minOf(remaining.length, 3500)
             if (end < remaining.length && remaining[end - 1].isHighSurrogate()) end--
+            pendingCount.incrementAndGet()
             try {
                 chunks.send(remaining.take(end))
             } catch (cancelled: CancellationException) {
+                pendingCount.decrementAndGet()
                 currentCoroutineContext().ensureActive()
                 return // Speech stopped; generation remains owned by its live parent.
             } catch (_: ClosedSendChannelException) {
+                pendingCount.decrementAndGet()
                 return
             }
             remaining = remaining.drop(end)

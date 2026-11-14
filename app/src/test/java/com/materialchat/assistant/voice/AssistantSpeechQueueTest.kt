@@ -54,4 +54,26 @@ class AssistantSpeechQueueTest {
         assertEquals(text, spoken.joinToString(""))
         assertTrue(spoken.all { it.length <= 3500 && !it.last().isHighSurrogate() })
     }
+
+    @Test fun `pending counts the spoken chunk and later ones, drained fires once at the end`() = runTest {
+        // Regression: the pill flickered between speaking and idle between sentences because the
+        // speaking state was cleared after every chunk instead of when the queue drained.
+        val gate = CompletableDeferred<Unit>()
+        var pendingWhileFirst = -1
+        var drained = 0
+        lateinit var queue: AssistantSpeechQueue
+        queue = AssistantSpeechQueue(this, onDrained = { drained++ }) {
+            if (it == "First") { pendingWhileFirst = queue.pending; gate.await() }
+        }
+        queue.enqueue("First")
+        queue.enqueue("Second")
+        runCurrent()
+        assertEquals(2, pendingWhileFirst)
+        assertEquals(0, drained)
+        queue.finish()
+        gate.complete(Unit)
+        queue.job.join()
+        assertEquals(0, queue.pending)
+        assertEquals(1, drained)
+    }
 }

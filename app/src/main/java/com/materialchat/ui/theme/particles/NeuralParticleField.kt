@@ -276,21 +276,20 @@ fun Modifier.neuralParticleField(
                 if (capsule != null && samples != null && strength > 0f) {
                     NeuralParticleDiagnostics.record(painter.kind, edgeTreatment, capsule)
                     val time = control.timeSeconds?.takeIf { it.isFinite() } ?: elapsed
-                    val drawField: DrawScope.() -> Unit = {
-                        drawCapsuleHalo(capsule, latestColor, strength, rings)
-                        if (alpha > 0f) {
-                            with(painter) {
-                                paint(capsule, time, alpha, latestColor, pixels, screenOrigin, samples)
-                            }
-                        }
-                    }
+                    // The glow is blurred into a soft edge; particles stay crisp on top, as in
+                    // essentials where the blur softens the pill boundary, not the dots.
                     if (blurLayer != null) {
                         // Only this node's background is recorded: the card content drawn on
                         // top is never part of the blurred layer.
-                        blurLayer.record { drawField() }
+                        blurLayer.record { drawCapsuleHalo(capsule, latestColor, strength, rings) }
                         drawLayer(blurLayer)
                     } else {
-                        drawField()
+                        drawCapsuleHalo(capsule, latestColor, strength, rings)
+                    }
+                    if (alpha > 0f) {
+                        with(painter) {
+                            paint(capsule, time, alpha, latestColor, pixels, screenOrigin, samples)
+                        }
                     }
                 }
             }

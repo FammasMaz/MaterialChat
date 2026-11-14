@@ -20,9 +20,9 @@ class CapsuleHaloTest {
 
     @Test fun edgeStyleDefaultsAndValidation() {
         val style = ParticleEdgeStyle()
-        assertEquals(2.dp, style.blurRadius)
-        assertEquals(24.dp, style.haloWidth)
-        assertEquals(0.16f, style.haloOpacity, 0f)
+        assertEquals(14.dp, style.blurRadius)
+        assertEquals(20.dp, style.haloWidth)
+        assertEquals(0.45f, style.haloOpacity, 0f)
         assertEquals(8, style.haloSteps)
         val invalid = listOf<() -> ParticleEdgeStyle>(
             { ParticleEdgeStyle(blurRadius = (-1).dp) },

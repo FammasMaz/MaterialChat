@@ -28,12 +28,12 @@ enum class ParticleEdgeTreatment {
 /** Blur and glow geometry around the capsule edge. */
 @Immutable
 data class ParticleEdgeStyle(
-    /** Blur applied to the particle layer on API 31+; 0 disables the RenderEffect pass. */
-    val blurRadius: Dp = 2.dp,
+    /** Blur applied to the edge glow on API 31+; 0 disables the RenderEffect pass. */
+    val blurRadius: Dp = 14.dp,
     /** Outward reach of the glow halo from the capsule edge. */
-    val haloWidth: Dp = 24.dp,
+    val haloWidth: Dp = 20.dp,
     /** Peak halo alpha at the capsule edge (multiplied by the field colour's alpha). */
-    val haloOpacity: Float = 0.16f,
+    val haloOpacity: Float = 0.45f,
     /** Number of concentric strokes approximating the halo gradient; 0 disables the halo. */
     val haloSteps: Int = 8,
 ) {

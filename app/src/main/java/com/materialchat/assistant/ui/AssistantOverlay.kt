@@ -276,7 +276,7 @@ fun AssistantOverlay(
                 // which also keeps the whole outer band inside the drawing node.
                 .neuralParticleField(
                     capsuleRect = decorationRect,
-                    cornerRadius = 32.dp,
+                    cornerRadius = 38.dp,
                     color = Color.White,
                     enabled = neuralExpressive,
                     // The card reports its rect; until it does, there is nothing to decorate.
@@ -519,8 +519,8 @@ internal fun AssistantOverlayContent(
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(64.dp),
-                shape = RoundedCornerShape(32.dp),
+                    .height(76.dp),
+                shape = RoundedCornerShape(38.dp),
                 color = MaterialTheme.colorScheme.surfaceContainerHigh,
                 tonalElevation = 6.dp,
                 shadowElevation = 16.dp
@@ -528,12 +528,12 @@ internal fun AssistantOverlayContent(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(start = 16.dp, end = 8.dp),
+                        .padding(start = 20.dp, end = 10.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     // Leading state glyph.
-                    Box(modifier = Modifier.size(28.dp), contentAlignment = Alignment.Center) {
+                    Box(modifier = Modifier.size(32.dp), contentAlignment = Alignment.Center) {
                         when {
                             capturing -> VoiceWaveform(
                                 amplitudeData = amplitudeData,
@@ -576,7 +576,7 @@ internal fun AssistantOverlayContent(
                             if (uiState.textInput.isEmpty()) {
                                 Text(
                                     text = "Ask anything",
-                                    style = MaterialTheme.typography.bodyLarge,
+                                    style = MaterialTheme.typography.titleMedium,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
@@ -586,7 +586,7 @@ internal fun AssistantOverlayContent(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .focusRequester(focusRequester),
-                                textStyle = MaterialTheme.typography.bodyLarge.copy(
+                                textStyle = MaterialTheme.typography.titleMedium.copy(
                                     color = MaterialTheme.colorScheme.onSurface
                                 ),
                                 singleLine = true,
@@ -610,7 +610,7 @@ internal fun AssistantOverlayContent(
                                 text = line,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
-                                style = MaterialTheme.typography.bodyLarge,
+                                style = MaterialTheme.typography.titleMedium,
                                 color = if (emphasised) MaterialTheme.colorScheme.onSurface
                                 else MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite }
@@ -627,7 +627,7 @@ internal fun AssistantOverlayContent(
                     }
 
                     // Primary action: Send / Stop / Mic.
-                    val primaryModifier = Modifier.size(48.dp)
+                    val primaryModifier = Modifier.size(56.dp)
                     when {
                         keyboardMode && hasText -> FilledIconButton(
                             onClick = submitTyped,

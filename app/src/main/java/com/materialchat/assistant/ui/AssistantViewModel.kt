@@ -344,7 +344,16 @@ class AssistantViewModel(
                 coroutineScope {
                     val settings = appPreferences.assistantVoiceSettings.first().normalized()
                     val chunker = StreamingSpeechChunker()
-                    val queue = AssistantSpeechQueue(this) { chunk ->
+                    lateinit var queue: AssistantSpeechQueue
+                    queue = AssistantSpeechQueue(this, onDrained = {
+                        // All queued speech finished: only now leave the speaking state.
+                        if (token == turn && _uiState.value.isSpeaking) {
+                            _uiState.update { it.copy(isSpeaking = false) }
+                            if (!_uiState.value.isStreaming && !_uiState.value.isLoading) {
+                                _voiceState.value = VoiceState.Complete(_uiState.value.response, trimmedQuery)
+                            }
+                        }
+                    }) { chunk ->
                         if (token == turn && !speechStopped && _uiState.value.isTtsEnabled) {
                             speechRuntime.speak(chunk, settings) { event ->
                                 if (token == turn && !speechStopped) {
@@ -353,14 +362,22 @@ class AssistantViewModel(
                                             _uiState.update { it.copy(isSpeaking = true) }
                                             _voiceState.value = VoiceState.Speaking(chunk)
                                         }
-                                        else -> {
-                                            _uiState.update { it.copy(isSpeaking = false) }
+                                        is TtsEvent.Error -> {
+                                            speechStopped = true
+                                            _uiState.update { it.copy(isSpeaking = false, error = event.message) }
                                             if (!_uiState.value.isStreaming && !_uiState.value.isLoading) {
                                                 _voiceState.value = VoiceState.Complete(_uiState.value.response, trimmedQuery)
                                             }
-                                            if (event is TtsEvent.Error) {
-                                                speechStopped = true
-                                                _uiState.update { it.copy(error = event.message) }
+                                        }
+                                        else -> {
+                                            // A sentence finished. Stay in the speaking state while more
+                                            // speech is queued or the answer is still streaming, so the
+                                            // pill does not flicker between sentences; onDrained ends it.
+                                            val moreComing = queue.pending > 1 ||
+                                                _uiState.value.isStreaming || _uiState.value.isLoading
+                                            if (!moreComing) {
+                                                _uiState.update { it.copy(isSpeaking = false) }
+                                                _voiceState.value = VoiceState.Complete(_uiState.value.response, trimmedQuery)
                                             }
                                         }
                                     }
