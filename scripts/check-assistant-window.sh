@@ -84,19 +84,28 @@ for attempt in $(seq 1 10); do
 python3 - "$out/windows.txt" <<'PYKEEP'
 import re, sys
 
+# FLAG_KEEP_SCREEN_ON. Newer platforms print window flags by name, older ones as a hex
+# mask (API 26: "fl=#8d810120"), so both forms are accepted.
+KEEP_SCREEN_ON_BIT = 0x00000080
+
 text = open(sys.argv[1], errors='replace').read()
 blocks = re.split(r'\n(?=  Window #)', text)
-session = [b for b in blocks if 'MaterialChatVoiceInteractionSession' in b.split('\n')[0]
-           or 'ty=VOICE_INTERACTION' in b]
+session = [b for b in blocks
+           if 'VoiceInteractionSession' in b.split('\n')[0] or 'ty=VOICE_INTERACTION' in b]
 if not session:
     raise SystemExit('no voice-interaction session window in the window dump')
 block = session[0]
-if 'KEEP_SCREEN_ON' not in block:
-    raise SystemExit(
-        'the assistant session window does not hold FLAG_KEEP_SCREEN_ON while it works:\n'
-        + '\n'.join(line for line in block.splitlines()[:12])
-    )
-print('keep-screen-on: session window holds FLAG_KEEP_SCREEN_ON')
+if 'KEEP_SCREEN_ON' in block:
+    print('keep-screen-on: session window holds FLAG_KEEP_SCREEN_ON')
+    raise SystemExit(0)
+mask = re.search(r'\bfl=[#]?(?:0x)?([0-9a-fA-F]+)', block)
+if mask and int(mask.group(1), 16) & KEEP_SCREEN_ON_BIT:
+    print('keep-screen-on: session window holds FLAG_KEEP_SCREEN_ON')
+    raise SystemExit(0)
+raise SystemExit(
+    'the assistant session window does not hold FLAG_KEEP_SCREEN_ON while it works:\n'
+    + '\n'.join(line for line in block.splitlines()[:12])
+)
 PYKEEP
   ); then
     printf '%s\n' "$keep_awake" | tee "$out/keep-awake.txt"
