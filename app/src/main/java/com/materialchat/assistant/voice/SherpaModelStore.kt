@@ -3,6 +3,7 @@ package com.materialchat.assistant.voice
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.currentCoroutineContext
@@ -67,7 +68,17 @@ class SherpaModelStore(
     fun download(model: SherpaTtsModel) {
         synchronized(lock) {
             if (jobs[model]?.isActive == true || state(model).isInstalled) return
-            jobs[model] = scope.launch(io) { install(model) }
+            // Reported synchronously so the UI flips to "downloading" on the tap, not on the next scheduler tick.
+            apply(model, SherpaInstallEvent.Start(model.downloadBytes))
+            val job = scope.launch(io, start = CoroutineStart.LAZY) { install(model) }
+            jobs[model] = job
+            job.invokeOnCompletion { cause ->
+                // Also covers a job cancelled before its body ran; a superseded job must not touch the new state.
+                if (cause is CancellationException && synchronized(lock) { jobs[model] === job }) {
+                    apply(model, SherpaInstallEvent.Cancelled)
+                }
+            }
+            job.start()
         }
     }
 
@@ -156,8 +167,7 @@ class SherpaModelStore(
             if (!staging.renameTo(target)) throw SherpaInstallException("Could not move the model into app storage.")
             apply(model, SherpaInstallEvent.Installed)
         } catch (cancelled: CancellationException) {
-            apply(model, SherpaInstallEvent.Cancelled)
-            throw cancelled
+            throw cancelled // The job's completion handler reports Cancelled.
         } catch (failure: SherpaInstallException) {
             apply(model, SherpaInstallEvent.Failed(failure.message ?: "Model install failed."))
         } catch (failure: IOException) {

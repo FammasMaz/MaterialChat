@@ -18,6 +18,10 @@ import com.materialchat.domain.repository.ChatRepository
 import com.materialchat.domain.model.AiModel
 import com.materialchat.domain.model.Provider
 import com.materialchat.assistant.voice.GeminiTtsBackend
+import com.materialchat.assistant.voice.SherpaModelStore
+import com.materialchat.assistant.voice.SherpaTtsBackend
+import com.materialchat.assistant.voice.SherpaTtsModel
+import com.materialchat.data.local.preferences.AssistantSpeechBackend
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -32,8 +36,16 @@ class AssistantVoiceSettingsViewModel @Inject constructor(
     private val credentials: EncryptedPreferences,
     private val providerRepository: ProviderRepository,
     private val chatRepository: ChatRepository,
+    private val sherpaStore: SherpaModelStore,
+    private val sherpaBackend: SherpaTtsBackend,
     @ApplicationContext context: Context
 ) : ViewModel() {
+    /** Install state of every on-device neural model, for the Download / progress / Delete controls. */
+    val sherpaStates = sherpaStore.states
+    fun downloadSherpa(model: SherpaTtsModel) = sherpaStore.download(model)
+    fun cancelSherpa(model: SherpaTtsModel) = sherpaStore.cancel(model)
+    fun deleteSherpa(model: SherpaTtsModel) { stopPreview(); sherpaStore.delete(model) }
+
     val settings: kotlinx.coroutines.flow.StateFlow<AssistantVoiceSettings?> = preferences.assistantVoiceSettings.stateIn(
         viewModelScope, SharingStarted.Eagerly, null
     )
@@ -114,6 +126,10 @@ class AssistantVoiceSettingsViewModel @Inject constructor(
         engineCreated = true
         voiceJob = viewModelScope.launch {
             try {
+                if (value.backend == AssistantSpeechBackend.SHERPA) {
+                    previewSherpa(value)
+                    return@launch
+                }
                 // A fresh settings-owned engine prevents a previous explicit voice/language
                 // leaking into a subsequent engine-default preview.
                 previewEngine.setEnginePackage(value.ttsEnginePackage)
@@ -139,6 +155,21 @@ class AssistantVoiceSettingsViewModel @Inject constructor(
                     previewing.value = false
                     previewEngine.stop()
                 }
+            }
+        }
+    }
+
+    /** The shared neural backend is used so the (large) model is loaded only once per process. */
+    private suspend fun previewSherpa(value: AssistantVoiceSettings) {
+        val model = SherpaTtsModel.fromId(value.sherpaModel)
+        val reason = sherpaBackend.unavailableReason(model)
+        if (reason != null) {
+            previewMessage.value = reason
+            return
+        }
+        withTimeout(90_000) {
+            sherpaBackend.speak(SherpaTtsBackend.PREVIEW_TEXT, value, model).collect {
+                if (it is TtsEvent.Error) previewMessage.value = it.message
             }
         }
     }

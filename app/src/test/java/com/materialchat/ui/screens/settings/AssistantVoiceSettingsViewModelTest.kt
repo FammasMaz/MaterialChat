@@ -36,7 +36,10 @@ class AssistantVoiceSettingsViewModelTest {
         every { anyConstructed<TextToSpeechManager>().enqueue(any()) } returns flow { awaitCancellation() }
         every { anyConstructed<TextToSpeechManager>().release() } just Runs
         every { anyConstructed<TextToSpeechManager>().stop() } just Runs
-        return AssistantVoiceSettingsViewModel(preferences, credentials, providers, chat, context).also {
+        val sherpaStore = mockk<SherpaModelStore>(relaxed = true)
+        every { sherpaStore.states } returns MutableStateFlow(emptyMap<SherpaTtsModel, SherpaModelState>())
+        val sherpaBackend = mockk<SherpaTtsBackend>(relaxed = true)
+        return AssistantVoiceSettingsViewModel(preferences, credentials, providers, chat, sherpaStore, sherpaBackend, context).also {
             store.put("settings", it)
             runCurrent()
         }
