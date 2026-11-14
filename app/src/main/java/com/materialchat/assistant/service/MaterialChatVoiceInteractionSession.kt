@@ -155,6 +155,7 @@ class MaterialChatVoiceInteractionSession(
      * rather than in the composition, where a long delay would keep the frame clock busy.
      */
     fun onAssistantBusyChanged(busy: Boolean) {
+        Log.i(TAG, "keep-awake busy=$busy")
         keepAwakeRelease?.cancel()
         keepAwakeRelease = null
         setKeepAwake(shouldKeepScreenOn(busy = busy, idleForMillis = 0L))

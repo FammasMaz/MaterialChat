@@ -75,6 +75,12 @@ grep -q 'Stop listening' "$out/ui.xml"
 # The session must hold FLAG_KEEP_SCREEN_ON on its own window while it works; it is
 # listening at this point. The instrumentation test covers releasing it on hide, since a
 # directly-constructed session has no platform window to carry the flag.
+# The flag is applied from the overlay's composition, which can land a moment after the
+# controls appear, so poll rather than sampling once.
+keep_awake=
+for attempt in $(seq 1 10); do
+  adb shell dumpsys window > "$out/windows.txt"
+  if keep_awake=$(
 python3 - "$out/windows.txt" <<'PYKEEP'
 import re, sys
 
@@ -82,14 +88,27 @@ text = open(sys.argv[1], errors='replace').read()
 blocks = re.split(r'\n(?=  Window #)', text)
 session = [b for b in blocks if 'MaterialChatVoiceInteractionSession' in b.split('\n')[0]
            or 'ty=VOICE_INTERACTION' in b]
-assert session, 'no voice-interaction session window in the window dump'
+if not session:
+    raise SystemExit('no voice-interaction session window in the window dump')
 block = session[0]
-assert 'KEEP_SCREEN_ON' in block, (
-    'the assistant session window does not hold FLAG_KEEP_SCREEN_ON while it works:\n'
-    + '\n'.join(line for line in block.splitlines()[:12])
-)
+if 'KEEP_SCREEN_ON' not in block:
+    raise SystemExit(
+        'the assistant session window does not hold FLAG_KEEP_SCREEN_ON while it works:\n'
+        + '\n'.join(line for line in block.splitlines()[:12])
+    )
 print('keep-screen-on: session window holds FLAG_KEEP_SCREEN_ON')
 PYKEEP
+  ); then
+    printf '%s\n' "$keep_awake" | tee "$out/keep-awake.txt"
+    break
+  fi
+  sleep 1
+done
+[ -n "$keep_awake" ] || {
+  echo 'The assistant session never held FLAG_KEEP_SCREEN_ON while it was working' >&2
+  grep -E 'keep-awake' "$out/logcat.txt" | tail -5 >&2 || true
+  exit 1
+}
 
 # --- Neural particle field (assistant window only) --------------------------------
 # The decoration is the ported essentials particle field: an AGSL runtime painter on
