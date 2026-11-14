@@ -1187,14 +1187,33 @@ private fun SuccessContent(
     }
 }
 
+/**
+ * M3 Expressive section header: expressive title face at a heavy weight with a
+ * primary accent bar, so sections read as distinct groups rather than labels.
+ */
 @Composable
 private fun SectionHeader(title: String) {
-    Text(
-        text = title,
-        style = MaterialTheme.typography.titleMedium,
-        color = MaterialTheme.colorScheme.primary,
-        modifier = Modifier.padding(vertical = 8.dp)
-    )
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 20.dp, bottom = 10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Surface(
+            modifier = Modifier.size(width = 4.dp, height = 20.dp),
+            shape = RoundedCornerShape(50),
+            color = MaterialTheme.colorScheme.primary
+        ) {}
+        Spacer(modifier = Modifier.width(10.dp))
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleLarge.copy(
+                fontFamily = com.materialchat.ui.theme.MaterialChatExpressiveTitleFontFamily,
+                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+            ),
+            color = MaterialTheme.colorScheme.onSurface
+        )
+    }
 }
 
 @Composable

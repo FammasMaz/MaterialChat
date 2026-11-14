@@ -41,6 +41,8 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.materialchat.ui.screens.conversations.ConversationUiItem
 import com.materialchat.ui.theme.CustomShapes
+import com.materialchat.ui.theme.ExpressiveMotion
+import com.materialchat.ui.theme.ExpressiveShapes
 
 /**
  * M3 Expressive conversation item in the conversations list.
@@ -74,31 +76,11 @@ fun ConversationItem(
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
 
-    // M3 Expressive spring specs
-    // Spatial: Can overshoot (damping < 1) - for scale, shape
-    val spatialSpring = spring<Float>(
-        dampingRatio = 0.6f,
-        stiffness = 500f // Fast for small components
-    )
-    // Effects: No overshoot (damping = 1) - for color
-    val effectsSpring = spring<Float>(
-        dampingRatio = 1.0f,
-        stiffness = 300f
-    )
-
-    // Scale animation - spatial spring
+    // Scale animation - shared spatial spring from the theme motion tokens
     val scale by animateFloatAsState(
         targetValue = if (isPressed) 0.98f else 1f,
-        animationSpec = spatialSpring,
+        animationSpec = ExpressiveMotion.Spatial.listItemPress(),
         label = "scale"
-    )
-
-    // Shape morphing - M3 Expressive: pressed = less rounded
-    // This is applied as a visual effect, the actual shape is passed in
-    val shapeMorphFactor by animateFloatAsState(
-        targetValue = if (isPressed) 0.7f else 1f,
-        animationSpec = spatialSpring,
-        label = "shapeMorph"
     )
 
     // Background color animation - effects spring (no overshoot)
@@ -116,10 +98,7 @@ fun ConversationItem(
         } else {
             baseContainerColor
         },
-        animationSpec = spring(
-            dampingRatio = 1.0f,
-            stiffness = 300f
-        ),
+        animationSpec = ExpressiveMotion.Effects.color(),
         label = "backgroundColor"
     )
 
@@ -145,7 +124,7 @@ fun ConversationItem(
             Box(
                 modifier = Modifier
                     .size(48.dp)
-                    .clip(RoundedCornerShape(18.dp))
+                    .clip(ExpressiveShapes.Tile)
                     .background(MaterialTheme.colorScheme.primaryContainer),
                 contentAlignment = Alignment.Center
             ) {

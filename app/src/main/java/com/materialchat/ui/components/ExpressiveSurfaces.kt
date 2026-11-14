@@ -43,6 +43,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.materialchat.ui.theme.ExpressiveMotion
+import com.materialchat.ui.theme.ExpressiveShapes
 import com.materialchat.ui.theme.MaterialChatExpressiveTitleFontFamily
 
 @Composable
@@ -253,7 +254,7 @@ fun ExpressiveCardSurface(
     ElevatedCard(
         onClick = onClick,
         modifier = modifier.graphicsLayer { scaleX = scale; scaleY = scale },
-        shape = RoundedCornerShape(28.dp),
+        shape = ExpressiveShapes.Card,
         colors = CardDefaults.elevatedCardColors(containerColor = color),
         elevation = CardDefaults.elevatedCardElevation(defaultElevation = 1.dp),
         interactionSource = interactionSource

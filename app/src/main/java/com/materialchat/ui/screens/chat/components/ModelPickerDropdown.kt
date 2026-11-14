@@ -27,6 +27,8 @@ import androidx.compose.material3.CircularProgressIndicator
 import com.materialchat.ui.components.seaglass.DropdownMenu
 import com.materialchat.ui.components.seaglass.DropdownMenuItem
 import com.materialchat.ui.theme.CustomShapes
+import com.materialchat.ui.theme.ExpressiveMotion
+import com.materialchat.ui.theme.ExpressiveShapes
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import com.materialchat.ui.components.seaglass.Surface
@@ -82,10 +84,7 @@ fun ModelPickerDropdown(
     // Spring-physics scale animation on press
     val scale by animateFloatAsState(
         targetValue = if (isPressed) 0.95f else 1f,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessMedium
-        ),
+        animationSpec = ExpressiveMotion.Spatial.scale(),
         label = "scale"
     )
 
@@ -141,10 +140,7 @@ private fun ModelButton(
         } else {
             MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.72f)
         },
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioNoBouncy,
-            stiffness = Spring.StiffnessMedium
-        ),
+        animationSpec = ExpressiveMotion.Effects.color(),
         label = "modelButtonContainerColor"
     )
     val contentColor by animateColorAsState(
@@ -153,10 +149,7 @@ private fun ModelButton(
         } else {
             MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.6f)
         },
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioNoBouncy,
-            stiffness = Spring.StiffnessMedium
-        ),
+        animationSpec = ExpressiveMotion.Effects.color(),
         label = "modelButtonContentColor"
     )
 
@@ -179,7 +172,7 @@ private fun ModelButton(
         ) {
             Text(
                 text = modelName.ifEmpty { "Select model" },
-                style = MaterialTheme.typography.labelMedium,
+                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
                 color = contentColor,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
@@ -297,14 +290,11 @@ private fun ModelMenuItem(
     // Animate text color on selection
     val textColor by animateColorAsState(
         targetValue = if (isSelected) {
-            MaterialTheme.colorScheme.primary
+            MaterialTheme.colorScheme.onSecondaryContainer
         } else {
             MaterialTheme.colorScheme.onSurface
         },
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioNoBouncy,
-            stiffness = Spring.StiffnessMedium
-        ),
+        animationSpec = ExpressiveMotion.Effects.color(),
         label = "textColor"
     )
 
@@ -331,15 +321,17 @@ private fun ModelMenuItem(
                         imageVector = Icons.Default.Check,
                         contentDescription = "Selected",
                         modifier = Modifier.size(18.dp),
-                        tint = MaterialTheme.colorScheme.primary
+                        tint = MaterialTheme.colorScheme.onSecondaryContainer
                     )
                 }
             }
         },
         onClick = { haptics.perform(HapticPattern.CLICK); onClick() },
+        // M3 Expressive: the selected row is a solid tonal squircle, not a translucent wash.
         modifier = if (isSelected) {
             Modifier.background(
-                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+                MaterialTheme.colorScheme.secondaryContainer,
+                ExpressiveShapes.MenuSelection
             )
         } else {
             Modifier

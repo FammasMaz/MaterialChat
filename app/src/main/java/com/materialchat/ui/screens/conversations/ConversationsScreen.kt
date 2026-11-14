@@ -1364,12 +1364,9 @@ private fun ConversationList(
                 modifier = Modifier
                     .fillMaxWidth()
                     .animateItem(
-                        fadeInSpec = spring(stiffness = Spring.StiffnessMediumLow),
-                        fadeOutSpec = spring(stiffness = Spring.StiffnessMediumLow),
-                        placementSpec = spring(
-                            dampingRatio = Spring.DampingRatioMediumBouncy,
-                            stiffness = Spring.StiffnessMediumLow
-                        )
+                        fadeInSpec = ExpressiveMotion.ListItem.FadeIn,
+                        fadeOutSpec = ExpressiveMotion.ListItem.FadeOut,
+                        placementSpec = ExpressiveMotion.ListItem.Placement
                     )
             ) {
                 ConversationItem(
@@ -1459,12 +1456,9 @@ private fun GroupedConversationList(
                 modifier = Modifier
                     .fillMaxWidth()
                     .animateItem(
-                        fadeInSpec = spring(stiffness = Spring.StiffnessMediumLow),
-                        fadeOutSpec = spring(stiffness = Spring.StiffnessMediumLow),
-                        placementSpec = spring(
-                            dampingRatio = Spring.DampingRatioMediumBouncy,
-                            stiffness = Spring.StiffnessMediumLow
-                        )
+                        fadeInSpec = ExpressiveMotion.ListItem.FadeIn,
+                        fadeOutSpec = ExpressiveMotion.ListItem.FadeOut,
+                        placementSpec = ExpressiveMotion.ListItem.Placement
                     )
             )
             }
@@ -1646,8 +1640,9 @@ private fun SearchResultsList(
                 modifier = Modifier
                     .fillMaxWidth()
                     .animateItem(
-                        fadeInSpec = spring(stiffness = Spring.StiffnessMediumLow),
-                        fadeOutSpec = spring(stiffness = Spring.StiffnessMediumLow)
+                        fadeInSpec = ExpressiveMotion.ListItem.FadeIn,
+                        fadeOutSpec = ExpressiveMotion.ListItem.FadeOut,
+                        placementSpec = ExpressiveMotion.ListItem.Placement
                     )
             )
         }
