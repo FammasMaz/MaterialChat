@@ -14,6 +14,7 @@ import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
@@ -52,6 +53,7 @@ fun SmoothStreamingText(
     val haptics = rememberHapticFeedback()
     val latestRawText by rememberUpdatedState(rawText)
     var visibleText by remember { mutableStateOf(if (isStreaming) "" else rawText) }
+    var lastTickHapticMillis by remember { mutableLongStateOf(0L) }
 
     LaunchedEffect(isStreaming) {
         while (isStreaming || visibleText != latestRawText) {
@@ -65,7 +67,15 @@ fun SmoothStreamingText(
                     val nextEnd = target.nextSmoothStreamingRevealEnd(visibleText.length)
                     if (nextEnd > visibleText.length) {
                         visibleText = target.substring(0, nextEnd)
-                        haptics.perform(HapticPattern.CONTENT_TICK, hapticsEnabled)
+                        // One binder call to the vibrator service per reveal step meant up to
+                        // ~55 IPC calls a second for the whole stream. Cap the tick rate.
+                        if (lastTickHapticMillis == 0L ||
+                            android.os.SystemClock.elapsedRealtime() - lastTickHapticMillis >=
+                            CONTENT_TICK_HAPTIC_MIN_INTERVAL_MS
+                        ) {
+                            lastTickHapticMillis = android.os.SystemClock.elapsedRealtime()
+                            haptics.perform(HapticPattern.CONTENT_TICK, hapticsEnabled)
+                        }
                     }
                 }
             }
@@ -120,6 +130,7 @@ fun SmoothStreamingThinkingText(
     val haptics = rememberHapticFeedback()
     val latestRawText by rememberUpdatedState(rawText)
     var visibleText by remember { mutableStateOf(if (isStreaming) "" else rawText) }
+    var lastTickHapticMillis by remember { mutableLongStateOf(0L) }
 
     LaunchedEffect(isStreaming) {
         while (isStreaming || visibleText != latestRawText) {
@@ -133,7 +144,15 @@ fun SmoothStreamingThinkingText(
                     val nextEnd = target.nextSmoothStreamingRevealEnd(visibleText.length)
                     if (nextEnd > visibleText.length) {
                         visibleText = target.substring(0, nextEnd)
-                        haptics.perform(HapticPattern.THINKING_TICK, hapticsEnabled)
+                        // One binder call to the vibrator service per reveal step meant up to
+                        // ~55 IPC calls a second for the whole stream. Cap the tick rate.
+                        if (lastTickHapticMillis == 0L ||
+                            android.os.SystemClock.elapsedRealtime() - lastTickHapticMillis >=
+                            CONTENT_TICK_HAPTIC_MIN_INTERVAL_MS
+                        ) {
+                            lastTickHapticMillis = android.os.SystemClock.elapsedRealtime()
+                            haptics.perform(HapticPattern.THINKING_TICK, hapticsEnabled)
+                        }
                     }
                 }
             }
@@ -210,3 +229,5 @@ private const val STREAMING_TEXT_FRAME_MS = 18L
 private const val THINKING_TEXT_FRAME_MS = 28L
 /** Longer idle poll while waiting for more tokens — fewer wakeups, same reveal latency. */
 private const val STREAMING_IDLE_POLL_MS = 48L
+/** Streaming haptics are a texture, not a per-frame signal: at most one tick per 120 ms. */
+private const val CONTENT_TICK_HAPTIC_MIN_INTERVAL_MS = 120L

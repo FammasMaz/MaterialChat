@@ -173,12 +173,20 @@ private data class MarkdownCacheKey(
     val linkColor: Int
 )
 
-private const val MARKDOWN_PARSE_CACHE_SIZE = 160
+/**
+ * Budget for the parse cache, in markdown characters rather than entries. Entry-count sizing
+ * let a single stream fill all 160 slots with successive prefixes of one reply — megabytes of
+ * near-useless trees with almost no hit rate — while a long settled message cost one slot.
+ */
+private const val MARKDOWN_PARSE_CACHE_MAX_CHARS = 512_000
 private const val BATCHED_MATH_BLOCK_THRESHOLD = 2
 
 private val markdownParseCache = object : android.util.LruCache<MarkdownCacheKey, List<MarkdownElement>>(
-    MARKDOWN_PARSE_CACHE_SIZE
-) {}
+    MARKDOWN_PARSE_CACHE_MAX_CHARS
+) {
+    override fun sizeOf(key: MarkdownCacheKey, value: List<MarkdownElement>): Int =
+        key.markdown.length.coerceAtLeast(1)
+}
 
 // ---- Hoisted patterns/tables (compiled once, reused across every parse) ----
 // Previously these were compiled inside hot functions on every call; regex

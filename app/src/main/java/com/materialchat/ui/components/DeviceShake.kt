@@ -16,6 +16,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /**
@@ -83,14 +84,18 @@ fun rememberShakeEnergy(spikeThreshold: Float = 4.5f): State<Float> {
         }
         lifecycleOwner.lifecycle.addObserver(observer)
 
-        // Frame-paced drain loop bleeds energy back to zero smoothly.
+        // Frame-paced drain loop bleeds energy back to zero smoothly. While there is nothing to
+        // bleed it waits instead of requesting a frame: an unconditional withFrameNanos here kept
+        // the home screen rendering every vsync forever, even with the phone lying still.
         val drainJob: Job = scope.launch {
             while (true) {
-                withFrameNanos { }
                 if (energy.value > 0.004f) {
+                    withFrameNanos { }
                     energy.value *= 0.93f
                 } else if (energy.value != 0f) {
                     energy.value = 0f
+                } else {
+                    delay(50)
                 }
             }
         }

@@ -26,7 +26,9 @@ class MaterialChatApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         if (BuildConfig.ADS_ENABLED) {
-            MobileAds.initialize(this)
+            // Google's guidance: initialise off the main thread; it costs 100-500 ms on cold
+            // start and the banner tolerates a late initialisation.
+            applicationScope.launch { MobileAds.initialize(this@MaterialChatApplication) }
         }
         clearInterruptedStreams()
     }

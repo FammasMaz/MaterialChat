@@ -26,21 +26,24 @@ import java.nio.charset.StandardCharsets
 class EncryptedPreferences(context: Context) {
 
     private val prefs: SharedPreferences
-    private val aead: Aead
 
-    init {
-        // Register Tink AEAD configuration
+    /**
+     * Tink registration and the Keystore keyset round-trip cost 50-300 ms (seconds on first
+     * launch, when the key is generated) and used to run in the constructor — which Hilt calls
+     * on the main thread while building the Activity's graph, before the first frame. Every
+     * caller already runs inside `withContext(Dispatchers.IO)`, so the work is deferred there.
+     */
+    private val aead: Aead by lazy {
         AeadConfig.register()
-
-        // Create or load keyset from Android Keystore
         val keysetManager = AndroidKeysetManager.Builder()
             .withSharedPref(context, KEYSET_NAME, PREFS_NAME)
             .withKeyTemplate(KeyTemplates.get("AES256_GCM"))
             .withMasterKeyUri(MASTER_KEY_URI)
             .build()
+        keysetManager.keysetHandle.getPrimitive(Aead::class.java)
+    }
 
-        aead = keysetManager.keysetHandle.getPrimitive(Aead::class.java)
-
+    init {
         prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
     }
 
