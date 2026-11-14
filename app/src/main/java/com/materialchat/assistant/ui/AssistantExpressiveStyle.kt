@@ -10,6 +10,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
@@ -36,6 +37,16 @@ internal object AssistantMotion {
     /** Sheet entrance scale: the bouncy hero spring. */
     fun <T> playful(): SpringSpec<T> = spring(dampingRatio = 0.5f, stiffness = 400f)
 
+    /**
+     * The whole surface leaving: it drops and shrinks on a critically damped spring, so the exit
+     * never overshoots back into view (M3: expressive motion overshoots on arrival, not departure).
+     * Settles well inside [AssistantExitMotion]'s 320 ms window.
+     */
+    fun <T> exit(): SpringSpec<T> = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = 700f)
+
+    /** Shape morphs of small components (the glyph container): M3 `spring.fast.spatial`, expressive. */
+    fun <T> morph(): SpringSpec<T> = spring(dampingRatio = 0.7f, stiffness = 1400f)
+
     /** The primary action changing role: a short pop. */
     fun <T> pop(): SpringSpec<T> = spring(dampingRatio = 0.45f, stiffness = 650f)
 
@@ -58,6 +69,21 @@ internal object AssistantShapes {
 
     /** Tonal action chips in the answer surface. */
     val Chip = RoundedCornerShape(50)
+
+    /**
+     * The thinking surface: an asymmetric container (M3 variable radii, used for one hero moment)
+     * whose tight bottom-start corner points at the pill it will answer into.
+     */
+    val Thinking = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp, bottomStart = 8.dp, bottomEnd = 20.dp)
+
+    /** The action toolbar inside the answer surface: a full capsule, like an M3 floating toolbar. */
+    val Toolbar = RoundedCornerShape(50)
+
+    /** The pill's glyph container at rest, listening and speaking: a circle (40dp). */
+    val GlyphRoundCorner: Dp = 20.dp
+
+    /** The pill's glyph container while thinking: a rounded square, the M3 toggled/selected morph. */
+    val GlyphSquareCorner: Dp = 12.dp
 }
 
 internal object AssistantTypography {
@@ -88,7 +114,18 @@ internal object AssistantTypography {
     /** Notices and errors. */
     fun notice(typography: Typography): TextStyle =
         typography.bodyMedium.copy(fontWeight = FontWeight.Medium)
+
+    /** The thinking surface's header: a bold, upright title (never italic). */
+    fun thinkingTitle(typography: Typography): TextStyle =
+        typography.titleSmall.copy(fontWeight = FontWeight.Bold, letterSpacing = 0.1.sp)
+
+    /** The thinking surface's status line: regular weight under the bold header. */
+    fun thinkingStatus(typography: Typography): TextStyle =
+        typography.bodyMedium.copy(fontWeight = FontWeight.Normal)
 }
+
+/** The pill's phase. The leading glyph, its container and the state line all follow it. */
+internal enum class AssistantPhase { Capturing, Thinking, Speaking, Idle }
 
 internal object AssistantColors {
     /** The answer surface: a high surface container tinted toward the accent. */
@@ -97,4 +134,32 @@ internal object AssistantColors {
 
     /** The user's question bubble on the answer surface: the full primary container. */
     fun querySurface(scheme: ColorScheme): Color = scheme.primaryContainer
+
+    /**
+     * The pill's glyph container per phase. Each phase has its own tonal container (M3: colour
+     * signals state, never colour alone: the glyph changes too): transparent at rest, the primary
+     * container while capturing (matching the Stop button), secondary while thinking, tertiary
+     * while speaking.
+     */
+    fun glyphContainer(scheme: ColorScheme, phase: AssistantPhase): Color = when (phase) {
+        AssistantPhase.Idle -> Color.Transparent
+        AssistantPhase.Capturing -> scheme.primaryContainer
+        AssistantPhase.Thinking -> scheme.secondaryContainer
+        AssistantPhase.Speaking -> scheme.tertiaryContainer
+    }
+
+    /** The glyph itself on [glyphContainer]. */
+    fun glyphContent(scheme: ColorScheme, phase: AssistantPhase): Color = when (phase) {
+        AssistantPhase.Idle -> scheme.primary
+        AssistantPhase.Capturing -> scheme.onPrimaryContainer
+        AssistantPhase.Thinking -> scheme.onSecondaryContainer
+        AssistantPhase.Speaking -> scheme.onTertiaryContainer
+    }
+
+    /** The thinking surface: the highest surface container leaning toward the secondary container. */
+    fun thinkingSurface(scheme: ColorScheme): Color =
+        lerp(scheme.surfaceContainerHighest, scheme.secondaryContainer, 0.35f)
+
+    /** The action toolbar strip inside the answer surface: one container step below the answer. */
+    fun toolbarSurface(scheme: ColorScheme): Color = scheme.surfaceContainerLow
 }

@@ -1,7 +1,10 @@
 package com.materialchat.assistant.ui.components
 
 import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.Animatable
+import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.scrollBy
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,20 +19,27 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import com.materialchat.ui.components.seaglass.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import com.materialchat.assistant.ui.AssistantColors
 import com.materialchat.assistant.ui.AssistantMessage
 import com.materialchat.assistant.ui.AssistantMotion
+import com.materialchat.assistant.ui.AssistantShapes
 import com.materialchat.assistant.ui.AssistantTypography
 import com.materialchat.domain.model.MessageRole
 import com.materialchat.ui.components.MarkdownText
@@ -41,7 +51,7 @@ import com.materialchat.ui.theme.MessageBubbleShapes
  *
  * 100% compliant with main chat interface patterns:
  * - Uses MessageBubbleShapes from theme (asymmetric corners)
- * - Uses TypingIndicator (M3TripleShapeIndicator) for loading
+ * - A designed thinking surface (M3 Expressive loading indicator, bold upright title) while loading
  * - lerp color blending for depth
  * - Bouncy spring animations for content size changes
  * - Auto-scroll to newest message
@@ -130,8 +140,8 @@ fun AssistantResponseCard(
 
             // Show loading indicator at the end if loading and no streaming message
             if (isLoading && (messages.isEmpty() || messages.lastOrNull()?.role != MessageRole.ASSISTANT)) {
-                item {
-                    AssistantLoadingBubble()
+                item(key = "thinking") {
+                    AssistantThinkingSurface()
                 }
             }
         }
@@ -210,17 +220,69 @@ private fun AssistantBubble(
 }
 
 /**
- * Loading bubble shown while waiting for assistant response.
- * Uses TypingIndicator (M3TripleShapeIndicator) for 100% compliance.
+ * The thinking state, shown while the reply is awaited: a real surface rather than three dots.
+ *
+ * - Container: an asymmetric M3 shape (one hero use of variable radii) whose tight bottom-start
+ *   corner points down at the pill the answer will stream into, filled with the thinking tone
+ *   (highest surface container leaning toward the secondary container) so it reads as a step
+ *   below the answer that replaces it.
+ * - Type: a bold, upright "Thinking" title over a regular-weight status line. Never italic.
+ * - Motion: the M3 Expressive [LoadingIndicator] (polygons morphing into one another, the spec's
+ *   "working" motion) inside a secondary circle, plus one spring entrance from the pill corner.
+ *   Nothing pulses, breathes or shimmers; the indicator is the only continuous motion.
  */
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun AssistantLoadingBubble() {
-    Box(modifier = Modifier.padding(horizontal = 4.dp, vertical = 8.dp)) {
-        TypingIndicator(
-            dotSize = 7.dp,
-            dotSpacing = 4.dp,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
+private fun AssistantThinkingSurface() {
+    // One spring on appearance, anchored at the corner that points at the pill. A spring, not a
+    // delay: the composition owns no timers (see AssistantOverlay's keep-awake contract).
+    val entrance = remember { Animatable(0.88f) }
+    LaunchedEffect(Unit) { entrance.animateTo(1f, AssistantMotion.surfaceReveal()) }
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Start) {
+        Surface(
+            modifier = Modifier
+                .padding(start = 4.dp, top = 4.dp, bottom = 4.dp)
+                .graphicsLayer {
+                    scaleX = entrance.value
+                    scaleY = entrance.value
+                    transformOrigin = TransformOrigin(0f, 1f)
+                },
+            shape = AssistantShapes.Thinking,
+            color = AssistantColors.thinkingSurface(MaterialTheme.colorScheme),
+            contentColor = MaterialTheme.colorScheme.onSurface,
+            tonalElevation = 2.dp
+        ) {
+            Row(
+                modifier = Modifier.padding(start = 12.dp, end = 20.dp, top = 12.dp, bottom = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.secondaryContainer),
+                    contentAlignment = Alignment.Center
+                ) {
+                    LoadingIndicator(
+                        modifier = Modifier.size(30.dp),
+                        color = MaterialTheme.colorScheme.onSecondaryContainer
+                    )
+                }
+                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text(
+                        text = "Thinking",
+                        style = AssistantTypography.thinkingTitle(MaterialTheme.typography),
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = "Working on your answer",
+                        style = AssistantTypography.thinkingStatus(MaterialTheme.typography),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
     }
 }
 
