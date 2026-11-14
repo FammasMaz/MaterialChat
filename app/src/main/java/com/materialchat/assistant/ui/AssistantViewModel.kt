@@ -121,8 +121,10 @@ class AssistantViewModel(
         viewModelScope.launch {
             appPreferences.assistantVoiceSettings.collect { continueChatMinutes = it.continueChatMinutes }
         }
-        // Initialize TTS
+        // Initialize TTS with the engine the user chose (null = system default).
         viewModelScope.launch {
+            val configuredEngine = appPreferences.assistantVoiceSettings.first().ttsEnginePackage
+            textToSpeechManager.setEnginePackage(configuredEngine)
             textToSpeechManager.initialize().collect { result ->
                 when (result) {
                     is TtsInitResult.Success -> {

@@ -21,15 +21,29 @@ import javax.inject.Inject
 /** Main-thread-owned Android TTS. Collect [enqueue] for completion of an individual chunk. */
 class TextToSpeechManager internal constructor(
     private val dispatch: (() -> Unit) -> Unit,
-    private val factory: (TtsCallbacks) -> TtsEngine
+    private val factory: (TtsCallbacks, String?) -> TtsEngine
 ) {
     @Inject constructor(context: Context) : this(
         { action ->
             val handler = Handler(Looper.getMainLooper())
             if (Looper.myLooper() == Looper.getMainLooper()) action() else handler.post { action() }
         },
-        { callbacks -> AndroidTtsEngine(context.applicationContext, callbacks) }
+        { callbacks, enginePackage -> AndroidTtsEngine(context.applicationContext, callbacks, enginePackage) }
     )
+
+    /** Engine the next initialization binds; null keeps the system default engine. */
+    @Volatile private var enginePackage: String? = null
+
+    /**
+     * Binds a different installed engine. The current engine is released so the next
+     * [initialize] starts the chosen one; speaking in progress stops.
+     */
+    fun setEnginePackage(packageName: String?) {
+        val normalized = packageName?.trim()?.takeIf { it.isNotEmpty() }
+        if (normalized == enginePackage) return
+        enginePackage = normalized
+        release()
+    }
 
     private var engine: TtsEngine? = null
     private var ready = false
@@ -89,7 +103,7 @@ class TextToSpeechManager internal constructor(
             }
         }
         try {
-            engine = factory(callbacks)
+            engine = factory(callbacks, enginePackage)
             constructing = false
             initialStatus?.let { initialized(token, it) }
         } catch (error: RuntimeException) {
@@ -220,8 +234,16 @@ class TextToSpeechManager internal constructor(
     }
 }
 
-private class AndroidTtsEngine(context: Context, callbacks: TtsCallbacks) : TtsEngine {
-    private val tts = TextToSpeech(context) { callbacks.initialized(it == TextToSpeech.SUCCESS) }
+private class AndroidTtsEngine(
+    context: Context,
+    callbacks: TtsCallbacks,
+    enginePackage: String? = null
+) : TtsEngine {
+    private val tts = if (enginePackage != null) {
+        TextToSpeech(context, { callbacks.initialized(it == TextToSpeech.SUCCESS) }, enginePackage)
+    } else {
+        TextToSpeech(context) { callbacks.initialized(it == TextToSpeech.SUCCESS) }
+    }
     init {
         tts.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
             override fun onStart(utteranceId: String) = callbacks.started(utteranceId)

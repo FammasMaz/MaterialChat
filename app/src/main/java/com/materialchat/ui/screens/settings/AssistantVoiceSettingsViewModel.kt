@@ -91,6 +91,7 @@ class AssistantVoiceSettingsViewModel @Inject constructor(
         previewMessage.value = null
         voiceJob = viewModelScope.launch {
             try {
+                previewEngine.setEnginePackage(settings.first()?.ttsEnginePackage)
                 if (previewEngine.initialize().first() is TtsInitResult.Error) {
                     previewMessage.value = "Unable to load installed offline voices. Reopen to retry."
                 }
@@ -115,6 +116,7 @@ class AssistantVoiceSettingsViewModel @Inject constructor(
             try {
                 // A fresh settings-owned engine prevents a previous explicit voice/language
                 // leaking into a subsequent engine-default preview.
+                previewEngine.setEnginePackage(value.ttsEnginePackage)
                 previewEngine.release()
                 withTimeout(20_000) {
                     if (previewEngine.initialize().first() is TtsInitResult.Error ||

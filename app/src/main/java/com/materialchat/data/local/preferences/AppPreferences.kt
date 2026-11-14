@@ -72,6 +72,7 @@ class AppPreferences(private val context: Context) {
         val VOICE_REASONING = stringPreferencesKey("assistant_voice_reasoning")
         val VOICE_BACKEND = stringPreferencesKey("assistant_voice_backend")
         val VOICE_ANDROID_ID = stringPreferencesKey("assistant_voice_android_id")
+        val VOICE_TTS_ENGINE = stringPreferencesKey("assistant_voice_tts_engine")
         val VOICE_LANGUAGE = stringPreferencesKey("assistant_voice_language")
         val VOICE_RECOGNITION_LANGUAGE = stringPreferencesKey("assistant_voice_recognition_language")
         val VOICE_RECOGNITION_ENGINE = stringPreferencesKey("assistant_voice_recognition_engine")
@@ -690,6 +691,7 @@ class AppPreferences(private val context: Context) {
                 it.name == p[Keys.VOICE_BACKEND]
             } ?: AssistantSpeechBackend.ANDROID,
             androidVoiceId = p[Keys.VOICE_ANDROID_ID],
+            ttsEnginePackage = p[Keys.VOICE_TTS_ENGINE],
             languageTag = p[Keys.VOICE_LANGUAGE],
             recognitionLanguageTag = p[Keys.VOICE_RECOGNITION_LANGUAGE],
             recognitionEngine = p[Keys.VOICE_RECOGNITION_ENGINE],
@@ -711,6 +713,7 @@ class AppPreferences(private val context: Context) {
             optional(Keys.VOICE_MODEL, value.model)
             optional(Keys.VOICE_REASONING, value.reasoningEffort?.name)
             optional(Keys.VOICE_ANDROID_ID, value.androidVoiceId)
+            optional(Keys.VOICE_TTS_ENGINE, value.ttsEnginePackage)
             optional(Keys.VOICE_LANGUAGE, value.languageTag)
             optional(Keys.VOICE_RECOGNITION_LANGUAGE, value.recognitionLanguageTag)
             optional(Keys.VOICE_RECOGNITION_ENGINE, value.recognitionEngine)

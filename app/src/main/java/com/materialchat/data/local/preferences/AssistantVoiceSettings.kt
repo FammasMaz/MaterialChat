@@ -9,6 +9,8 @@ data class AssistantVoiceSettings(
     val reasoningEffort: ReasoningEffort? = null,
     val backend: AssistantSpeechBackend = AssistantSpeechBackend.ANDROID,
     val androidVoiceId: String? = null,
+    /** TTS engine package; null uses the system default engine. */
+    val ttsEnginePackage: String? = null,
     val languageTag: String? = null,
     /** BCP-47 language for speech input; null follows the device language. */
     val recognitionLanguageTag: String? = null,
@@ -25,6 +27,7 @@ data class AssistantVoiceSettings(
         providerId = providerId?.trim()?.takeIf { it.isNotEmpty() },
         model = model?.trim()?.takeIf { it.isNotEmpty() },
         androidVoiceId = androidVoiceId?.trim()?.takeIf { it.isNotEmpty() },
+        ttsEnginePackage = ttsEnginePackage?.trim()?.takeIf { it.isNotEmpty() },
         languageTag = languageTag?.trim()?.takeIf { it.isNotEmpty() },
         recognitionLanguageTag = recognitionLanguageTag?.trim()?.takeIf { it.isNotEmpty() },
         recognitionEngine = recognitionEngine?.trim()?.takeIf { it.isNotEmpty() },

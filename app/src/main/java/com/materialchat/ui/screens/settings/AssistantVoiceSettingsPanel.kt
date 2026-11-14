@@ -15,6 +15,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.materialchat.assistant.voice.installedTtsEngines
 import com.materialchat.assistant.voice.recognitionEngineReport
 import com.materialchat.assistant.voice.recognitionEngineLabel
 import com.materialchat.data.local.preferences.AssistantSpeechBackend
@@ -125,6 +126,18 @@ fun AssistantVoiceSettingsPanel(viewModel: AssistantVoiceSettingsViewModel = hil
                     viewModel.stopPreview(); draft = draft.copy(backend = it)
                 }
                 if (draft.backend == AssistantSpeechBackend.ANDROID) {
+                    val engines = remember(draft.ttsEnginePackage) { installedTtsEngines(context) }
+                    val engineLabel = engines.firstOrNull { it.packageName == draft.ttsEnginePackage }
+                        ?.let { "${it.label}${if (it.isSystemDefault) " (system default)" else ""}" }
+                        ?: "System default"
+                    VoiceChoice("Speech engine", engineLabel,
+                        listOf(null to "System default") + engines.map {
+                            it.packageName to "${it.label}${if (it.isSystemDefault) " (system default)" else ""}"
+                        }) { packageName ->
+                        viewModel.stopPreview()
+                        draft = draft.copy(ttsEnginePackage = packageName, androidVoiceId = null)
+                    }
+                    Text("Neural engines installed on the phone (Piper, Kokoro, Supertonic based apps) sound far better than the stock voice. Install one, then pick it here.")
                     val selectedVoice = voices.firstOrNull { it.id == draft.androidVoiceId }
                     val voiceLabel = when {
                         draft.androidVoiceId == null -> "Engine default"

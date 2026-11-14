@@ -30,7 +30,7 @@ class TextToSpeechManagerTest {
 
     @Test fun `synchronous initialization and independent chunk completion`() = runTest {
         lateinit var fake: Fake
-        val manager = TextToSpeechManager({ it() }) { callbacks ->
+        val manager = TextToSpeechManager({ it() }) { callbacks, _ ->
             Fake(callbacks).also { fake = it; callbacks.initialized(true) }
         }
         assertEquals(listOf(TtsInitResult.Success), manager.initialize().toList())
@@ -50,7 +50,7 @@ class TextToSpeechManagerTest {
 
     @Test fun `cancellation drains all queued collectors and ignores stale callbacks`() = runTest {
         lateinit var fake: Fake
-        val manager = TextToSpeechManager({ it() }) { Fake(it).also { f -> fake = f } }
+        val manager = TextToSpeechManager({ it() }) { callbacks, _ -> Fake(callbacks).also { f -> fake = f } }
         val init = async { manager.initialize().toList() }
         runCurrent(); fake.callbacks.initialized(true); init.await()
         val first = async { manager.enqueue("First").toList() }
@@ -66,7 +66,7 @@ class TextToSpeechManagerTest {
 
     @Test fun `initialization timeout shuts down engine and permits retry`() = runTest {
         val engines = mutableListOf<Fake>()
-        val manager = TextToSpeechManager({ it() }) { Fake(it).also(engines::add) }
+        val manager = TextToSpeechManager({ it() }) { callbacks, _ -> Fake(callbacks).also(engines::add) }
         assertTrue(manager.initialize().toList().single() is TtsInitResult.Error)
         assertEquals(1, engines.single().shutdowns)
         val retry = async { manager.initialize().toList() }
@@ -77,7 +77,7 @@ class TextToSpeechManagerTest {
 
     @Test fun `replacement stops prior collectors and release resolves pending initialization`() = runTest {
         lateinit var fake: Fake
-        val manager = TextToSpeechManager({ it() }) { Fake(it).also { f -> fake = f } }
+        val manager = TextToSpeechManager({ it() }) { callbacks, _ -> Fake(callbacks).also { f -> fake = f } }
         val init = async { manager.initialize().toList() }
         runCurrent()
         manager.release()
@@ -95,7 +95,7 @@ class TextToSpeechManagerTest {
 
     @Test fun `shared initialization failure retry release and settings`() = runTest {
         val engines = mutableListOf<Fake>()
-        val manager = TextToSpeechManager({ it() }) { Fake(it).also(engines::add) }
+        val manager = TextToSpeechManager({ it() }) { callbacks, _ -> Fake(callbacks).also(engines::add) }
         val first = async { manager.initialize().toList() }
         val second = async { manager.initialize().toList() }
         runCurrent()
