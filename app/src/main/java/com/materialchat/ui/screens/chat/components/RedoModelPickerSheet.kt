@@ -34,6 +34,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.materialchat.domain.model.AiModel
 import com.materialchat.ui.theme.CustomShapes
+import com.materialchat.ui.theme.ExpressiveMotion
 
 /**
  * Bottom sheet for picking a model to redo the response with.
@@ -83,10 +84,7 @@ fun RedoModelPickerSheet(
                     .padding(horizontal = 16.dp)
                     .padding(bottom = 32.dp)
                     .animateContentSize(
-                        animationSpec = spring(
-                            dampingRatio = Spring.DampingRatioMediumBouncy,
-                            stiffness = Spring.StiffnessMediumLow
-                        )
+                        animationSpec = ExpressiveMotion.Spatial.contentSize()
                     )
             ) {
                 Text(

@@ -123,6 +123,8 @@ import com.materialchat.ui.components.HapticPattern
 import com.materialchat.ui.components.rememberHapticFeedback
 import com.materialchat.data.local.preferences.AppPreferences
 import com.materialchat.ui.theme.CustomShapes
+import com.materialchat.ui.theme.ExpressiveMotion
+import com.materialchat.ui.theme.ExpressiveShapes
 import com.materialchat.ui.theme.LocalChatBubbleStyle
 import com.materialchat.ui.theme.MessageBubbleShapes
 import com.materialchat.util.GeneratedImageActions
@@ -330,10 +332,7 @@ fun MessageBubble(
                                 coroutineScope.launch {
                                     swipeOffset.animateTo(
                                         0f,
-                                        animationSpec = spring(
-                                            dampingRatio = 0.6f,
-                                            stiffness = 500f
-                                        )
+                                        animationSpec = ExpressiveMotion.Spatial.default()
                                     )
                                 }
                             }
@@ -1097,27 +1096,13 @@ private fun ThinkingSection(
             )
         }
 
-        // Collapsible thinking content with M3 spring physics
+        // Collapsible thinking content: shared disclosure physics (ExpressiveMotion.Disclosure)
         AnimatedVisibility(
             visible = isExpanded,
-            // Spatial: spring with overshoot (expressive scheme, default speed)
-            enter = fadeIn(
-                animationSpec = spring(dampingRatio = 1.0f, stiffness = 500f)
-            ) + expandVertically(
-                animationSpec = spring(
-                    dampingRatio = Spring.DampingRatioLowBouncy,
-                    stiffness = Spring.StiffnessMediumLow
-                )
-            ),
-            // Effects: no bounce for opacity; spatial spring for size
-            exit = fadeOut(
-                animationSpec = spring(dampingRatio = 1.0f, stiffness = 500f)
-            ) + shrinkVertically(
-                animationSpec = spring(
-                    dampingRatio = Spring.DampingRatioNoBouncy,
-                    stiffness = Spring.StiffnessMediumLow
-                )
-            )
+            enter = fadeIn(animationSpec = ExpressiveMotion.Disclosure.FadeIn) +
+                expandVertically(animationSpec = ExpressiveMotion.Disclosure.Expand),
+            exit = fadeOut(animationSpec = ExpressiveMotion.Disclosure.FadeOut) +
+                shrinkVertically(animationSpec = ExpressiveMotion.Disclosure.Shrink)
         ) {
             Column {
                 SmoothStreamingThinkingText(
@@ -1208,10 +1193,7 @@ private fun MemoryDisclosure(
         modifier = modifier
             .fillMaxWidth()
             .animateContentSize(
-                animationSpec = spring(
-                    dampingRatio = Spring.DampingRatioNoBouncy,
-                    stiffness = 520f
-                ),
+                animationSpec = ExpressiveMotion.Spatial.contentSize(),
                 alignment = Alignment.TopStart
             ),
         verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -1250,19 +1232,19 @@ private fun MemoryDisclosure(
 
         AnimatedVisibility(
             visible = expanded,
-            enter = fadeIn(animationSpec = spring(dampingRatio = 0.85f, stiffness = 460f)) +
+            enter = fadeIn(animationSpec = ExpressiveMotion.Disclosure.FadeIn) +
                 expandVertically(
                     expandFrom = Alignment.Top,
-                    animationSpec = spring(dampingRatio = 0.85f, stiffness = 460f)
+                    animationSpec = ExpressiveMotion.Disclosure.Expand
                 ),
-            exit = fadeOut(animationSpec = spring(dampingRatio = 1.0f, stiffness = 520f)) +
+            exit = fadeOut(animationSpec = ExpressiveMotion.Disclosure.FadeOut) +
                 shrinkVertically(
                     shrinkTowards = Alignment.Top,
-                    animationSpec = spring(dampingRatio = 1.0f, stiffness = 520f)
+                    animationSpec = ExpressiveMotion.Disclosure.Shrink
                 )
         ) {
             Surface(
-                shape = RoundedCornerShape(24.dp),
+                shape = ExpressiveShapes.DisclosurePanel,
                 color = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.86f),
                 contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
                 tonalElevation = 2.dp

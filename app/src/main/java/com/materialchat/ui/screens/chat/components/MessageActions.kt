@@ -278,7 +278,7 @@ fun StatsPillButton(
         Row(
             modifier = Modifier
                 .animateContentSize(
-                    animationSpec = spring(dampingRatio = 0.85f, stiffness = 300f)
+                    animationSpec = ExpressiveMotion.Spatial.contentSize()
                 )
                 .padding(horizontal = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -293,8 +293,8 @@ fun StatsPillButton(
             )
             AnimatedVisibility(
                 visible = expanded,
-                enter = fadeIn(animationSpec = spring(stiffness = Spring.StiffnessMediumLow)),
-                exit = fadeOut(animationSpec = spring(stiffness = Spring.StiffnessMediumLow))
+                enter = fadeIn(animationSpec = ExpressiveMotion.Effects.alpha()),
+                exit = fadeOut(animationSpec = ExpressiveMotion.Effects.alpha())
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,

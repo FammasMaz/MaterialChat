@@ -3,7 +3,6 @@ package com.materialchat.ui.screens.conversations.components
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -46,6 +45,7 @@ import com.materialchat.ui.screens.conversations.ConversationUiItem
 import com.materialchat.ui.screens.conversations.ConversationGroupUiItem
 import com.materialchat.ui.components.HapticPattern
 import com.materialchat.ui.components.rememberHapticFeedback
+import com.materialchat.ui.theme.ExpressiveMotion
 
 /**
  * M3 Expressive expandable conversation group component.
@@ -93,22 +93,10 @@ fun ExpandableConversationGroup(
 ) {
     val haptics = rememberHapticFeedback()
 
-    // M3 Expressive spring specs
-    // Spatial: Can overshoot (damping < 1) - for position, rotation, size
-    val spatialSpring = spring<Float>(
-        dampingRatio = 0.6f,
-        stiffness = 380f
-    )
-    // Effects: No overshoot (damping = 1) - for opacity, color
-    val effectsSpring = spring<Float>(
-        dampingRatio = 1.0f,
-        stiffness = 300f
-    )
-
-    // Chevron rotation animation - spatial spring (can overshoot)
+    // Chevron rotation: spatial spring from the theme (can overshoot)
     val chevronRotation by animateFloatAsState(
         targetValue = if (group.isExpanded) 180f else 0f,
-        animationSpec = spatialSpring,
+        animationSpec = ExpressiveMotion.Spatial.default(),
         label = "chevronRotation"
     )
 
@@ -308,33 +296,17 @@ fun ExpandableConversationGroup(
             }
         }
 
-        // Expanded branch list with M3 Expressive spring animations
+        // Expanded branch list: shared disclosure physics (see ExpressiveMotion.Disclosure)
         AnimatedVisibility(
             visible = group.isExpanded && group.hasBranches,
             enter = expandVertically(
-                animationSpec = spring(
-                    dampingRatio = 0.6f, // Spatial: can overshoot
-                    stiffness = 380f
-                ),
+                animationSpec = ExpressiveMotion.Disclosure.Expand,
                 expandFrom = Alignment.Top
-            ) + fadeIn(
-                animationSpec = spring(
-                    dampingRatio = 1.0f, // Effects: no overshoot
-                    stiffness = 300f
-                )
-            ),
+            ) + fadeIn(animationSpec = ExpressiveMotion.Disclosure.FadeIn),
             exit = shrinkVertically(
-                animationSpec = spring(
-                    dampingRatio = 0.8f,
-                    stiffness = 400f
-                ),
+                animationSpec = ExpressiveMotion.Disclosure.Shrink,
                 shrinkTowards = Alignment.Top
-            ) + fadeOut(
-                animationSpec = spring(
-                    dampingRatio = 1.0f,
-                    stiffness = 300f
-                )
-            )
+            ) + fadeOut(animationSpec = ExpressiveMotion.Disclosure.FadeOut)
         ) {
             Column(
                 modifier = Modifier

@@ -204,14 +204,14 @@ fun MessageInput(
         AnimatedVisibility(
             visible = pendingAttachments.isNotEmpty(),
             enter = expandVertically(
-                animationSpec = spring(dampingRatio = 0.7f, stiffness = 500f)
+                animationSpec = ExpressiveMotion.Disclosure.Expand
             ) + fadeIn(
-                animationSpec = spring(dampingRatio = 1.0f, stiffness = 500f)
+                animationSpec = ExpressiveMotion.Disclosure.FadeIn
             ),
             exit = shrinkVertically(
-                animationSpec = spring(dampingRatio = 1.0f, stiffness = 500f)
+                animationSpec = ExpressiveMotion.Disclosure.Shrink
             ) + fadeOut(
-                animationSpec = spring(dampingRatio = 1.0f, stiffness = 500f)
+                animationSpec = ExpressiveMotion.Disclosure.FadeOut
             )
         ) {
             AttachmentPreviewRow(

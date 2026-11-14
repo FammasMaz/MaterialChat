@@ -50,6 +50,7 @@ import androidx.compose.ui.unit.lerp
 import com.materialchat.ui.components.HapticPattern
 import com.materialchat.ui.components.rememberHapticFeedback
 import com.materialchat.ui.theme.ExpressiveMotion
+import com.materialchat.ui.theme.ExpressiveShapes
 import kotlin.math.absoluteValue
 import kotlin.math.roundToInt
 
@@ -392,7 +393,7 @@ private fun SwipeActionButton(
     onClick: () -> Unit
 ) {
     val actionShape by animateDpAsState(
-        targetValue = if (emphasized) 28.dp else 22.dp,
+        targetValue = if (emphasized) ExpressiveShapes.SwipeAction.Emphasized else ExpressiveShapes.SwipeAction.Resting,
         animationSpec = ExpressiveMotion.Spatial.shapeMorph(),
         label = "actionShape"
     )

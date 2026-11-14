@@ -143,6 +143,8 @@ import com.materialchat.ui.screens.settings.components.SystemPromptField
 import com.materialchat.ui.components.HapticPattern
 import com.materialchat.ui.components.rememberHapticFeedback
 import com.materialchat.ui.theme.CustomShapes
+import com.materialchat.ui.theme.ExpressiveMotion
+import com.materialchat.ui.theme.ExpressiveShapes
 import com.materialchat.ui.theme.MaterialChatThemePalettes
 
 /**
@@ -863,10 +865,7 @@ private fun SuccessContent(
             .fillMaxSize()
             .imePadding()
             .animateContentSize(
-                animationSpec = spring(
-                    dampingRatio = Spring.DampingRatioMediumBouncy,
-                    stiffness = Spring.StiffnessMediumLow
-                )
+                animationSpec = ExpressiveMotion.Spatial.contentSize()
             ),
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -887,14 +886,9 @@ private fun SuccessContent(
                 onDelete = { onDeleteProvider(providerItem.provider) },
                 onTestConnection = { onTestConnection(providerItem.provider.id) },
                 modifier = Modifier.animateItem(
-                    fadeInSpec = spring(
-                        dampingRatio = Spring.DampingRatioNoBouncy,
-                        stiffness = Spring.StiffnessMediumLow
-                    ),
-                    fadeOutSpec = spring(
-                        dampingRatio = Spring.DampingRatioNoBouncy,
-                        stiffness = Spring.StiffnessMediumLow
-                    )
+                    fadeInSpec = ExpressiveMotion.ListItem.FadeIn,
+                    fadeOutSpec = ExpressiveMotion.ListItem.FadeOut,
+                    placementSpec = ExpressiveMotion.ListItem.Placement
                 )
             )
         }
@@ -3310,6 +3304,7 @@ private fun BackupPasswordDialog(
 ) {
     AlertDialog(
         onDismissRequest = { if (!isBusy) onDismiss() },
+        shape = ExpressiveShapes.Dialog,
         title = { Text(text = title, style = MaterialTheme.typography.headlineSmall) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -3346,7 +3341,6 @@ private fun BackupPasswordDialog(
                 style = ExpressiveButtonStyle.Text
             )
         },
-        shape = MaterialTheme.shapes.extraLarge,
         containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
     )
 }
@@ -3360,6 +3354,7 @@ private fun RestoreBackupConfirmationDialog(
 ) {
     AlertDialog(
         onDismissRequest = { if (!isBusy) onDismiss() },
+        shape = ExpressiveShapes.Dialog,
         title = { Text(text = "Restore backup?", style = MaterialTheme.typography.headlineSmall) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -3396,7 +3391,6 @@ private fun RestoreBackupConfirmationDialog(
                 style = ExpressiveButtonStyle.Text
             )
         },
-        shape = MaterialTheme.shapes.extraLarge,
         containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
     )
 }
@@ -3409,6 +3403,7 @@ private fun DeleteProviderDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
+        shape = ExpressiveShapes.Dialog,
         title = {
             Text(
                 text = "Delete Provider",
@@ -3435,7 +3430,6 @@ private fun DeleteProviderDialog(
                 style = ExpressiveButtonStyle.Text
             )
         },
-        shape = MaterialTheme.shapes.extraLarge,
         containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
         titleContentColor = MaterialTheme.colorScheme.onSurface,
         textContentColor = MaterialTheme.colorScheme.onSurfaceVariant
