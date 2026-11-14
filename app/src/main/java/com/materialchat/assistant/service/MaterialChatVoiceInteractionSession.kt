@@ -102,6 +102,8 @@ class MaterialChatVoiceInteractionSession(
     }
 
     override fun onHide() {
+        // The session window is going away; never leave the display pinned on.
+        setKeepAwake(false)
         overlayShown = false
         pendingShow = false
         assistantViewModel?.clearConversation()
@@ -225,7 +227,8 @@ class MaterialChatVoiceInteractionSession(
                 viewModel.onClockHandoff(event.token, error)
                 if (error == null) hide()
             },
-            assistScreenshot = assistScreenshot.value
+            assistScreenshot = assistScreenshot.value,
+            onKeepScreenOnChanged = { keepOn -> setKeepAwake(keepOn) }
         )
     }
 

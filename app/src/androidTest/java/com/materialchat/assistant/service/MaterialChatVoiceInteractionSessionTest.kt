@@ -44,6 +44,21 @@ class MaterialChatVoiceInteractionSessionTest {
                     session.onHide()
                     assertEquals(Lifecycle.State.CREATED, session.lifecycle.currentState)
                 }
+                // The display timeout used to cut off a spoken reply on the lock screen; the
+                // session holds the screen on through the platform flag and must release it
+                // when it hides. Assert the real window flag, not just our own bookkeeping.
+                session.onShow(null, 0)
+                session.setKeepAwake(true)
+                assertTrue(
+                    "setKeepAwake(true) did not set FLAG_KEEP_SCREEN_ON",
+                    window.attributes.flags and WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON != 0
+                )
+                session.onHide()
+                assertEquals(
+                    "hiding the session left the screen pinned on",
+                    0,
+                    window.attributes.flags and WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
+                )
                 assertSame(session, content.findViewTreeLifecycleOwner())
             } finally {
                 session.onDestroy()

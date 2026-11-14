@@ -41,6 +41,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import android.graphics.Rect as AndroidRect
 import android.os.Build
 import android.view.ViewTreeObserver
@@ -135,7 +136,9 @@ fun AssistantOverlay(
     onOpenInApp: (String?) -> Unit,
     onOpenClock: (AssistantEvent.OpenClock) -> Unit,
     /** The platform's assist screenshot, painted as the shrinking backdrop; null leaves the scrim. */
-    assistScreenshot: Bitmap? = null
+    assistScreenshot: Bitmap? = null,
+    /** Reports whether the session should hold the screen on (see [shouldKeepScreenOn]). */
+    onKeepScreenOnChanged: (Boolean) -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val voiceState by viewModel.voiceState.collectAsStateWithLifecycle()
@@ -274,6 +277,25 @@ fun AssistantOverlay(
                 }
             }
         }
+    }
+
+    // The display timeout used to cut off a spoken reply on the lock screen. Hold the screen on
+    // while the assistant works and for a grace period after the answer, then let it sleep.
+    val assistantBusy = uiState.isLoading || uiState.isStreaming || uiState.isSpeaking ||
+        voiceState is VoiceState.Listening || voiceState is VoiceState.Processing ||
+        voiceState is VoiceState.Thinking || voiceState is VoiceState.Responding ||
+        voiceState is VoiceState.Speaking
+    var idleForMillis by remember { mutableLongStateOf(0L) }
+    LaunchedEffect(assistantBusy) {
+        idleForMillis = 0L
+        if (assistantBusy) return@LaunchedEffect
+        while (idleForMillis < ASSISTANT_KEEP_AWAKE_GRACE_MILLIS) {
+            delay(1_000)
+            idleForMillis += 1_000
+        }
+    }
+    LaunchedEffect(assistantBusy, idleForMillis) {
+        onKeepScreenOnChanged(shouldKeepScreenOn(assistantBusy, idleForMillis))
     }
 
     // The screen-edge light follows the session's phase: full while capturing speech, calmer
