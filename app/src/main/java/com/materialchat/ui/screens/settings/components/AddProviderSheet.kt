@@ -2,8 +2,6 @@ package com.materialchat.ui.screens.settings.components
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.spring
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -72,6 +70,7 @@ import com.materialchat.ui.components.rememberHapticFeedback
 import com.materialchat.ui.screens.chat.components.ModelPickerDropdown
 import com.materialchat.ui.screens.settings.ProviderFormState
 import com.materialchat.ui.theme.CustomShapes
+import com.materialchat.ui.theme.ExpressiveMotion
 
 /**
  * Bottom sheet for adding or editing a provider.
@@ -179,10 +178,7 @@ private fun AddProviderSheetContent(
             .navigationBarsPadding()
             .padding(bottom = imePadding)
             .animateContentSize(
-                animationSpec = spring(
-                    dampingRatio = Spring.DampingRatioMediumBouncy,
-                    stiffness = Spring.StiffnessMediumLow
-                )
+                animationSpec = ExpressiveMotion.Spatial.contentSize()
             )
     ) {
         // Header
@@ -320,18 +316,10 @@ private fun AddProviderSheetContent(
         // API Key / Gateway Token
         AnimatedVisibility(
             visible = formState.type == ProviderType.OPENAI_COMPATIBLE,
-            enter = fadeIn() + expandVertically(
-                animationSpec = spring(
-                    dampingRatio = Spring.DampingRatioMediumBouncy,
-                    stiffness = Spring.StiffnessMediumLow
-                )
-            ),
-            exit = fadeOut() + shrinkVertically(
-                animationSpec = spring(
-                    dampingRatio = Spring.DampingRatioNoBouncy,
-                    stiffness = Spring.StiffnessMedium
-                )
-            )
+            enter = fadeIn(animationSpec = ExpressiveMotion.Disclosure.FadeIn) +
+                expandVertically(animationSpec = ExpressiveMotion.Disclosure.Expand),
+            exit = fadeOut(animationSpec = ExpressiveMotion.Disclosure.FadeOut) +
+                shrinkVertically(animationSpec = ExpressiveMotion.Disclosure.Shrink)
         ) {
             Column {
                 Spacer(modifier = Modifier.height(16.dp))
@@ -361,18 +349,10 @@ private fun AddProviderSheetContent(
 
         AnimatedVisibility(
             visible = formState.type.isNativeAuth,
-            enter = fadeIn() + expandVertically(
-                animationSpec = spring(
-                    dampingRatio = Spring.DampingRatioMediumBouncy,
-                    stiffness = Spring.StiffnessMediumLow
-                )
-            ),
-            exit = fadeOut() + shrinkVertically(
-                animationSpec = spring(
-                    dampingRatio = Spring.DampingRatioNoBouncy,
-                    stiffness = Spring.StiffnessMedium
-                )
-            )
+            enter = fadeIn(animationSpec = ExpressiveMotion.Disclosure.FadeIn) +
+                expandVertically(animationSpec = ExpressiveMotion.Disclosure.Expand),
+            exit = fadeOut(animationSpec = ExpressiveMotion.Disclosure.FadeOut) +
+                shrinkVertically(animationSpec = ExpressiveMotion.Disclosure.Shrink)
         ) {
             Column {
                 Spacer(modifier = Modifier.height(16.dp))
@@ -553,16 +533,10 @@ private fun FormTextField(
         // Error message
         AnimatedVisibility(
             visible = error != null,
-            enter = fadeIn(
-                animationSpec = spring(dampingRatio = 1.0f, stiffness = 500f)
-            ) + expandVertically(
-                animationSpec = spring(dampingRatio = 0.7f, stiffness = 500f)
-            ),
-            exit = fadeOut(
-                animationSpec = spring(dampingRatio = 1.0f, stiffness = 500f)
-            ) + shrinkVertically(
-                animationSpec = spring(dampingRatio = 1.0f, stiffness = 500f)
-            )
+            enter = fadeIn(animationSpec = ExpressiveMotion.Disclosure.FadeIn) +
+                expandVertically(animationSpec = ExpressiveMotion.Disclosure.Expand),
+            exit = fadeOut(animationSpec = ExpressiveMotion.Disclosure.FadeOut) +
+                shrinkVertically(animationSpec = ExpressiveMotion.Disclosure.Shrink)
         ) {
             Text(
                 text = error ?: "",

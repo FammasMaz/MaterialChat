@@ -332,6 +332,7 @@ fun ConversationsScreen(
                 showRenameDialog = false
                 renameConversation = null
             },
+            shape = ExpressiveShapes.Dialog,
             title = { Text("Edit Title") },
             text = {
                 Column {
@@ -1022,6 +1023,7 @@ private fun ConversationMetadataDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
+        shape = ExpressiveShapes.Dialog,
         title = { Text("Chat info") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {

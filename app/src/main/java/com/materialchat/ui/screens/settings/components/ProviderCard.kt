@@ -1,9 +1,7 @@
 package com.materialchat.ui.screens.settings.components
 
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -51,6 +49,7 @@ import com.materialchat.ui.components.HapticPattern
 import com.materialchat.ui.components.rememberHapticFeedback
 import com.materialchat.ui.screens.settings.ProviderUiItem
 import com.materialchat.ui.theme.CustomShapes
+import com.materialchat.ui.theme.ExpressiveMotion
 
 /**
  * Material 3 Expressive provider card component.
@@ -83,13 +82,10 @@ fun ProviderCard(
     var isPressed by remember { mutableStateOf(false) }
     val haptics = rememberHapticFeedback()
 
-    // Spring-physics scale animation for press feedback
+    // Press scale: same list-item press spring as conversation rows
     val scale by animateFloatAsState(
         targetValue = if (isPressed) 0.97f else 1f,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessLow
-        ),
+        animationSpec = ExpressiveMotion.Spatial.listItemPress(),
         label = "cardScale"
     )
 
@@ -100,10 +96,7 @@ fun ProviderCard(
         } else {
             MaterialTheme.colorScheme.surfaceContainerLow
         },
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioNoBouncy,
-            stiffness = Spring.StiffnessMedium
-        ),
+        animationSpec = ExpressiveMotion.Effects.color(),
         label = "backgroundColor"
     )
 
