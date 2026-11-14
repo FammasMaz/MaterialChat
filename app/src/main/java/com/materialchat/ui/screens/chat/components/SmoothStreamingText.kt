@@ -24,7 +24,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.unit.dp
 import com.materialchat.domain.model.CanvasArtifact
 import com.materialchat.ui.components.HapticPattern
@@ -64,14 +63,19 @@ fun SmoothStreamingText(
                     visibleText = target.commonPrefixWith(visibleText)
                 }
                 visibleText.length < target.length -> {
-                    val nextEnd = target.nextSmoothStreamingRevealEnd(visibleText.length)
-                    if (nextEnd > visibleText.length) {
+                    val previousLength = visibleText.length
+                    val nextEnd = target.nextSmoothStreamingRevealEnd(previousLength)
+                    if (nextEnd > previousLength) {
                         visibleText = target.substring(0, nextEnd)
-                        // One binder call to the vibrator service per reveal step meant up to
-                        // ~55 IPC calls a second for the whole stream. Cap the tick rate.
-                        if (lastTickHapticMillis == 0L ||
-                            android.os.SystemClock.elapsedRealtime() - lastTickHapticMillis >=
-                            CONTENT_TICK_HAPTIC_MIN_INTERVAL_MS
+                        // The tick follows the words, not the frames: one tick per word boundary
+                        // the reveal crosses. A reveal step is 5-24 characters, so ticking per
+                        // step was up to ~55 vibrator IPC calls a second; ticking per word keeps
+                        // the word-by-word feel at a fraction of that, with a small floor so a
+                        // catch-up burst after a stall cannot machine-gun the vibrator.
+                        if (target.crossedWordBoundary(previousLength, nextEnd) &&
+                            (lastTickHapticMillis == 0L ||
+                                android.os.SystemClock.elapsedRealtime() - lastTickHapticMillis >=
+                                TICK_HAPTIC_MIN_INTERVAL_MS)
                         ) {
                             lastTickHapticMillis = android.os.SystemClock.elapsedRealtime()
                             haptics.perform(HapticPattern.CONTENT_TICK, hapticsEnabled)
@@ -141,14 +145,15 @@ fun SmoothStreamingThinkingText(
                     visibleText = target.commonPrefixWith(visibleText)
                 }
                 visibleText.length < target.length -> {
-                    val nextEnd = target.nextSmoothStreamingRevealEnd(visibleText.length)
-                    if (nextEnd > visibleText.length) {
+                    val previousLength = visibleText.length
+                    val nextEnd = target.nextSmoothStreamingRevealEnd(previousLength)
+                    if (nextEnd > previousLength) {
                         visibleText = target.substring(0, nextEnd)
-                        // One binder call to the vibrator service per reveal step meant up to
-                        // ~55 IPC calls a second for the whole stream. Cap the tick rate.
-                        if (lastTickHapticMillis == 0L ||
-                            android.os.SystemClock.elapsedRealtime() - lastTickHapticMillis >=
-                            CONTENT_TICK_HAPTIC_MIN_INTERVAL_MS
+                        // Same word-by-word rhythm as the answer text.
+                        if (target.crossedWordBoundary(previousLength, nextEnd) &&
+                            (lastTickHapticMillis == 0L ||
+                                android.os.SystemClock.elapsedRealtime() - lastTickHapticMillis >=
+                                TICK_HAPTIC_MIN_INTERVAL_MS)
                         ) {
                             lastTickHapticMillis = android.os.SystemClock.elapsedRealtime()
                             haptics.perform(HapticPattern.THINKING_TICK, hapticsEnabled)
@@ -164,7 +169,6 @@ fun SmoothStreamingThinkingText(
         text = visibleText,
         style = style,
         color = textColor,
-        fontStyle = FontStyle.Italic,
         modifier = modifier
     )
 }
@@ -224,10 +228,26 @@ private fun String.nextSmoothStreamingRevealEnd(startIndex: Int): Int {
     return end.coerceAtLeast((start + 1).coerceAtMost(length))
 }
 
+/**
+ * True when the slice `[from, to)` contains a word boundary, i.e. the reveal just finished a
+ * word. Drives the streaming haptic rhythm so the phone ticks with the words.
+ */
+internal fun String.crossedWordBoundary(from: Int, to: Int): Boolean {
+    if (to <= from) return false
+    for (index in from until to.coerceAtMost(length)) {
+        val char = this[index]
+        if (char.isWhitespace() || char in NATURAL_STREAMING_BOUNDARIES) return true
+    }
+    return false
+}
+
 private val NATURAL_STREAMING_BOUNDARIES = setOf('.', ',', ';', ':', '!', '?', ')', ']', '}')
 private const val STREAMING_TEXT_FRAME_MS = 18L
 private const val THINKING_TEXT_FRAME_MS = 28L
 /** Longer idle poll while waiting for more tokens — fewer wakeups, same reveal latency. */
 private const val STREAMING_IDLE_POLL_MS = 48L
-/** Streaming haptics are a texture, not a per-frame signal: at most one tick per 120 ms. */
-private const val CONTENT_TICK_HAPTIC_MIN_INTERVAL_MS = 120L
+/**
+ * Streaming haptics tick with the words. The floor only exists to keep a catch-up burst (a
+ * stalled stream arriving all at once) from firing dozens of vibrator calls in a few frames.
+ */
+private const val TICK_HAPTIC_MIN_INTERVAL_MS = 40L

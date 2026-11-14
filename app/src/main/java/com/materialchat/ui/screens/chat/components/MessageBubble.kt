@@ -1093,7 +1093,6 @@ private fun ThinkingSection(
                 text = headerText,
                 style = MaterialTheme.typography.labelMedium,
                 color = textColor.copy(alpha = 0.6f),
-                fontStyle = FontStyle.Italic,
                 modifier = Modifier.padding(start = 4.dp)
             )
         }
