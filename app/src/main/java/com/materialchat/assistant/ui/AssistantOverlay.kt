@@ -559,6 +559,8 @@ internal fun AssistantOverlayContent(
                     .onGloballyPositioned { onCardBoundsChange(it.boundsInRoot()) },
                 shape = RoundedCornerShape(38.dp),
                 color = if (softEdges) Color.Transparent else MaterialTheme.colorScheme.surfaceContainerHigh,
+                // A transparent Surface would otherwise pick black content (icons were black).
+                contentColor = MaterialTheme.colorScheme.onSurface,
                 tonalElevation = if (softEdges) 0.dp else 6.dp,
                 shadowElevation = if (softEdges) 0.dp else 16.dp
             ) {

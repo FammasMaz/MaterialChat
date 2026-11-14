@@ -43,7 +43,7 @@ data class ParticleEdgeStyle(
      * runs 2..16dp across the pill; a single 7dp keeps the edge soft but still legible as a pill
      * rather than a fog (the previous 14dp read as a wide white haze).
      */
-    val blurRadius: Dp = 7.dp,
+    val blurRadius: Dp = 16.dp,
     /** Inward reach of the accent glow from the capsule edge (essentials: 40dp-blur inner glow). */
     val innerGlowWidth: Dp = 26.dp,
     /** Peak inner-glow alpha at the capsule edge (essentials: accent at 0.6 over a dark fill). */

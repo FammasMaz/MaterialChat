@@ -163,10 +163,13 @@ class AssistantNeuralParticleFieldTest {
             // The soft edge: the first 1..5dp outside the card is the pill's own colour bleeding
             // out continuously (RenderEffect blur on API 31+, geometric feather below), present
             // even while the field rests, instead of the plain pill's hard boundary.
-            val edgeTop = (decoratedBounds.top - 5f * density).roundToInt().coerceAtLeast(0)
-            val edgeChanged = changedRatio(plain, rest, left, right, edgeTop, bottom, threshold = 6)
+            // The plain pill's own shadow already darkens the pixels just outside its edge, so the
+            // reliable signal is just inside: a hard pill is solid there, a soft one fades.
+            val edgeTop = (decoratedBounds.top + 1f * density).roundToInt()
+            val edgeBottom = (decoratedBounds.top + 5f * density).roundToInt()
+            val edgeChanged = changedRatio(plain, rest, left, right, edgeTop, edgeBottom, threshold = 6)
             assertTrue(
-                "Soft edge must be visible just outside the card edge: $edgeChanged",
+                "Soft edge must visibly fade the pill boundary: $edgeChanged",
                 edgeChanged >= 0.6f
             )
             // Nothing may be painted deep inside the opaque card region.

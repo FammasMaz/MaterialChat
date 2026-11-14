@@ -161,7 +161,7 @@ fun Modifier.neuralParticleField(
     /** The capsule's own surface colour; when set the field paints the soft-edged fill. */
     featherColor: Color? = null,
     /** Width of the geometric feather used where no RenderEffect blur exists (API 26-30). */
-    featherWidth: Dp = 12.dp,
+    featherWidth: Dp = 24.dp,
 ): Modifier = composed {
     val context = LocalContext.current
     val view = LocalView.current

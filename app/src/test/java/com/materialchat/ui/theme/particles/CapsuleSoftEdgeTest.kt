@@ -21,7 +21,7 @@ class CapsuleSoftEdgeTest {
     @Test fun edgeStyleDefaultsMatchTheReferenceAndValidate() {
         val style = ParticleEdgeStyle()
         // essentials blurs the pill 2..16dp and has no outward glow; the accent glows inside.
-        assertEquals(7.dp, style.blurRadius)
+        assertEquals(16.dp, style.blurRadius)
         assertEquals(26.dp, style.innerGlowWidth)
         assertEquals(0.34f, style.innerGlowOpacity, 0f)
         assertEquals(12, style.innerGlowSteps)
