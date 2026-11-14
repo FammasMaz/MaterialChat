@@ -125,6 +125,7 @@ import com.materialchat.ui.screens.search.components.ChatSearchBar
 import com.materialchat.ui.screens.search.components.SearchResultItem
 import com.materialchat.ui.theme.CustomShapes
 import com.materialchat.ui.theme.ExpressiveMotion
+import com.materialchat.ui.theme.ExpressiveShapes
 import com.materialchat.ui.theme.ExpressiveShapeToken
 import com.materialchat.ui.theme.LocalMainButtonShape
 import com.materialchat.ui.theme.expressiveControlShape
@@ -915,12 +916,7 @@ private fun ConversationsContent(
         modifier = Modifier
             .fillMaxSize()
             .padding(top = paddingValues.calculateTopPadding()),
-        shape = RoundedCornerShape(
-            topStart = 28.dp,
-            topEnd = 28.dp,
-            bottomStart = 0.dp,
-            bottomEnd = 0.dp
-        ),
+        shape = ExpressiveShapes.ScreenContainer,
         color = MaterialTheme.colorScheme.surfaceContainerLow
     ) {
         Column(
@@ -1530,12 +1526,7 @@ private fun SearchContent(
         modifier = Modifier
             .fillMaxSize()
             .padding(top = paddingValues.calculateTopPadding()),
-        shape = RoundedCornerShape(
-            topStart = 28.dp,
-            topEnd = 28.dp,
-            bottomStart = 0.dp,
-            bottomEnd = 0.dp
-        ),
+        shape = ExpressiveShapes.ScreenContainer,
         color = MaterialTheme.colorScheme.surfaceContainerLow
     ) {
         when (searchState) {

@@ -3,7 +3,6 @@ package com.materialchat.ui.screens.conversations.components
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -41,6 +40,7 @@ import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.materialchat.ui.screens.conversations.ConversationUiItem
+import com.materialchat.ui.theme.ExpressiveMotion
 
 /**
  * M3 Expressive branch conversation item displayed under its parent conversation.
@@ -77,22 +77,10 @@ fun BranchConversationItem(
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
 
-    // M3 Expressive spring specs
-    // Spatial: Can overshoot (damping < 1)
-    val spatialSpring = spring<Float>(
-        dampingRatio = 0.6f,
-        stiffness = 500f
-    )
-    // Effects: No overshoot (damping = 1)
-    val effectsSpring = spring<Float>(
-        dampingRatio = 1.0f,
-        stiffness = 300f
-    )
-
-    // Scale animation - spatial spring
+    // Press scale: same list-item press spring as ConversationItem
     val scale by animateFloatAsState(
         targetValue = if (isPressed) 0.98f else 1f,
-        animationSpec = spatialSpring,
+        animationSpec = ExpressiveMotion.Spatial.listItemPress(),
         label = "branchScale"
     )
 
@@ -100,10 +88,7 @@ fun BranchConversationItem(
     // Resting: medium (12dp), Pressed: small (8dp)
     val cornerRadius by animateDpAsState(
         targetValue = if (isPressed) 8.dp else 12.dp,
-        animationSpec = spring(
-            dampingRatio = 0.6f,
-            stiffness = 500f
-        ),
+        animationSpec = ExpressiveMotion.Spatial.shapeMorph(),
         label = "branchCornerRadius"
     )
 
@@ -115,10 +100,7 @@ fun BranchConversationItem(
         } else {
             MaterialTheme.colorScheme.surfaceContainerHigh
         },
-        animationSpec = spring(
-            dampingRatio = 1.0f,
-            stiffness = 300f
-        ),
+        animationSpec = ExpressiveMotion.Effects.color(),
         label = "branchBackgroundColor"
     )
 
