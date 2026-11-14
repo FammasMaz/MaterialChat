@@ -134,6 +134,14 @@ android {
             }
             isMinifyEnabled = true
             isShrinkResources = true
+            // Release ships to phones only: the x86/x86_64 copies of the native TTS and
+            // on-device LLM libraries (tens of MB each) are emulator-only. Debug keeps
+            // every ABI so the hosted emulator checks still load them.
+            packaging {
+                jniLibs {
+                    excludes += setOf("lib/x86/**", "lib/x86_64/**")
+                }
+            }
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
