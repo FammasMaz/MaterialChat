@@ -141,7 +141,8 @@ PYPARTICLES
 python3 - "$out/ui.xml" <<'PYTAP' | xargs adb shell input tap
 import sys, re, xml.etree.ElementTree as ET
 nodes=ET.parse(sys.argv[1]).iter('node')
-n=next(n for n in nodes if n.get('text') == 'Keyboard')
+# The pill's keyboard toggle is an icon button: match its content description.
+n=next(n for n in nodes if n.get('content-desc') == 'Keyboard')
 x1,y1,x2,y2=map(int,re.findall(r'\d+',n.get('bounds')))
 print((x1+x2)//2,(y1+y2)//2)
 PYTAP
@@ -185,7 +186,7 @@ if not frames:
         raise SystemExit('Cannot establish visible IME geometry')
     frames=[int(inset.group(1))+int(origin.group(2))]
 top=min(map(int,frames))
-controls=[n for n in nodes if n.get('text')=='Hide keyboard']
+controls=[n for n in nodes if n.get('content-desc')=='Hide keyboard']
 assert len(controls)==1, 'Missing keyboard control'
 b= bounds(controls[0])
 assert b[3] <= top, f'Keyboard covers assistant controls: {b}, IME top={top}'

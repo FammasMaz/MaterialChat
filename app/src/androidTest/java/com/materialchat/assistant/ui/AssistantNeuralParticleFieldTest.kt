@@ -23,9 +23,7 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.junit4.createComposeRule
-import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
-import androidx.compose.ui.test.performClick
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
@@ -100,16 +98,14 @@ class AssistantNeuralParticleFieldTest {
             if (Build.VERSION.SDK_INT >= 31) ParticleEdgeTreatment.Blur else ParticleEdgeTreatment.Gradient
         assertEquals("The RenderEffect blur must soften the field on API 31+", expectedEdge, edgeTreatment)
 
-        for (expanded in listOf(false, true)) {
-            if (expanded) {
-                compose.onNodeWithContentDescription("Expand assistant").performClick()
-                compose.waitForIdle()
-            }
+        // The pill has no expanded state; the response surface only appears with messages, which
+        // this specimen never has. One pass over the idle pill.
+        run {
             compose.runOnIdle { enabled.value = false; active.value = true }
             compose.waitForIdle()
-            // The expand click leaves a platform ripple fading on the button inside the card; it
-            // runs on the RenderThread, outside the Compose test clock, and otherwise differs
-            // between the two captures (hosted run 43440221939: every in-card delta was darker).
+            // Platform ripples run on the RenderThread, outside the Compose test clock, and would
+            // otherwise differ between the two captures (hosted run 43440221939: every in-card
+            // delta was darker); wait for a stable frame first.
             awaitStableCapture()
             val plainBounds = compose.onNodeWithTag("assistant_sheet").fetchSemanticsNode().boundsInRoot
             val plain = capture()
@@ -124,7 +120,7 @@ class AssistantNeuralParticleFieldTest {
                 compose.waitForIdle()
                 capture()
             }
-            val state = if (expanded) "expanded" else "compact"
+            val state = "pill"
             saveEvidence("$state-disabled", plain)
             saveEvidence("$state-enabled", decorated)
             assertEquals("Decoration must not change the card layout", plainBounds, decoratedBounds)

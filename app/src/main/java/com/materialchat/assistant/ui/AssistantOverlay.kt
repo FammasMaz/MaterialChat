@@ -2,14 +2,11 @@ package com.materialchat.assistant.ui
 
 import android.Manifest
 import android.content.pm.PackageManager
-import androidx.compose.animation.animateContentSize
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.compose.ui.platform.testTag
-import androidx.compose.material.icons.filled.ExpandLess
-import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
@@ -68,15 +65,42 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.materialchat.assistant.ui.components.AssistantInputBar
 import com.materialchat.assistant.ui.components.AssistantResponseCard
 import com.materialchat.assistant.voice.VoiceState
 import com.materialchat.data.local.preferences.AppPreferences
-import com.materialchat.ui.components.ExpressiveFilledIconButton
 import com.materialchat.ui.theme.ExpressiveMotion
 import com.materialchat.ui.theme.MaterialChatTheme
 import com.materialchat.ui.theme.isDynamicColorSupported
 import com.materialchat.ui.theme.particles.neuralParticleField
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.automirrored.filled.OpenInNew
+import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.filled.AddComment
+import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.GraphicEq
+import androidx.compose.material.icons.filled.Keyboard
+import androidx.compose.material.icons.filled.KeyboardHide
+import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.Stop
+import androidx.compose.material3.FilledIconButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.TextButton
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.style.TextOverflow
+import com.materialchat.assistant.ui.components.VoiceWaveform
+import com.materialchat.domain.model.MessageRole
+import com.materialchat.ui.screens.chat.components.TypingIndicator
 
 /**
  * M3 Expressive Assistant Overlay.
@@ -305,6 +329,25 @@ fun AssistantOverlay(
     }
 }
 
+/**
+ * Assistant surface design: a Gemini-style floating pill.
+ *
+ * - One pill (64dp, fully rounded, surfaceContainerHigh, elevated) sits at the bottom. Left to
+ *   right: a state glyph (compact waveform while capturing, animated dots while thinking, a sound
+ *   icon while speaking, a sparkle otherwise), the text area (live partial transcript while
+ *   listening, "Ask anything" when idle, the text field itself in keyboard mode), then the
+ *   keyboard toggle ("Keyboard" / "Hide keyboard") and the primary button (Mic starts listening;
+ *   Stop while capturing, thinking or speaking; Send when keyboard mode has text).
+ * - When messages exist or a reply is loading, a rounded response surface appears 8dp above the
+ *   pill (at most half the screen, scrollable) showing the latest exchange, a light action row
+ *   (open in app, new chat, copy) and the "End assistant session" close button in its top-right.
+ * - Without a response surface the close button sits at the trailing end of the pill.
+ * - Errors and the microphone hint are one short line: inside the response surface, or a slim
+ *   surface above the pill when there is none. No header, status title, expand/collapse or
+ *   text-button rows.
+ * - Gates: resource-id `assistant_sheet` is the column wrapping the response surface and the pill,
+ *   so its bottom edge is the pill's bottom edge, 8dp above the IME.
+ */
 @Composable
 internal fun AssistantOverlayContent(
     uiState: AssistantUiState,
@@ -325,23 +368,60 @@ internal fun AssistantOverlayContent(
     modifier: Modifier = Modifier
 ) {
     var isVisible by remember { mutableStateOf(false) }
-    var expanded by remember { mutableStateOf(false) }
     var keyboardMode by remember { mutableStateOf(false) }
     val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
     val keyboard = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
-    val busy = uiState.isLoading || uiState.isStreaming || uiState.isSpeaking ||
-        voiceState is VoiceState.Speaking
+    val context = LocalContext.current
+    val focusRequester = remember { FocusRequester() }
+
+    val voiceEnabled = hasMicPermission && uiState.isVoiceInputEnabled
     val capturing = voiceState is VoiceState.Listening || voiceState is VoiceState.Processing
-    val status = when {
-        voiceState is VoiceState.Error -> "Try again"
-        voiceState is VoiceState.Speaking || uiState.isSpeaking -> "Speaking"
-        capturing -> "Listening"
-        busy || voiceState is VoiceState.Thinking || voiceState is VoiceState.Responding -> "Thinking"
-        else -> "How can I help?"
+    val speaking = voiceState is VoiceState.Speaking || uiState.isSpeaking
+    val busy = uiState.isLoading || uiState.isStreaming || speaking ||
+        voiceState is VoiceState.Thinking || voiceState is VoiceState.Responding
+    val thinking = busy && !speaking && !capturing
+    val hasResponse = messages.isNotEmpty() || uiState.isLoading
+    val isError = uiState.error != null || voiceState is VoiceState.Error
+    val notice = uiState.error
+        ?: (voiceState as? VoiceState.Error)?.message
+        ?: when {
+            !hasMicPermission -> "Enable microphone permission in system settings to speak."
+            !uiState.isVoiceInputEnabled -> "Voice input is disabled in settings."
+            else -> null
+        }
+    val partialTranscript = uiState.textInput.ifBlank {
+        (voiceState as? VoiceState.Processing)?.partialText.orEmpty()
+    }
+    val hasText = uiState.textInput.isNotBlank()
+
+    val hideKeyboard: () -> Unit = {
+        focusManager.clearFocus()
+        keyboard?.hide()
+        keyboardMode = false
+    }
+    val enterKeyboard: () -> Unit = {
+        onInterrupt()
+        keyboardMode = true
+    }
+    val submitTyped: () -> Unit = {
+        if (hasText) {
+            onInterrupt()
+            onSendClick()
+        }
+    }
+    val endSession: () -> Unit = {
+        onInterrupt()
+        onDismiss()
     }
 
     LaunchedEffect(Unit) {
         isVisible = true
+    }
+    LaunchedEffect(keyboardMode) {
+        if (keyboardMode) {
+            focusRequester.requestFocus()
+            keyboard?.show()
+        }
     }
 
     // Animate sheet entrance with bounce (M3 Expressive spatial spring)
@@ -364,9 +444,9 @@ internal fun AssistantOverlayContent(
         label = "sheetAlpha"
     )
 
-    // Keep the exact card bounds/padding. The parent draws outside the opaque Surface, without
+    // Keep the exact card bounds/padding. The parent draws outside the opaque surfaces, without
     // reserving additional space above the IME. ModulateAlpha avoids an offscreen alpha texture
-    // clipping the outward halo while the sheet enters; the card's own shape still clips content.
+    // clipping the outward halo while the sheet enters; each surface's own shape clips content.
     Box(
         modifier = modifier
             .fillMaxWidth()
@@ -385,198 +465,211 @@ internal fun AssistantOverlayContent(
             }
             .onGloballyPositioned { onCardBoundsChange(it.boundsInRoot()) }
     ) {
-        Surface(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .animateContentSize(animationSpec = ExpressiveMotion.Spatial.container()),
-            shape = RoundedCornerShape(32.dp),
-            color = MaterialTheme.colorScheme.surfaceContainer,
-            tonalElevation = 8.dp,
-            shadowElevation = 24.dp
+                .semantics { testTagsAsResourceId = true }
+                .testTag("assistant_sheet"),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Column(
+            // Response surface above the pill: latest exchange, action row, close.
+            AnimatedVisibility(
+                visible = hasResponse,
+                enter = fadeIn(animationSpec = ExpressiveMotion.Effects.alpha()) +
+                    slideInVertically(
+                        animationSpec = ExpressiveMotion.Spatial.default(),
+                        initialOffsetY = { it / 2 }
+                    ),
+                exit = fadeOut(animationSpec = ExpressiveMotion.Effects.alpha()) +
+                    slideOutVertically(
+                        animationSpec = ExpressiveMotion.Spatial.default(),
+                        targetOffsetY = { it / 2 }
+                    ),
+                modifier = Modifier.weight(1f, fill = false)
+            ) {
+                AssistantResponseSurface(
+                    messages = messages,
+                    isLoading = uiState.isLoading,
+                    notice = notice,
+                    isError = isError,
+                    showOpenInApp = hasContent,
+                    onOpenInApp = onOpenInApp,
+                    onNewChat = onNewChat,
+                    onCopy = {
+                        val text = messages.lastOrNull { it.role == MessageRole.ASSISTANT }?.content
+                        if (!text.isNullOrBlank()) {
+                            context.getSystemService(android.content.ClipboardManager::class.java)
+                                ?.setPrimaryClip(android.content.ClipData.newPlainText("Assistant response", text))
+                        }
+                    },
+                    onClose = endSession
+                )
+            }
+
+            // One short line for errors and the microphone hint when there is no response surface.
+            AnimatedVisibility(
+                visible = !hasResponse && notice != null,
+                enter = fadeIn(animationSpec = ExpressiveMotion.Effects.alpha()),
+                exit = fadeOut(animationSpec = ExpressiveMotion.Effects.alpha())
+            ) {
+                AssistantNoticeSurface(message = notice.orEmpty(), isError = isError)
+            }
+
+            // The pill.
+            Surface(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .semantics { testTagsAsResourceId = true }
-                    .testTag("assistant_sheet")
-                    .padding(horizontal = 16.dp)
-                    .padding(top = 12.dp, bottom = 12.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                    .height(64.dp),
+                shape = RoundedCornerShape(32.dp),
+                color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                tonalElevation = 6.dp,
+                shadowElevation = 16.dp
             ) {
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 16.dp, end = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Column(modifier = Modifier.weight(1f).padding(start = 8.dp)) {
-                        Text("Material Chat", style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text(status, style = MaterialTheme.typography.titleLarge,
-                            color = MaterialTheme.colorScheme.onSurface,
-                            modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
+                    // Leading state glyph.
+                    Box(modifier = Modifier.size(28.dp), contentAlignment = Alignment.Center) {
+                        when {
+                            capturing -> VoiceWaveform(
+                                amplitudeData = amplitudeData,
+                                barCount = 5,
+                                barWidth = 3.dp,
+                                barSpacing = 2.dp,
+                                minBarHeight = 4.dp,
+                                maxBarHeight = 22.dp
+                            )
+                            thinking -> TypingIndicator(
+                                dotSize = 6.dp,
+                                dotSpacing = 3.dp,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            speaking -> Icon(
+                                imageVector = Icons.Default.GraphicEq,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                            else -> Icon(
+                                imageVector = Icons.Default.AutoAwesome,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        }
                     }
-                    ExpressiveFilledIconButton(
-                        onClick = { expanded = !expanded },
-                        icon = if (expanded) Icons.Default.ExpandMore else Icons.Default.ExpandLess,
-                        contentDescription = if (expanded) "Collapse assistant" else "Expand assistant",
-                        modifier = Modifier.size(48.dp),
-                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
-                    )
-                    ExpressiveFilledIconButton(
-                        onClick = { onInterrupt(); onDismiss() },
-                        icon = Icons.Default.Close,
-                        contentDescription = "End assistant session",
-                        modifier = Modifier.size(48.dp),
-                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
-                    )
-                }
 
-                if (!expanded) {
-                    val preview = if (capturing) uiState.textInput else messages.lastOrNull()?.content.orEmpty()
-                    if (preview.isNotBlank()) {
-                        Text(
-                            text = preview,
-                            maxLines = 2,
-                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(horizontal = 8.dp)
+                    // Main text area: text field in keyboard mode, otherwise the live state line.
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clickable(
+                                enabled = !keyboardMode,
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = null
+                            ) { enterKeyboard() },
+                        contentAlignment = Alignment.CenterStart
+                    ) {
+                        if (keyboardMode) {
+                            if (uiState.textInput.isEmpty()) {
+                                Text(
+                                    text = "Ask anything",
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            BasicTextField(
+                                value = uiState.textInput,
+                                onValueChange = onTextChange,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .focusRequester(focusRequester),
+                                textStyle = MaterialTheme.typography.bodyLarge.copy(
+                                    color = MaterialTheme.colorScheme.onSurface
+                                ),
+                                singleLine = true,
+                                cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                                keyboardOptions = KeyboardOptions(
+                                    capitalization = KeyboardCapitalization.Sentences,
+                                    imeAction = ImeAction.Send
+                                ),
+                                keyboardActions = KeyboardActions(onSend = { submitTyped() })
+                            )
+                        } else {
+                            val (line, emphasised) = when {
+                                capturing && partialTranscript.isNotBlank() -> partialTranscript to true
+                                capturing -> "Listening\u2026" to false
+                                thinking -> "Thinking\u2026" to false
+                                speaking -> "Speaking\u2026" to false
+                                voiceState is VoiceState.Error -> "Try again" to false
+                                else -> "Ask anything" to false
+                            }
+                            Text(
+                                text = line,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = if (emphasised) MaterialTheme.colorScheme.onSurface
+                                else MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite }
+                            )
+                        }
+                    }
+
+                    // Keyboard toggle.
+                    IconButton(onClick = { if (keyboardMode) hideKeyboard() else enterKeyboard() }) {
+                        Icon(
+                            imageVector = if (keyboardMode) Icons.Default.KeyboardHide else Icons.Default.Keyboard,
+                            contentDescription = if (keyboardMode) "Hide keyboard" else "Keyboard"
                         )
                     }
-                }
 
-                if (expanded) {
-                    Box(Modifier.fillMaxWidth().height(64.dp), contentAlignment = Alignment.Center) {
-                        if (capturing) {
-                            com.materialchat.assistant.ui.components.VoiceWaveform(
-                                amplitudeData = amplitudeData, maxBarHeight = 48.dp)
-                        } else {
-                            Text(if (busy) "One moment…" else "Tap the microphone to speak",
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    // Primary action: Send / Stop / Mic.
+                    val primaryModifier = Modifier.size(48.dp)
+                    when {
+                        keyboardMode && hasText -> FilledIconButton(
+                            onClick = submitTyped,
+                            modifier = primaryModifier
+                        ) {
+                            Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "Send")
                         }
-                    }
-                    if (capturing && uiState.textInput.isNotBlank()) {
-                        Text(uiState.textInput, style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onSurface)
-                    }
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        androidx.compose.material3.TextButton(onClick = onNewChat,
-                            modifier = Modifier.heightIn(min = 48.dp)) { Text("New chat") }
-                        if (hasContent) {
-                            androidx.compose.material3.TextButton(onClick = onOpenInApp,
-                                modifier = Modifier.heightIn(min = 48.dp)) { Text("Open in app") }
+                        capturing -> FilledIconButton(
+                            onClick = onStopVoice,
+                            modifier = primaryModifier,
+                            colors = IconButtonDefaults.filledIconButtonColors(
+                                containerColor = MaterialTheme.colorScheme.primaryContainer,
+                                contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                        ) {
+                            Icon(Icons.Default.Stop, contentDescription = "Stop listening")
                         }
-                    }
-                }
-
-                // Response card - flexible height that shrinks when keyboard appears
-                AnimatedVisibility(
-                    visible = expanded && (messages.isNotEmpty() || uiState.isLoading),
-                    enter = fadeIn(animationSpec = ExpressiveMotion.Effects.alpha()) +
-                            slideInVertically(
-                                animationSpec = ExpressiveMotion.Spatial.default(),
-                                initialOffsetY = { it / 2 }
-                            ),
-                    exit = fadeOut(animationSpec = ExpressiveMotion.Effects.alpha()) +
-                            slideOutVertically(
-                                animationSpec = ExpressiveMotion.Spatial.default(),
-                                targetOffsetY = { it / 2 }
-                            ),
-                    modifier = Modifier.weight(1f, fill = false)
-                ) {
-                    AssistantResponseCard(
-                        messages = messages,
-                        isLoading = uiState.isLoading,
-                        onOpenInApp = onOpenInApp,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
-
-                // Error message
-                AnimatedVisibility(
-                    visible = uiState.error != null,
-                    enter = fadeIn(animationSpec = ExpressiveMotion.Effects.alpha()),
-                    exit = fadeOut(animationSpec = ExpressiveMotion.Effects.alpha())
-                ) {
-                    uiState.error?.let { error ->
-                        ErrorMessage(message = error)
-                    }
-                }
-
-                // Voice state indicator
-                AnimatedVisibility(
-                    visible = voiceState is VoiceState.Error && uiState.error != (voiceState as? VoiceState.Error)?.message,
-                    enter = fadeIn(animationSpec = ExpressiveMotion.Effects.alpha()),
-                    exit = fadeOut(animationSpec = ExpressiveMotion.Effects.alpha())
-                ) {
-                    (voiceState as? VoiceState.Error)?.let { errorState ->
-                        ErrorMessage(message = errorState.message)
-                    }
-                }
-
-                if (!hasMicPermission || !uiState.isVoiceInputEnabled) {
-                    Text(
-                        if (!hasMicPermission) "Enable microphone permission in system settings to speak."
-                        else "Voice input is disabled in settings.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                if (keyboardMode) {
-                    AssistantInputBar(
-                        textInput = uiState.textInput,
-                        onTextChange = onTextChange,
-                        voiceState = voiceState,
-                        amplitudeData = amplitudeData,
-                        onVoiceClick = {
-                            keyboardMode = false
-                            focusManager.clearFocus()
-                            keyboard?.hide()
-                            if (hasMicPermission && uiState.isVoiceInputEnabled) {
-                                onInterrupt()
-                                expanded = true
-                                onVoiceClick()
-                            }
-                        },
-                        onSendClick = { onInterrupt(); expanded = true; onSendClick() },
-                        onStopVoice = onStopVoice,
-                        voiceEnabled = hasMicPermission && uiState.isVoiceInputEnabled,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    androidx.compose.material3.TextButton(
-                        onClick = {
-                            onInterrupt()
-                            if (keyboardMode) {
-                                focusManager.clearFocus()
-                                keyboard?.hide()
-                            }
-                            keyboardMode = !keyboardMode
-                        },
-                        modifier = Modifier.heightIn(min = 48.dp)
-                    ) { Text(if (keyboardMode) "Hide keyboard" else "Keyboard") }
-                    Spacer(Modifier.weight(1f))
-                    if (busy) {
-                        androidx.compose.material3.FilledTonalButton(
-                            onClick = onInterrupt, modifier = Modifier.heightIn(min = 48.dp)
-                        ) { Text("Interrupt") }
-                    } else {
-                        androidx.compose.material3.FilledTonalButton(
+                        busy -> FilledIconButton(
+                            onClick = onInterrupt,
+                            modifier = primaryModifier,
+                            colors = IconButtonDefaults.filledTonalIconButtonColors()
+                        ) {
+                            Icon(Icons.Default.Stop, contentDescription = "Interrupt")
+                        }
+                        else -> FilledIconButton(
                             onClick = {
-                                keyboardMode = false
-                                focusManager.clearFocus()
-                                keyboard?.hide()
-                                expanded = true
-                                if (capturing) onStopVoice() else { onInterrupt(); onVoiceClick() }
+                                hideKeyboard()
+                                onInterrupt()
+                                onVoiceClick()
                             },
-                            enabled = capturing || (hasMicPermission && uiState.isVoiceInputEnabled),
-                            modifier = Modifier.heightIn(min = 48.dp)
-                        ) { Text(if (capturing) "Stop listening" else "Microphone") }
+                            enabled = voiceEnabled,
+                            modifier = primaryModifier
+                        ) {
+                            Icon(Icons.Default.Mic, contentDescription = "Microphone")
+                        }
+                    }
+
+                    // Session close lives here only while there is no response surface.
+                    if (!hasResponse) {
+                        IconButton(onClick = endSession) {
+                            Icon(Icons.Default.Close, contentDescription = "End assistant session")
+                        }
                     }
                 }
             }
@@ -585,17 +678,107 @@ internal fun AssistantOverlayContent(
 }
 
 @Composable
-private fun ErrorMessage(message: String) {
+private fun AssistantResponseSurface(
+    messages: List<AssistantMessage>,
+    isLoading: Boolean,
+    notice: String?,
+    isError: Boolean,
+    showOpenInApp: Boolean,
+    onOpenInApp: () -> Unit,
+    onNewChat: () -> Unit,
+    onCopy: () -> Unit,
+    onClose: () -> Unit
+) {
+    val maxHeight = (LocalConfiguration.current.screenHeightDp * 0.5f).dp
+    val hasAssistantText = messages.any { it.role == MessageRole.ASSISTANT && it.content.isNotBlank() }
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(max = maxHeight),
+        shape = RoundedCornerShape(28.dp),
+        color = MaterialTheme.colorScheme.surfaceContainer,
+        tonalElevation = 4.dp,
+        shadowElevation = 12.dp
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = 12.dp, end = 4.dp, top = 4.dp, bottom = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                if (showOpenInApp) {
+                    TextButton(
+                        onClick = onOpenInApp,
+                        contentPadding = PaddingValues(horizontal = 8.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.OpenInNew,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(Modifier.size(6.dp))
+                        Text("Open in app", style = MaterialTheme.typography.labelLarge)
+                    }
+                }
+                Spacer(Modifier.weight(1f))
+                IconButton(onClick = onNewChat) {
+                    Icon(Icons.Default.AddComment, contentDescription = "New chat")
+                }
+                if (hasAssistantText) {
+                    IconButton(onClick = onCopy) {
+                        Icon(Icons.Default.ContentCopy, contentDescription = "Copy response")
+                    }
+                }
+                IconButton(onClick = onClose) {
+                    Icon(Icons.Default.Close, contentDescription = "End assistant session")
+                }
+            }
+            AssistantResponseCard(
+                messages = messages,
+                isLoading = isLoading,
+                onOpenInApp = onOpenInApp,
+                showContinueButton = false,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f, fill = false)
+                    .padding(end = 8.dp)
+            )
+            if (notice != null) {
+                Text(
+                    text = notice,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (isError) MaterialTheme.colorScheme.error
+                    else MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(start = 4.dp, end = 12.dp)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun AssistantNoticeSurface(message: String, isError: Boolean) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        color = MaterialTheme.colorScheme.errorContainer
+        shape = RoundedCornerShape(20.dp),
+        color = if (isError) MaterialTheme.colorScheme.errorContainer
+        else MaterialTheme.colorScheme.surfaceContainer,
+        tonalElevation = 2.dp
     ) {
         Text(
             text = message,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
             style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onErrorContainer,
-            modifier = Modifier.padding(12.dp)
+            color = if (isError) MaterialTheme.colorScheme.onErrorContainer
+            else MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp)
         )
     }
 }
