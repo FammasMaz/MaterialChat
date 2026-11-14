@@ -64,6 +64,8 @@ import kotlin.math.abs
 
 private const val MESSAGE_GROUP_TIME_WINDOW_MS = 5 * 60 * 1000L
 private const val STREAMING_UI_UPDATE_INTERVAL_MS = 120L
+/** How often the context-window indicator may be recomputed while a reply is streaming. */
+private const val HISTORY_TOKENS_MIN_INTERVAL_MS = 500L
 
 /**
  * ViewModel for the Chat screen.
@@ -128,6 +130,16 @@ class ChatViewModel @Inject constructor(
     private val overrideModel: String? = savedStateHandle[Screen.Chat.ARG_OVERRIDE_MODEL]
     // Tracks the message ID being regenerated to prevent overlap artifacts
     private var regeneratingMessageId: String? = null
+
+    /**
+     * The context-window estimate walks the whole history on every database emission, and Room
+     * invalidates the message table ~15x a second while a reply streams. During a stream only the
+     * trailing message grows, so the indicator is recomputed at most this often; a change in the
+     * message count or the end of the stream always recomputes immediately.
+     */
+    private var lastHistoryTokensKey: Pair<Int, Int>? = null
+    private var lastHistoryTokensValue: Int = 0
+    private var lastHistoryTokensAtMs: Long = 0L
 
     init {
         cleanUpStuckStreamingMessages()
@@ -283,13 +295,25 @@ class ChatViewModel @Inject constructor(
                         // Only history is expensive to estimate. Do not capture composer
                         // ownership across this suspension: a send may commit or fail here.
                         val historyTokens = withContext(ioDispatcher) {
-                            ContextWindowEstimator.estimate(
-                                messages = filteredMessages,
-                                draft = "",
-                                pendingAttachments = emptyList(),
-                                systemPrompt = "",
-                                modelName = conversation.modelName
-                            ).usedTokens
+                            val sizeKey = filteredMessages.size to
+                                filteredMessages.sumOf { it.content.length + (it.thinkingContent?.length ?: 0) }
+                            val now = System.currentTimeMillis()
+                            val streaming = filteredMessages.any { it.isStreaming }
+                            val keyChanged = sizeKey != lastHistoryTokensKey
+                            val stale = now - lastHistoryTokensAtMs >= HISTORY_TOKENS_MIN_INTERVAL_MS
+                            val countChanged = lastHistoryTokensKey?.first != sizeKey.first
+                            if (keyChanged && (!streaming || stale || countChanged) || lastHistoryTokensAtMs == 0L) {
+                                lastHistoryTokensKey = sizeKey
+                                lastHistoryTokensValue = ContextWindowEstimator.estimate(
+                                    messages = filteredMessages,
+                                    draft = "",
+                                    pendingAttachments = emptyList(),
+                                    systemPrompt = "",
+                                    modelName = conversation.modelName
+                                ).usedTokens
+                                lastHistoryTokensAtMs = now
+                            }
+                            lastHistoryTokensValue
                         }
                         if (observedId != activeConversationId.value) return@collect
 

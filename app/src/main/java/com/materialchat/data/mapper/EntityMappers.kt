@@ -204,6 +204,7 @@ private fun serializeAttachments(attachments: List<Attachment>): String? {
  */
 private fun deserializeAttachments(jsonString: String?): List<Attachment> {
     if (jsonString.isNullOrEmpty()) return emptyList()
+    synchronized(attachmentCache) { attachmentCache[jsonString] }?.let { return it }
     return try {
         val attachmentDataList = json.decodeFromString<List<AttachmentData>>(jsonString)
         attachmentDataList.map { data ->
@@ -213,10 +214,25 @@ private fun deserializeAttachments(jsonString: String?): List<Attachment> {
                 mimeType = data.mimeType,
                 base64Data = data.base64Data
             )
-        }
+        }.also { decoded -> synchronized(attachmentCache) { attachmentCache[jsonString] = decoded } }
     } catch (e: Exception) {
         emptyList()
     }
+}
+
+/**
+ * Decoding every row's attachment JSON on every emission is wasted work: the chat screen
+ * re-maps the whole conversation each time Room invalidates the table, which happens ~15x a
+ * second while a reply streams, but only one row's text actually changed. The raw JSON string
+ * is the natural cache key — an unchanged message always produces the identical string.
+ */
+private const val ATTACHMENT_CACHE_ENTRIES = 256
+
+private val attachmentCache = object : LinkedHashMap<String, List<Attachment>>(
+    ATTACHMENT_CACHE_ENTRIES, 0.75f, true
+) {
+    override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, List<Attachment>>) =
+        size > ATTACHMENT_CACHE_ENTRIES
 }
 
 /**
