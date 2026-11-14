@@ -945,10 +945,14 @@ private fun AssistantResponseSurface(
     onCopy: () -> Unit,
     onClose: () -> Unit
 ) {
-    val maxHeight = (LocalConfiguration.current.screenHeightDp * 0.5f).dp
+    val maxHeight = (LocalConfiguration.current.screenHeightDp * 0.55f).dp
     val hasAssistantText = messages.any { it.role == MessageRole.ASSISTANT && it.content.isNotBlank() }
-    // The answer surface: an accent-tinted high container with wide organic top corners, growing
-    // with the streamed reply on a soft spring.
+    // The answer surface is the primary content of the expanded screen, not a card floating above
+    // the pill: the accent-tinted high container with wide organic top corners carries the
+    // exchange with generous insets (M3 containment: a filled container groups the question and
+    // the answer), and the controls sit in one capsule toolbar strip along its bottom edge, one
+    // container step lower, like an M3 floating toolbar. The reading order is question, answer,
+    // then actions; nothing competes with the answer above it.
     Surface(
         modifier = Modifier
             .fillMaxWidth()
@@ -963,42 +967,9 @@ private fun AssistantResponseSurface(
             modifier = Modifier
                 .fillMaxWidth()
                 .animateContentSize(animationSpec = AssistantMotion.contentSize())
-                .padding(start = 12.dp, end = 4.dp, top = 8.dp, bottom = 14.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp)
+                .padding(start = 20.dp, end = 20.dp, top = 22.dp, bottom = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                if (showOpenInApp) {
-                    FilledTonalButton(
-                        onClick = onOpenInApp,
-                        shape = AssistantShapes.Chip,
-                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
-                        modifier = Modifier.height(36.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.OpenInNew,
-                            contentDescription = null,
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Spacer(Modifier.size(6.dp))
-                        Text("Open in app", style = AssistantTypography.action(MaterialTheme.typography))
-                    }
-                }
-                Spacer(Modifier.weight(1f))
-                IconButton(onClick = onNewChat) {
-                    Icon(Icons.Default.AddComment, contentDescription = "New chat")
-                }
-                if (hasAssistantText) {
-                    IconButton(onClick = onCopy) {
-                        Icon(Icons.Default.ContentCopy, contentDescription = "Copy response")
-                    }
-                }
-                IconButton(onClick = onClose) {
-                    Icon(Icons.Default.Close, contentDescription = "End assistant session")
-                }
-            }
             AssistantResponseCard(
                 messages = messages,
                 isLoading = isLoading,
@@ -1007,7 +978,6 @@ private fun AssistantResponseSurface(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f, fill = false)
-                    .padding(end = 8.dp)
             )
             if (notice != null) {
                 Text(
@@ -1016,9 +986,74 @@ private fun AssistantResponseSurface(
                     overflow = TextOverflow.Ellipsis,
                     style = AssistantTypography.notice(MaterialTheme.typography),
                     color = if (isError) MaterialTheme.colorScheme.error
-                    else MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(start = 4.dp, end = 12.dp)
+                    else MaterialTheme.colorScheme.onSurfaceVariant
                 )
+            }
+            AssistantAnswerToolbar(
+                showOpenInApp = showOpenInApp,
+                showCopy = hasAssistantText,
+                onOpenInApp = onOpenInApp,
+                onNewChat = onNewChat,
+                onCopy = onCopy,
+                onClose = onClose
+            )
+        }
+    }
+}
+
+/**
+ * The answer surface's action strip: a full-capsule tray one container step below the answer
+ * (surfaceContainerLow inside the tinted high container). Open in app is the one tonal chip; the
+ * icon actions keep their 48dp targets, and End assistant session stays the trailing control.
+ */
+@Composable
+private fun AssistantAnswerToolbar(
+    showOpenInApp: Boolean,
+    showCopy: Boolean,
+    onOpenInApp: () -> Unit,
+    onNewChat: () -> Unit,
+    onCopy: () -> Unit,
+    onClose: () -> Unit
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = AssistantShapes.Toolbar,
+        color = AssistantColors.toolbarSurface(MaterialTheme.colorScheme),
+        contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = 8.dp, end = 4.dp, top = 4.dp, bottom = 4.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            if (showOpenInApp) {
+                FilledTonalButton(
+                    onClick = onOpenInApp,
+                    shape = AssistantShapes.Chip,
+                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
+                    modifier = Modifier.height(40.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.OpenInNew,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(Modifier.size(6.dp))
+                    Text("Open in app", style = AssistantTypography.action(MaterialTheme.typography))
+                }
+            }
+            Spacer(Modifier.weight(1f))
+            IconButton(onClick = onNewChat) {
+                Icon(Icons.Default.AddComment, contentDescription = "New chat")
+            }
+            if (showCopy) {
+                IconButton(onClick = onCopy) {
+                    Icon(Icons.Default.ContentCopy, contentDescription = "Copy response")
+                }
+            }
+            IconButton(onClick = onClose) {
+                Icon(Icons.Default.Close, contentDescription = "End assistant session")
             }
         }
     }
