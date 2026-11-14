@@ -119,39 +119,29 @@ done
   exit 1
 }
 
-# --- Neural particle field (assistant window only) --------------------------------
-# The decoration is the ported essentials particle field: an AGSL runtime painter on
-# API 33+ and a static Path painter below. Production logs one line per painter/capsule
-# signature from inside the dots' draw path, which only runs while the dots are present
-# (while listening, see above), so this marker proves the real assistant window resolved
-# the expected painter and drew the dots around a valid capsule.
-sdk=$(adb shell getprop ro.build.version.sdk | tr -d '\r')
-if [ "$sdk" -ge 33 ]; then expected_painter=runtime; else expected_painter=static; fi
+# --- Neural dot lattice (assistant window only) ------------------------------------
+# The assistant's backdrop texture is Gemini Live's: a bottom-anchored scrim band carrying a
+# uniform dot lattice (1.2dp dots on a 7dp pitch, fading upward). Production logs one line per
+# lattice signature from inside the draw path, so this marker proves the real assistant window
+# laid the lattice out and drew it, rather than the modifier merely being attached.
 for attempt in $(seq 1 20); do
-  adb logcat -d > "$out/logcat-particles.txt"
-  if grep -q "NeuralParticles: painter=$expected_painter" "$out/logcat-particles.txt"; then break; fi
+  adb logcat -d > "$out/logcat-lattice.txt"
+  if grep -q "NeuralLattice: dots=" "$out/logcat-lattice.txt"; then break; fi
   sleep 1
 done
-grep -q "NeuralParticles: painter=$expected_painter" "$out/logcat-particles.txt"
-grep "NeuralParticles" "$out/logcat-particles.txt" | tail -5 | tee "$out/particle-painter.txt"
+grep -q "NeuralLattice: dots=" "$out/logcat-lattice.txt"
+grep "NeuralLattice" "$out/logcat-lattice.txt" | tail -5 | tee "$out/lattice-summary.txt"
 
-# Two raw frames prove the field is live around the real card: on API 33+ the AGSL
-# painter must animate the band just outside the card while a control band far from
-# the card stays static; below 33 the static painter must draw without animating.
-# Visible pixel coverage of the static painter on API 26 is asserted by
-# AssistantNeuralParticleFieldTest, which renders the production card and decoration
-# host on the same API level and compares enabled/disabled captures.
+# A raw frame proves the lattice is on screen and confined to its band: the band must carry
+# dot texture (bright specks over its scrim) and the band well above the pill must not. Both
+# are measured against the frame itself, so a busy wallpaper cannot satisfy them on its own.
 adb shell wm density > "$out/density.txt"
-# The dots fade in (600 ms, scaled by the animator scale) when listening starts; let that
-# settle so the static painter's frames below are compared at rest.
-sleep 2
-adb exec-out screencap > "$out/particles-frame-a.raw"
 sleep 1
-adb exec-out screencap > "$out/particles-frame-b.raw"
-python3 - "$out/ui.xml" "$out/particles-frame-a.raw" "$out/particles-frame-b.raw" "$out/density.txt" "$sdk" <<'PYPARTICLES' | tee "$out/particle-band.txt"
+adb exec-out screencap > "$out/lattice-frame.raw"
+python3 - "$out/ui.xml" "$out/lattice-frame.raw" "$out/density.txt" <<'PYLATTICE' | tee "$out/lattice-band.txt"
 import re, struct, sys, xml.etree.ElementTree as ET
 
-ui, raw_a, raw_b, density_path, sdk = sys.argv[1:6]
+ui, raw, density_path = sys.argv[1:4]
 
 
 def load(path):
@@ -170,67 +160,68 @@ def bounds(node):
 all_nodes = list(ET.parse(ui).iter('node'))
 sheets = [n for n in all_nodes if n.get('resource-id', '').split('/')[-1] == 'assistant_sheet']
 assert len(sheets) == 1, 'Missing unique assistant sheet boundary'
-# The particle field wraps the pill; fall back to the sheet for older layouts.
 pills = [n for n in all_nodes if n.get('resource-id', '').split('/')[-1] == 'assistant_pill']
 left, top, right, bottom = bounds((pills or sheets)[0])
 densities = re.findall(r'(?:Physical|Override) density:\s*(\d+)', open(density_path).read())
 assert densities, 'Cannot establish display density'
 scale = int(densities[-1]) / 160.0
 
-wa, ha, a = load(raw_a)
-wb, hb, b = load(raw_b)
-assert (wa, ha) == (wb, hb), 'Screenshot sizes differ between frames'
-w, h = wa, ha
+w, h, px = load(raw)
 
 
-def diff_ratio(x0, y0, x1, y1, threshold=12):
+def luma(x, y):
+    off = (y * w + x) * 4
+    return (px[off] * 299 + px[off + 1] * 587 + px[off + 2] * 114) // 1000
+
+
+def speck_ratio(x0, y0, x1, y1, delta=10):
+    """Fraction of pixels clearly brighter than their own row's median: the lattice's dots."""
     x0 = max(0, min(x0, w - 1))
     x1 = max(x0 + 1, min(x1, w))
     y0 = max(0, min(y0, h - 1))
     y1 = max(y0 + 1, min(y1, h))
-    changed = total = 0
+    bright = total = 0
     for y in range(y0, y1):
-        off = (y * w + x0) * 4
-        span = (x1 - x0) * 4
-        row_a = a[off:off + span]
-        row_b = b[off:off + span]
-        for i in range(0, span, 4):
-            delta = abs(row_a[i] - row_b[i]) + abs(row_a[i + 1] - row_b[i + 1]) + abs(row_a[i + 2] - row_b[i + 2])
-            if delta >= threshold:
-                changed += 1
+        row = sorted(luma(x, y) for x in range(x0, x1))
+        median = row[len(row) // 2]
+        for x in range(x0, x1):
+            if luma(x, y) >= median + delta:
+                bright += 1
             total += 1
-    return changed, total
+    return bright / total
 
 
-# The screen-edge light (EdgeGlowStyle.reach, 56dp) breathes along all four window borders
-# while the assistant is up. Both bands are kept more than that (plus a margin) away from
-# every edge: the particle band is clamped horizontally, and the control band sits in the
-# middle of the screen, far from the card and from the edges, so it must stay static on
-# every API level.
-edge = int(72 * scale)
-bx0 = max(int(left + (right - left) * 0.1), edge)
-bx1 = min(int(right - (right - left) * 0.1), w - edge)
-assert bx1 > bx0 + 8, f'Particle band too narrow after the edge-light margin: {bx0}..{bx1}'
-by0 = max(0, int(top - 56 * scale))
-by1 = max(by0 + 1, int(top - 2 * scale))
-cy0 = int(h * 0.30)
-cy1 = int(h * 0.40)
-assert cy1 < by0, f'Control band must lie above the particle band: {cy1} >= {by0}'
-
-band_changed, band_total = diff_ratio(bx0, by0, bx1, by1)
-ctrl_changed, ctrl_total = diff_ratio(bx0, cy0, bx1, cy1)
-band_ratio = band_changed / band_total
-ctrl_ratio = ctrl_changed / ctrl_total
-print(f'Particle band {bx0},{by0}-{bx1},{by1}: changed={band_ratio:.4f} ({band_changed}/{band_total})')
-print(f'Control band {bx0},{cy0}-{bx1},{cy1}: changed={ctrl_ratio:.4f} ({ctrl_changed}/{ctrl_total})')
-print(f'Card bounds={left},{top},{right},{bottom} density={scale} sdk={sdk}')
-assert ctrl_ratio <= 0.005, f'Control band must stay static: {ctrl_ratio:.4f}'
-if int(sdk) >= 33:
-    assert band_ratio >= 0.015, f'AGSL particle field must animate around the card: {band_ratio:.4f}'
+# The lattice band is the bottom quarter of the window (AssistantLatticeStyle.BAND_FRACTION)
+# and the pill sits inside it. Its dots are brightest at the very bottom, so measure the rows
+# between the pill's bottom edge and the window's bottom edge; if the pill leaves too little
+# room there, fall back to the rows just above its top edge.
+band_top = max(0, h - int(h * 0.24))
+sample_x0 = int(w * 0.05)
+sample_x1 = int(w * 0.95)
+below_y0 = bottom + int(2 * scale)
+below_y1 = h - int(2 * scale)
+above_y0 = max(band_top, top - int(56 * scale))
+above_y1 = top - int(24 * scale)
+if below_y1 - below_y0 >= 8:
+    band_y0, band_y1, where = below_y0, below_y1, 'below the pill'
+elif above_y1 - above_y0 >= 8:
+    band_y0, band_y1, where = above_y0, above_y1, 'above the pill'
 else:
-    assert band_ratio <= 0.005, f'Static painter must not animate the band: {band_ratio:.4f}'
-print(f'Neural particle field passed on API {sdk}')
-PYPARTICLES
+    raise AssertionError(f'No room to sample the lattice band: pill={top}..{bottom} band_top={band_top}')
+ctrl_y0 = int(h * 0.30)
+ctrl_y1 = int(h * 0.40)
+assert ctrl_y1 < band_top, f'Control band must lie above the lattice band: {ctrl_y1} >= {band_top}'
+
+band = speck_ratio(sample_x0, band_y0, sample_x1, band_y1)
+ctrl = speck_ratio(sample_x0, ctrl_y0, sample_x1, ctrl_y1)
+print(f'Lattice band {sample_x0},{band_y0}-{sample_x1},{band_y1} ({where}): specks={band:.4f}')
+print(f'Control band {sample_x0},{ctrl_y0}-{sample_x1},{ctrl_y1}: specks={ctrl:.4f}')
+print(f'Card bounds={left},{top},{right},{bottom} band_top={band_top} density={scale}')
+# 1.2dp dots on a 7dp pitch cover ~2.3% of the area; require a quarter of that at minimum.
+assert band >= 0.004, f'The dot lattice must be visible in its band: {band:.4f}'
+assert band >= ctrl * 2.5, f'The lattice must stay in its band: band={band:.4f} control={ctrl:.4f}'
+print('Neural dot lattice passed')
+PYLATTICE
 
 # Exercise the actual keyboard state, not only initial overlay visibility.
 python3 - "$out/ui.xml" <<'PYTAP' | xargs adb shell input tap

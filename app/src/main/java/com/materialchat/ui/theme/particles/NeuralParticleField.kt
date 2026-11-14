@@ -171,6 +171,12 @@ fun Modifier.neuralParticleField(
     fadeInOnFirstAppearance: Boolean = false,
     /** Inner-glow strength floor (0..1) kept while the dots are faded. */
     restingGlow: Float = 0f,
+    /**
+     * Whether the scattered dots are drawn. Turning them off keeps everything else — the
+     * soft-edged fill, the edge blur and the inner glow — so a capsule can keep its feathered
+     * boundary while another texture (the assistant's dot lattice) owns the dots.
+     */
+    dotsEnabled: Boolean = true,
 ): Modifier = composed {
     val context = LocalContext.current
     val view = LocalView.current
@@ -360,7 +366,7 @@ fun Modifier.neuralParticleField(
                 }
                 drawContent()
                 // Dots last: in front of the content and over the edge, never blurred.
-                if (capsule != null && samples != null && strength > 0f) {
+                if (dotsEnabled && capsule != null && samples != null && strength > 0f) {
                     NeuralParticleDiagnostics.record(painter.kind, edgeTreatment, capsule)
                     val time = control.timeSeconds?.takeIf { it.isFinite() } ?: elapsed
                     if (alpha > 0f) {

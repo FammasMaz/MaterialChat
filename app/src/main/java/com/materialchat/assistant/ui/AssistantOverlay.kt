@@ -356,14 +356,15 @@ fun AssistantOverlay(
                     capsuleRect = decorationRect,
                     cornerRadius = 38.dp,
                     // As in essentials' Gemini pill: the pill's own colour is painted as a
-                    // soft-edged capsule with the accent glowing inside along the edge, and
-                    // accent-tinted dots float across the boundary in front of everything. The
-                    // inner band matches the pill's content padding, so dots cross the edge but
-                    // stay off the text and buttons.
+                    // soft-edged capsule with the accent glowing inside along the edge. The
+                    // scattered dots are off — the backdrop's dot lattice owns the dots now
+                    // (Gemini Live's uniform grid, see assistantDotLattice) — but this still
+                    // paints the feathered fill, the edge blur and the inner glow.
                     featherColor = MaterialTheme.colorScheme.surfaceContainerHigh,
                     style = ParticleFieldStyle(innerBand = 20.dp),
                     color = MaterialTheme.colorScheme.primary,
                     enabled = neuralExpressive,
+                    dotsEnabled = false,
                     // The card reports its rect; until it does, there is nothing to decorate.
                     capsuleInset = null,
                     // The dots follow listening only: they fade in (600 ms) when recognition
