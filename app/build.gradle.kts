@@ -134,14 +134,6 @@ android {
             }
             isMinifyEnabled = true
             isShrinkResources = true
-            // Release ships to phones only: the x86/x86_64 copies of the native TTS and
-            // on-device LLM libraries (tens of MB each) are emulator-only. Debug keeps
-            // every ABI so the hosted emulator checks still load them.
-            packaging {
-                jniLibs {
-                    excludes += setOf("lib/x86/**", "lib/x86_64/**")
-                }
-            }
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -175,6 +167,16 @@ android {
             excludes += "/META-INF/LICENSE*"
             excludes += "/META-INF/NOTICE*"
         }
+    }
+}
+
+// Release ships to phones only: the x86/x86_64 copies of the native TTS and on-device LLM
+// libraries (tens of MB each) exist for the emulator checks. Scoped to the release variant
+// so the debug APK keeps every ABI and still installs on the x86_64 hosted emulators.
+androidComponents {
+    onVariants(selector().withBuildType("release")) { variant ->
+        variant.packaging.jniLibs.excludes.add("lib/x86/**")
+        variant.packaging.jniLibs.excludes.add("lib/x86_64/**")
     }
 }
 
