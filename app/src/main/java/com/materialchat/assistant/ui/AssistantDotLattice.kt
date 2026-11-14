@@ -17,6 +17,7 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import android.util.Log
 import com.materialchat.ui.theme.particles.readAnimationScale
 import kotlin.math.floor
 import kotlin.math.pow
@@ -111,6 +112,7 @@ internal fun Modifier.assistantDotLattice(
     val context = LocalContext.current
     val animationScale = remember(context) { readAnimationScale(context) }
     val presence = remember { Animatable(0f) }
+    val loggedSignatures = remember { mutableSetOf<String>() }
     val target = if (visible && enabled) 1f else 0f
     LaunchedEffect(target) {
         val baseMillis = if (target > 0f) AssistantLatticeStyle.FADE_IN_MILLIS else AssistantLatticeStyle.FADE_OUT_MILLIS
@@ -129,6 +131,16 @@ internal fun Modifier.assistantDotLattice(
             pitchPx = pitchPx,
             minBandPx = AssistantLatticeStyle.MinBandHeight.toPx()
         )
+        val dotCount = geometry.rows.sumOf { it.points.size }
+        // One line per lattice signature, from inside the draw path: the hosted gate uses it to
+        // prove the real assistant window laid the lattice out and drew it.
+        if (loggedSignatures.add("${dotCount}x${pitchPx.toInt()}x${geometry.bandTop.toInt()}")) {
+            Log.d(
+                "NeuralLattice",
+                "dots=$dotCount pitch=${pitchPx.toInt()}px bandTop=${geometry.bandTop.toInt()}px " +
+                    "height=${size.height.toInt()}px"
+            )
+        }
         val bandTop = geometry.bandTop
         val scrim = Brush.verticalGradient(
             0f to Color.Transparent,
