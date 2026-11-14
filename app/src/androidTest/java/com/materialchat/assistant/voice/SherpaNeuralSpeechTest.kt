@@ -4,7 +4,12 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.materialchat.data.local.preferences.AssistantSpeechBackend
 import com.materialchat.data.local.preferences.AssistantVoiceSettings
+import android.os.SystemClock
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
@@ -94,11 +99,32 @@ class SherpaNeuralSpeechTest {
         assertAudible(SherpaTtsModel.KOKORO, rate, audio)
     }
 
-    @Test fun stoppingFromTheCallbackReturnsPromptly() {
-        val text = "First sentence here. Second sentence follows. A third one as well. And a fourth."
-        val (_, full) = synthesize(SherpaTtsModel.SUPERTONIC, text)
-        val (_, stopped) = synthesize(SherpaTtsModel.SUPERTONIC, text, stopAfterFirst = true)
-        assertTrue("stop did not cut generation short (${stopped.size} vs ${full.size})", stopped.size < full.size)
+    /**
+     * Stop/barge-in cancels the speak flow. Supertonic returns a whole utterance in one native
+     * callback, so stopping must come from the playback side: cancelling mid-playback has to
+     * silence the AudioTrack promptly rather than finish the sentence.
+     */
+    @Test fun cancellingSpeechStopsPlaybackPromptly() = runBlocking {
+        val backend = SherpaTtsBackend(store, OnnxSherpaSynthesizerFactory(), AudioTrackSherpaPlayer())
+        val settings = AssistantVoiceSettings(backend = AssistantSpeechBackend.SHERPA, languageTag = "en-US")
+        val text = "This sentence is deliberately long so that playback lasts several seconds, " +
+            "which leaves plenty of time to interrupt it in the middle of speaking."
+        val started = CompletableDeferred<Unit>()
+        val events = mutableListOf<TtsEvent>()
+        val job = launch(Dispatchers.Default) {
+            backend.speak(text, settings, SherpaTtsModel.SUPERTONIC).collect {
+                events += it
+                if (it is TtsEvent.Started) started.complete(Unit)
+            }
+        }
+        withTimeout(120_000) { started.await() }
+        delay(300)
+        val before = SystemClock.elapsedRealtime()
+        withTimeout(10_000) { job.cancelAndJoin() }
+        val stopMillis = SystemClock.elapsedRealtime() - before
+        assertTrue("stop took ${stopMillis}ms", stopMillis < 1_000)
+        assertTrue("speech completed instead of stopping: $events", TtsEvent.Completed !in events)
+        backend.release()
     }
 
     @Test fun productionBackendSpeaksThroughAudioTrackWithoutCrashing() = runBlocking {
