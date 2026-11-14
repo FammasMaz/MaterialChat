@@ -142,7 +142,7 @@ fun AssistantOverlay(
     onOpenClock: (AssistantEvent.OpenClock) -> Unit,
     /** The platform's assist screenshot, painted as the shrinking backdrop; null leaves the scrim. */
     assistScreenshot: Bitmap? = null,
-    /** Reports whether the session should hold the screen on (see [shouldKeepScreenOn]). */
+    /** Reports whether the assistant is working; the session applies the keep-awake grace. */
     onKeepScreenOnChanged: (Boolean) -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -290,16 +290,11 @@ fun AssistantOverlay(
         voiceState is VoiceState.Listening || voiceState is VoiceState.Processing ||
         voiceState is VoiceState.Thinking || voiceState is VoiceState.Responding ||
         voiceState is VoiceState.Speaking
-    // One write on entry and one when the grace expires — the earlier per-second tick kept
-    // recomposing the whole overlay for a minute after every reply, and left the composition
-    // permanently busy for anything waiting on it (the hosted particle test timed out on it).
+    // Report the working state only. The grace period after the answer is timed by the session,
+    // not here: a long delay inside the composition keeps the frame clock busy for its whole
+    // duration, which pins the display of any test (or tooling) that advances that clock.
     LaunchedEffect(assistantBusy) {
-        onKeepScreenOnChanged(shouldKeepScreenOn(assistantBusy, idleForMillis = 0L))
-        if (assistantBusy) return@LaunchedEffect
-        delay(ASSISTANT_KEEP_AWAKE_GRACE_MILLIS)
-        onKeepScreenOnChanged(
-            shouldKeepScreenOn(busy = false, idleForMillis = ASSISTANT_KEEP_AWAKE_GRACE_MILLIS)
-        )
+        onKeepScreenOnChanged(assistantBusy)
     }
 
     // The screen-edge light follows the session's phase: full while capturing speech, calmer

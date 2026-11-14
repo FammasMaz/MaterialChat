@@ -35,12 +35,16 @@ import com.materialchat.assistant.actions.AssistantActivityLauncher
 import com.materialchat.assistant.actions.DeviceActionHandler
 import com.materialchat.MainActivity
 import com.materialchat.assistant.di.AssistantEntryPoint
+import com.materialchat.assistant.ui.ASSISTANT_KEEP_AWAKE_GRACE_MILLIS
 import com.materialchat.assistant.ui.AssistantOverlay
 import com.materialchat.assistant.ui.AssistantViewModel
+import com.materialchat.assistant.ui.shouldKeepScreenOn
 import dagger.hilt.android.EntryPointAccessors
 import android.widget.Toast
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.first
@@ -142,6 +146,27 @@ class MaterialChatVoiceInteractionSession(
     var keepScreenOn: Boolean = false
         private set
 
+    /** Pending release of the display after the assistant stops working. */
+    private var keepAwakeRelease: Job? = null
+
+    /**
+     * Holds the display on while the assistant listens, thinks, streams or speaks, and for
+     * [ASSISTANT_KEEP_AWAKE_GRACE_MILLIS] afterwards so the answer stays readable. Timed here
+     * rather than in the composition, where a long delay would keep the frame clock busy.
+     */
+    fun onAssistantBusyChanged(busy: Boolean) {
+        keepAwakeRelease?.cancel()
+        keepAwakeRelease = null
+        setKeepAwake(shouldKeepScreenOn(busy = busy, idleForMillis = 0L))
+        if (busy) return
+        keepAwakeRelease = sessionScope.launch {
+            delay(ASSISTANT_KEEP_AWAKE_GRACE_MILLIS)
+            setKeepAwake(
+                shouldKeepScreenOn(busy = false, idleForMillis = ASSISTANT_KEEP_AWAKE_GRACE_MILLIS)
+            )
+        }
+    }
+
     override fun setKeepAwake(keepAwake: Boolean) {
         keepScreenOn = keepAwake
         // The platform throws "Can't call before onCreate()" when no session window was ever
@@ -153,6 +178,8 @@ class MaterialChatVoiceInteractionSession(
 
     override fun onHide() {
         // The session window is going away; never leave the display pinned on.
+        keepAwakeRelease?.cancel()
+        keepAwakeRelease = null
         setKeepAwake(false)
         overlayShown = false
         pendingShow = false
@@ -279,7 +306,7 @@ class MaterialChatVoiceInteractionSession(
                 if (error == null) hide()
             },
             assistScreenshot = assistScreenshot.value,
-            onKeepScreenOnChanged = { keepOn -> setKeepAwake(keepOn) }
+            onKeepScreenOnChanged = { busy -> onAssistantBusyChanged(busy) }
         )
     }
 
