@@ -3,6 +3,7 @@ package com.materialchat.assistant.ui
 import androidx.lifecycle.ViewModelStore
 import com.materialchat.assistant.actions.DeviceAction
 import com.materialchat.assistant.actions.DeviceActionHandler
+import com.materialchat.assistant.actions.DeviceActionOutcome
 import com.materialchat.assistant.voice.*
 import com.materialchat.data.local.preferences.AppPreferences
 import com.materialchat.data.local.preferences.AssistantVoiceSettings
@@ -99,6 +100,100 @@ class AssistantViewModelTest {
         assertEquals("", vm.uiState.value.response)
     }
 
+    @Test fun `model directive performs the device action and never reaches the user`() = runTest {
+        val vm = createViewModel()
+        every { deviceActions.perform(DeviceAction.SetTorch(true)) } returns
+            DeviceActionOutcome("Flashlight on.", succeeded = true)
+        vm.sendQuery("first question")
+        runCurrent()
+        states.send(StreamingState.Completed("Some answer.", messageId = "a"))
+        runCurrent()
+        // Second turn of the same conversation: the model requests an action.
+        vm.sendQuery("its dark, can you help")
+        runCurrent()
+        states.send(StreamingState.Streaming("Turning on the", messageId = "b"))
+        runCurrent()
+        states.send(StreamingState.Streaming("Turning on the flashlight.\n<<action:{\"type\":\"set_to", messageId = "b"))
+        runCurrent()
+        assertEquals("Turning on the flashlight.", vm.uiState.value.response.trim())
+        verify(exactly = 0) { deviceActions.perform(any()) }
+        states.send(StreamingState.Completed("Turning on the flashlight.\n<<action:{\"type\":\"set_torch\",\"on\":true}>>", messageId = "b"))
+        runCurrent()
+        verify(exactly = 1) { deviceActions.perform(DeviceAction.SetTorch(true)) }
+        assertEquals("Turning on the flashlight.", vm.uiState.value.response)
+        assertTrue(vm.messages.value.none { it.content.contains("<<") || it.content.contains("action") })
+        assertEquals("Turning on the flashlight.", vm.messages.value.last().content)
+        coVerify(exactly = 1) { conversations.addMessage(match {
+            it.role == MessageRole.ASSISTANT && it.content == "Turning on the flashlight."
+        }) }
+        assertTrue(utterances.none { it.contains("<<") })
+        assertEquals(listOf("Turning on the flashlight."), utterances.filter { it.contains("flashlight") })
+    }
+
+    @Test fun `failed directive outcome is appended and invalid directives are dropped`() = runTest {
+        val vm = createViewModel()
+        // Speech completes immediately here so the queue reaches the appended outcome.
+        coEvery { runtime.speak(any(), any(), any()) } coAnswers {
+            utterances += firstArg<String>()
+            val callback = thirdArg<(TtsEvent) -> Unit>()
+            callback(TtsEvent.Started)
+            callback(TtsEvent.Completed)
+        }
+        every { deviceActions.perform(DeviceAction.SetTorch(true)) } returns
+            DeviceActionOutcome("This device has no flash.", succeeded = false)
+        vm.sendQuery("flashlight")
+        runCurrent()
+        states.send(StreamingState.Completed(
+            "Turning on the flashlight.\n<<action:{\"type\":\"set_torch\",\"on\":true}>>\n<<action:{\"type\":\"set_alarm\",\"hour\":99}>>\n<<action:garbage>>",
+            messageId = "m"
+        ))
+        runCurrent()
+        verify(exactly = 1) { deviceActions.perform(any()) }
+        assertEquals("Turning on the flashlight. This device has no flash.", vm.uiState.value.response)
+        assertFalse(vm.messages.value.last().content.contains("<<"))
+        assertTrue(utterances.contains("This device has no flash."))
+    }
+
+    @Test fun `model clock directive hands off to the clock with the model's own words`() = runTest {
+        val vm = createViewModel()
+        val events = mutableListOf<AssistantEvent>()
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.events.collect { events += it } }
+        vm.sendQuery("i should get up early for the gym tomorrow, maybe 6:30")
+        runCurrent()
+        states.send(StreamingState.Completed(
+            "Opening the clock to set a 6:30 alarm for the gym.\n<<action:{\"type\":\"set_alarm\",\"hour\":6,\"minute\":30,\"label\":\"Gym\"}>>",
+            messageId = "m"
+        ))
+        runCurrent()
+        val event = events.single() as AssistantEvent.OpenClock
+        assertEquals(com.materialchat.assistant.actions.ClockCommand.Alarm(6, 30, "Gym"), event.command)
+        vm.onClockHandoff(event.token, null)
+        assertEquals("Opening the clock to set a 6:30 alarm for the gym.", vm.uiState.value.response)
+        assertFalse(vm.messages.value.last().content.contains("<<"))
+    }
+
+    @Test fun `local reminder and device parsers run on later turns too`() = runTest {
+        val vm = createViewModel()
+        every { deviceActions.perform(DeviceAction.SetTorch(false)) } returns
+            DeviceActionOutcome("Flashlight off.", succeeded = true)
+        val events = mutableListOf<AssistantEvent>()
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.events.collect { events += it } }
+        vm.sendQuery("hello")
+        runCurrent()
+        states.send(StreamingState.Completed("Hi.", messageId = "a"))
+        runCurrent()
+        vm.sendQuery("ok now remind me in 20 minutes to check the oven")
+        runCurrent()
+        val event = events.single() as AssistantEvent.OpenClock
+        assertEquals(com.materialchat.assistant.actions.ClockCommand.Timer(1200, "Check the oven"), event.command)
+        vm.onClockHandoff(event.token, null)
+        vm.sendQuery("and turn the flashlight off")
+        runCurrent()
+        verify(exactly = 1) { deviceActions.perform(DeviceAction.SetTorch(false)) }
+        assertEquals("Flashlight off.", vm.uiState.value.response)
+        verify(exactly = 1) { chat.sendMessage(any(), any(), any(), any(), any(), any(), any(), any()) }
+    }
+
     @Test fun `provider model and reasoning overrides are independent`() = runTest {
         val vm = createViewModel()
         val cases = listOf(
@@ -111,10 +206,10 @@ class AssistantViewModelTest {
             settings.value = config
             vm.sendQuery("query")
             runCurrent()
-            // The user's prompt is kept first; the capability notice is appended so the model
-            // cannot claim device actions it cannot perform.
+            // The user's prompt is kept first; the action protocol is appended so the model
+            // knows which phone actions it can request and how.
             verify(exactly = 1) { chat.sendMessage(expected.first, any(), expected.second,
-                expected.third, match { it.startsWith("system") && it.contains("cannot control the device") },
+                expected.third, match { it.startsWith("system") && it.contains("<<action:") && it.contains("set_alarm") },
                 false, false, "assistant") }
             coVerify { conversations.updateConversationProviderAndModel("conversation", expected.first.id, expected.second) }
         }

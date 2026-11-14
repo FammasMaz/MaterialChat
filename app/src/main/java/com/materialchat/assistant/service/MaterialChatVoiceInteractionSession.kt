@@ -29,6 +29,7 @@ import androidx.savedstate.SavedStateRegistryController
 import androidx.savedstate.SavedStateRegistryOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import com.materialchat.assistant.actions.ClockHandoff
+import com.materialchat.assistant.actions.AssistantActivityLauncher
 import com.materialchat.assistant.actions.DeviceActionHandler
 import com.materialchat.MainActivity
 import com.materialchat.assistant.di.AssistantEntryPoint
@@ -128,7 +129,7 @@ class MaterialChatVoiceInteractionSession(
             conversationRepository = entryPoint.conversationRepository(),
             generateConversationTitleUseCase = entryPoint.generateConversationTitleUseCase(),
             applicationScope = CoroutineScope(Dispatchers.IO + SupervisorJob()),
-            deviceActionHandler = DeviceActionHandler(context.applicationContext)
+            deviceActionHandler = DeviceActionHandler(context.applicationContext, assistantLauncher())
         ) } })[AssistantViewModel::class.java]
         if (pendingShow && overlayShown) {
             pendingShow = false
@@ -206,6 +207,21 @@ class MaterialChatVoiceInteractionSession(
                 if (error == null) hide()
             }
         )
+    }
+
+    /**
+     * Device actions that open another app (calendar, settings, an installed app) go through
+     * the same assistant-authorised start with plain-launch fallback as the clock handoff,
+     * and the overlay gets out of the way afterwards just as it does for the clock.
+     */
+    private fun assistantLauncher(): AssistantActivityLauncher {
+        val launcher = AssistantActivityLauncher.throughSession(
+            startAssistantActivity = { startAssistantActivity(it) },
+            startActivity = { context.startActivity(it) }
+        )
+        return AssistantActivityLauncher { intent ->
+            launcher.launch(intent).also { error -> if (error == null) hide() }
+        }
     }
 
     /**

@@ -18,8 +18,12 @@ object ClockHandoff {
             is ClockCommand.Alarm -> {
                 putExtra(AlarmClock.EXTRA_HOUR, command.hour)
                 putExtra(AlarmClock.EXTRA_MINUTES, command.minute)
+                command.label?.let { putExtra(AlarmClock.EXTRA_MESSAGE, it) }
             }
-            is ClockCommand.Timer -> putExtra(AlarmClock.EXTRA_LENGTH, command.seconds)
+            is ClockCommand.Timer -> {
+                putExtra(AlarmClock.EXTRA_LENGTH, command.seconds)
+                command.label?.let { putExtra(AlarmClock.EXTRA_MESSAGE, it) }
+            }
             else -> Unit
         }
     }

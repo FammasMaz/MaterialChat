@@ -1,10 +1,13 @@
 package com.materialchat.assistant.ui
 
 import androidx.lifecycle.ViewModel
+import com.materialchat.assistant.actions.ActionDirectives
+import com.materialchat.assistant.actions.AssistantAction
+import com.materialchat.assistant.actions.AssistantCommandParser
 import com.materialchat.assistant.actions.ClockCommand
-import com.materialchat.assistant.actions.ClockCommandParser
 import com.materialchat.assistant.actions.DeviceActionHandler
-import com.materialchat.assistant.actions.DeviceActionParser
+import com.materialchat.assistant.actions.DeviceActionOutcome
+import java.time.LocalDateTime
 import androidx.lifecycle.viewModelScope
 import com.materialchat.assistant.voice.AudioAmplitudeData
 import com.materialchat.assistant.voice.RecognitionOptions
@@ -68,7 +71,8 @@ class AssistantViewModel(
     private val generateConversationTitleUseCase: GenerateConversationTitleUseCase,
     private val applicationScope: CoroutineScope,
     private val speechRuntime: AssistantSpeechRuntime,
-    private val deviceActionHandler: DeviceActionHandler
+    private val deviceActionHandler: DeviceActionHandler,
+    private val now: () -> LocalDateTime = { LocalDateTime.now() }
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(AssistantUiState())
@@ -322,23 +326,29 @@ class AssistantViewModel(
                 previousTurn?.join()
                 currentCoroutineContext().ensureActive()
                 if (token != turn) return@launch
-                val clockCommand = if (attachments.isEmpty()) ClockCommandParser.parse(trimmedQuery) else null
-                if (clockCommand != null) {
-                    _uiState.update { it.copy(isLoading = false) }
-                    _voiceState.value = VoiceState.Idle
-                    _events.emit(AssistantEvent.OpenClock(clockCommand, token))
-                    return@launch
-                }
-                // Device actions are performed here and reported with their real outcome, so
-                // the assistant never claims a change it did not make. This runs before any
-                // provider call: no model can control the device.
-                val deviceAction = if (attachments.isEmpty()) DeviceActionParser.parse(trimmedQuery) else null
-                if (deviceAction != null) {
-                    val result = deviceActionHandler.perform(deviceAction)
-                    _uiState.update { it.copy(isLoading = false, isStreaming = false, response = result) }
-                    finalizeAssistantResponse(result)
-                    _voiceState.value = VoiceState.Complete(result, trimmedQuery)
-                    speakActionResult(result, token)
+                // First pass, on every turn: obvious commands are recognised locally, so they
+                // cost no model round trip and work without a provider. Anything missed goes
+                // to the model, which can request the same actions through a directive.
+                val localAction = if (attachments.isEmpty()) AssistantCommandParser.parse(trimmedQuery, now()) else null
+                if (localAction != null) {
+                    when (localAction) {
+                        is AssistantAction.Clock -> {
+                            _uiState.update { it.copy(isLoading = false) }
+                            _voiceState.value = VoiceState.Idle
+                            _events.emit(AssistantEvent.OpenClock(localAction.command, token))
+                        }
+                        is AssistantAction.Device -> {
+                            // Performed here and reported with the real outcome, so the
+                            // assistant never claims a change it did not make.
+                            val outcome = deviceActionHandler.perform(localAction.action)
+                            val result = outcome.message
+                            _uiState.update { it.copy(isLoading = false, isStreaming = false, response = result) }
+                            finalizeAssistantResponse(result)
+                            _voiceState.value = VoiceState.Complete(result, trimmedQuery)
+                            // Another app is in front after a launch; the overlay hides.
+                            if (!outcome.launchedActivity) speakActionResult(result, token)
+                        }
+                    }
                     return@launch
                 }
                 coroutineScope {
@@ -406,13 +416,10 @@ class AssistantViewModel(
                     val conversationId = currentConversationId!!
                     conversationRepository.updateConversationProviderAndModel(conversationId, provider.id, model)
                     val systemPrompt = appPreferences.systemPrompt.first()
-                    // Append the capability notice so the model cannot claim device actions it
-                    // cannot perform; the user's own prompt still applies first.
-                    val effectiveSystemPrompt = if (systemPrompt.isBlank()) {
-                        ASSISTANT_CAPABILITY_NOTICE
-                    } else {
-                        systemPrompt + "\n\n" + ASSISTANT_CAPABILITY_NOTICE
-                    }
+                    // Append the action protocol so the model knows which phone actions it can
+                    // request and how; the user's own prompt still applies first.
+                    val notice = ActionDirectives.capabilityNotice(now())
+                    val effectiveSystemPrompt = if (systemPrompt.isBlank()) notice else systemPrompt + "\n\n" + notice
                     val reasoningEffort = settings.reasoningEffort ?: appPreferences.reasoningEffort.first()
 
                     // Create and save user message
@@ -443,44 +450,66 @@ class AssistantViewModel(
                                 _uiState.update { it.copy(isLoading = true) }
                             }
                             is StreamingState.Streaming -> {
+                                // Action directives are never shown or spoken; stripping is
+                                // monotone so the append-only speech chunker keeps working.
+                                val shown = ActionDirectives.strip(state.content)
                                 if (!_uiState.value.isSpeaking) _voiceState.value = VoiceState.Responding(
-                                    content = state.content,
+                                    content = shown,
                                     userQuery = trimmedQuery
                                 )
                                 _uiState.update {
                                     it.copy(
-                                        response = state.content,
+                                        response = shown,
                                         isLoading = false,
                                         isStreaming = true
                                     )
                                 }
                                 // Update streaming response in message list
-                                updateStreamingResponse(state.content)
+                                updateStreamingResponse(shown)
                                 if (!speechStopped && _uiState.value.isTtsEnabled)
-                                    chunker.update(state.content).forEach { queue.enqueue(it) }
+                                    chunker.update(shown).forEach { queue.enqueue(it) }
                             }
                             is StreamingState.Completed -> {
+                                // The model's action requests: run them now, keep them out of
+                                // what is shown, spoken and saved, and append the real outcome
+                                // whenever it failed or the model said nothing. A clock request
+                                // hands off to the clock app last, since that hides the overlay.
+                                val extraction = ActionDirectives.extract(state.finalContent, now())
+                                val spoken = extraction.text
+                                val outcomes = mutableListOf<DeviceActionOutcome>()
+                                var clockCommand: ClockCommand? = null
+                                for (action in extraction.actions) {
+                                    when (action) {
+                                        is AssistantAction.Clock -> if (clockCommand == null) clockCommand = action.command
+                                        is AssistantAction.Device -> outcomes += deviceActionHandler.perform(action.action)
+                                    }
+                                }
+                                val appended = outcomes
+                                    .filter { !it.succeeded || spoken.isBlank() }
+                                    .joinToString(" ") { it.message }
+                                val finalText = listOf(spoken.trim(), appended).filter { it.isNotBlank() }.joinToString(" ")
+
                                 if (!_uiState.value.isSpeaking) _voiceState.value = VoiceState.Complete(
-                                    content = state.finalContent,
+                                    content = finalText,
                                     userQuery = trimmedQuery
                                 )
                                 _uiState.update {
                                     it.copy(
-                                        response = state.finalContent,
+                                        response = finalText,
                                         isLoading = false,
                                         isStreaming = false
                                     )
                                 }
 
                                 // Finalize assistant message in message list
-                                finalizeAssistantResponse(state.finalContent)
+                                finalizeAssistantResponse(finalText)
                                 lastActivityTimestamp = System.currentTimeMillis()
 
                                 // Save assistant message to database
                                 val assistantMessage = Message(
                                     conversationId = conversationId,
                                     role = MessageRole.ASSISTANT,
-                                    content = state.finalContent
+                                    content = finalText
                                 )
                                 conversationRepository.addMessage(assistantMessage)
 
@@ -489,14 +518,19 @@ class AssistantViewModel(
                                     generateTitleIfNeeded(
                                         conversationId = conversationId,
                                         userMessage = trimmedQuery,
-                                        assistantResponse = state.finalContent
+                                        assistantResponse = finalText
                                     )
                                 }
 
-                                // Speak the response if TTS is enabled
-                                if (!speechStopped && _uiState.value.isTtsEnabled)
-                                    chunker.update(state.finalContent, isFinal = true).forEach { queue.enqueue(it) }
+                                // Speak the response if TTS is enabled. The chunker needs the
+                                // untrimmed stripped text, of which every streamed snapshot is
+                                // a prefix; the outcome is spoken after it.
+                                if (!speechStopped && _uiState.value.isTtsEnabled) {
+                                    chunker.update(spoken, isFinal = true).forEach { queue.enqueue(it) }
+                                    if (appended.isNotBlank() && outcomes.none { it.launchedActivity }) queue.enqueue(appended)
+                                }
                                 queue.finish()
+                                clockCommand?.let { _events.emit(AssistantEvent.OpenClock(it, token)) }
                             }
                             is StreamingState.Error -> {
                                 queue.cancel()
@@ -682,7 +716,11 @@ class AssistantViewModel(
             handleError(error)
             return
         }
-        val response = "Opened the clock app. Review and confirm there; nothing is confirmed here."
+        // A model that requested the clock already described what it is doing; the local
+        // first pass has no text of its own.
+        val response = _uiState.value.response.ifBlank {
+            "Opened the clock app. Review and confirm there; nothing is confirmed here."
+        }
         _uiState.update { it.copy(response = response, isLoading = false, isStreaming = false) }
         finalizeAssistantResponse(response)
         _voiceState.value = VoiceState.Complete(response, _uiState.value.userQuery)
@@ -764,22 +802,3 @@ data class AssistantMessage(
 
 /** Owner key isolating assistant streams from chat Stop requests. */
 private const val ASSISTANT_STREAM_OWNER = "assistant"
-
-/**
- * Tells the model what it genuinely cannot do.
- *
- * Local recognition catches the common phrasings, but anything it misses still reaches the
- * model, and an unconstrained model answers "I've set your alarm for 7am" without setting
- * anything. This instruction makes the honest answer the default for everything the app
- * cannot actually perform.
- */
-private val ASSISTANT_CAPABILITY_NOTICE = """
-You are a voice assistant inside an Android app. You cannot control the device. You cannot
-set alarms, timers, reminders or calendar events, and you cannot change Wi-Fi, Bluetooth,
-Do Not Disturb, brightness or other system settings. The app handles flashlight, volume and
-mute itself, so those requests never reach you.
-
-If the user asks for anything you cannot do, say plainly that you cannot do it and tell them
-the shortest way to do it themselves. Never say or imply that you performed an action, and
-never invent a confirmation. Keep answers short: they are spoken aloud.
-""".trimIndent()
