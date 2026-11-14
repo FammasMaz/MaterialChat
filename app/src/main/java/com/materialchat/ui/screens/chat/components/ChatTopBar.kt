@@ -26,6 +26,7 @@ import androidx.compose.material.icons.outlined.CloudDownload
 import com.materialchat.ui.components.seaglass.DropdownMenu
 import com.materialchat.ui.components.seaglass.DropdownMenuItem
 import com.materialchat.ui.theme.CustomShapes
+import com.materialchat.ui.theme.ExpressiveMotion
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -140,10 +141,7 @@ fun ChatTopBar(
         title = {
             Column(
                 modifier = Modifier.animateContentSize(
-                    animationSpec = spring(
-                        dampingRatio = Spring.DampingRatioMediumBouncy,
-                        stiffness = Spring.StiffnessMediumLow
-                    )
+                    animationSpec = ExpressiveMotion.Spatial.contentSize()
                 )
             ) {
                 Row(

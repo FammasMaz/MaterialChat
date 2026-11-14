@@ -29,7 +29,6 @@ import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -91,6 +90,8 @@ import com.materialchat.ui.screens.chat.components.ScrollToBottomFab
 import com.materialchat.ui.screens.chat.components.shouldShowDateSeparator
 import com.materialchat.ui.screens.personas.components.ConversationStarterChips
 import com.materialchat.ui.theme.CustomShapes
+import com.materialchat.ui.theme.ExpressiveMotion
+import com.materialchat.ui.theme.ExpressiveShapes
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -569,10 +570,7 @@ private fun ChatContent(
             slideOffset.snapTo(state.slideDirection.toFloat())
             slideOffset.animateTo(
                 0f,
-                animationSpec = spring(
-                    dampingRatio = Spring.DampingRatioLowBouncy,
-                    stiffness = Spring.StiffnessMediumLow
-                )
+                animationSpec = ExpressiveMotion.Spatial.screenSlide()
             )
         }
     }
@@ -713,12 +711,7 @@ private fun ChatContent(
         modifier = Modifier
             .fillMaxSize()
             .padding(top = paddingValues.calculateTopPadding()),
-        shape = RoundedCornerShape(
-            topStart = 28.dp,
-            topEnd = 28.dp,
-            bottomStart = 0.dp,
-            bottomEnd = 0.dp
-        ),
+        shape = ExpressiveShapes.ScreenContainer,
         color = MaterialTheme.colorScheme.surfaceContainerLow
     ) {
         // Fix 3: Apply nestedScroll to detect upward scroll gestures immediately

@@ -38,6 +38,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.materialchat.domain.usecase.ExportConversationUseCase
 import com.materialchat.ui.theme.CustomShapes
+import com.materialchat.ui.theme.ExpressiveMotion
 import com.materialchat.ui.components.HapticPattern
 import com.materialchat.ui.components.rememberHapticFeedback
 
@@ -111,10 +112,7 @@ private fun ExportBottomSheetContent(
             .padding(horizontal = 16.dp)
             .padding(bottom = 32.dp)
             .animateContentSize(
-                animationSpec = spring(
-                    dampingRatio = Spring.DampingRatioMediumBouncy,
-                    stiffness = Spring.StiffnessMediumLow
-                )
+                animationSpec = ExpressiveMotion.Spatial.contentSize()
             )
     ) {
         // Title
@@ -189,10 +187,7 @@ private fun ExportFormatOption(
 
     val scale by animateFloatAsState(
         targetValue = if (isPressed) 0.96f else 1f,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessMedium
-        ),
+        animationSpec = ExpressiveMotion.Spatial.scale(),
         label = "export_option_scale"
     )
 
