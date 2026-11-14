@@ -96,3 +96,41 @@ internal fun DrawScope.drawCapsuleHalo(
         )
     }
 }
+
+/**
+ * Feathers the capsule boundary with its own colour. Blurred (API 31+): one stroke centred on the
+ * edge, softened by the caller's RenderEffect. Fallback: concentric strokes from fully opaque just
+ * inside the edge to transparent outside, approximating the same falloff.
+ */
+internal fun DrawScope.drawCapsuleFeather(
+    geometry: CapsuleParticleGeometry,
+    color: Color,
+    alpha: Float,
+    widthPx: Float,
+    blurred: Boolean,
+) {
+    if (alpha <= 0f || widthPx <= 0f || !widthPx.isFinite()) return
+    val rect = geometry.rect
+    fun ring(outset: Float, stroke: Float, a: Float) {
+        if (a <= 0f) return
+        val radius = (geometry.radius + outset).coerceAtLeast(0f)
+        drawRoundRect(
+            color = color.copy(alpha = color.alpha * alpha * a),
+            topLeft = Offset(rect.left - outset, rect.top - outset),
+            size = Size(rect.width + 2f * outset, rect.height + 2f * outset),
+            cornerRadius = CornerRadius(radius, radius),
+            style = Stroke(width = stroke + 0.5f)
+        )
+    }
+    if (blurred) {
+        ring(0f, widthPx, 1f)
+    } else {
+        val steps = 10
+        val step = widthPx / steps
+        for (i in 0 until steps) {
+            val outset = -widthPx / 2f + (i + 0.5f) * step
+            val t = (i + 0.5f) / steps
+            ring(outset, step, 1f - t * t * (3f - 2f * t))
+        }
+    }
+}

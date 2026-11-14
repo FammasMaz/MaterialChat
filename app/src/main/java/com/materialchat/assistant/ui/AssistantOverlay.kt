@@ -71,6 +71,7 @@ import com.materialchat.data.local.preferences.AppPreferences
 import com.materialchat.ui.theme.ExpressiveMotion
 import com.materialchat.ui.theme.MaterialChatTheme
 import com.materialchat.ui.theme.isDynamicColorSupported
+import com.materialchat.ui.theme.particles.ParticleFieldStyle
 import com.materialchat.ui.theme.particles.neuralParticleField
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.text.BasicTextField
@@ -277,6 +278,11 @@ fun AssistantOverlay(
                 .neuralParticleField(
                     capsuleRect = decorationRect,
                     cornerRadius = 38.dp,
+                    // Drawn in front of the pill: its edge is feathered with its own colour and the
+                    // dots sit over the boundary, as in essentials' Gemini pill. A shallow inner band
+                    // keeps dots near the edge, clear of the pill's text and buttons.
+                    featherColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    style = ParticleFieldStyle(innerBand = 14.dp),
                     color = Color.White,
                     enabled = neuralExpressive,
                     // The card reports its rect; until it does, there is nothing to decorate.

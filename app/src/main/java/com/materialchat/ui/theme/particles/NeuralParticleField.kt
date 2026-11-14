@@ -120,6 +120,13 @@ fun Modifier.neuralParticleField(
     idleTimeoutMillis: Long? = null,
     fadeSpec: ParticleFadeSpec = ParticleFadeSpec(),
     edgeStyle: ParticleEdgeStyle = ParticleEdgeStyle(),
+    /**
+     * When set, the field draws IN FRONT of this node's content: the capsule's boundary is
+     * feathered by a blurred stroke of this colour (normally the capsule's own surface colour), so
+     * the card edge melts into the background, and the particles sit on top of the edge.
+     */
+    featherColor: Color? = null,
+    featherWidth: Dp = 22.dp,
 ): Modifier = composed {
     val context = LocalContext.current
     val view = LocalView.current
@@ -254,6 +261,12 @@ fun Modifier.neuralParticleField(
             )
             control.onEdgeTreatmentResolved?.invoke(edgeTreatment)
             val rings = haloRings(edgeStyle.haloWidth.toPx(), edgeStyle.haloSteps, edgeStyle.haloOpacity)
+            val featherPx = featherWidth.toPx()
+            val featherLayer = if (featherColor != null && edgeTreatment == ParticleEdgeTreatment.Blur) {
+                obtainGraphicsLayer().also {
+                    it.renderEffect = BlurEffect(blurRadiusPx, blurRadiusPx, TileMode.Decal)
+                }
+            } else null
             val blurLayer = if (edgeTreatment == ParticleEdgeTreatment.Blur) {
                 obtainGraphicsLayer().also {
                     // Decal: the field fades into transparency at the layer edge instead of
@@ -261,9 +274,9 @@ fun Modifier.neuralParticleField(
                     it.renderEffect = BlurEffect(blurRadiusPx, blurRadiusPx, TileMode.Decal)
                 }
             } else null
-            onDrawBehind {
+            val drawDecoration: androidx.compose.ui.graphics.drawscope.ContentDrawScope.() -> Unit = drawDecoration@{
                 // No rect and no inset means the caller has nothing to decorate yet.
-                if (capsuleRect == null && capsuleInset == null) return@onDrawBehind
+                if (capsuleRect == null && capsuleInset == null) return@drawDecoration
                 val capsule = CapsuleParticleGeometry.create(
                     size,
                     capsuleInset?.toPx() ?: 0f,
@@ -278,7 +291,18 @@ fun Modifier.neuralParticleField(
                     val time = control.timeSeconds?.takeIf { it.isFinite() } ?: elapsed
                     // The glow is blurred into a soft edge; particles stay crisp on top, as in
                     // essentials where the blur softens the pill boundary, not the dots.
-                    if (blurLayer != null) {
+                    if (featherColor != null) {
+                        // Feathered edge in front: a blurred stroke of the capsule colour straddles
+                        // the boundary, so the hard edge dissolves into the background.
+                        if (featherLayer != null) {
+                            featherLayer.record {
+                                drawCapsuleFeather(capsule, featherColor, strength, featherPx, blurred = true)
+                            }
+                            drawLayer(featherLayer)
+                        } else {
+                            drawCapsuleFeather(capsule, featherColor, strength, featherPx, blurred = false)
+                        }
+                    } else if (blurLayer != null) {
                         // Only this node's background is recorded: the card content drawn on
                         // top is never part of the blurred layer.
                         blurLayer.record { drawCapsuleHalo(capsule, latestColor, strength, rings) }
@@ -291,6 +315,17 @@ fun Modifier.neuralParticleField(
                             paint(capsule, time, alpha, latestColor, pixels, screenOrigin, samples)
                         }
                     }
+                }
+            }
+            if (featherColor != null) {
+                onDrawWithContent {
+                    drawContent()
+                    drawDecoration()
+                }
+            } else {
+                onDrawWithContent {
+                    drawDecoration()
+                    drawContent()
                 }
             }
         }
