@@ -70,6 +70,27 @@ grep 'MaterialChatSpeech' "$out/logcat.txt" | tail -5 | tee "$out/recognizer.txt
 grep -q 'ContractRecognitionService' "$out/recognizer.txt"
 grep -q 'Stop listening' "$out/ui.xml"
 
+# --- Display keep-awake -----------------------------------------------------------
+# On the lock screen the display timeout used to cut a spoken reply off mid-sentence.
+# The session must hold FLAG_KEEP_SCREEN_ON on its own window while it works; it is
+# listening at this point. The instrumentation test covers releasing it on hide, since a
+# directly-constructed session has no platform window to carry the flag.
+python3 - "$out/windows.txt" <<'PYKEEP'
+import re, sys
+
+text = open(sys.argv[1], errors='replace').read()
+blocks = re.split(r'\n(?=  Window #)', text)
+session = [b for b in blocks if 'MaterialChatVoiceInteractionSession' in b.split('\n')[0]
+           or 'ty=VOICE_INTERACTION' in b]
+assert session, 'no voice-interaction session window in the window dump'
+block = session[0]
+assert 'KEEP_SCREEN_ON' in block, (
+    'the assistant session window does not hold FLAG_KEEP_SCREEN_ON while it works:\n'
+    + '\n'.join(line for line in block.splitlines()[:12])
+)
+print('keep-screen-on: session window holds FLAG_KEEP_SCREEN_ON')
+PYKEEP
+
 # --- Neural particle field (assistant window only) --------------------------------
 # The decoration is the ported essentials particle field: an AGSL runtime painter on
 # API 33+ and a static Path painter below. Production logs one line per painter/capsule

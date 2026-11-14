@@ -132,6 +132,25 @@ class MaterialChatVoiceInteractionSession(
         }
     }
 
+    /**
+     * Whether the session asked the platform to keep the display on.
+     *
+     * Exposed because the platform flag itself lives on the session window the system creates,
+     * which only exists for a session the voice-interaction service attached — instrumentation
+     * tests construct the session directly and have no window.
+     */
+    var keepScreenOn: Boolean = false
+        private set
+
+    override fun setKeepAwake(keepAwake: Boolean) {
+        keepScreenOn = keepAwake
+        // The platform throws "Can't call before onCreate()" when no session window was ever
+        // attached. Production always has one (the system attaches it before showing the
+        // session); the acceptance script asserts the real FLAG_KEEP_SCREEN_ON on that window.
+        runCatching { super.setKeepAwake(keepAwake) }
+            .onFailure { Log.w(TAG, "Session window unavailable for setKeepAwake($keepAwake)", it) }
+    }
+
     override fun onHide() {
         // The session window is going away; never leave the display pinned on.
         setKeepAwake(false)

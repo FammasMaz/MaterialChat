@@ -48,7 +48,6 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableLongStateOf
 import android.graphics.Rect as AndroidRect
 import android.os.Build
 import android.view.ViewTreeObserver
@@ -291,17 +290,16 @@ fun AssistantOverlay(
         voiceState is VoiceState.Listening || voiceState is VoiceState.Processing ||
         voiceState is VoiceState.Thinking || voiceState is VoiceState.Responding ||
         voiceState is VoiceState.Speaking
-    var idleForMillis by remember { mutableLongStateOf(0L) }
+    // One write on entry and one when the grace expires — the earlier per-second tick kept
+    // recomposing the whole overlay for a minute after every reply, and left the composition
+    // permanently busy for anything waiting on it (the hosted particle test timed out on it).
     LaunchedEffect(assistantBusy) {
-        idleForMillis = 0L
+        onKeepScreenOnChanged(shouldKeepScreenOn(assistantBusy, idleForMillis = 0L))
         if (assistantBusy) return@LaunchedEffect
-        while (idleForMillis < ASSISTANT_KEEP_AWAKE_GRACE_MILLIS) {
-            delay(1_000)
-            idleForMillis += 1_000
-        }
-    }
-    LaunchedEffect(assistantBusy, idleForMillis) {
-        onKeepScreenOnChanged(shouldKeepScreenOn(assistantBusy, idleForMillis))
+        delay(ASSISTANT_KEEP_AWAKE_GRACE_MILLIS)
+        onKeepScreenOnChanged(
+            shouldKeepScreenOn(busy = false, idleForMillis = ASSISTANT_KEEP_AWAKE_GRACE_MILLIS)
+        )
     }
 
     // The screen-edge light follows the session's phase: full while capturing speech, calmer
