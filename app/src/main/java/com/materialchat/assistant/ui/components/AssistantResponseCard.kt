@@ -1,8 +1,6 @@
 package com.materialchat.assistant.ui.components
 
 import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.spring
 import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -26,11 +24,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
+import com.materialchat.assistant.ui.AssistantColors
 import com.materialchat.assistant.ui.AssistantMessage
+import com.materialchat.assistant.ui.AssistantMotion
+import com.materialchat.assistant.ui.AssistantTypography
 import com.materialchat.domain.model.MessageRole
 import com.materialchat.ui.components.MarkdownText
 import com.materialchat.ui.screens.chat.components.TypingIndicator
@@ -152,9 +152,8 @@ private fun UserQueryBubble(query: String) {
     val configuration = LocalConfiguration.current
     val maxBubbleWidth = (configuration.screenWidthDp * 0.82f).dp
 
-    // Color blending matching MessageBubble.kt exactly
-    val surfaceBase = MaterialTheme.colorScheme.surfaceContainer
-    val userBubbleColor = lerp(surfaceBase, MaterialTheme.colorScheme.primaryContainer, 0.75f)
+    // Bold tonal fill: the question sits in the full primary container on the tinted answer surface.
+    val userBubbleColor = AssistantColors.querySurface(MaterialTheme.colorScheme)
 
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -168,7 +167,7 @@ private fun UserQueryBubble(query: String) {
         ) {
             Text(
                 text = query,
-                style = MaterialTheme.typography.bodyLarge,
+                style = AssistantTypography.query(MaterialTheme.typography),
                 color = MaterialTheme.colorScheme.onPrimaryContainer,
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
             )
@@ -190,19 +189,14 @@ private fun AssistantBubble(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 4.dp, vertical = 4.dp)
-            .animateContentSize(
-                animationSpec = spring(
-                    dampingRatio = Spring.DampingRatioNoBouncy,
-                    stiffness = Spring.StiffnessMediumLow
-                )
-            ),
+            .animateContentSize(animationSpec = AssistantMotion.contentSize()),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         if (response.isNotEmpty()) {
             MarkdownText(
                 markdown = response,
                 textColor = MaterialTheme.colorScheme.onSurface,
-                style = MaterialTheme.typography.bodyLarge
+                style = AssistantTypography.answer(MaterialTheme.typography)
             )
         }
         if (isStreaming) {
