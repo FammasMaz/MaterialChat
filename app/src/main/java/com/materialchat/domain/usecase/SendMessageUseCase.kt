@@ -1,6 +1,7 @@
 package com.materialchat.domain.usecase
 
 import android.content.Context
+import android.util.Log
 import com.materialchat.data.local.preferences.AppPreferences
 import com.materialchat.di.ApplicationScope
 import com.materialchat.domain.model.Attachment
@@ -41,6 +42,8 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import javax.inject.Inject
+
+private const val STREAM_CLEANUP_TAG = "SendMessageUseCase"
 
 /**
  * Use case for sending a message in a conversation and receiving a streaming response.
@@ -462,11 +465,15 @@ class SendMessageUseCase @Inject constructor(
             // This prevents messages from getting stuck with isStreaming=true forever
             // (e.g. when the coroutine is cancelled by navigation or user action).
             withContext(NonCancellable) {
-                try {
-                    contentUpdater.flush()
-                    conversationRepository.setMessageStreaming(assistantMessageId, false)
-                    ImageGenerationForegroundService.stop(context, conversationId)
-                } catch (_: Exception) { }
+                // Each step is independent: a failed flush must not leave the streaming flag set
+                // or the foreground service running. Failures are logged rather than dropped so
+                // a stuck badge can be traced instead of silently surviving until process start.
+                runCatching { contentUpdater.flush() }
+                    .onFailure { Log.w(STREAM_CLEANUP_TAG, "stream cleanup: flush failed", it) }
+                runCatching { conversationRepository.setMessageStreaming(assistantMessageId, false) }
+                    .onFailure { Log.w(STREAM_CLEANUP_TAG, "stream cleanup: clearing isStreaming failed", it) }
+                runCatching { ImageGenerationForegroundService.stop(context, conversationId) }
+                    .onFailure { Log.w(STREAM_CLEANUP_TAG, "stream cleanup: stopping image service failed", it) }
             }
         }.collect { state ->
             // Re-emit with the correct message ID for the UI

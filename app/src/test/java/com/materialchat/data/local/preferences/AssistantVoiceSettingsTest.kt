@@ -34,4 +34,17 @@ class AssistantVoiceSettingsTest {
         assertEquals(0.25f, AssistantVoiceSettings(speechRate = -1f).normalized().speechRate, 0f)
         assertEquals(2f, AssistantVoiceSettings(speechRate = 3f).normalized().speechRate, 0f)
     }
+
+    @Test fun continuationWindowHonoursTheSetting() {
+        val now = 10_000_000L
+        assertFalse(shouldContinueAssistantChat(0, now - 1_000, now))
+        assertTrue(shouldContinueAssistantChat(1, now - 30_000, now))
+        assertFalse(shouldContinueAssistantChat(1, now - 61_000, now))
+    }
+
+    @Test fun aClockMovedBackwardsDoesNotDropTheChat() {
+        val now = 10_000_000L
+        // Elapsed time is negative here; that must count as "no time passed", not as expired.
+        assertTrue(shouldContinueAssistantChat(5, now + 60_000, now))
+    }
 }

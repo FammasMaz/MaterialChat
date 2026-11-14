@@ -19,8 +19,10 @@ class ContinueAssistantChatTest {
     @Test fun pastWindowStartsFresh() {
         assertFalse(shouldContinueAssistantChat(5, lastActivityMillis = now - 6 * 60_000, nowMillis = now))
     }
-    @Test fun clockMovingBackwardsStartsFresh() {
-        assertFalse(shouldContinueAssistantChat(60, lastActivityMillis = now + 5_000, nowMillis = now))
+    @Test fun clockMovingBackwardsContinues() {
+        // A backwards clock jump counts as no time elapsed rather than as an expired window,
+        // so a time change cannot drop a chat the user is in the middle of.
+        assertTrue(shouldContinueAssistantChat(60, lastActivityMillis = now + 5_000, nowMillis = now))
     }
     @Test fun defaultIsNeverAndUnknownValuesNormalizeToNever() {
         assertEquals(0, AssistantVoiceSettings().continueChatMinutes)

@@ -47,6 +47,12 @@ enum class AssistantSpeechBackend { ANDROID, GEMINI, SHERPA }
 /** Allowed "continue previous assistant chat" windows, in minutes; 0 = never. */
 val CONTINUE_CHAT_CHOICES = listOf(0, 1, 5, 15, 60)
 
-/** Whether a new invocation should resume the previous assistant chat. */
+/**
+ * Whether a new invocation should resume the previous assistant chat.
+ *
+ * A clock that moved backwards counts as no time elapsed rather than as an expired window,
+ * so a time change cannot drop a chat the user was in the middle of.
+ */
 fun shouldContinueAssistantChat(continueChatMinutes: Int, lastActivityMillis: Long, nowMillis: Long): Boolean =
-    continueChatMinutes > 0 && nowMillis - lastActivityMillis in 0..continueChatMinutes * 60_000L
+    continueChatMinutes > 0 &&
+        (nowMillis - lastActivityMillis).coerceAtLeast(0L) <= continueChatMinutes * 60_000L
