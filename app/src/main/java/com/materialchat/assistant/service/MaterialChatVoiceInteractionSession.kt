@@ -7,6 +7,8 @@ import android.content.Intent
 import android.graphics.Bitmap
 import android.os.Bundle
 import android.service.voice.VoiceInteractionSession
+import android.util.Log
+import androidx.compose.runtime.mutableStateOf
 import android.view.View
 import android.view.ViewGroup
 import android.view.WindowManager
@@ -69,6 +71,14 @@ class MaterialChatVoiceInteractionSession(
     private var composeView: ComposeView? = null
     private var assistantViewModel: AssistantViewModel? = null
 
+    /**
+     * The assist screenshot of the screen the assistant was opened over, when the platform
+     * delivers one (shown with SHOW_WITH_SCREENSHOT, "Use screenshot" enabled for the assistant
+     * app, no secure window, keyguard not locked). The overlay paints it as a shrinking backdrop;
+     * it is released on hide.
+     */
+    private val assistScreenshot = mutableStateOf<Bitmap?>(null)
+
     init {
         savedStateRegistryController.performAttach()
         savedStateRegistryController.performRestore(null)
@@ -98,9 +108,18 @@ class MaterialChatVoiceInteractionSession(
         lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_PAUSE)
         lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_STOP)
         super.onHide()
+        releaseScreenshot()
+    }
+
+    /** Drops the backdrop first so no later frame can draw the recycled bitmap. */
+    private fun releaseScreenshot() {
+        val previous = assistScreenshot.value
+        assistScreenshot.value = null
+        previous?.recycle()
     }
 
     override fun onDestroy() {
+        releaseScreenshot()
         lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_DESTROY)
         viewModelStoreInstance.clear()
         composeView = null
@@ -205,7 +224,8 @@ class MaterialChatVoiceInteractionSession(
                 )
                 viewModel.onClockHandoff(event.token, error)
                 if (error == null) hide()
-            }
+            },
+            assistScreenshot = assistScreenshot.value
         )
     }
 
@@ -270,8 +290,20 @@ class MaterialChatVoiceInteractionSession(
         super.onHandleAssistSecondary(data, structure, content, index, count)
     }
 
+    /**
+     * Delivered after show() when the invocation carried SHOW_WITH_SCREENSHOT (the system
+     * assist gesture and power-button invocation do) and Settings.Secure.ASSIST_SCREENSHOT_ENABLED
+     * is not 0 ("Use screenshot" under Default apps > Digital assistant app). The overlay shows
+     * it as the shrinking backdrop; a null or absent screenshot leaves the plain scrim.
+     */
     override fun onHandleScreenshot(screenshot: Bitmap?) {
         super.onHandleScreenshot(screenshot)
-        // Could analyze the screenshot for context-aware assistance
+        if (screenshot !== assistScreenshot.value) releaseScreenshot()
+        assistScreenshot.value = screenshot
+        Log.i(TAG, "assist screenshot=" + (screenshot?.let { "${it.width}x${it.height}" } ?: "none"))
+    }
+
+    private companion object {
+        const val TAG = "MaterialChatAssistant"
     }
 }

@@ -2,6 +2,7 @@ package com.materialchat.assistant.ui
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.graphics.Bitmap
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.LiveRegionMode
@@ -132,7 +133,9 @@ fun AssistantOverlay(
     viewModel: AssistantViewModel,
     onDismiss: () -> Unit,
     onOpenInApp: (String?) -> Unit,
-    onOpenClock: (AssistantEvent.OpenClock) -> Unit
+    onOpenClock: (AssistantEvent.OpenClock) -> Unit,
+    /** The platform's assist screenshot, painted as the shrinking backdrop; null leaves the scrim. */
+    assistScreenshot: Bitmap? = null
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val voiceState by viewModel.voiceState.collectAsStateWithLifecycle()
@@ -294,6 +297,10 @@ fun AssistantOverlay(
         Box(
             modifier = Modifier
                 .fillMaxSize()
+                // The screen the assistant was opened over, shrunk to 92% with rounded corners
+                // under the dim scrim (Gemini's shrinking screen), springing back while leaving.
+                // Only when the platform delivered a screenshot; otherwise nothing is drawn.
+                .assistScreenshotBackdrop(screenshot = assistScreenshot, shrunk = !leaving)
                 .background(Color.Black.copy(alpha = 0.42f))
                 // The edge light frames the whole window (before the keyboard padding) and sits
                 // under the pill and its particle field (before them in the chain). The hosted

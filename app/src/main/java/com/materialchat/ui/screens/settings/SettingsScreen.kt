@@ -1127,6 +1127,12 @@ private fun SuccessContent(
                 onReconnectAssistant = onReconnectAssistant
             )
             AssistantVoiceSettingsPanel()
+            Text(
+                text = "Shrunk-screen backdrop: the assistant can show the screen it was opened over only while \u201cUse screenshot\u201d is on under the system's Settings \u203a Apps \u203a Default apps \u203a Digital assistant app.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 8.dp)
+            )
         }
 
         item {
