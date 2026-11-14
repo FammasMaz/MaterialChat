@@ -51,13 +51,16 @@ import com.materialchat.ui.theme.MessageBubbleShapes
  * @param isLoading Whether a response is still loading
  * @param onOpenInApp Callback to open the conversation in the main app
  * @param modifier Modifier for the card
+ * @param showContinueButton Whether to render the trailing "Continue in App" chip; the overlay's
+ * response surface supplies its own action row and passes false.
  */
 @Composable
 fun AssistantResponseCard(
     messages: List<AssistantMessage>,
     isLoading: Boolean,
     onOpenInApp: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    showContinueButton: Boolean = true
 ) {
     val listState = rememberLazyListState()
     val density = LocalDensity.current
@@ -133,8 +136,8 @@ fun AssistantResponseCard(
             }
         }
 
-        // Continue in App button (always visible when there are messages)
-        if (messages.isNotEmpty()) {
+        // Continue in App button (visible when there are messages, unless the host owns actions)
+        if (showContinueButton && messages.isNotEmpty()) {
             ContinueInAppButton(onClick = onOpenInApp)
         }
     }
