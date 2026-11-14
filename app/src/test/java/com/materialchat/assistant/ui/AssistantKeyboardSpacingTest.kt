@@ -129,4 +129,16 @@ class AssistantKeyboardSpacingTest {
         assertEquals(67, AssistantKeyboardSpacing.remainingObstructionPx(
             hostBottomOnScreen = 2992, rootBottomOnScreen = 2992, rootImeBottomPx = 0, rootNavigationBarBottomPx = 67))
     }
+
+    @Test
+    fun `window shrunk above the keyboard that still reports the ime inset gets no extra padding`() {
+        // Regression (real phone, Gboard): the session window was shrunk to end at the keyboard top
+        // yet still reported the full IME inset; measuring from the window bottom reserved the
+        // keyboard a second time. Measured from the screen bottom the overlap is zero.
+        val screenBottom = 2992
+        val imeTop = screenBottom - 1218
+        assertEquals(0, AssistantKeyboardSpacing.remainingObstructionPx(
+            hostBottomOnScreen = imeTop, rootBottomOnScreen = screenBottom,
+            rootImeBottomPx = 1218, rootNavigationBarBottomPx = 67))
+    }
 }

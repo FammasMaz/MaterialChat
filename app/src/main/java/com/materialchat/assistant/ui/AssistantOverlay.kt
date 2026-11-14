@@ -163,9 +163,14 @@ fun AssistantOverlay(
             val rootLoc = IntArray(2).also(root::getLocationOnScreen)
             val ime = rootInsets.getInsets(android.view.WindowInsets.Type.ime()).bottom
             val nav = rootInsets.getInsets(android.view.WindowInsets.Type.navigationBars()).bottom
+            // The keyboard and navigation bar are docked to the bottom of the SCREEN. Measuring
+            // from the window's bottom double-counts on phones that both shrink the session
+            // window above the keyboard and still report the full IME inset (the remaining gap).
+            val screenBottom = hostView.context.getSystemService(android.view.WindowManager::class.java)
+                ?.maximumWindowMetrics?.bounds?.bottom ?: (rootLoc[1] + root.height)
             AssistantKeyboardSpacing.remainingObstructionPx(
                 hostBottomOnScreen = hostLoc[1] + hostView.height,
-                rootBottomOnScreen = rootLoc[1] + root.height,
+                rootBottomOnScreen = maxOf(screenBottom, rootLoc[1] + root.height),
                 rootImeBottomPx = ime,
                 rootNavigationBarBottomPx = nav
             ).also { padding ->
@@ -323,6 +328,7 @@ fun AssistantOverlay(
                     onDismiss = viewModel::dismiss,
                     onNewChat = viewModel::startNewChat,
                     onCardBoundsChange = { cardBoundsInRoot = it },
+                    softEdges = neuralExpressive,
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
                         .clickable(
@@ -370,6 +376,8 @@ internal fun AssistantOverlayContent(
     onOpenInApp: () -> Unit,
     onDismiss: () -> Unit,
     onNewChat: () -> Unit,
+    /** Soft-edged pill: no own fill or shadow; the parent paints a blurred fill behind it. */
+    softEdges: Boolean = false,
     onCardBoundsChange: (Rect) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
@@ -469,7 +477,7 @@ internal fun AssistantOverlayContent(
                 clip = false
                 compositingStrategy = CompositingStrategy.ModulateAlpha
             }
-            .onGloballyPositioned { onCardBoundsChange(it.boundsInRoot()) }
+
     ) {
         Column(
             modifier = Modifier
@@ -525,11 +533,14 @@ internal fun AssistantOverlayContent(
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(76.dp),
+                    .height(76.dp)
+                    .testTag("assistant_pill")
+                    // The particle field and soft fill wrap the pill itself.
+                    .onGloballyPositioned { onCardBoundsChange(it.boundsInRoot()) },
                 shape = RoundedCornerShape(38.dp),
-                color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                tonalElevation = 6.dp,
-                shadowElevation = 16.dp
+                color = if (softEdges) Color.Transparent else MaterialTheme.colorScheme.surfaceContainerHigh,
+                tonalElevation = if (softEdges) 0.dp else 6.dp,
+                shadowElevation = if (softEdges) 0.dp else 16.dp
             ) {
                 Row(
                     modifier = Modifier

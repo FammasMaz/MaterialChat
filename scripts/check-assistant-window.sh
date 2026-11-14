@@ -82,10 +82,12 @@ def bounds(node):
     return list(map(int, re.findall(r'\d+', node.get('bounds', ''))))
 
 
-sheets = [n for n in ET.parse(ui).iter('node')
-          if n.get('resource-id', '').split('/')[-1] == 'assistant_sheet']
+all_nodes = list(ET.parse(ui).iter('node'))
+sheets = [n for n in all_nodes if n.get('resource-id', '').split('/')[-1] == 'assistant_sheet']
 assert len(sheets) == 1, 'Missing unique assistant sheet boundary'
-left, top, right, bottom = bounds(sheets[0])
+# The particle field wraps the pill; fall back to the sheet for older layouts.
+pills = [n for n in all_nodes if n.get('resource-id', '').split('/')[-1] == 'assistant_pill']
+left, top, right, bottom = bounds((pills or sheets)[0])
 densities = re.findall(r'(?:Physical|Override) density:\s*(\d+)', open(density_path).read())
 assert densities, 'Cannot establish display density'
 scale = int(densities[-1]) / 160.0

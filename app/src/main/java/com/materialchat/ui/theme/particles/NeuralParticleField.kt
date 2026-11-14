@@ -292,17 +292,8 @@ fun Modifier.neuralParticleField(
                     // The glow is blurred into a soft edge; particles stay crisp on top, as in
                     // essentials where the blur softens the pill boundary, not the dots.
                     if (featherColor != null) {
-                        // Feathered edge in front: a blurred stroke of the capsule colour straddles
-                        // the boundary, so the hard edge dissolves into the background.
-                        if (featherLayer != null) {
-                            featherLayer.record {
-                                drawCapsuleFeather(capsule, featherColor, strength, featherPx, blurred = true)
-                            }
-                            drawLayer(featherLayer)
-                        } else {
-                            drawCapsuleFeather(capsule, featherColor, strength, featherPx, blurred = false)
-                        }
-                    } else if (blurLayer != null) {
+                        // The halo is replaced by the capsule's own soft fill, drawn behind content.
+} else if (blurLayer != null) {
                         // Only this node's background is recorded: the card content drawn on
                         // top is never part of the blurred layer.
                         blurLayer.record { drawCapsuleHalo(capsule, latestColor, strength, rings) }
@@ -319,6 +310,18 @@ fun Modifier.neuralParticleField(
             }
             if (featherColor != null) {
                 onDrawWithContent {
+                    // Soft-edged capsule: a blurred fill of the capsule colour behind the content,
+                    // so the boundary itself is blurry; particles are drawn in front of it.
+                    val fillCapsule = if (capsuleRect == null && capsuleInset == null) null
+                    else CapsuleParticleGeometry.create(size, capsuleInset?.toPx() ?: 0f, cornerRadius.toPx(), capsuleRect)
+                    if (fillCapsule != null) {
+                        if (featherLayer != null) {
+                            featherLayer.record { drawCapsuleSoftFill(fillCapsule, featherColor, featherPx, blurred = true) }
+                            drawLayer(featherLayer)
+                        } else {
+                            drawCapsuleSoftFill(fillCapsule, featherColor, featherPx, blurred = false)
+                        }
+                    }
                     drawContent()
                     drawDecoration()
                 }

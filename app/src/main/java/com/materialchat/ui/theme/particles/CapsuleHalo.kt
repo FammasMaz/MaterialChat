@@ -134,3 +134,43 @@ internal fun DrawScope.drawCapsuleFeather(
         }
     }
 }
+
+/**
+ * A capsule filled with [color] whose boundary is soft. Blurred (API 31+): a solid capsule that the
+ * caller's RenderEffect softens. Fallback: a solid core inset by half [featherPx] plus concentric
+ * strokes fading from opaque to transparent across the boundary.
+ */
+internal fun DrawScope.drawCapsuleSoftFill(
+    geometry: CapsuleParticleGeometry,
+    color: Color,
+    featherPx: Float,
+    blurred: Boolean,
+) {
+    val rect = geometry.rect
+    fun fill(outset: Float, a: Float, stroke: Float?) {
+        if (a <= 0f) return
+        val w = rect.width + 2f * outset
+        val h = rect.height + 2f * outset
+        if (w <= 0f || h <= 0f) return
+        val radius = (geometry.radius + outset).coerceAtLeast(0f)
+        drawRoundRect(
+            color = color.copy(alpha = color.alpha * a),
+            topLeft = Offset(rect.left - outset, rect.top - outset),
+            size = Size(w, h),
+            cornerRadius = CornerRadius(radius, radius),
+            style = if (stroke == null) androidx.compose.ui.graphics.drawscope.Fill else Stroke(width = stroke + 0.5f)
+        )
+    }
+    if (blurred || featherPx <= 0f || !featherPx.isFinite()) {
+        fill(0f, 1f, null)
+        return
+    }
+    fill(-featherPx / 2f, 1f, null)
+    val steps = 10
+    val step = featherPx / steps
+    for (i in 0 until steps) {
+        val outset = -featherPx / 2f + (i + 0.5f) * step
+        val t = (i + 0.5f) / steps
+        fill(outset, 1f - t * t * (3f - 2f * t), step)
+    }
+}
