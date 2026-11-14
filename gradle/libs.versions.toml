@@ -44,6 +44,8 @@ playBilling = "8.3.0"
 
 # OkHttp
 okhttp = "4.12.0"
+sherpaOnnx = "v2.0.1"
+commonsCompress = "1.27.1"
 
 # Kotlin Serialization
 kotlinxSerializationJson = "1.7.3"
@@ -126,6 +128,10 @@ okhttp = { group = "com.squareup.okhttp3", name = "okhttp", version.ref = "okhtt
 okhttp-dnsoverhttps = { group = "com.squareup.okhttp3", name = "okhttp-dnsoverhttps", version.ref = "okhttp" }
 okhttp-logging-interceptor = { group = "com.squareup.okhttp3", name = "logging-interceptor", version.ref = "okhttp" }
 okhttp-sse = { group = "com.squareup.okhttp3", name = "okhttp-sse", version.ref = "okhttp" }
+# sherpa-onnx Android AAR (JNI + onnxruntime), published through JitPack from the k2-fsa/sherpa-onnx tag.
+sherpa-onnx = { group = "com.github.k2-fsa.sherpa-onnx", name = "sherpa-onnx", version.ref = "sherpaOnnx" }
+# tar.bz2 extraction for downloaded TTS model bundles
+commons-compress = { group = "org.apache.commons", name = "commons-compress", version.ref = "commonsCompress" }
 
 # Kotlin Serialization
 kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "kotlinxSerializationJson" }

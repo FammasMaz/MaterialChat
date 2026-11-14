@@ -309,6 +309,9 @@ dependencies {
 
     // On-device AI
     implementation(libs.litert.lm.android)
+    // On-device neural text-to-speech (Supertonic / Kokoro via sherpa-onnx)
+    implementation(libs.sherpa.onnx)
+    implementation(libs.commons.compress)
     implementation(libs.mediapipe.tasks.genai)
     implementation(libs.mlkit.genai.prompt)
 
