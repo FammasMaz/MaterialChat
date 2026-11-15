@@ -1,4 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Material Chat</string>
+
+    <!-- Settings section supporting lines -->
+    <string name="settings_section_providers_supporting">Cloud and on-device model backends</string>
+    <string name="settings_section_premium_supporting">Support development or go ad-free</string>
+    <string name="settings_section_appearance_supporting">Theme, palette, shapes and type</string>
+    <string name="settings_section_chat_supporting">How conversations behave</string>
+    <string name="settings_section_data_supporting">Memories, backup and restore</string>
+    <string name="settings_section_web_search_supporting">Ground answers in live results</string>
+    <string name="settings_section_assistant_supporting">Voice, read-aloud and the system assistant</string>
+    <string name="settings_section_system_prompt_supporting">Instructions sent with every chat</string>
+    <string name="settings_section_about_supporting">Version and updates</string>
 </resources>
