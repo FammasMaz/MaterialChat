@@ -1,4 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Material Chat</string>
+    <plurals name="home_status_chat_count">
+        <item quantity="one">%1$d chat</item>
+        <item quantity="other">%1$d chats</item>
+    </plurals>
+    <string name="home_status_ready">Ready to chat</string>
+    <string name="home_status_no_provider">Add a provider to start</string>
+    <string name="home_empty_action_start_chat">Start a chat</string>
 </resources>
