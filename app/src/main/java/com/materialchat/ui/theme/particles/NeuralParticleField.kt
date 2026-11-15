@@ -52,12 +52,8 @@
  */
 package com.materialchat.ui.theme.particles
 
-import android.content.BroadcastReceiver
 import android.content.Context
-import android.content.Intent
-import android.content.IntentFilter
 import android.os.Build
-import android.os.PowerManager
 import android.provider.Settings
 import android.util.Log
 import androidx.compose.foundation.layout.Box
@@ -89,15 +85,10 @@ import androidx.compose.ui.graphics.layer.drawLayer
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.layout.positionOnScreen
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.core.content.ContextCompat
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleEventObserver
-import androidx.lifecycle.compose.LocalLifecycleOwner
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
@@ -178,7 +169,6 @@ fun Modifier.neuralParticleField(
      */
     dotsEnabled: Boolean = true,
 ): Modifier = composed {
-    val context = LocalContext.current
     val view = LocalView.current
     val density = LocalDensity.current
     val control = LocalNeuralParticleRenderControl.current
@@ -192,41 +182,12 @@ fun Modifier.neuralParticleField(
     }
     val latestActivation by rememberUpdatedState(activation)
     val latestColor by rememberUpdatedState(color)
-    // The composition's lifecycle owner, not the view tree's: it defaults to the window owner
-    // but honours an overriding provider, so a host that stops its content stops the frame loop.
-    val lifecycle = LocalLifecycleOwner.current.lifecycle
-    var started by remember(view, lifecycle) { mutableStateOf(false) }
-    var powerSave by remember(context) {
-        mutableStateOf(context.getSystemService(PowerManager::class.java)?.isPowerSaveMode == true)
-    }
-    var animationScale by remember(context) { mutableStateOf(readAnimationScale(context)) }
-    DisposableEffect(view, lifecycle) {
-        fun update() {
-            started = lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)
-        }
-        val observer = LifecycleEventObserver { _, _ -> update() }
-        lifecycle.addObserver(observer)
-        update()
-        onDispose { lifecycle.removeObserver(observer) }
-    }
-    DisposableEffect(context) {
-        val receiver = object : BroadcastReceiver() {
-            override fun onReceive(context: Context, intent: Intent) {
-                powerSave = context.getSystemService(PowerManager::class.java)?.isPowerSaveMode == true
-                animationScale = readAnimationScale(context)
-            }
-        }
-        ContextCompat.registerReceiver(
-            context,
-            receiver,
-            IntentFilter().apply {
-                addAction(PowerManager.ACTION_POWER_SAVE_MODE_CHANGED)
-                addAction("android.intent.action.ANIMATOR_DURATION_SCALE_CHANGED")
-            },
-            ContextCompat.RECEIVER_NOT_EXPORTED
-        )
-        onDispose { context.unregisterReceiver(receiver) }
-    }
+    // The host gates (lifecycle, power saver, animator scale) are shared with the assistant's
+    // dot lattice: one observer set, one definition of "may this surface request frames".
+    val gate = rememberParticleMotionGate()
+    val started = gate.started
+    val powerSave = gate.powerSave
+    val animationScale = gate.animationScale
     val painter = remember(forceFallback) { createParticlePainter(forceFallback) }
     DisposableEffect(painter) {
         control.onPainterResolved?.invoke(painter.kind)

@@ -69,6 +69,24 @@ class AssistantLatticeGeometryTest {
     }
 
     @Test
+    fun flattenedArraysMirrorTheRows() {
+        // The draw path walks the flat arrays (no per-frame allocation); they must be the rows.
+        val geometry = LatticeGeometry.layout(Size(320f, 640f), pitchPx = pitch)
+        assertEquals(geometry.rows.sumOf { it.points.size }, geometry.dotCount)
+        assertEquals(geometry.dotCount * 2, geometry.xy.size)
+        assertEquals(geometry.dotCount, geometry.bandAlpha.size)
+        var i = 0
+        for (row in geometry.rows) {
+            for (point in row.points) {
+                assertEquals(point.x, geometry.xy[2 * i], 0f)
+                assertEquals(point.y, geometry.xy[2 * i + 1], 0f)
+                assertEquals(row.alpha, geometry.bandAlpha[i], 0f)
+                i++
+            }
+        }
+    }
+
+    @Test
     fun degenerateSizesProduceNoDots() {
         assertTrue(LatticeGeometry.layout(Size(0f, 640f), pitchPx = pitch).rows.isEmpty())
         assertTrue(LatticeGeometry.layout(Size(320f, 640f), pitchPx = 0f).rows.isEmpty())

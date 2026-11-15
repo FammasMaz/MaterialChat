@@ -120,8 +120,9 @@ done
 }
 
 # --- Neural dot lattice (assistant window only) ------------------------------------
-# The assistant's backdrop texture is Gemini Live's: a bottom-anchored scrim band carrying a
-# uniform dot lattice (1.2dp dots on a 7dp pitch, fading upward). Production logs one line per
+# The assistant's dot texture is Gemini Live's: a bottom-anchored scrim band carrying a
+# uniform dot lattice (1.2dp dots on a 7dp pitch, fading upward) drawn in front of the pill,
+# whose dots twinkle in place on a draw-phase frame clock. Production logs one line per
 # lattice signature from inside the draw path, so this marker proves the real assistant window
 # laid the lattice out and drew it, rather than the modifier merely being attached.
 for attempt in $(seq 1 20); do
@@ -131,6 +132,30 @@ for attempt in $(seq 1 20); do
 done
 grep -q "NeuralLattice: dots=" "$out/logcat-lattice.txt"
 grep "NeuralLattice" "$out/logcat-lattice.txt" | tail -5 | tee "$out/lattice-summary.txt"
+
+# Motion: the lattice logs 'motion=on' only after 60 clock-driven draws each carrying a
+# different frame time (a presence fade alone never counts), with the fraction of reachable
+# dots lit on that draw. The hosted runner keeps animations enabled, so the real window must
+# reach this marker; it proves the frame clock drives the draw path, not merely that it exists.
+for attempt in $(seq 1 40); do
+  adb logcat -d > "$out/logcat-lattice.txt"
+  if grep -q "NeuralLattice: motion=on" "$out/logcat-lattice.txt"; then break; fi
+  sleep 1
+done
+grep -q "NeuralLattice: motion=on" "$out/logcat-lattice.txt"
+grep "NeuralLattice: motion=on" "$out/logcat-lattice.txt" | tail -1 | tee "$out/lattice-motion.txt"
+python3 - "$out/lattice-motion.txt" <<'PYMOTION'
+import re, sys
+line = open(sys.argv[1], errors='replace').read()
+m = re.search(r'motion=on frames=(\d+) lit=([0-9.]+)', line)
+if not m:
+    raise AssertionError('the lattice motion marker is malformed: ' + line)
+frames, lit = int(m.group(1)), float(m.group(2))
+assert frames >= 60, f'only {frames} clock-driven lattice draws landed'
+# The reference keeps 27-43% of its dots lit per frame; the lattice's lit window is 40%.
+assert 0.2 <= lit <= 0.6, f'lit fraction {lit} is outside the reference range'
+print(f'Neural dot lattice motion: frames={frames} lit={lit}')
+PYMOTION
 
 # The marker carries the geometry the real window resolved, so the band is checked exactly
 # rather than sampled: the assistant window is translucent and hosted over the launcher, where
