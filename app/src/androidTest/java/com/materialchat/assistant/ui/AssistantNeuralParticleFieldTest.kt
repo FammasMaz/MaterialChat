@@ -206,7 +206,11 @@ class AssistantNeuralParticleFieldTest {
 
     @Test fun actualCardStopsParticleFramesForMotionDisabledPreferenceAndLifecycle() {
         val enabled = mutableStateOf(true)
-        val motion = mutableStateOf(true)
+        // Motion starts off and is switched on only after the test clock is paused below: the
+        // field's frame loop keeps the Recomposer non-idle, so starting it while `setContent` is
+        // still auto-advancing makes that call's implicit waitForIdle spin forever (hosted run
+        // 43697249393). Nothing is skipped — the loop is switched on before any frame assertion.
+        val motion = mutableStateOf(false)
         val active = mutableStateOf(true)
         val idleTimeout = mutableStateOf<Long?>(null)
         val frames = AtomicInteger()
@@ -237,6 +241,8 @@ class AssistantNeuralParticleFieldTest {
         compose.waitForIdle()
         compose.waitUntil(60_000) { tileReady }
         compose.mainClock.autoAdvance = false
+        // Now the test owns the clock, so the motion loop can start without stranding waitForIdle.
+        compose.runOnUiThread { motion.value = true }
         compose.mainClock.advanceTimeBy(2_000)
         settleWithPausedClock()
         if (painterKind != NeuralParticlePainterKind.Runtime) {

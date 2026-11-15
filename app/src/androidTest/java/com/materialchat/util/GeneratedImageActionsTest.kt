@@ -90,7 +90,10 @@ class GeneratedImageActionsTest {
         val source = imageFile(AttachmentFiles.PICKED_DIR)
         val before = galleryIds()
         assertTrue(GeneratedImageActions.saveToGallery(context, Uri.fromFile(source).toString(), "image/jpeg"))
-        val added = galleryIds() - before
+        // MediaProvider publishes the row asynchronously; on a loaded runner the immediate query
+        // can still miss it (hosted run 43697249393 saw exactly that). Poll for the row instead of
+        // reading once, then assert the same thing about it.
+        val added = awaitGalleryIds(before)
         galleryItems += added.map { Uri.withAppendedPath(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, it.toString()) }
         assertEquals("Exactly one complete image must be published", 1, added.size)
         val uri = galleryItems.single()
@@ -115,6 +118,17 @@ class GeneratedImageActionsTest {
         val missing = File(context.cacheDir, "missing-${UUID.randomUUID()}.jpg")
         assertFalse(GeneratedImageActions.saveToGallery(context, Uri.fromFile(missing).toString(), "image/jpeg"))
         assertEquals(before, galleryIds())
+    }
+
+    /** Waits up to [timeoutMillis] for new MaterialChat rows to appear, then returns them. */
+    private fun awaitGalleryIds(before: Set<Long>, timeoutMillis: Long = 10_000): Set<Long> {
+        val deadline = System.currentTimeMillis() + timeoutMillis
+        var added = galleryIds() - before
+        while (added.isEmpty() && System.currentTimeMillis() < deadline) {
+            Thread.sleep(100)
+            added = galleryIds() - before
+        }
+        return added
     }
 
     private fun galleryIds(): Set<Long> {
