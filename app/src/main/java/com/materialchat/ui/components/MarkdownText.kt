@@ -912,26 +912,41 @@ private fun createMathWebView(
         isHorizontalScrollBarEnabled = true
         overScrollMode = android.view.View.OVER_SCROLL_IF_CONTENT_SCROLLS
 
+        // Through Compose view interop, requestDisallowInterceptTouchEvent(true) makes the
+        // interop holder consume every later pointer change of the gesture before any Compose
+        // scrollable sees it. Claiming on the first move with dx > dy (the old behaviour)
+        // therefore froze the Markdown table a fitting inline equation sat in: a drag that
+        // began on that cell never reached the table's horizontalScroll. Claim only a real
+        // horizontal drag the WebView can actually scroll (shouldMathWebViewClaimHorizontalDrag).
+        val touchSlop = android.view.ViewConfiguration.get(context).scaledTouchSlop.toFloat()
         var downX = 0f
         var downY = 0f
+        var claimedDrag = false
         @Suppress("ClickableViewAccessibility")
         setOnTouchListener { view, event ->
             when (event.actionMasked) {
                 android.view.MotionEvent.ACTION_DOWN -> {
                     downX = event.x
                     downY = event.y
+                    claimedDrag = false
                 }
                 android.view.MotionEvent.ACTION_MOVE -> {
-                    val dx = kotlin.math.abs(event.x - downX)
-                    val dy = kotlin.math.abs(event.y - downY)
-                    if (dx > dy) {
-                        // Let the WebView claim horizontal drags for wide equations instead
-                        // of the LazyColumn or bubble swipe gesture taking the gesture stream.
+                    if (!claimedDrag &&
+                        shouldMathWebViewClaimHorizontalDrag(
+                            dx = event.x - downX,
+                            dy = event.y - downY,
+                            touchSlop = touchSlop,
+                            canScrollLeft = view.canScrollHorizontally(-1),
+                            canScrollRight = view.canScrollHorizontally(1)
+                        )
+                    ) {
+                        claimedDrag = true
                         view.parent?.requestDisallowInterceptTouchEvent(true)
                     }
                 }
                 android.view.MotionEvent.ACTION_UP,
                 android.view.MotionEvent.ACTION_CANCEL -> {
+                    claimedDrag = false
                     view.parent?.requestDisallowInterceptTouchEvent(false)
                 }
             }
