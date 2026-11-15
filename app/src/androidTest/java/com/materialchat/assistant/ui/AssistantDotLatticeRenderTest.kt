@@ -3,7 +3,7 @@ package com.materialchat.assistant.ui
 import android.graphics.Bitmap
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -12,6 +12,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import org.junit.Assert.assertTrue
@@ -70,9 +71,11 @@ class AssistantDotLatticeRenderTest {
     @Composable
     private fun Specimen() {
         // A solid, dark host: the assistant window's own background, without a wallpaper behind it.
+        // A fixed, small host: the geometry is then exact and the pixel passes stay cheap, so
+        // this test cannot slow the classes that run after it on a loaded CI emulator.
         Box(
             modifier = Modifier
-                .fillMaxSize()
+                .size(width = 360.dp, height = 640.dp)
                 .background(Color(0xFF101014))
                 .assistantDotLattice(visible = true)
                 .testTag("lattice_host")
