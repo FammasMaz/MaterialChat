@@ -238,7 +238,7 @@ class AssistantNeuralParticleFieldTest {
         compose.waitUntil(60_000) { tileReady }
         compose.mainClock.autoAdvance = false
         compose.mainClock.advanceTimeBy(2_000)
-        compose.waitForIdle()
+        settleWithPausedClock()
         if (painterKind != NeuralParticlePainterKind.Runtime) {
             // The static painter (below API 33 or AGSL failure) draws once and never animates.
             assertEquals("The static painter must never request particle frames", 0, frames.get())
@@ -370,15 +370,29 @@ class AssistantNeuralParticleFieldTest {
     /** Lets a 200ms fade finish under any animator scale up to 10x, then requires silence. */
     private fun assertFadeSettles(frames: AtomicInteger) {
         compose.mainClock.advanceTimeBy(2_500)
-        compose.waitForIdle()
+        settleWithPausedClock()
         assertFramesStop(frames)
     }
 
     private fun assertFramesResume(frames: AtomicInteger) {
         val before = frames.get()
         compose.mainClock.advanceTimeBy(2_500)
-        compose.waitForIdle()
+        settleWithPausedClock()
         assertTrue("Active decoration must request frames again", frames.get() > before)
+    }
+
+    /**
+     * Settles the composition while the test clock is paused.
+     *
+     * [androidx.compose.ui.test.junit4.ComposeTestRule.waitForIdle] alone hangs if any state write
+     * is still pending: with `autoAdvance` off, nothing schedules the frame that would drain it,
+     * so the recomposer stays busy forever (hosted runs 43661683524 and 43663300008 both timed out
+     * here after a shader tile resolved a moment after the clock was paused). Advancing a few
+     * frames first drains that work; no assertion is relaxed.
+     */
+    private fun settleWithPausedClock() {
+        repeat(4) { compose.mainClock.advanceTimeByFrame() }
+        compose.waitForIdle()
     }
 
     private fun changedRatio(
