@@ -2,6 +2,7 @@
 <resources>
     <string name="app_name">Material Chat</string>
 
+
     <plurals name="home_status_chat_count">
         <item quantity="one">%1$d chat</item>
         <item quantity="other">%1$d chats</item>
@@ -21,4 +22,14 @@
     <string name="chat_scroll_to_bottom">Scroll to bottom</string>
     <string name="chat_new_messages">New</string>
 
+    <!-- Settings section supporting lines -->
+    <string name="settings_section_providers_supporting">Cloud and on-device model backends</string>
+    <string name="settings_section_premium_supporting">Support development or go ad-free</string>
+    <string name="settings_section_appearance_supporting">Theme, palette, shapes and type</string>
+    <string name="settings_section_chat_supporting">How conversations behave</string>
+    <string name="settings_section_data_supporting">Memories, backup and restore</string>
+    <string name="settings_section_web_search_supporting">Ground answers in live results</string>
+    <string name="settings_section_assistant_supporting">Voice, read-aloud and the system assistant</string>
+    <string name="settings_section_system_prompt_supporting">Instructions sent with every chat</string>
+    <string name="settings_section_about_supporting">Version and updates</string>
 </resources>

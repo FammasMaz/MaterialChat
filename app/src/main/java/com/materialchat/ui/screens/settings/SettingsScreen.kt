@@ -12,8 +12,6 @@ import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.spring
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -37,7 +35,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.Chat
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.DarkMode
@@ -62,13 +60,15 @@ import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Vibration
 import androidx.compose.material.icons.outlined.Language
+import androidx.compose.material.icons.outlined.Cloud
+import androidx.compose.material.icons.outlined.Description
+import androidx.compose.material.icons.outlined.Storage
 import com.materialchat.assistant.service.AssistantBindingStatus
 import com.materialchat.ui.components.seaglass.AlertDialog
 import com.materialchat.ui.components.seaglass.Card
 import androidx.compose.material3.CardDefaults
 import com.materialchat.ui.components.seaglass.DropdownMenu
 import com.materialchat.ui.components.seaglass.DropdownMenuItem
-import com.materialchat.ui.components.seaglass.ElevatedFilterChip
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -113,11 +113,11 @@ import kotlinx.coroutines.withContext
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -127,6 +127,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.core.content.ContextCompat
 import com.materialchat.BuildConfig
+import com.materialchat.R
 import com.materialchat.data.backup.BackupExport
 import com.materialchat.data.backup.BackupPreview
 import com.materialchat.data.local.preferences.AppPreferences
@@ -139,6 +140,11 @@ import java.io.IOException
 
 import com.materialchat.ui.screens.settings.components.AddProviderSheet
 import com.materialchat.ui.screens.settings.components.ProviderCard
+import com.materialchat.ui.screens.settings.components.SettingsChoiceGroup
+import com.materialchat.ui.screens.settings.components.SettingsGroup
+import com.materialchat.ui.screens.settings.components.SettingsNavRow
+import com.materialchat.ui.screens.settings.components.SettingsSectionHeader
+import com.materialchat.ui.screens.settings.components.SettingsToggleRow
 import com.materialchat.ui.screens.settings.components.SystemPromptField
 import com.materialchat.ui.components.HapticPattern
 import com.materialchat.ui.components.rememberHapticFeedback
@@ -872,7 +878,11 @@ private fun SuccessContent(
     ) {
         // Providers Section
         item {
-            SectionHeader(title = "AI Providers")
+            SettingsSectionHeader(
+                title = "AI Providers",
+                icon = Icons.Outlined.Cloud,
+                supporting = stringResource(R.string.settings_section_providers_supporting)
+            )
         }
 
         items(
@@ -898,20 +908,33 @@ private fun SuccessContent(
         }
 
         item {
-            OnDeviceModelsSettingsCard(onClick = onNavigateToOnDeviceModels)
-        }
-
-        item {
-            ModelAssignmentsSettingsCard(onClick = onNavigateToModelAssignments)
-        }
-
-        item {
-            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+            SettingsGroup {
+                SettingsNavRow(
+                    index = 0,
+                    count = 2,
+                    title = "On-device models",
+                    icon = Icons.Outlined.Memory,
+                    supporting = "Download, refresh, and delete local Gemma/Qwen models and Gemini Nano",
+                    onClick = onNavigateToOnDeviceModels
+                )
+                SettingsNavRow(
+                    index = 1,
+                    count = 2,
+                    title = "Model assignments",
+                    icon = Icons.Outlined.AutoAwesome,
+                    supporting = "Titles, memories, images — on-device vs cloud per task",
+                    onClick = onNavigateToModelAssignments
+                )
+            }
         }
 
         // Premium & Ads Section
         item {
-            SectionHeader(title = "Premium & Ads")
+            SettingsSectionHeader(
+                title = "Premium & Ads",
+                icon = Icons.Outlined.AutoAwesome,
+                supporting = stringResource(R.string.settings_section_premium_supporting)
+            )
         }
 
         item {
@@ -923,13 +946,13 @@ private fun SuccessContent(
             )
         }
 
-        item {
-            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-        }
-
         // Appearance Section
         item {
-            SectionHeader(title = "Appearance")
+            SettingsSectionHeader(
+                title = "Appearance",
+                icon = Icons.Outlined.Palette,
+                supporting = stringResource(R.string.settings_section_appearance_supporting)
+            )
         }
 
         item {
@@ -962,35 +985,63 @@ private fun SuccessContent(
         }
 
         item {
-            InteractionSettingsCard(onClick = onNavigateToInteractionSettings)
-        }
-
-        // Dynamic Color Toggle (Android 12+ only)
-        if (uiState.isDynamicColorSupported) {
-            item {
-                DynamicColorToggle(
-                    enabled = uiState.dynamicColorEnabled,
-                    onToggle = onDynamicColorChange
+            SettingsGroup {
+                SettingsNavRow(
+                    index = 0,
+                    count = 1,
+                    title = "Interaction & Motion",
+                    icon = Icons.Outlined.Vibration,
+                    supporting = "Per-component haptics, button shapes, and expressive motion controls",
+                    onClick = onNavigateToInteractionSettings
                 )
             }
         }
 
-        // True black surfaces in dark mode, as on OLED panels
-        if (uiState.themeMode != AppPreferences.ThemeMode.LIGHT) {
-            item {
-                PitchBlackToggle(
-                    enabled = uiState.pitchBlackDark,
-                    onToggle = onPitchBlackChange
-                )
-            }
-        }
-
-        // Drifting particle field around the assistant window
+        // Surface toggles: dynamic colour (Android 12+ only), pitch black (hidden in
+        // light mode) and the assistant particle field. Indices are derived from the
+        // conditions so the segmented first/middle/last shapes stay correct.
         item {
-            NeuralExpressiveToggle(
-                enabled = uiState.neuralExpressive,
-                onToggle = onNeuralExpressiveChange
-            )
+            val showDynamicColor = uiState.isDynamicColorSupported
+            val showPitchBlack = uiState.themeMode != AppPreferences.ThemeMode.LIGHT
+            val rowCount = 1 + (if (showDynamicColor) 1 else 0) + (if (showPitchBlack) 1 else 0)
+            val pitchBlackIndex = if (showDynamicColor) 1 else 0
+            SettingsGroup {
+                if (showDynamicColor) {
+                    SettingsToggleRow(
+                        index = 0,
+                        count = rowCount,
+                        title = "Dynamic Color",
+                        supporting = "Use colors from your wallpaper",
+                        icon = Icons.Outlined.Palette,
+                        checked = uiState.dynamicColorEnabled,
+                        onCheckedChange = onDynamicColorChange
+                    )
+                }
+                if (showPitchBlack) {
+                    SettingsToggleRow(
+                        index = pitchBlackIndex,
+                        count = rowCount,
+                        title = "Pitch black dark mode",
+                        supporting = "Uses true black surfaces in dark mode for OLED screens",
+                        icon = Icons.Outlined.DarkMode,
+                        checked = uiState.pitchBlackDark,
+                        onCheckedChange = onPitchBlackChange,
+                        modifier = Modifier.testTag("pitch-black-toggle"),
+                        switchModifier = Modifier.testTag("pitch-black-switch")
+                    )
+                }
+                SettingsToggleRow(
+                    index = rowCount - 1,
+                    count = rowCount,
+                    title = "Neural expressive edges",
+                    supporting = "Drifting particle field around the floating assistant card",
+                    icon = Icons.Outlined.AutoAwesome,
+                    checked = uiState.neuralExpressive,
+                    onCheckedChange = onNeuralExpressiveChange,
+                    modifier = Modifier.testTag("neural-expressive-toggle"),
+                    switchModifier = Modifier.testTag("neural-expressive-switch")
+                )
+            }
         }
 
         // Font Size Selector
@@ -1001,72 +1052,105 @@ private fun SuccessContent(
             )
         }
 
-        // Haptics Toggle
-        item {
-            HapticsToggle(
-                enabled = uiState.hapticsEnabled,
-                onToggle = onHapticsChange
-            )
-        }
-
-        item {
-            NotificationsToggle(
-                enabled = uiState.notificationsEnabled,
-                onToggle = onNotificationsChange
-            )
-        }
-
-        // Beautiful Model Names Toggle
+        // Feedback toggles
         item {
             val activeProvider = uiState.providers.find { it.provider.isActive }?.provider
-            BeautifulModelNamesToggle(
-                enabled = uiState.beautifulModelNamesEnabled,
-                activeProviderName = activeProvider?.name,
-                onToggle = onBeautifulModelNamesChange
-            )
-        }
-
-        item {
-            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+            SettingsGroup {
+                SettingsToggleRow(
+                    index = 0,
+                    count = 3,
+                    title = "Haptic Feedback",
+                    supporting = "Vibrate on interactions",
+                    icon = Icons.Outlined.Vibration,
+                    checked = uiState.hapticsEnabled,
+                    onCheckedChange = onHapticsChange
+                )
+                SettingsToggleRow(
+                    index = 1,
+                    count = 3,
+                    title = "Notifications",
+                    supporting = "Show agent updates when app is in background",
+                    icon = Icons.Outlined.Notifications,
+                    checked = uiState.notificationsEnabled,
+                    onCheckedChange = onNotificationsChange
+                )
+                SettingsToggleRow(
+                    index = 2,
+                    count = 3,
+                    title = "Beautiful Model Names",
+                    supporting = if (activeProvider != null) {
+                        "Using ${activeProvider.name} • Tap to filter by provider"
+                    } else {
+                        "Format model names into readable badges"
+                    },
+                    icon = Icons.Outlined.AutoAwesome,
+                    checked = uiState.beautifulModelNamesEnabled,
+                    onCheckedChange = onBeautifulModelNamesChange
+                )
+            }
         }
 
         // Chat Section
         item {
-            SectionHeader(title = "Chat")
-        }
-
-        item {
-            RememberLastModelToggle(
-                enabled = uiState.rememberLastModelEnabled,
-                onToggle = onRememberLastModelChange
+            SettingsSectionHeader(
+                title = "Chat",
+                icon = Icons.AutoMirrored.Outlined.Chat,
+                supporting = stringResource(R.string.settings_section_chat_supporting)
             )
         }
 
         item {
-            AlwaysShowThinkingToggle(
-                enabled = uiState.alwaysShowThinking,
-                onToggle = onAlwaysShowThinkingChange
-            )
-        }
-
-        item {
-            ShowTokenCounterToggle(
-                enabled = uiState.showTokenCounter,
-                onToggle = onShowTokenCounterChange
-            )
-        }
-
-        item {
-            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+            SettingsGroup {
+                SettingsToggleRow(
+                    index = 0,
+                    count = 3,
+                    title = "Remember Last Model",
+                    supporting = "New chats use your last selected model",
+                    icon = Icons.Outlined.History,
+                    checked = uiState.rememberLastModelEnabled,
+                    onCheckedChange = onRememberLastModelChange
+                )
+                SettingsToggleRow(
+                    index = 1,
+                    count = 3,
+                    title = "Always Show Thinking",
+                    supporting = "Show model reasoning content by default",
+                    icon = Icons.Outlined.Psychology,
+                    checked = uiState.alwaysShowThinking,
+                    onCheckedChange = onAlwaysShowThinkingChange
+                )
+                SettingsToggleRow(
+                    index = 2,
+                    count = 3,
+                    title = "Token Counter",
+                    supporting = "Show word and estimated token count while typing",
+                    icon = Icons.Outlined.Numbers,
+                    checked = uiState.showTokenCounter,
+                    onCheckedChange = onShowTokenCounterChange
+                )
+            }
         }
 
         // Data Section
         item {
-            SectionHeader(title = "Data")
+            SettingsSectionHeader(
+                title = "Data",
+                icon = Icons.Outlined.Storage,
+                supporting = stringResource(R.string.settings_section_data_supporting)
+            )
         }
 
         item {
-            MemoryManagerSettingsCard(onClick = onNavigateToMemories)
+            SettingsGroup {
+                SettingsNavRow(
+                    index = 0,
+                    count = 1,
+                    title = "Memories",
+                    icon = Icons.Outlined.Memory,
+                    supporting = "Review, search, and delete passive memories saved on this device.",
+                    onClick = onNavigateToMemories
+                )
+            }
         }
 
         item {
@@ -1076,13 +1160,13 @@ private fun SuccessContent(
             )
         }
 
-        item {
-            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-        }
-
         // Web Search Section
         item {
-            SectionHeader(title = "Web Search")
+            SettingsSectionHeader(
+                title = "Web Search",
+                icon = Icons.Outlined.Language,
+                supporting = stringResource(R.string.settings_section_web_search_supporting)
+            )
         }
 
         item {
@@ -1100,13 +1184,13 @@ private fun SuccessContent(
             )
         }
 
-        item {
-            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-        }
-
         // Assistant Section
         item {
-            SectionHeader(title = "Assistant")
+            SettingsSectionHeader(
+                title = "Assistant",
+                icon = Icons.Outlined.SmartToy,
+                supporting = stringResource(R.string.settings_section_assistant_supporting)
+            )
         }
 
         item {
@@ -1129,13 +1213,13 @@ private fun SuccessContent(
             )
         }
 
-        item {
-            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-        }
-
         // System Prompt Section
         item {
-            SectionHeader(title = "System Prompt")
+            SettingsSectionHeader(
+                title = "System Prompt",
+                icon = Icons.Outlined.Description,
+                supporting = stringResource(R.string.settings_section_system_prompt_supporting)
+            )
         }
 
         item {
@@ -1145,18 +1229,16 @@ private fun SuccessContent(
             )
         }
 
-        item {
-            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-        }
-
         // About & Updates Section
         item {
-            SectionHeader(
+            SettingsSectionHeader(
                 title = if (BuildConfig.EXTERNAL_UPDATES_ENABLED) {
                     "About & Updates"
                 } else {
                     "About"
-                }
+                },
+                icon = Icons.Outlined.Info,
+                supporting = stringResource(R.string.settings_section_about_supporting)
             )
         }
 
@@ -1181,35 +1263,6 @@ private fun SuccessContent(
     }
 }
 
-/**
- * M3 Expressive section header: expressive title face at a heavy weight with a
- * primary accent bar, so sections read as distinct groups rather than labels.
- */
-@Composable
-private fun SectionHeader(title: String) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(top = 20.dp, bottom = 10.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Surface(
-            modifier = Modifier.size(width = 4.dp, height = 20.dp),
-            shape = RoundedCornerShape(50),
-            color = MaterialTheme.colorScheme.primary
-        ) {}
-        Spacer(modifier = Modifier.width(10.dp))
-        Text(
-            text = title,
-            style = MaterialTheme.typography.titleLarge.copy(
-                fontFamily = com.materialchat.ui.theme.MaterialChatExpressiveTitleFontFamily,
-                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
-            ),
-            color = MaterialTheme.colorScheme.onSurface
-        )
-    }
-}
-
 @Composable
 private fun AddProviderButton(onClick: () -> Unit) {
     ExpressiveButton(
@@ -1219,60 +1272,6 @@ private fun AddProviderButton(onClick: () -> Unit) {
         leadingIcon = Icons.Default.Add,
         style = ExpressiveButtonStyle.Outlined
     )
-}
-
-@Composable
-private fun MemoryManagerSettingsCard(onClick: () -> Unit) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(24.dp))
-            .clickable(onClick = onClick),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.secondaryContainer
-        ),
-        shape = RoundedCornerShape(24.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Surface(
-                modifier = Modifier.size(52.dp),
-                shape = RoundedCornerShape(18.dp),
-                color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.12f),
-                contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        imageVector = Icons.Outlined.Memory,
-                        contentDescription = null,
-                        modifier = Modifier.size(26.dp)
-                    )
-                }
-            }
-            Spacer(modifier = Modifier.width(12.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = "Memories",
-                    style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.onSecondaryContainer
-                )
-                Text(
-                    text = "Review, search, and delete passive memories saved on this device.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.78f)
-                )
-            }
-            Icon(
-                imageVector = Icons.Outlined.Psychology,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.72f)
-            )
-        }
-    }
 }
 
 @Composable
@@ -1333,93 +1332,6 @@ private fun BackupRestoreSection(
                     style = ExpressiveButtonStyle.Outlined
                 )
             }
-        }
-    }
-}
-
-@Composable
-private fun OnDeviceModelsSettingsCard(onClick: () -> Unit) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick),
-        shape = CustomShapes.ProviderCard,
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.primaryContainer,
-            contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-        )
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .defaultMinSize(minHeight = 72.dp)
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            Icon(
-                imageVector = Icons.Outlined.Memory,
-                contentDescription = null,
-                modifier = Modifier.size(28.dp)
-            )
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = "On-device models",
-                    style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer
-                )
-                Text(
-                    text = "Download, refresh, and delete local Gemma/Qwen models and Gemini Nano",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.78f)
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun ModelAssignmentsSettingsCard(onClick: () -> Unit) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick),
-        shape = CustomShapes.ProviderCard,
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.secondaryContainer,
-            contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-        )
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .defaultMinSize(minHeight = 72.dp)
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            Icon(
-                imageVector = Icons.Outlined.AutoAwesome,
-                contentDescription = null,
-                modifier = Modifier.size(28.dp)
-            )
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = "Model assignments",
-                    style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.onSecondaryContainer
-                )
-                Text(
-                    text = "Titles, memories, images — on-device vs cloud per task",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.78f)
-                )
-            }
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                contentDescription = null,
-                modifier = Modifier.graphicsLayer { rotationZ = 180f }
-            )
         }
     }
 }
@@ -1691,39 +1603,22 @@ private fun ThemeModeSelector(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                AppPreferences.ThemeMode.entries.forEach { mode ->
-                    FilterChip(
-                        selected = selectedMode == mode,
-                        onClick = {
-                            haptics.perform(HapticPattern.CLICK)
-                            onModeSelected(mode)
-                        },
-                        label = { Text(mode.name.lowercase().replaceFirstChar { it.uppercase() }) },
-                        leadingIcon = {
-                            Icon(
-                                imageVector = when (mode) {
-                                    AppPreferences.ThemeMode.SYSTEM -> Icons.Outlined.SettingsSystemDaydream
-                                    AppPreferences.ThemeMode.LIGHT -> Icons.Outlined.LightMode
-                                    AppPreferences.ThemeMode.DARK -> Icons.Outlined.DarkMode
-                                },
-                                contentDescription = null,
-                                modifier = Modifier.size(18.dp)
-                            )
-                        },
-                        modifier = Modifier
-                            .weight(1f)
-                            .defaultMinSize(minHeight = 48.dp),
-                        colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                            selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
-                        )
-                    )
+            SettingsChoiceGroup(
+                options = AppPreferences.ThemeMode.entries,
+                selected = selectedMode,
+                onSelect = { mode ->
+                    haptics.perform(HapticPattern.CLICK)
+                    onModeSelected(mode)
+                },
+                label = { mode -> mode.name.lowercase().replaceFirstChar { it.uppercase() } },
+                icon = { mode ->
+                    when (mode) {
+                        AppPreferences.ThemeMode.SYSTEM -> Icons.Outlined.SettingsSystemDaydream
+                        AppPreferences.ThemeMode.LIGHT -> Icons.Outlined.LightMode
+                        AppPreferences.ThemeMode.DARK -> Icons.Outlined.DarkMode
+                    }
                 }
-            }
+            )
         }
     }
 }
@@ -2096,141 +1991,6 @@ private fun previewBubbleShape(
 }
 
 @Composable
-private fun NeuralExpressiveToggle(
-    enabled: Boolean,
-    onToggle: (Boolean) -> Unit
-) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .testTag("neural-expressive-toggle"),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-        ),
-        shape = RoundedCornerShape(24.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = "Neural expressive edges",
-                    style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Text(
-                    text = "Drifting particle field around the floating assistant card",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            ExpressiveSwitch(
-                checked = enabled,
-                onCheckedChange = onToggle,
-                modifier = Modifier.testTag("neural-expressive-switch")
-            )
-        }
-    }
-}
-
-@Composable
-private fun PitchBlackToggle(
-    enabled: Boolean,
-    onToggle: (Boolean) -> Unit
-) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .testTag("pitch-black-toggle"),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-        ),
-        shape = RoundedCornerShape(24.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = "Pitch black dark mode",
-                    style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Text(
-                    text = "Uses true black surfaces in dark mode for OLED screens",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            ExpressiveSwitch(
-                checked = enabled,
-                onCheckedChange = onToggle,
-                modifier = Modifier.testTag("pitch-black-switch")
-            )
-        }
-    }
-}
-
-@Composable
-private fun DynamicColorToggle(
-    enabled: Boolean,
-    onToggle: (Boolean) -> Unit
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-        ),
-        shape = RoundedCornerShape(24.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    imageVector = Icons.Outlined.Palette,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(24.dp)
-                )
-                Spacer(modifier = Modifier.width(12.dp))
-                Column {
-                    Text(
-                        text = "Dynamic Color",
-                        style = MaterialTheme.typography.titleSmall,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    Text(
-                        text = "Use colors from your wallpaper",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-
-            ExpressiveSwitch(
-                checked = enabled,
-                onCheckedChange = onToggle
-            )
-        }
-    }
-}
-
-@Composable
 private fun FontSizeSelector(
     selectedScale: Float,
     onScaleSelected: (Float) -> Unit
@@ -2356,264 +2116,6 @@ private fun FontSizeSelector(
 }
 
 @Composable
-private fun InteractionSettingsCard(onClick: () -> Unit) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.primaryContainer
-        ),
-        shape = RoundedCornerShape(24.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                imageVector = Icons.Outlined.Vibration,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                modifier = Modifier.size(24.dp)
-            )
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = "Interaction & Motion",
-                    style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer
-                )
-                Text(
-                    text = "Per-component haptics, button shapes, and expressive motion controls",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.78f)
-                )
-            }
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                modifier = Modifier.graphicsLayer { rotationZ = 180f }
-            )
-        }
-    }
-}
-
-@Composable
-private fun HapticsToggle(
-    enabled: Boolean,
-    onToggle: (Boolean) -> Unit
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-        ),
-        shape = RoundedCornerShape(24.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    imageVector = Icons.Outlined.Vibration,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(24.dp)
-                )
-                Spacer(modifier = Modifier.width(12.dp))
-                Column {
-                    Text(
-                        text = "Haptic Feedback",
-                        style = MaterialTheme.typography.titleSmall,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    Text(
-                        text = "Vibrate on interactions",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-
-            ExpressiveSwitch(
-                checked = enabled,
-                onCheckedChange = onToggle
-            )
-        }
-    }
-}
-
-@Composable
-private fun NotificationsToggle(
-    enabled: Boolean,
-    onToggle: (Boolean) -> Unit
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-        ),
-        shape = RoundedCornerShape(24.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.weight(1f)
-            ) {
-                Icon(
-                    imageVector = Icons.Outlined.Notifications,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(24.dp)
-                )
-                Spacer(modifier = Modifier.width(12.dp))
-                Column {
-                    Text(
-                        text = "Notifications",
-                        style = MaterialTheme.typography.titleSmall,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    Text(
-                        text = "Show agent updates when app is in background",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-
-            ExpressiveSwitch(
-                checked = enabled,
-                onCheckedChange = onToggle
-            )
-        }
-    }
-}
-
-@Composable
-private fun BeautifulModelNamesToggle(
-    enabled: Boolean,
-    activeProviderName: String?,
-    onToggle: (Boolean) -> Unit
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-        ),
-        shape = RoundedCornerShape(24.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.weight(1f)
-            ) {
-                Icon(
-                    imageVector = Icons.Outlined.AutoAwesome,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(24.dp)
-                )
-                Spacer(modifier = Modifier.width(12.dp))
-                Column {
-                    Text(
-                        text = "Beautiful Model Names",
-                        style = MaterialTheme.typography.titleSmall,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    Text(
-                        text = if (activeProviderName != null) {
-                            "Using $activeProviderName • Tap to filter by provider"
-                        } else {
-                            "Format model names into readable badges"
-                        },
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-
-            ExpressiveSwitch(
-                checked = enabled,
-                onCheckedChange = onToggle
-            )
-        }
-    }
-}
-
-@Composable
-private fun RememberLastModelToggle(
-    enabled: Boolean,
-    onToggle: (Boolean) -> Unit
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-        ),
-        shape = RoundedCornerShape(24.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.weight(1f)
-            ) {
-                Icon(
-                    imageVector = Icons.Outlined.History,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(24.dp)
-                )
-                Spacer(modifier = Modifier.width(12.dp))
-                Column {
-                    Text(
-                        text = "Remember Last Model",
-                        style = MaterialTheme.typography.titleSmall,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    Text(
-                        text = "New chats use your last selected model",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-
-            ExpressiveSwitch(
-                checked = enabled,
-                onCheckedChange = onToggle
-            )
-        }
-    }
-}
-
-@Composable
 private fun AiGeneratedTitlesToggle(
     enabled: Boolean,
     onToggle: (Boolean) -> Unit
@@ -2703,110 +2205,6 @@ private fun PreferOnDeviceTitleModelToggle(
                     )
                     Text(
                         text = "Use the smallest downloaded on-device model before cloud title generation",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-
-            ExpressiveSwitch(
-                checked = enabled,
-                onCheckedChange = onToggle
-            )
-        }
-    }
-}
-
-@Composable
-private fun AlwaysShowThinkingToggle(
-    enabled: Boolean,
-    onToggle: (Boolean) -> Unit
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-        ),
-        shape = RoundedCornerShape(24.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.weight(1f)
-            ) {
-                Icon(
-                    imageVector = Icons.Outlined.Psychology,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(24.dp)
-                )
-                Spacer(modifier = Modifier.width(12.dp))
-                Column {
-                    Text(
-                        text = "Always Show Thinking",
-                        style = MaterialTheme.typography.titleSmall,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    Text(
-                        text = "Show model reasoning content by default",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-
-            ExpressiveSwitch(
-                checked = enabled,
-                onCheckedChange = onToggle
-            )
-        }
-    }
-}
-
-@Composable
-private fun ShowTokenCounterToggle(
-    enabled: Boolean,
-    onToggle: (Boolean) -> Unit
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-        ),
-        shape = RoundedCornerShape(24.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.weight(1f)
-            ) {
-                Icon(
-                    imageVector = Icons.Outlined.Numbers,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(24.dp)
-                )
-                Spacer(modifier = Modifier.width(12.dp))
-                Column {
-                    Text(
-                        text = "Token Counter",
-                        style = MaterialTheme.typography.titleSmall,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    Text(
-                        text = "Show word and estimated token count while typing",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -3783,49 +3181,37 @@ private fun AssistantSection(
             }
         }
 
-        // Assistant Toggle
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-            ),
-            shape = RoundedCornerShape(24.dp)
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Icon(
-                        imageVector = Icons.Outlined.SmartToy,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(24.dp)
-                    )
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Column {
-                        Text(
-                            text = "System Assistant",
-                            style = MaterialTheme.typography.titleSmall,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                        Text(
-                            text = "Replace default assistant on your device",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-
-                ExpressiveSwitch(
-                    checked = assistantEnabled,
-                    onCheckedChange = onAssistantEnabledChange
+        // Assistant toggles: one segmented group whose row count follows the
+        // enabled state so voice and read-aloud join the group when they appear.
+        val rowCount = if (assistantEnabled) 3 else 1
+        SettingsGroup {
+            SettingsToggleRow(
+                index = 0,
+                count = rowCount,
+                title = "System Assistant",
+                supporting = "Replace default assistant on your device",
+                icon = Icons.Outlined.SmartToy,
+                checked = assistantEnabled,
+                onCheckedChange = onAssistantEnabledChange
+            )
+            if (assistantEnabled) {
+                SettingsToggleRow(
+                    index = 1,
+                    count = rowCount,
+                    title = "Voice Input",
+                    supporting = "Use microphone for voice queries",
+                    icon = Icons.Outlined.Mic,
+                    checked = voiceEnabled,
+                    onCheckedChange = onVoiceEnabledChange
+                )
+                SettingsToggleRow(
+                    index = 2,
+                    count = rowCount,
+                    title = "Read Aloud",
+                    supporting = "Use text-to-speech for responses",
+                    icon = Icons.Outlined.RecordVoiceOver,
+                    checked = ttsEnabled,
+                    onCheckedChange = onTtsEnabledChange
                 )
             }
         }
@@ -3868,100 +3254,6 @@ private fun AssistantSection(
                     )
                 }
             }
-
-            // Voice Input Toggle
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-                ),
-                shape = RoundedCornerShape(24.dp)
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Outlined.Mic,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.secondary,
-                            modifier = Modifier.size(24.dp)
-                        )
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Column {
-                            Text(
-                                text = "Voice Input",
-                                style = MaterialTheme.typography.titleSmall,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                            Text(
-                                text = "Use microphone for voice queries",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-
-                    ExpressiveSwitch(
-                        checked = voiceEnabled,
-                        onCheckedChange = onVoiceEnabledChange
-                    )
-                }
-            }
-
-            // Text-to-Speech Toggle
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-                ),
-                shape = RoundedCornerShape(24.dp)
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Outlined.RecordVoiceOver,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.secondary,
-                            modifier = Modifier.size(24.dp)
-                        )
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Column {
-                            Text(
-                                text = "Read Aloud",
-                                style = MaterialTheme.typography.titleSmall,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                            Text(
-                                text = "Use text-to-speech for responses",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-
-                    ExpressiveSwitch(
-                        checked = ttsEnabled,
-                        onCheckedChange = onTtsEnabledChange
-                    )
-                }
-            }
         }
     }
 }
@@ -3991,10 +3283,7 @@ private fun WebSearchSection(
                 .fillMaxWidth()
                 .padding(16.dp)
                 .animateContentSize(
-                    animationSpec = spring(
-                        dampingRatio = Spring.DampingRatioMediumBouncy,
-                        stiffness = Spring.StiffnessMediumLow
-                    )
+                    animationSpec = ExpressiveMotion.Spatial.contentSize()
                 )
         ) {
             // Enable toggle
@@ -4045,41 +3334,18 @@ private fun WebSearchSection(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(bottom = 8.dp)
                 )
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    FilterChip(
-                        selected = webSearchProvider == "EXA",
-                        onClick = { onWebSearchProviderChange("EXA") },
-                        label = { Text("Exa") },
-                        modifier = Modifier.weight(1f),
-                        colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                            selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
-                        )
-                    )
-                    FilterChip(
-                        selected = webSearchProvider == "SEARXNG",
-                        onClick = { onWebSearchProviderChange("SEARXNG") },
-                        label = { Text("SearXNG") },
-                        modifier = Modifier.weight(1f),
-                        colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                            selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
-                        )
-                    )
-                    FilterChip(
-                        selected = webSearchProvider == "NATIVE",
-                        onClick = { onWebSearchProviderChange("NATIVE") },
-                        label = { Text("Native") },
-                        modifier = Modifier.weight(1f),
-                        colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
-                            selectedLabelColor = MaterialTheme.colorScheme.onSecondaryContainer
-                        )
-                    )
-                }
+                SettingsChoiceGroup(
+                    options = WEB_SEARCH_PROVIDERS,
+                    selected = webSearchProvider,
+                    onSelect = onWebSearchProviderChange,
+                    label = { provider ->
+                        when (provider) {
+                            "EXA" -> "Exa"
+                            "SEARXNG" -> "SearXNG"
+                            else -> "Native"
+                        }
+                    }
+                )
 
                 Spacer(modifier = Modifier.height(12.dp))
 
@@ -4221,3 +3487,6 @@ private suspend fun Context.readBytesFromUri(uri: Uri): ByteArray {
 }
 
 private const val MAX_BACKUP_FILE_BYTES = 100L * 1024L * 1024L
+
+/** Web search backends in picker order; values are the stored preference strings. */
+private val WEB_SEARCH_PROVIDERS = listOf("EXA", "SEARXNG", "NATIVE")
