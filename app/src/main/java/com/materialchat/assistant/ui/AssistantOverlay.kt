@@ -687,11 +687,11 @@ internal fun AssistantOverlayContent(
 
             // Photos for the question: removable thumbnails (the composer's own preview row) and
             // the two ways to add one, with the composer's wording. The tray sits above the pill,
-            // so the pill's row keeps its geometry; it shows whenever a photo can be added (idle
-            // or typing) and while anything is attached, and leaves the state line alone while
-            // the assistant listens, thinks or speaks.
+            // so the pill's row keeps its geometry, and it appears only in keyboard mode or while
+            // something is attached: the resting pill (what the particle test and the hosted
+            // gate measure through the sheet's top edge) is exactly what it was.
             AnimatedVisibility(
-                visible = pendingAttachments.isNotEmpty() || keyboardMode || (!capturing && !busy),
+                visible = pendingAttachments.isNotEmpty() || keyboardMode,
                 enter = fadeIn(animationSpec = AssistantMotion.effect()) +
                     scaleIn(animationSpec = AssistantMotion.stateSwitch(), initialScale = 0.9f),
                 exit = fadeOut(animationSpec = AssistantMotion.effect()) +
