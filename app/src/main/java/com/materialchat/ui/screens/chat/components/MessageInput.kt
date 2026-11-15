@@ -45,6 +45,7 @@ import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AddPhotoAlternate
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Lightbulb
@@ -141,6 +142,7 @@ fun MessageInput(
     onSend: () -> Unit,
     onCancel: () -> Unit,
     onAttachImage: () -> Unit = {},
+    onTakePhoto: () -> Unit = {},
     onGenerateImage: () -> Unit = {},
     onRemoveAttachment: (Attachment) -> Unit = {},
     reasoningEffort: ReasoningEffort = ReasoningEffort.HIGH,
@@ -263,6 +265,10 @@ fun MessageInput(
                     onAttachImage = {
                         imageActionMenuExpanded = false
                         onAttachImage()
+                    },
+                    onTakePhoto = {
+                        imageActionMenuExpanded = false
+                        onTakePhoto()
                     },
                     onGenerateImage = {
                         imageActionMenuExpanded = false
@@ -471,6 +477,7 @@ private fun ImageActionMenu(
     expanded: Boolean,
     onDismiss: () -> Unit,
     onAttachImage: () -> Unit,
+    onTakePhoto: () -> Unit,
     onGenerateImage: () -> Unit
 ) {
     var visible by remember { mutableStateOf(false) }
@@ -522,6 +529,13 @@ private fun ImageActionMenu(
                     transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0f, 1f)
                 }
         ) {
+            ImageActionPill(
+                icon = Icons.Default.PhotoCamera,
+                label = "Take photo",
+                containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                onClick = onTakePhoto
+            )
             ImageActionPill(
                 icon = Icons.Default.AddPhotoAlternate,
                 label = "Attach photo",

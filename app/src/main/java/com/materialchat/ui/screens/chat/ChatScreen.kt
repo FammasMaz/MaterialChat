@@ -73,6 +73,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.materialchat.domain.model.Attachment
 import com.materialchat.util.AttachmentImporter
+import com.materialchat.util.CameraCapture
 import com.materialchat.domain.model.MessageRole
 import com.materialchat.domain.model.ReasoningEffort
 import com.materialchat.ui.components.HapticPattern
@@ -165,6 +166,38 @@ fun ChatScreen(
             when {
                 firstFailure != null -> snackbarHostState.showSnackbar(firstFailure!!)
                 dropped > 0 -> snackbarHostState.showSnackbar("Only $MAX_ATTACHMENTS images per message; $dropped skipped")
+            }
+        }
+    }
+
+    // Camera capture: the camera app writes into our attachment directory, so a successful
+    // result is already a file we own. A cancelled capture deletes the empty target.
+    val cameraTarget = remember { androidx.compose.runtime.mutableStateOf<java.io.File?>(null) }
+    val takePhotoLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.TakePicture()
+    ) { captured: Boolean ->
+        val file = cameraTarget.value
+        cameraTarget.value = null
+        if (!captured || file == null) {
+            CameraCapture.discard(file)
+            return@rememberLauncherForActivityResult
+        }
+        val currentState = uiState
+        val existing = (currentState as? ChatUiState.Success)?.pendingAttachments?.size ?: 0
+        if (existing >= MAX_ATTACHMENTS) {
+            CameraCapture.discard(file)
+            coroutineScope.launch {
+                snackbarHostState.showSnackbar("Maximum $MAX_ATTACHMENTS images allowed")
+            }
+            return@rememberLauncherForActivityResult
+        }
+        coroutineScope.launch {
+            when (val result = AttachmentImporter.import(context, Uri.fromFile(file))) {
+                is AttachmentImporter.ImportResult.Success -> viewModel.addAttachment(result.attachment)
+                is AttachmentImporter.ImportResult.Failure -> {
+                    CameraCapture.discard(file)
+                    snackbarHostState.showSnackbar(result.reason)
+                }
             }
         }
     }
@@ -381,6 +414,17 @@ fun ChatScreen(
                             PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
                         )
                     },
+                    onTakePhoto = {
+                        val capture = CameraCapture.prepare(context)
+                        if (capture == null) {
+                            coroutineScope.launch {
+                                snackbarHostState.showSnackbar("No camera app available")
+                            }
+                        } else {
+                            cameraTarget.value = capture.file
+                            takePhotoLauncher.launch(capture.uri)
+                        }
+                    },
                     onRemoveAttachment = { attachment ->
                         viewModel.removeAttachment(attachment)
                         AttachmentImporter.discard(context, attachment)
@@ -535,6 +579,7 @@ private fun ChatContent(
     onNavigatePrevious: (SiblingInfo) -> Unit,
     onNavigateNext: (SiblingInfo) -> Unit,
     onAttachImage: () -> Unit,
+    onTakePhoto: () -> Unit,
     onRemoveAttachment: (Attachment) -> Unit,
     reasoningEffort: ReasoningEffort,
     onReasoningEffortChange: (ReasoningEffort) -> Unit,
@@ -780,6 +825,7 @@ private fun ChatContent(
                 onSend = onSendMessage,
                 onCancel = onCancelStreaming,
                 onAttachImage = onAttachImage,
+                onTakePhoto = onTakePhoto,
                 onGenerateImage = onGenerateImage,
                 onRemoveAttachment = onRemoveAttachment,
                 reasoningEffort = reasoningEffort,

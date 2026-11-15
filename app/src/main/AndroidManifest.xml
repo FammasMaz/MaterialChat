@@ -51,6 +51,11 @@
             <action android:name="android.intent.action.MAIN" />
             <category android:name="android.intent.category.LAUNCHER" />
         </intent>
+        <!-- Taking a photo: API 30+ hides the camera app from resolveActivity without this, so
+             the attach menu would offer a camera that can never open. -->
+        <intent>
+            <action android:name="android.media.action.IMAGE_CAPTURE" />
+        </intent>
     </queries>
 
     <application
