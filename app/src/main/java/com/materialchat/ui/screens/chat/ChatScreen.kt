@@ -81,6 +81,7 @@ import com.materialchat.ui.components.HapticPattern
 import com.materialchat.ui.components.rememberHapticFeedback
 import com.materialchat.ui.screens.bookmarks.components.AddBookmarkSheet
 import com.materialchat.ui.screens.chat.components.ChatTopBar
+import com.materialchat.ui.screens.chat.components.rememberChatHeaderScrollState
 import com.materialchat.ui.screens.chat.components.ExportBottomSheet
 import com.materialchat.ui.screens.chat.components.FusionModelSelector
 import com.materialchat.ui.screens.chat.components.FusionProgressView
@@ -305,10 +306,17 @@ fun ChatScreen(
     }
 
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
+    val headerScrollState = rememberChatHeaderScrollState()
+    val openConversationId = (uiState as? ChatUiState.Success)?.conversationId
+    LaunchedEffect(openConversationId) {
+        // A freshly opened conversation always starts with the masthead unfolded.
+        headerScrollState.expand()
+    }
 
     Scaffold(
         modifier = Modifier
-            .nestedScroll(scrollBehavior.nestedScrollConnection),
+            .nestedScroll(scrollBehavior.nestedScrollConnection)
+            .nestedScroll(headerScrollState.nestedScrollConnection),
         containerColor = if (isEphemeral) MaterialTheme.colorScheme.tertiaryContainer
                          else MaterialTheme.colorScheme.surfaceContainer,
         contentWindowInsets = WindowInsets(0, 0, 0, 0), // Draw edge-to-edge
@@ -333,7 +341,8 @@ fun ChatScreen(
                         onModelSelected = { model -> viewModel.changeModel(model) },
                         onLoadModels = { viewModel.loadModels() },
                         onMindMapClick = { onNavigateToMindMap(state.conversationId) },
-                        scrollBehavior = scrollBehavior
+                        scrollBehavior = scrollBehavior,
+                        headerScrollState = headerScrollState
                     )
                 }
                 else -> {
@@ -350,7 +359,8 @@ fun ChatScreen(
                         onExportClick = { },
                         onModelSelected = { },
                         onLoadModels = { },
-                        scrollBehavior = scrollBehavior
+                        scrollBehavior = scrollBehavior,
+                        headerScrollState = headerScrollState
                     )
                 }
             }

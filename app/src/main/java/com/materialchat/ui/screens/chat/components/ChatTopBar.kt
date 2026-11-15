@@ -1,38 +1,50 @@
 package com.materialchat.ui.screens.chat.components
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Column
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.outlined.Archive
 import androidx.compose.material.icons.outlined.AccountTree
+import androidx.compose.material.icons.outlined.Archive
 import androidx.compose.material.icons.outlined.CloudDownload
-import com.materialchat.ui.components.seaglass.DropdownMenu
-import com.materialchat.ui.components.seaglass.DropdownMenuItem
-import com.materialchat.ui.theme.CustomShapes
-import com.materialchat.ui.theme.ExpressiveMotion
+import androidx.compose.material.icons.outlined.DataUsage
+import androidx.compose.material.icons.outlined.Timer
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import com.materialchat.ui.components.seaglass.Surface
 import androidx.compose.material3.Text
-import com.materialchat.ui.components.seaglass.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.runtime.Composable
@@ -44,39 +56,56 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import com.materialchat.domain.model.AiModel
-import com.materialchat.ui.screens.chat.ContextWindowUsage
-import com.materialchat.ui.screens.chat.components.ModelPickerDropdown
-import com.materialchat.ui.util.ModelNameParser
 import com.materialchat.ui.components.ExpressiveFilledIconButton
 import com.materialchat.ui.components.HapticPattern
 import com.materialchat.ui.components.rememberHapticFeedback
+import com.materialchat.ui.components.seaglass.DropdownMenu
+import com.materialchat.ui.components.seaglass.DropdownMenuItem
+import com.materialchat.ui.components.seaglass.Surface
+import com.materialchat.ui.screens.chat.ContextWindowUsage
+import com.materialchat.ui.theme.CustomShapes
+import com.materialchat.ui.theme.ExpressiveMotion
 import com.materialchat.ui.theme.MaterialChatExpressiveTitleFontFamily
+import com.materialchat.ui.util.ModelNameParser
+import kotlin.math.PI
+import kotlin.math.roundToInt
+import kotlin.math.sin
 
 /**
- * Top app bar for the Chat screen.
+ * The chat masthead.
  *
- * Features:
- * - Back navigation button
- * - Conversation title with optional emoji and tappable model picker subtitle
- * - Overflow menu with export option
- * - Collapsing behavior on scroll
+ * The conversation title is the subject of the screen, so when the header is expanded it sits on
+ * its own line at headline scale under the control row, with the model and the conversation's
+ * status (temporary, archived, context pressure, branches) as a row of chips beneath it. When the
+ * user scrolls toward newer messages the masthead folds: the title springs up into the control
+ * row at title scale and the chips fold away, leaving a compact bar. Scrolling back toward older
+ * messages, or tapping the compact title, unfolds it again. Collapse thresholds live in
+ * [ChatHeaderCollapseMachine]; the chip set in [resolveChatHeaderBadges].
  *
- * @param title The conversation title
- * @param icon Optional emoji icon for the conversation
- * @param modelName The current model name
- * @param providerName The provider name
- * @param isStreaming Whether a message is currently streaming
- * @param availableModels List of available models from the provider
- * @param isLoadingModels Whether models are being loaded
- * @param beautifulModelNamesEnabled Whether to show beautiful formatted model badges
- * @param onNavigateBack Callback for back navigation
- * @param onExportClick Callback when export is clicked
- * @param onModelSelected Callback when a model is selected from the picker
- * @param onLoadModels Callback to trigger model loading
- * @param scrollBehavior Optional scroll behavior for collapsing
+ * While a reply streams, a small pulse strip (the assistant's waveform idea at header scale) and
+ * the working indicator's wording appear under the chips, or beside the compact title when folded.
+ *
+ * All motion uses the app's M3 Expressive springs: disclosure springs for the fold, the title
+ * reveal spring for a freshly named chat, effects springs for colour.
+ *
+ * @param headerScrollState Scroll-driven fold state from [rememberChatHeaderScrollState]; null
+ *   keeps the header permanently expanded.
+ * @param scrollBehavior Kept for call-site compatibility; its content offset lifts the container
+ *   tone once content has scrolled under the bar.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -98,224 +127,388 @@ fun ChatTopBar(
     onModelSelected: (AiModel) -> Unit,
     onLoadModels: () -> Unit,
     onMindMapClick: () -> Unit = {},
-    scrollBehavior: TopAppBarScrollBehavior? = null
+    scrollBehavior: TopAppBarScrollBehavior? = null,
+    headerScrollState: ChatHeaderScrollState? = null
 ) {
     val haptics = rememberHapticFeedback()
+    val scheme = MaterialTheme.colorScheme
     var showMenu by remember { mutableStateOf(false) }
-    
-    // Track title changes for reveal animation
+    val isCollapsed = headerScrollState?.isCollapsed ?: false
+
+    // Title reveal when the model names a fresh conversation.
     var previousTitle by remember { mutableStateOf(title) }
-    var displayedTitle by remember { mutableStateOf(title) }
     val revealProgress = remember { Animatable(1f) }
-    
-    // Animate title reveal when title changes (excluding initial "New Chat")
     LaunchedEffect(title) {
-        if (title != previousTitle && previousTitle == "New Chat" && title != "New Chat") {
-            // New AI-generated title - animate reveal using M3 Expressive spring physics
-            displayedTitle = title
+        if (shouldRevealTitle(previous = previousTitle, next = title)) {
             revealProgress.snapTo(0f)
             revealProgress.animateTo(
                 targetValue = 1f,
-                animationSpec = spring(
-                    dampingRatio = Spring.DampingRatioMediumBouncy,
-                    stiffness = 200f // Lower stiffness for smooth character reveal
-                )
+                animationSpec = spring(dampingRatio = 0.7f, stiffness = 200f)
             )
         } else {
-            // Direct update without animation
-            displayedTitle = title
             revealProgress.snapTo(1f)
         }
         previousTitle = title
     }
-    
-    // Calculate visible characters based on reveal progress
-    val visibleCharCount = (displayedTitle.length * revealProgress.value).toInt()
-    val animatedTitle = if (revealProgress.value < 1f) {
-        displayedTitle.take(visibleCharCount)
-    } else {
-        displayedTitle
-    }
+    val shownTitle = revealedTitle(title, revealProgress.value)
+    val titleAlpha = (revealProgress.value * 5f).coerceIn(0f, 1f)
 
-    TopAppBar(
-        title = {
-            Column(
-                modifier = Modifier.animateContentSize(
-                    animationSpec = ExpressiveMotion.Spatial.contentSize()
-                )
+    val contentScrolledUnder = (scrollBehavior?.state?.contentOffset ?: 0f) < -1f
+    val containerColor by animateColorAsState(
+        targetValue = when {
+            isEphemeral -> scheme.tertiaryContainer
+            contentScrolledUnder -> scheme.surfaceContainerHigh
+            else -> scheme.surfaceContainer
+        },
+        animationSpec = ExpressiveMotion.Effects.color(),
+        label = "chatHeaderContainer"
+    )
+    val contentColor = if (isEphemeral) scheme.onTertiaryContainer else scheme.onSurface
+    val mutedColor = if (isEphemeral) scheme.onTertiaryContainer.copy(alpha = 0.78f) else scheme.onSurfaceVariant
+    val badges = resolveChatHeaderBadges(
+        isEphemeral = isEphemeral,
+        isArchived = isArchived,
+        hasBranches = hasBranches,
+        contextLevel = contextWindowUsage.level
+    )
+    val streamingLabel = chatHeaderStreamingLabel(isStreaming)
+
+    Surface(
+        shape = CustomShapes.TopAppBar,
+        color = containerColor,
+        contentColor = contentColor,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .windowInsetsPadding(TopAppBarDefaults.windowInsets)
+        ) {
+            // Control row: back, compact title (folded only), context ring, overflow.
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 64.dp)
+                    .padding(horizontal = 6.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically
+                ExpressiveFilledIconButton(
+                    onClick = { haptics.perform(HapticPattern.CLICK); onNavigateBack() },
+                    icon = Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = "Back",
+                    containerColor = scheme.surfaceContainerLow,
+                    contentColor = contentColor
+                )
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .heightIn(min = 48.dp)
+                        .padding(horizontal = 8.dp),
+                    contentAlignment = Alignment.CenterStart
                 ) {
-                    // Display icon if available
-                    if (icon != null) {
-                        Text(
-                            text = icon,
-                            style = MaterialTheme.typography.titleMedium,
-                            modifier = Modifier.alpha(
-                                (revealProgress.value * 5f).coerceIn(0f, 1f)
-                            )
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                    }
-                    Text(
-                        text = animatedTitle,
-                        style = MaterialTheme.typography.titleMedium.copy(
-                            fontFamily = MaterialChatExpressiveTitleFontFamily
-                        ),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.alpha(
-                            // Smooth fade-in: ramp up alpha over first 20% of animation
-                            (revealProgress.value * 5f).coerceIn(0f, 1f)
-                        )
-                    )
-                }
-                // M3 spacing between title and model badges (space-xs = 4dp)
-                Spacer(modifier = Modifier.height(4.dp))
-                Row(
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    if (beautifulModelNamesEnabled) {
-                        // Beautiful formatted dual pill badges
-                        val parsedModel = remember(modelName) { ModelNameParser.parse(modelName) }
-                        BeautifulModelBadges(
-                            parsedModel = parsedModel,
-                            isStreaming = isStreaming,
-                            availableModels = availableModels,
-                            isLoadingModels = isLoadingModels,
-                            onModelSelected = onModelSelected,
-                            onLoadModels = onLoadModels
-                        )
-                    } else {
-                        // Original display: brand badge + model picker
-                        val brand = remember(modelName) { resolveModelBrand(modelName) }
-                        if (brand != null) {
-                            ModelBrandBadge(brand = brand)
-                            Spacer(modifier = Modifier.width(8.dp))
-                        }
-                        // Model picker dropdown - tappable model name
-                        ModelPickerDropdown(
-                            currentModel = modelName,
-                            availableModels = availableModels,
-                            isLoadingModels = isLoadingModels,
-                            isStreaming = isStreaming,
-                            onModelSelected = onModelSelected,
-                            onLoadModels = onLoadModels
-                        )
-                    }
-                    // Streaming indicator removed - now shown in the morphing send button
-                }
-
-                if (isArchived) {
-                    Spacer(modifier = Modifier.height(6.dp))
-                    Surface(
-                        shape = RoundedCornerShape(999.dp),
-                        color = MaterialTheme.colorScheme.secondaryContainer,
-                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                    androidx.compose.animation.AnimatedVisibility(
+                        visible = isCollapsed,
+                        enter = fadeIn(ExpressiveMotion.Effects.reveal()) +
+                            slideInVertically(ExpressiveMotion.Spatial.expand<IntOffset>()) { it / 2 },
+                        exit = fadeOut(ExpressiveMotion.Effects.reveal()) +
+                            slideOutVertically(ExpressiveMotion.Spatial.collapse<IntOffset>()) { it / 2 }
                     ) {
                         Row(
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable(onClick = {
+                                    haptics.perform(HapticPattern.CLICK)
+                                    headerScrollState?.expand()
+                                })
+                                .semantics { contentDescription = "$title. Tap to expand header" },
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Icon(
-                                imageVector = Icons.Outlined.Archive,
-                                contentDescription = null,
-                                modifier = Modifier.size(16.dp)
-                            )
-                            Spacer(modifier = Modifier.width(6.dp))
+                            AnimatedVisibility(visible = isStreaming) {
+                                ChatHeaderPulse(
+                                    color = scheme.primary,
+                                    modifier = Modifier.padding(end = 8.dp)
+                                )
+                            }
+                            if (icon != null) {
+                                Text(text = icon, style = MaterialTheme.typography.titleMedium)
+                                Spacer(modifier = Modifier.width(6.dp))
+                            }
                             Text(
-                                text = "Archived",
-                                style = MaterialTheme.typography.labelMedium
+                                text = shownTitle,
+                                style = MaterialTheme.typography.titleMedium.copy(
+                                    fontFamily = MaterialChatExpressiveTitleFontFamily
+                                ),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.alpha(titleAlpha)
+                            )
+                        }
+                    }
+                }
+                ContextWindowIndicator(
+                    usage = contextWindowUsage,
+                    modifier = Modifier.padding(end = 2.dp)
+                )
+                Box {
+                    ExpressiveFilledIconButton(
+                        onClick = { haptics.perform(HapticPattern.CLICK); showMenu = true },
+                        icon = Icons.Default.MoreVert,
+                        contentDescription = "More options",
+                        containerColor = scheme.surfaceContainerLow,
+                        contentColor = if (isEphemeral) scheme.onTertiaryContainer else scheme.onSurfaceVariant
+                    )
+                    DropdownMenu(
+                        expanded = showMenu,
+                        onDismissRequest = { showMenu = false },
+                        shape = CustomShapes.Dropdown
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("Export") },
+                            onClick = {
+                                haptics.perform(HapticPattern.CLICK)
+                                showMenu = false
+                                onExportClick()
+                            },
+                            leadingIcon = {
+                                Icon(imageVector = Icons.Outlined.CloudDownload, contentDescription = null)
+                            }
+                        )
+                        if (hasBranches) {
+                            DropdownMenuItem(
+                                text = { Text("Mind Map") },
+                                onClick = {
+                                    haptics.perform(HapticPattern.CLICK)
+                                    showMenu = false
+                                    onMindMapClick()
+                                },
+                                leadingIcon = {
+                                    Icon(imageVector = Icons.Outlined.AccountTree, contentDescription = null)
+                                }
                             )
                         }
                     }
                 }
             }
-        },
-        navigationIcon = {
-            ExpressiveFilledIconButton(
-                onClick = { haptics.perform(HapticPattern.CLICK); onNavigateBack() },
-                icon = Icons.AutoMirrored.Filled.ArrowBack,
-                contentDescription = "Back",
-                containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-                contentColor = if (isEphemeral) {
-                    MaterialTheme.colorScheme.onTertiaryContainer
-                } else {
-                    MaterialTheme.colorScheme.onSurface
-                },
-                modifier = Modifier.padding(start = 6.dp)
-            )
-        },
-        actions = {
-            ContextWindowIndicator(
-                usage = contextWindowUsage,
-                modifier = Modifier.padding(end = 2.dp)
-            )
-            ExpressiveFilledIconButton(
-                onClick = { haptics.perform(HapticPattern.CLICK); showMenu = true },
-                icon = Icons.Default.MoreVert,
-                contentDescription = "More options",
-                containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-                contentColor = if (isEphemeral) {
-                    MaterialTheme.colorScheme.onTertiaryContainer
-                } else {
-                    MaterialTheme.colorScheme.onSurfaceVariant
-                },
-                modifier = Modifier.padding(end = 6.dp)
-            )
-            DropdownMenu(
-                expanded = showMenu,
-                onDismissRequest = { showMenu = false },
-                shape = CustomShapes.Dropdown
+
+            // Masthead: headline title, chip row, streaming presence. Folds on scroll.
+            AnimatedVisibility(
+                visible = !isCollapsed,
+                enter = expandVertically(
+                    animationSpec = ExpressiveMotion.Disclosure.Expand,
+                    expandFrom = Alignment.Top
+                ) + fadeIn(ExpressiveMotion.Disclosure.FadeIn),
+                exit = shrinkVertically(
+                    animationSpec = ExpressiveMotion.Disclosure.Shrink,
+                    shrinkTowards = Alignment.Top
+                ) + fadeOut(ExpressiveMotion.Disclosure.FadeOut)
             ) {
-                DropdownMenuItem(
-                    text = { Text("Export") },
-                    onClick = {
-                        haptics.perform(HapticPattern.CLICK)
-                        showMenu = false
-                        onExportClick()
-                    },
-                    leadingIcon = {
-                        Icon(
-                            imageVector = Icons.Outlined.CloudDownload,
-                            contentDescription = null
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 20.dp, end = 20.dp, bottom = 16.dp)
+                ) {
+                    Row(verticalAlignment = Alignment.Top) {
+                        if (icon != null) {
+                            Text(
+                                text = icon,
+                                style = MaterialTheme.typography.headlineSmall,
+                                modifier = Modifier
+                                    .padding(end = 8.dp)
+                                    .alpha(titleAlpha)
+                            )
+                        }
+                        Text(
+                            text = shownTitle,
+                            style = MaterialTheme.typography.headlineSmall.copy(
+                                fontWeight = FontWeight.Bold
+                            ),
+                            color = contentColor,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier
+                                .weight(1f)
+                                .alpha(titleAlpha)
                         )
                     }
-                )
-                if (hasBranches) {
-                    DropdownMenuItem(
-                        text = { Text("Mind Map") },
-                        onClick = {
-                            haptics.perform(HapticPattern.CLICK)
-                            showMenu = false
-                            onMindMapClick()
-                        },
-                        leadingIcon = {
-                            Icon(
-                                imageVector = Icons.Outlined.AccountTree,
-                                contentDescription = null
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState()),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        if (beautifulModelNamesEnabled) {
+                            val parsedModel = remember(modelName) { ModelNameParser.parse(modelName) }
+                            BeautifulModelBadges(
+                                parsedModel = parsedModel,
+                                isStreaming = isStreaming,
+                                availableModels = availableModels,
+                                isLoadingModels = isLoadingModels,
+                                onModelSelected = onModelSelected,
+                                onLoadModels = onLoadModels
+                            )
+                        } else {
+                            val brand = remember(modelName) { resolveModelBrand(modelName) }
+                            if (brand != null) {
+                                ModelBrandBadge(brand = brand)
+                            }
+                            ModelPickerDropdown(
+                                currentModel = modelName,
+                                availableModels = availableModels,
+                                isLoadingModels = isLoadingModels,
+                                isStreaming = isStreaming,
+                                onModelSelected = onModelSelected,
+                                onLoadModels = onLoadModels
                             )
                         }
-                    )
+                        badges.forEach { badge ->
+                            HeaderStatusChip(
+                                badge = badge,
+                                contextWindowUsage = contextWindowUsage,
+                                onClick = if (badge == ChatHeaderBadge.Branched) {
+                                    { haptics.perform(HapticPattern.CLICK); onMindMapClick() }
+                                } else null
+                            )
+                        }
+                    }
+                    AnimatedVisibility(
+                        visible = streamingLabel != null,
+                        enter = expandVertically(
+                            animationSpec = ExpressiveMotion.Disclosure.Expand,
+                            expandFrom = Alignment.Top
+                        ) + fadeIn(ExpressiveMotion.Disclosure.FadeIn),
+                        exit = shrinkVertically(
+                            animationSpec = ExpressiveMotion.Disclosure.Shrink,
+                            shrinkTowards = Alignment.Top
+                        ) + fadeOut(ExpressiveMotion.Disclosure.FadeOut)
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .padding(top = 12.dp)
+                                .semantics { contentDescription = streamingLabel ?: "" },
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            ChatHeaderPulse(color = scheme.primary)
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Text(
+                                text = streamingLabel ?: CHAT_WORKING_STATUS,
+                                style = MaterialTheme.typography.labelLarge,
+                                color = mutedColor,
+                                maxLines = 1
+                            )
+                        }
+                    }
                 }
             }
-        },
-        colors = TopAppBarDefaults.topAppBarColors(
-            containerColor = if (isEphemeral) MaterialTheme.colorScheme.tertiaryContainer
-                             else MaterialTheme.colorScheme.surfaceContainer,
-            scrolledContainerColor = if (isEphemeral) MaterialTheme.colorScheme.tertiaryContainer
-                                     else MaterialTheme.colorScheme.surfaceContainer,
-            titleContentColor = if (isEphemeral) MaterialTheme.colorScheme.onTertiaryContainer
-                                else MaterialTheme.colorScheme.onSurface,
-            navigationIconContentColor = if (isEphemeral) MaterialTheme.colorScheme.onTertiaryContainer
-                                         else MaterialTheme.colorScheme.onSurface,
-            actionIconContentColor = if (isEphemeral) MaterialTheme.colorScheme.onTertiaryContainer
-                                     else MaterialTheme.colorScheme.onSurfaceVariant
-        ),
-        scrollBehavior = scrollBehavior
-    )
+        }
+    }
 }
+
+/**
+ * Five bars breathing on a shared phase: the assistant's waveform vocabulary reduced to a header
+ * glyph. Only composed while a reply streams, so the infinite transition never runs idle.
+ */
+@Composable
+internal fun ChatHeaderPulse(
+    color: Color,
+    modifier: Modifier = Modifier,
+    barCount: Int = 5,
+    barWidth: Dp = 3.dp,
+    barSpacing: Dp = 2.dp,
+    height: Dp = 14.dp
+) {
+    val transition = rememberInfiniteTransition(label = "chatHeaderPulse")
+    val phase by transition.animateFloat(
+        initialValue = 0f,
+        targetValue = 2f * PI.toFloat(),
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 1400, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "chatHeaderPulsePhase"
+    )
+    val totalWidth = barWidth * barCount + barSpacing * (barCount - 1)
+    Canvas(modifier = modifier.width(totalWidth).height(height)) {
+        val w = barWidth.toPx()
+        val s = barSpacing.toPx()
+        val maxH = size.height
+        val minH = maxH * 0.3f
+        for (i in 0 until barCount) {
+            val amplitude = 0.5f + 0.5f * sin(phase + i * 0.9f)
+            val h = minH + (maxH - minH) * amplitude
+            drawRoundRect(
+                color = color,
+                topLeft = Offset(i * (w + s), (maxH - h) / 2f),
+                size = Size(w, h),
+                cornerRadius = CornerRadius(w / 2f, w / 2f)
+            )
+        }
+    }
+}
+
+@Composable
+private fun HeaderStatusChip(
+    badge: ChatHeaderBadge,
+    contextWindowUsage: ContextWindowUsage,
+    onClick: (() -> Unit)?
+) {
+    val scheme = MaterialTheme.colorScheme
+    val percent = contextWindowUsage.fractionUsed?.let { (it * 100f).roundToInt() }
+    val (iconVector, label, container, content) = when (badge) {
+        ChatHeaderBadge.Temporary -> ChipLook(
+            Icons.Outlined.Timer, "Temporary", scheme.surfaceContainerHigh, scheme.onSurfaceVariant
+        )
+        ChatHeaderBadge.Archived -> ChipLook(
+            Icons.Outlined.Archive, "Archived", scheme.secondaryContainer, scheme.onSecondaryContainer
+        )
+        ChatHeaderBadge.ContextHigh -> ChipLook(
+            Icons.Outlined.DataUsage,
+            if (percent != null) "Context $percent%" else "Context high",
+            scheme.tertiaryContainer, scheme.onTertiaryContainer
+        )
+        ChatHeaderBadge.ContextCritical -> ChipLook(
+            Icons.Outlined.DataUsage,
+            if (percent != null) "Context $percent%" else "Context full",
+            scheme.errorContainer, scheme.onErrorContainer
+        )
+        ChatHeaderBadge.Branched -> ChipLook(
+            Icons.Outlined.AccountTree, "Branched", scheme.primaryContainer, scheme.onPrimaryContainer
+        )
+    }
+    val body: @Composable () -> Unit = {
+        Row(
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(imageVector = iconVector, contentDescription = null, modifier = Modifier.size(14.dp))
+            Spacer(modifier = Modifier.width(5.dp))
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                maxLines = 1
+            )
+        }
+    }
+    if (onClick != null) {
+        Surface(
+            onClick = onClick,
+            shape = CustomShapes.Pill,
+            color = container,
+            contentColor = content,
+            modifier = Modifier.semantics { contentDescription = "$label. Open mind map" }
+        ) { body() }
+    } else {
+        Surface(shape = CustomShapes.Pill, color = container, contentColor = content) { body() }
+    }
+}
+
+private data class ChipLook(
+    val icon: ImageVector,
+    val label: String,
+    val container: Color,
+    val content: Color
+)
 
 private data class ModelBrand(
     val name: String,
@@ -349,12 +542,12 @@ private fun ModelBrandBadge(
         shape = CircleShape,
         color = MaterialTheme.colorScheme.surfaceContainerHigh,
         contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = modifier.size(24.dp)
+        modifier = modifier.size(28.dp)
     ) {
         Box(contentAlignment = Alignment.Center) {
             Text(
                 text = brand.symbol,
-                style = MaterialTheme.typography.labelMedium
+                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold)
             )
         }
     }
