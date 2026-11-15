@@ -34,7 +34,7 @@ class AssistantAttachmentDeliveryTest {
         return Uri.fromFile(file)
     }
 
-    @Test fun importsAndPublishesPickedImages() = runBlocking {
+    @Test fun importsAndPublishesPickedImages() = runBlocking<Unit> {
         val inbox = AssistantAttachmentInbox()
         val outcome = AssistantAttachmentDelivery.deliver(
             context, listOf(png("one", Color.RED), png("two", Color.BLUE)), room = 4, inbox = inbox
@@ -53,7 +53,7 @@ class AssistantAttachmentDeliveryTest {
         assertTrue(inbox.drain().isEmpty())
     }
 
-    @Test fun honoursRoomAndReportsSkipped() = runBlocking {
+    @Test fun honoursRoomAndReportsSkipped() = runBlocking<Unit> {
         val inbox = AssistantAttachmentInbox()
         val outcome = AssistantAttachmentDelivery.deliver(
             context, listOf(png("a", Color.RED), png("b", Color.GREEN), png("c", Color.BLUE)), room = 1, inbox = inbox
@@ -65,14 +65,14 @@ class AssistantAttachmentDeliveryTest {
         AttachmentFiles.deleteIfOwned(context, published.single().uri)
     }
 
-    @Test fun noRoomPublishesNothing() = runBlocking {
+    @Test fun noRoomPublishesNothing() = runBlocking<Unit> {
         val inbox = AssistantAttachmentInbox()
         val outcome = AssistantAttachmentDelivery.deliver(context, listOf(png("a", Color.RED)), room = 0, inbox = inbox)
         assertEquals(0, outcome.delivered)
         assertTrue(inbox.pending.value.isEmpty())
     }
 
-    @Test fun unreadableImagePublishesNothingAndReportsWhy() = runBlocking {
+    @Test fun unreadableImagePublishesNothingAndReportsWhy() = runBlocking<Unit> {
         val inbox = AssistantAttachmentInbox()
         val bogus = File(context.cacheDir, "bogus.png").apply { writeText("not an image") }
         val outcome = AssistantAttachmentDelivery.deliver(context, listOf(Uri.fromFile(bogus)), room = 4, inbox = inbox)
