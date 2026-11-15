@@ -4,10 +4,10 @@ import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionScope
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.spring
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.compositionLocalOf
@@ -62,8 +62,12 @@ const val SHARED_ELEMENT_FAB_TO_INPUT = "fab_to_input_container"
  * and the Explore hub.
  *
  * Uses Material 3 Expressive spring-physics animations for transitions:
- * - Spatial springs for position/slide (can bounce)
- * - Effects springs for opacity/fade (no bounce)
+ * - Forward: the incoming screen slides in from a quarter width on the slow
+ *   spatial spring while the outgoing screen parallaxes away and fades.
+ * - Back: the outgoing screen scales down to 0.9 and slides toward the edge, so a
+ *   predictive-back gesture (which seeks this transition) reads as the screen
+ *   being peeled off; the previous screen scales back up underneath it.
+ * All specs come from [ExpressiveMotion]; nothing is hand-tuned here.
  */
 @OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
@@ -77,64 +81,45 @@ fun MaterialChatNavHost(
         navController = navController,
         startDestination = startDestination,
         modifier = modifier,
-        // M3 Expressive: Spatial spring for slide + Effects spring for fade
         enterTransition = {
-            fadeIn(
-                animationSpec = spring(
-                    dampingRatio = 1.0f,  // Effects - no bounce for opacity
-                    stiffness = 400f
+            fadeIn(animationSpec = ExpressiveMotion.Effects.reveal()) +
+                slideIntoContainer(
+                    towards = AnimatedContentTransitionScope.SlideDirection.Start,
+                    animationSpec = ExpressiveMotion.Spatial.screenSlide(),
+                    initialOffset = { it / 4 }
                 )
-            ) + slideIntoContainer(
-                towards = AnimatedContentTransitionScope.SlideDirection.Start,
-                animationSpec = spring(
-                    dampingRatio = 0.8f,  // Spatial - subtle bounce
-                    stiffness = 300f
-                )
-            )
         },
         exitTransition = {
-            fadeOut(
-                animationSpec = spring(
-                    dampingRatio = 1.0f,  // Effects - no bounce
-                    stiffness = 400f
+            fadeOut(animationSpec = ExpressiveMotion.Effects.alpha()) +
+                slideOutOfContainer(
+                    towards = AnimatedContentTransitionScope.SlideDirection.Start,
+                    animationSpec = ExpressiveMotion.Spatial.collapse(),
+                    targetOffset = { it / 8 }
                 )
-            ) + slideOutOfContainer(
-                towards = AnimatedContentTransitionScope.SlideDirection.Start,
-                animationSpec = spring(
-                    dampingRatio = 1.0f,  // Smooth exit
-                    stiffness = 300f
-                ),
-                targetOffset = { it / 4 }  // Subtle parallax effect
-            )
         },
         popEnterTransition = {
-            fadeIn(
-                animationSpec = spring(
-                    dampingRatio = 1.0f,
-                    stiffness = 400f
+            fadeIn(animationSpec = ExpressiveMotion.Effects.reveal()) +
+                scaleIn(
+                    initialScale = 0.95f,
+                    animationSpec = ExpressiveMotion.Spatial.expand()
+                ) +
+                slideIntoContainer(
+                    towards = AnimatedContentTransitionScope.SlideDirection.End,
+                    animationSpec = ExpressiveMotion.Spatial.screenSlide(),
+                    initialOffset = { it / 8 }
                 )
-            ) + slideIntoContainer(
-                towards = AnimatedContentTransitionScope.SlideDirection.End,
-                animationSpec = spring(
-                    dampingRatio = 0.8f,  // Spatial - subtle bounce
-                    stiffness = 300f
-                )
-            )
         },
         popExitTransition = {
-            fadeOut(
-                animationSpec = spring(
-                    dampingRatio = 1.0f,
-                    stiffness = 400f
+            fadeOut(animationSpec = ExpressiveMotion.Effects.alpha()) +
+                scaleOut(
+                    targetScale = 0.9f,
+                    animationSpec = ExpressiveMotion.Spatial.container()
+                ) +
+                slideOutOfContainer(
+                    towards = AnimatedContentTransitionScope.SlideDirection.End,
+                    animationSpec = ExpressiveMotion.Spatial.screenSlide(),
+                    targetOffset = { it / 4 }
                 )
-            ) + slideOutOfContainer(
-                towards = AnimatedContentTransitionScope.SlideDirection.End,
-                animationSpec = spring(
-                    dampingRatio = 1.0f,
-                    stiffness = 300f
-                ),
-                targetOffset = { it / 4 }
-            )
         }
     ) {
         composable(route = Screen.Onboarding.route) {
