@@ -39,6 +39,7 @@ import androidx.compose.ui.unit.dp
 import com.materialchat.ui.components.HapticPattern
 import com.materialchat.ui.components.rememberHapticFeedback
 import com.materialchat.ui.theme.ExpressiveMotion
+import com.materialchat.ui.theme.particles.rememberParticleMotionGate
 import kotlinx.coroutines.delay
 
 /** Which tonal container tints the hero shape of the empty-state cluster. */
@@ -155,13 +156,22 @@ private fun EmptyStateShapeCluster(
     val backdropPop = rememberClusterEntrance(delayMillis = 90L)
     val echoPop = rememberClusterEntrance(delayMillis = 180L)
 
-    val drift = rememberInfiniteTransition(label = "emptyClusterDrift")
-    val backdropSpin by drift.animateFloat(
-        initialValue = 0f,
-        targetValue = 360f,
-        animationSpec = infiniteRepeatable(tween(48_000, easing = LinearEasing)),
-        label = "backdropSpin"
-    )
+    // The slow drift is the only continuous animation on this screen, so it obeys the same
+    // host gate as every other decoration: no frames while the window is stopped, the device
+    // is in power saver, or animations are switched off.
+    val gate = rememberParticleMotionGate()
+    val backdropSpin = if (gate.motionAllowed) {
+        val drift = rememberInfiniteTransition(label = "emptyClusterDrift")
+        val spin by drift.animateFloat(
+            initialValue = 0f,
+            targetValue = 360f,
+            animationSpec = infiniteRepeatable(tween(48_000, easing = LinearEasing)),
+            label = "backdropSpin"
+        )
+        spin
+    } else {
+        0f
+    }
 
     Box(modifier = Modifier.size(width = 200.dp, height = 164.dp)) {
         Box(
