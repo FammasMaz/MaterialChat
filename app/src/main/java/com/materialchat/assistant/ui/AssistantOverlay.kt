@@ -949,12 +949,23 @@ internal fun AssistantOverlayContent(
                         }
                     }
 
-                    // Keyboard toggle.
-                    IconButton(onClick = { if (keyboardMode) hideKeyboard() else enterKeyboard() }) {
-                        Icon(
-                            imageVector = if (keyboardMode) Icons.Default.KeyboardHide else Icons.Default.Keyboard,
-                            contentDescription = if (keyboardMode) "Hide keyboard" else "Keyboard"
-                        )
+                    // Keyboard toggle. It folds away while there is text: the trailing cluster
+                    // (+, keyboard, send, close) would otherwise leave the field ~50dp on a
+                    // 360dp screen, and the keyboard is already up when you are typing — back or
+                    // a tap outside still dismisses it. The attach affordance stays.
+                    AnimatedVisibility(
+                        visible = !hasText,
+                        enter = fadeIn(animationSpec = AssistantMotion.effect()) +
+                            expandHorizontally(animationSpec = AssistantMotion.stateSwitch()),
+                        exit = fadeOut(animationSpec = AssistantMotion.effect()) +
+                            shrinkHorizontally(animationSpec = AssistantMotion.stateSwitch())
+                    ) {
+                        IconButton(onClick = { if (keyboardMode) hideKeyboard() else enterKeyboard() }) {
+                            Icon(
+                                imageVector = if (keyboardMode) Icons.Default.KeyboardHide else Icons.Default.Keyboard,
+                                contentDescription = if (keyboardMode) "Hide keyboard" else "Keyboard"
+                            )
+                        }
                     }
 
                     // Primary action: Send / Stop / Mic. Like an M3 Expressive toggled icon button
