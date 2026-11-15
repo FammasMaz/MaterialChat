@@ -94,7 +94,9 @@ fun ProviderCard(
         targetValue = if (provider.isActive) {
             MaterialTheme.colorScheme.primaryContainer
         } else {
-            MaterialTheme.colorScheme.surfaceContainerLow
+            // One tone above the screen background: at surfaceContainerLow the card silhouette
+            // was invisible against the settings surface and the rows read as floating text.
+            MaterialTheme.colorScheme.surfaceContainerHigh
         },
         animationSpec = ExpressiveMotion.Effects.color(),
         label = "backgroundColor"

@@ -21,6 +21,7 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -124,6 +125,7 @@ import com.materialchat.ui.screens.search.SearchViewModel
 import com.materialchat.ui.screens.search.components.ChatSearchBar
 import com.materialchat.ui.screens.search.components.SearchResultItem
 import com.materialchat.ui.theme.CustomShapes
+import com.materialchat.ui.theme.particles.rememberParticleMotionGate
 import com.materialchat.ui.theme.ExpressiveMotion
 import com.materialchat.ui.theme.ExpressiveShapes
 import com.materialchat.ui.theme.ExpressiveShapeToken
@@ -505,56 +507,19 @@ private fun ConversationsTopBar(
             val baseBottomPadding = 12.dp
 
             if (decorAlpha > 0f) {
-                // Continuous motion engines
-                val gears = rememberInfiniteTransition(label = "bannerGears")
-                val gearLarge by gears.animateFloat(
-                    initialValue = 0f,
-                    targetValue = 360f,
-                    animationSpec = infiniteRepeatable(tween(16_000, easing = LinearEasing)),
-                    label = "gearLarge"
-                )
-                val gearSmall by gears.animateFloat(
-                    initialValue = 360f,
-                    targetValue = 0f,
-                    animationSpec = infiniteRepeatable(tween(9_500, easing = LinearEasing)),
-                    label = "gearSmall"
-                )
-                val burstSpin by gears.animateFloat(
-                    initialValue = 0f,
-                    targetValue = -360f,
-                    animationSpec = infiniteRepeatable(tween(30_000, easing = LinearEasing)),
-                    label = "burstSpin"
-                )
-                val burstBreath by gears.animateFloat(
-                    initialValue = 0.92f,
-                    targetValue = 1.08f,
-                    animationSpec = infiniteRepeatable(tween(3_400), RepeatMode.Reverse),
-                    label = "burstBreath"
-                )
-                val cloverBob by gears.animateFloat(
-                    initialValue = -1f,
-                    targetValue = 1f,
-                    animationSpec = infiniteRepeatable(tween(4_000), RepeatMode.Reverse),
-                    label = "cloverBob"
-                )
-                val sunnySpin by gears.animateFloat(
-                    initialValue = 360f,
-                    targetValue = 0f,
-                    animationSpec = infiniteRepeatable(tween(22_000, easing = LinearEasing)),
-                    label = "sunnySpin"
-                )
-                val orbitDrift by gears.animateFloat(
-                    initialValue = -1f,
-                    targetValue = 1f,
-                    animationSpec = infiniteRepeatable(tween(7_500), RepeatMode.Reverse),
-                    label = "orbitDrift"
-                )
-                val flowerDrift by gears.animateFloat(
-                    initialValue = 1f,
-                    targetValue = -1f,
-                    animationSpec = infiniteRepeatable(tween(9_200), RepeatMode.Reverse),
-                    label = "flowerDrift"
-                )
+                // Three shapes, top-right only: the left half belongs to the status line and the
+                // wordmark, so nothing decorative ever sits under them.
+                val motion = rememberParticleMotionGate().motionAllowed
+
+                val gears = if (motion) rememberInfiniteTransition(label = "bannerGears") else null
+                val gearLarge = if (gears != null) {
+                    gears.animateFloat(
+                        initialValue = 0f,
+                        targetValue = 360f,
+                        animationSpec = infiniteRepeatable(tween(16_000, easing = LinearEasing)),
+                        label = "gearLarge"
+                    ).value
+                } else 0f
 
                 // Staggered spring pop-in
                 @Composable
@@ -570,183 +535,30 @@ private fun ConversationsTopBar(
                     return anim
                 }
                 val popGearLarge = entrance(0L, 140f)
-                val popGearSmall = entrance(110L, 160f)
-                val popBurst = entrance(220L, 120f)
-                val popClover = entrance(320L, 180f)
-                val popSunny = entrance(420L, 150f)
-                val popOrbit = entrance(520L, 170f)
 
                 Box(
                     modifier = Modifier
                         .matchParentSize()
                         .graphicsLayer { alpha = decorAlpha }
                 ) {
-                    // Gear A — large cookie bleeding off the top-right edge
+                    // Gear A - large cookie bleeding off the top-right edge
                     Box(
                         modifier = Modifier
                             .align(Alignment.TopEnd)
                             .offset(x = 14.dp, y = (-18).dp)
                             .size(92.dp)
                             .graphicsLayer {
-                val tilt = tiltPose.value
-                translationX = tilt.roll * -1.0f
-                translationY = tilt.pitch * -0.5f
-                translationX += kotlin.math.sin(shakeEnergy.value * 19f + 0.0f) * shakeEnergy.value * 14f
-                rotationZ += kotlin.math.sin(shakeEnergy.value * 27f + 0.0f) * shakeEnergy.value * 9f
-                                rotationZ = rotationZ + (tilt.roll * 0.35f)
-                                rotationZ = gearLarge
+                                val tilt = tiltPose.value
+                                translationX = tilt.roll * -1.0f
+                                translationY = tilt.pitch * -0.5f
+                                translationX += kotlin.math.sin(shakeEnergy.value * 19f) * shakeEnergy.value * 14f
+                                rotationZ = gearLarge + tilt.roll * 0.35f
                                 scaleX = popGearLarge.value
                                 scaleY = popGearLarge.value
                             }
                             .background(
-                                color = primaryColor.copy(alpha = 0.20f),
-                                shape = MaterialShapes.Cookie12Sided.toShape()
-                            )
-                    )
-                    // Gear B — small cookie meshed into A's teeth, spinning opposite
-                    Box(
-                        modifier = Modifier
-                            .align(Alignment.TopEnd)
-                            .offset(x = 74.dp, y = 40.dp)
-                            .size(48.dp)
-                            .graphicsLayer {
-                val tilt = tiltPose.value
-                translationX = tilt.roll * -1.7f
-                translationY = tilt.pitch * -0.9f
-                translationX += kotlin.math.sin(shakeEnergy.value * 19f + 1.3f) * shakeEnergy.value * 14f
-                rotationZ += kotlin.math.sin(shakeEnergy.value * 27f + 2.6f) * shakeEnergy.value * 9f
-                                rotationZ = rotationZ + (tilt.roll * 0.55f)
-                                rotationZ = gearSmall
-                                scaleX = popGearSmall.value
-                                scaleY = popGearSmall.value
-                            }
-                            .background(
-                                color = tertiaryColor.copy(alpha = 0.22f),
-                                shape = MaterialShapes.Cookie6Sided.toShape()
-                            )
-                    )
-                    // Soft burst — breathes and spins against the gear pair
-                    Box(
-                        modifier = Modifier
-                            .align(Alignment.TopStart)
-                            .offset(x = (-16).dp, y = (-6).dp)
-                            .size(78.dp)
-                            .graphicsLayer {
-                val tilt = tiltPose.value
-                translationX = tilt.roll * 1.4f
-                translationY = tilt.pitch * 0.7f
-                translationX += kotlin.math.sin(shakeEnergy.value * 19f + 2.1f) * shakeEnergy.value * 14f
-                rotationZ += kotlin.math.sin(shakeEnergy.value * 27f + 4.2f) * shakeEnergy.value * 9f
-                                                rotationZ = burstSpin
-                                scaleX = burstBreath * popBurst.value
-                                scaleY = burstBreath * popBurst.value
-                            }
-                            .background(
-                                color = tertiaryColor.copy(alpha = 0.16f),
-                                shape = MaterialShapes.SoftBurst.toShape()
-                            )
-                    )
-                    // Sunny — half off the left edge at mid height, slow roll
-                    Box(
-                        modifier = Modifier
-                            .align(Alignment.CenterStart)
-                            .offset(x = (-26).dp, y = (-10).dp)
-                            .size(54.dp)
-                            .graphicsLayer {
-                val tilt = tiltPose.value
-                translationX = tilt.roll * -0.8f
-                translationY = tilt.pitch * -0.4f
-                translationX += kotlin.math.sin(shakeEnergy.value * 19f + 2.9f) * shakeEnergy.value * 14f
-                rotationZ += kotlin.math.sin(shakeEnergy.value * 27f + 5.8f) * shakeEnergy.value * 9f
-                                                rotationZ = sunnySpin
-                                scaleX = popSunny.value
-                                scaleY = popSunny.value
-                            }
-                            .background(
-                                color = secondaryColor.copy(alpha = 0.18f),
-                                shape = MaterialShapes.Sunny.toShape()
-                            )
-                    )
-                    // Orbit trio across the middle so the center never sits empty:
-                    // a pill-soft puff drifting right of the title zone...
-                    Box(
-                        modifier = Modifier
-                            .align(Alignment.Center)
-                            .offset(x = (orbitDrift * 34).dp + 46.dp, y = 2.dp)
-                            .size(30.dp)
-                            .graphicsLayer {
-                val tilt = tiltPose.value
-                translationX = tilt.roll * -1.6f
-                translationY = tilt.pitch * -0.8f
-                translationX += kotlin.math.sin(shakeEnergy.value * 19f + 3.7f) * shakeEnergy.value * 14f
-                rotationZ += kotlin.math.sin(shakeEnergy.value * 27f + 7.4f) * shakeEnergy.value * 9f
-                                                rotationZ = orbitDrift * 24f
-                                scaleX = popOrbit.value
-                                scaleY = popOrbit.value
-                            }
-                            .background(
-                                color = primaryColor.copy(alpha = 0.15f),
-                                shape = MaterialShapes.Puffy.toShape()
-                            )
-                    )
-                    // ...a flower drifting the opposite way near center-right...
-                    Box(
-                        modifier = Modifier
-                            .align(Alignment.CenterEnd)
-                            .offset(x = (-58).dp, y = (flowerDrift * 12).dp + (-4).dp)
-                            .size(36.dp)
-                            .graphicsLayer {
-                val tilt = tiltPose.value
-                translationX = tilt.roll * 1.5f
-                translationY = tilt.pitch * 0.75f
-                translationX += kotlin.math.sin(shakeEnergy.value * 19f + 4.4f) * shakeEnergy.value * 14f
-                rotationZ += kotlin.math.sin(shakeEnergy.value * 27f + 8.8f) * shakeEnergy.value * 9f
-                                                rotationZ = flowerDrift * 30f
-                                scaleX = popOrbit.value
-                                scaleY = popOrbit.value
-                            }
-                            .background(
-                                color = onSurfaceColor.copy(alpha = 0.10f),
-                                shape = MaterialShapes.Flower.toShape()
-                            )
-                    )
-                    // ...and a tiny echo dot riding between them.
-                    Box(
-                        modifier = Modifier
-                            .align(Alignment.CenterStart)
-                            .offset(x = (flowerDrift * 26).dp + 118.dp, y = (orbitDrift * 6).dp + 14.dp)
-                            .size(16.dp)
-                            .graphicsLayer {
-                val tilt = tiltPose.value
-                translationX = tilt.roll * -2.0f
-                translationY = tilt.pitch * -1.0f
-                translationX += kotlin.math.sin(shakeEnergy.value * 19f + 5.2f) * shakeEnergy.value * 14f
-                rotationZ += kotlin.math.sin(shakeEnergy.value * 27f + 10.4f) * shakeEnergy.value * 9f
-                                scaleX = popOrbit.value; scaleY = popOrbit.value }
-                            .background(
-                                color = tertiaryColor.copy(alpha = 0.20f),
-                                shape = MaterialShapes.Pill.toShape()
-                            )
-                    )
-                    // Clover — bobs gently just above the title baseline
-                    Box(
-                        modifier = Modifier
-                            .align(Alignment.BottomStart)
-                            .offset(x = 96.dp, y = (cloverBob * 4).dp + 4.dp)
-                            .size(34.dp)
-                            .graphicsLayer {
-                val tilt = tiltPose.value
-                translationX = tilt.roll * 2.2f
-                translationY = tilt.pitch * 1.1f
-                translationX += kotlin.math.sin(shakeEnergy.value * 19f + 6.1f) * shakeEnergy.value * 14f
-                rotationZ += kotlin.math.sin(shakeEnergy.value * 27f + 12.2f) * shakeEnergy.value * 9f
-                                                rotationZ = cloverBob * 12f
-                                scaleX = popClover.value
-                                scaleY = popClover.value
-                            }
-                            .background(
                                 color = primaryColor.copy(alpha = 0.13f),
-                                shape = MaterialShapes.Clover4Leaf.toShape()
+                                shape = MaterialShapes.Cookie12Sided.toShape()
                             )
                     )
                 }

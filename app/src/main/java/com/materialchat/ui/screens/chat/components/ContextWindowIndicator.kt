@@ -64,9 +64,11 @@ fun ContextWindowIndicator(
         ) {
             Box(contentAlignment = Alignment.Center) {
                 WavyContextRing(
-                    progress = usage.fractionUsed ?: 0.12f,
+                    // No known window yet means nothing has been used: draw an empty ring rather
+                    // than a stub arc that reads as a stalled spinner.
+                    progress = usage.fractionUsed ?: 0f,
                     progressColor = indicatorColors.progress,
-                    trackColor = indicatorColors.content.copy(alpha = 0.16f),
+                    trackColor = indicatorColors.content.copy(alpha = 0.30f),
                     modifier = Modifier.size(28.dp)
                 )
             }

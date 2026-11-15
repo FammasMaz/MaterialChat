@@ -873,7 +873,14 @@ private fun SuccessContent(
             .animateContentSize(
                 animationSpec = ExpressiveMotion.Spatial.contentSize()
             ),
-        contentPadding = PaddingValues(16.dp),
+        contentPadding = PaddingValues(
+            start = 16.dp,
+            end = 16.dp,
+            top = 16.dp,
+            // Clear the floating navigation pill: at a flat 16dp the last provider's action row
+            // sat underneath it and could not be tapped.
+            bottom = 112.dp
+        ),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         // Providers Section

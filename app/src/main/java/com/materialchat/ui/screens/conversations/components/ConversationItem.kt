@@ -190,8 +190,7 @@ fun ConversationItem(
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f, fill = false)
+                        overflow = TextOverflow.Ellipsis
                     )
 
                     if (conversationItem.conversation.isArchived) {
@@ -203,6 +202,19 @@ fun ConversationItem(
                                 .clip(RoundedCornerShape(50))
                                 .background(MaterialTheme.colorScheme.secondaryContainer)
                                 .padding(horizontal = 6.dp, vertical = 2.dp)
+                        )
+                    }
+
+                    // Time rides the metadata line so the title gets the full row width; as a
+                    // sibling of the title it clipped names that had room to spare.
+                    Spacer(modifier = Modifier.weight(1f))
+                    if (conversationItem.isStreaming) {
+                        ActiveConversationIndicator()
+                    } else {
+                        Text(
+                            text = conversationItem.relativeTime,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
@@ -220,18 +232,6 @@ fun ConversationItem(
                 }
             }
 
-            Spacer(modifier = Modifier.width(8.dp))
-
-            // Relative time or active generation indicator.
-            if (conversationItem.isStreaming) {
-                ActiveConversationIndicator()
-            } else {
-                Text(
-                    text = conversationItem.relativeTime,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
         }
 
         // Divider - M3: outlineVariant for subtle separation

@@ -223,8 +223,7 @@ fun ExpandableConversationGroup(
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                    modifier = Modifier.weight(1f, fill = false)
+                                    overflow = TextOverflow.Ellipsis
                                 )
 
                                 if (group.parent.conversation.isArchived) {
@@ -251,29 +250,26 @@ fun ExpandableConversationGroup(
                                             .padding(horizontal = 6.dp, vertical = 2.dp)
                                     )
                                 }
+
+                                // Time rides the metadata line: as a sibling of the title it
+                                // clipped names that had room to spare.
+                                Spacer(modifier = Modifier.weight(1f))
+                                if (group.parent.isStreaming) {
+                                    GroupActiveIndicator()
+                                } else {
+                                    Text(
+                                        text = group.parent.relativeTime,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
                             }
                         }
 
-                        Spacer(modifier = Modifier.width(8.dp))
-
-                        // Relative time and expand chevron
-                        Column(
-                            horizontalAlignment = Alignment.End,
-                            verticalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
-                            if (group.parent.isStreaming) {
-                                GroupActiveIndicator()
-                            } else {
-                                Text(
-                                    text = group.parent.relativeTime,
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-
-                            // Expand chevron - M3: 48dp touch target
-                            if (group.hasBranches) {
-                                Surface(
+                        // Expand chevron - M3: 48dp touch target
+                        if (group.hasBranches) {
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Surface(
                                     onClick = {
                                         haptics.perform(HapticPattern.CLICK, hapticsEnabled)
                                         onExpandToggle(group.parent.conversation.id)
@@ -282,18 +278,17 @@ fun ExpandableConversationGroup(
                                     color = MaterialTheme.colorScheme.surfaceContainerHigh,
                                     modifier = Modifier.size(32.dp) // Visual size, touch target handled by parent
                                 ) {
-                                    Box(contentAlignment = Alignment.Center) {
-                                        Icon(
-                                            imageVector = Icons.Filled.ExpandMore,
-                                            contentDescription = if (group.isExpanded) "Collapse branches" else "Expand branches",
-                                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                            modifier = Modifier
-                                                .size(20.dp)
-                                                .graphicsLayer {
-                                                    rotationZ = chevronRotation
-                                                }
-                                        )
-                                    }
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(
+                                        imageVector = Icons.Filled.ExpandMore,
+                                        contentDescription = if (group.isExpanded) "Collapse branches" else "Expand branches",
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier
+                                            .size(20.dp)
+                                            .graphicsLayer {
+                                                rotationZ = chevronRotation
+                                            }
+                                    )
                                 }
                             }
                         }
