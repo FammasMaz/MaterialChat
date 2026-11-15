@@ -119,80 +119,61 @@ done
   exit 1
 }
 
-# --- Neural dot lattice (assistant window only) ------------------------------------
-# The assistant's dot texture is Gemini Live's: a bottom-anchored scrim band carrying a
-# uniform dot lattice (1.2dp dots on a 7dp pitch, fading upward) drawn in front of the pill,
-# whose dots twinkle in place on a draw-phase frame clock. Production logs one line per
-# lattice signature from inside the draw path, so this marker proves the real assistant window
-# laid the lattice out and drew it, rather than the modifier merely being attached.
+# --- Neural particle field (assistant window only) ---------------------------------
+# The assistant's decoration is essentials' Gemini pill: the pill's own colour painted as a
+# soft-edged capsule, the accent glowing inside along that edge, and scattered dots drifting in
+# the band around it. Production logs one line per painter signature from inside the draw path,
+# so this marker proves the real assistant window laid the field out and drew it, rather than
+# the modifier merely being attached.
 for attempt in $(seq 1 20); do
-  adb logcat -d > "$out/logcat-lattice.txt"
-  if grep -q "NeuralLattice: dots=" "$out/logcat-lattice.txt"; then break; fi
+  adb logcat -d > "$out/logcat-particles.txt"
+  if grep -q "NeuralParticles: painter=" "$out/logcat-particles.txt"; then break; fi
   sleep 1
 done
-grep -q "NeuralLattice: dots=" "$out/logcat-lattice.txt"
-grep "NeuralLattice" "$out/logcat-lattice.txt" | tail -5 | tee "$out/lattice-summary.txt"
+grep -q "NeuralParticles: painter=" "$out/logcat-particles.txt"
+grep "NeuralParticles" "$out/logcat-particles.txt" | tail -5 | tee "$out/particle-summary.txt"
 
-# Motion: the lattice logs 'motion=on' only after 60 clock-driven draws each carrying a
-# different frame time (a presence fade alone never counts), with the fraction of reachable
-# dots lit on that draw. The hosted runner keeps animations enabled, so the real window must
-# reach this marker; it proves the frame clock drives the draw path, not merely that it exists.
-for attempt in $(seq 1 40); do
-  adb logcat -d > "$out/logcat-lattice.txt"
-  if grep -q "NeuralLattice: motion=on" "$out/logcat-lattice.txt"; then break; fi
-  sleep 1
-done
-grep -q "NeuralLattice: motion=on" "$out/logcat-lattice.txt"
-grep "NeuralLattice: motion=on" "$out/logcat-lattice.txt" | tail -1 | tee "$out/lattice-motion.txt"
-python3 - "$out/lattice-motion.txt" <<'PYMOTION'
-import re, sys
-line = open(sys.argv[1], errors='replace').read()
-m = re.search(r'motion=on frames=(\d+) lit=([0-9.]+)', line)
-if not m:
-    raise AssertionError('the lattice motion marker is malformed: ' + line)
-frames, lit = int(m.group(1)), float(m.group(2))
-assert frames >= 60, f'only {frames} clock-driven lattice draws landed'
-# The reference keeps 27-43% of its dots lit per frame; the lattice's lit window is 40%.
-assert 0.2 <= lit <= 0.6, f'lit fraction {lit} is outside the reference range'
-print(f'Neural dot lattice motion: frames={frames} lit={lit}')
-PYMOTION
-
-# The marker carries the geometry the real window resolved, so the band is checked exactly
-# rather than sampled: the assistant window is translucent and hosted over the launcher, where
-# the wallpaper and dock icons dominate any pixel statistic (hosted run 43657360948 measured the
-# wallpaper, 0.2792 specks, against the lattice's 0.0051 and failed for the wrong reason). The
-# dots themselves are proven from pixels by AssistantDotLatticeRenderTest, which renders the
-# texture over a known background on both API levels.
+# The marker carries the geometry the real window resolved, so the field is checked exactly
+# rather than sampled from pixels: the assistant window is translucent and hosted over the
+# launcher, where the wallpaper and dock icons dominate any pixel statistic (hosted run
+# 43657360948 measured the wallpaper, 0.2792 specks, against the effect's 0.0051 and failed for
+# the wrong reason). The dots themselves are proven from pixels by AssistantNeuralParticleFieldTest,
+# which renders the field over a known background on both API levels.
 adb shell wm density > "$out/density.txt"
-adb exec-out screencap > "$out/lattice-frame.raw"
-python3 - "$out/lattice-summary.txt" "$out/density.txt" <<'PYLATTICE' | tee "$out/lattice-band.txt"
+python3 - "$out/particle-summary.txt" "$out/density.txt" <<'PYPARTICLES' | tee "$out/particle-band.txt"
 import re, sys
 
 summary = open(sys.argv[1], errors='replace').read()
 density_text = open(sys.argv[2], errors='replace').read()
-lines = [line for line in summary.splitlines() if 'NeuralLattice: dots=' in line]
+lines = [line for line in summary.splitlines() if 'NeuralParticles: painter=' in line]
 if not lines:
-    raise AssertionError('the lattice never logged a signature from its draw path')
-dots, pitch, band_top, height = map(int, re.search(
-    r'dots=(\d+) pitch=(\d+)px bandTop=(\d+)px height=(\d+)px', lines[-1]).groups())
+    raise AssertionError('the particle field never logged a signature from its draw path')
+last = lines[-1]
+m = re.search(r'painter=(\w+) capsule=(\d+)x(\d+) radius=(\d+) band=(\d+)x(\d+) edge=(\w+)', last)
+if not m:
+    raise AssertionError('the particle marker is malformed: ' + last)
+kind, cap_w, cap_h, radius, band_w, band_h, edge = m.groups()
+cap_w, cap_h, radius = int(cap_w), int(cap_h), int(radius)
+band_w, band_h = int(band_w), int(band_h)
+
 densities = re.findall(r'(?:Physical|Override) density:\s*(\d+)', density_text)
 if not densities:
     raise AssertionError('cannot establish display density')
 density = int(densities[-1]) / 160.0
 
-expected_pitch = round(7 * density)
-assert abs(pitch - expected_pitch) <= 1, f'pitch {pitch}px is not 7dp at density {density}: expected {expected_pitch}'
-assert dots >= 500, f'the lattice laid out only {dots} dots for a {height}px host'
-
-# The band is the bottom 24% of the host, floored at 160dp so it survives the keyboard.
-band = max(height * 0.24, 160 * density)
-expected_top = height - band
-assert abs(band_top - expected_top) <= max(2, height * 0.02), (
-    f'band top {band_top}px does not match the bottom band of a {height}px host (expected ~{expected_top:.0f})')
-assert band_top >= height * 0.7, f'the lattice band reaches too high: bandTop={band_top} of {height}'
-print(f'Neural dot lattice: dots={dots} pitch={pitch}px bandTop={band_top}px height={height}px density={density}')
-print('Neural dot lattice passed')
-PYLATTICE
+# The pill is a real capsule: wide, short, and rounded to half its height.
+assert cap_w > 0 and cap_h > 0, f'the pill has no size: {cap_w}x{cap_h}'
+assert cap_w > cap_h, f'the pill is not a capsule: {cap_w}x{cap_h}'
+assert radius >= cap_h // 2 - 1, f'corner radius {radius}px does not round a {cap_h}px pill'
+# The band is the window the field draws into; it must cover the pill it decorates.
+assert band_w >= cap_w and band_h >= cap_h, (
+    f'the particle band {band_w}x{band_h} does not cover the {cap_w}x{cap_h} pill')
+# The soft edge is the point of the effect: blur on API 31+, the geometric feather below it.
+assert edge in ('blur', 'gradient'), f'unknown edge treatment: {edge}'
+print(f'Neural particle field: painter={kind} capsule={cap_w}x{cap_h} radius={radius} '
+      f'band={band_w}x{band_h} edge={edge} density={density}')
+print('Neural particle field passed')
+PYPARTICLES
 
 # Exercise the actual keyboard state, not only initial overlay visibility.
 python3 - "$out/ui.xml" <<'PYTAP' | xargs adb shell input tap

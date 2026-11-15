@@ -347,19 +347,6 @@ fun AssistantOverlay(
                     viewModel.dismiss()
                 }
                 .padding(bottom = with(density) { bottomObstructionPx.toDp() })
-                // The dot texture, after Gemini Live: a bottom-anchored scrim band behind the
-                // pill and a uniform dot lattice (1.2dp dots, 7dp pitch, fading upward, edge to
-                // edge) drawn IN FRONT of the pill, over its blurred edge. The grid never moves;
-                // its dots twinkle in place on a draw-phase frame clock that stops behind the
-                // shared motion gate (see LatticeTwinkle for the measured reference motion).
-                // Drawn from this full-window node because API 26 clips a node's drawing to its
-                // own bounds. It fades in on arrival and out while leaving.
-                .assistantDotLattice(
-                    visible = !leaving,
-                    enabled = neuralExpressive,
-                    pillRect = decorationRect,
-                    pillCornerRadius = 38.dp
-                )
                 .onGloballyPositioned { scrimOriginInRoot = it.boundsInRoot().topLeft }
                 // Below API 28 a node's drawing is clipped to its own bounds, so a card-sized
                 // node can never draw an outward particle band there. The full-window scrim hosts
@@ -369,16 +356,12 @@ fun AssistantOverlay(
                     capsuleRect = decorationRect,
                     cornerRadius = 38.dp,
                     // As in essentials' Gemini pill: the pill's own colour is painted as a
-                    // soft-edged capsule with the accent glowing inside along the edge. The
-                    // scattered dots are off — the twinkling dot lattice owns the dots now
-                    // (Gemini Live's uniform grid, see assistantDotLattice) and draws them over
-                    // this fill — but this still paints the feathered fill, the edge blur and
-                    // the inner glow, so the pill keeps its blurry edge under the lattice.
+                    // soft-edged capsule with the accent glowing inside along the edge, and the
+                    // scattered dots drift in the band around that blurred edge.
                     featherColor = MaterialTheme.colorScheme.surfaceContainerHigh,
                     style = ParticleFieldStyle(innerBand = 20.dp),
                     color = MaterialTheme.colorScheme.primary,
                     enabled = neuralExpressive,
-                    dotsEnabled = false,
                     // The card reports its rect; until it does, there is nothing to decorate.
                     capsuleInset = null,
                     // The dots follow listening only: they fade in (600 ms) when recognition
