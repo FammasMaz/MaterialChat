@@ -18,9 +18,11 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.expandHorizontally
+import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkHorizontally
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInVertically
@@ -96,6 +98,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AddComment
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.ContentCopy
@@ -496,7 +499,7 @@ internal fun AssistantOverlayContent(
     onOpenInApp: () -> Unit,
     onDismiss: () -> Unit,
     onNewChat: () -> Unit,
-    /** Photos waiting to go with the question, shown as removable thumbnails above the pill. */
+    /** Photos waiting to go with the question, shown as removable thumbnails inside the opened pill. */
     pendingAttachments: List<Attachment> = emptyList(),
     /** Take a photo or choose one; the per-message limit is enforced by the caller. */
     onAttach: (AssistantAttachMode) -> Unit = {},
@@ -536,10 +539,25 @@ internal fun AssistantOverlayContent(
     }
     val hasText = uiState.textInput.isNotBlank()
 
+    // The photo reveal inside the pill (see AssistantAttachRevealState): the `+` in the trailing
+    // cluster opens the two attach actions within the pill's own surface; pending photos keep the
+    // pill opened on their own so the thumbnails stay removable.
+    var attachReveal by remember { mutableStateOf(AssistantAttachRevealState()) }
+    val attachAffordanceVisible =
+        AssistantAttachRevealState.affordanceVisible(keyboardMode, pendingAttachments.size)
+    val attachExpanded = AssistantAttachRevealState.expanded(attachReveal.open, pendingAttachments.size)
+    LaunchedEffect(attachAffordanceVisible) {
+        attachReveal = attachReveal.affordanceVisibilityChanged(attachAffordanceVisible)
+    }
+    LaunchedEffect(leaving) {
+        if (leaving) attachReveal = attachReveal.pillHidden()
+    }
+
     val hideKeyboard: () -> Unit = {
         focusManager.clearFocus()
         keyboard?.hide()
         keyboardMode = false
+        attachReveal = attachReveal.keyboardHidden()
     }
     val enterKeyboard: () -> Unit = {
         onInterrupt()
@@ -685,30 +703,15 @@ internal fun AssistantOverlayContent(
                 AssistantNoticeSurface(message = notice.orEmpty(), isError = isError)
             }
 
-            // Photos for the question: removable thumbnails (the composer's own preview row) and
-            // the two ways to add one, with the composer's wording. The tray sits above the pill,
-            // so the pill's row keeps its geometry, and it appears only in keyboard mode or while
-            // something is attached: the resting pill (what the particle test and the hosted
-            // gate measure through the sheet's top edge) is exactly what it was.
-            AnimatedVisibility(
-                visible = pendingAttachments.isNotEmpty() || keyboardMode,
-                enter = fadeIn(animationSpec = AssistantMotion.effect()) +
-                    scaleIn(animationSpec = AssistantMotion.stateSwitch(), initialScale = 0.9f),
-                exit = fadeOut(animationSpec = AssistantMotion.effect()) +
-                    scaleOut(animationSpec = AssistantMotion.stateSwitch(), targetScale = 0.9f)
-            ) {
-                AssistantAttachTray(
-                    attachments = pendingAttachments,
-                    onAttach = onAttach,
-                    onRemoveAttachment = onRemoveAttachment
-                )
-            }
-
-            // The pill.
+            // The pill. At rest it is exactly the 76dp capsule (what the particle test and the
+            // hosted gate measure through the sheet's edges). Photos open it: the reveal region
+            // (thumbnails, the two attach actions) grows upward out of the same surface, under the
+            // same 38dp corners, so the pill reads as opening rather than a second row arriving.
+            // Nothing is reserved while it is closed and nothing is attached.
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(76.dp)
+                    .heightIn(min = 76.dp)
                     .testTag("assistant_pill")
                     // The particle field and soft fill wrap the pill itself.
                     .onGloballyPositioned { onCardBoundsChange(it.boundsInRoot()) },
@@ -719,9 +722,38 @@ internal fun AssistantOverlayContent(
                 tonalElevation = if (softEdges) 0.dp else 6.dp,
                 shadowElevation = if (softEdges) 0.dp else 16.dp
             ) {
+                Column(modifier = Modifier.fillMaxWidth()) {
+                // The opened region sits above the row and is anchored to it: it expands from
+                // its bottom edge on the answer surface's spring, so the pill's top rises.
+                AnimatedVisibility(
+                    visible = attachExpanded,
+                    enter = fadeIn(animationSpec = AssistantMotion.effect()) +
+                        expandVertically(
+                            animationSpec = AssistantMotion.surfaceReveal(),
+                            expandFrom = Alignment.Bottom
+                        ),
+                    exit = fadeOut(animationSpec = AssistantMotion.effect()) +
+                        shrinkVertically(
+                            animationSpec = AssistantMotion.surfaceReveal(),
+                            shrinkTowards = Alignment.Bottom
+                        )
+                ) {
+                    AssistantAttachRevealContent(
+                        attachments = pendingAttachments,
+                        showActions = attachReveal.open,
+                        onAttach = { mode ->
+                            attachReveal = attachReveal.modeChosen()
+                            onAttach(mode)
+                        },
+                        onRemoveAttachment = onRemoveAttachment
+                    )
+                }
+
+                // The pill's row: unchanged 76dp geometry.
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .height(76.dp)
                         .padding(start = 18.dp, end = 10.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(10.dp)
@@ -887,6 +919,36 @@ internal fun AssistantOverlayContent(
                         }
                     }
 
+                    // Photo affordance: a `+` that folds into the trailing cluster in keyboard
+                    // mode or while photos are attached, and rotates into a × while the reveal
+                    // is open. Compact (40dp) so the five-control keyboard row still leaves room
+                    // for the text field on narrow screens.
+                    AnimatedVisibility(
+                        visible = attachAffordanceVisible,
+                        enter = fadeIn(animationSpec = AssistantMotion.effect()) +
+                            expandHorizontally(animationSpec = AssistantMotion.stateSwitch()),
+                        exit = fadeOut(animationSpec = AssistantMotion.effect()) +
+                            shrinkHorizontally(animationSpec = AssistantMotion.stateSwitch())
+                    ) {
+                        val affordanceRotation by animateFloatAsState(
+                            targetValue = if (attachReveal.open) 45f else 0f,
+                            animationSpec = AssistantMotion.morph(),
+                            label = "attachAffordance"
+                        )
+                        IconButton(
+                            onClick = { attachReveal = attachReveal.toggled() },
+                            modifier = Modifier
+                                .size(40.dp)
+                                .testTag("assistant_attach")
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Add,
+                                contentDescription = if (attachReveal.open) "Close photo options" else "Add photo",
+                                modifier = Modifier.graphicsLayer { rotationZ = affordanceRotation }
+                            )
+                        }
+                    }
+
                     // Keyboard toggle.
                     IconButton(onClick = { if (keyboardMode) hideKeyboard() else enterKeyboard() }) {
                         Icon(
@@ -989,6 +1051,7 @@ internal fun AssistantOverlayContent(
                             Icon(Icons.Default.Close, contentDescription = "End assistant session")
                         }
                     }
+                }
                 }
             }
         }
@@ -1122,48 +1185,63 @@ private fun AssistantAnswerToolbar(
 }
 
 /**
- * Pending photos and the attach actions. The thumbnails are the chat composer's preview row
- * (64dp images, 48dp remove targets); the actions are tonal chips in the answer toolbar's
- * style, trailing so they sit near the pill's primary button.
+ * The pill's opened region, above its 76dp row and inside its own surface: the pending photos
+ * (the chat composer's preview row: 64dp images, 48dp remove targets, kept under the
+ * `assistant_attachments` tag) and, while the reveal is open, the two attach actions as tonal
+ * chips trailing under the pill's primary button. Each part folds in and out on its own, so
+ * choosing an action closes the chips while the thumbnails stay.
  */
 @Composable
-private fun AssistantAttachTray(
+private fun AssistantAttachRevealContent(
     attachments: List<Attachment>,
+    showActions: Boolean,
     onAttach: (AssistantAttachMode) -> Unit,
     onRemoveAttachment: (Attachment) -> Unit
 ) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 6.dp),
-        verticalArrangement = Arrangement.spacedBy(6.dp)
-    ) {
-        if (attachments.isNotEmpty()) {
-            // The remove button of each item overhangs its top edge; leave it room.
+    Column(modifier = Modifier.fillMaxWidth()) {
+        AnimatedVisibility(
+            visible = attachments.isNotEmpty(),
+            enter = fadeIn(animationSpec = AssistantMotion.effect()) +
+                expandVertically(animationSpec = AssistantMotion.surfaceReveal(), expandFrom = Alignment.Bottom),
+            exit = fadeOut(animationSpec = AssistantMotion.effect()) +
+                shrinkVertically(animationSpec = AssistantMotion.surfaceReveal(), shrinkTowards = Alignment.Bottom)
+        ) {
+            // The remove button of each item overhangs its top edge by 12dp; the top inset
+            // keeps it inside the capsule's clip.
             AttachmentPreviewRow(
                 attachments = attachments,
                 onRemoveAttachment = onRemoveAttachment,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(top = 12.dp, start = 4.dp)
+                    .padding(top = 16.dp, start = 18.dp, end = 18.dp)
                     .testTag("assistant_attachments")
             )
         }
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
-            verticalAlignment = Alignment.CenterVertically
+        AnimatedVisibility(
+            visible = showActions,
+            enter = fadeIn(animationSpec = AssistantMotion.effect()) +
+                expandVertically(animationSpec = AssistantMotion.surfaceReveal(), expandFrom = Alignment.Bottom),
+            exit = fadeOut(animationSpec = AssistantMotion.effect()) +
+                shrinkVertically(animationSpec = AssistantMotion.surfaceReveal(), shrinkTowards = Alignment.Bottom)
         ) {
-            AssistantAttachChip(
-                icon = Icons.Default.PhotoCamera,
-                label = "Take photo",
-                onClick = { onAttach(AssistantAttachMode.Camera) }
-            )
-            AssistantAttachChip(
-                icon = Icons.Default.AddPhotoAlternate,
-                label = "Attach photo",
-                onClick = { onAttach(AssistantAttachMode.Gallery) }
-            )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 14.dp, start = 18.dp, end = 10.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                AssistantAttachChip(
+                    icon = Icons.Default.PhotoCamera,
+                    label = "Take photo",
+                    onClick = { onAttach(AssistantAttachMode.Camera) }
+                )
+                AssistantAttachChip(
+                    icon = Icons.Default.AddPhotoAlternate,
+                    label = "Attach photo",
+                    onClick = { onAttach(AssistantAttachMode.Gallery) }
+                )
+            }
         }
     }
 }
