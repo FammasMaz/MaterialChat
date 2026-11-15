@@ -8,8 +8,9 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -28,10 +29,12 @@ import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ripple
 import com.materialchat.ui.components.seaglass.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -68,6 +71,9 @@ import com.materialchat.ui.theme.ExpressiveMotion
  * @param onDelete Callback when delete is triggered on parent or branch
  * @param onArchiveToggle Callback when archive/restore is tapped on parent or branch
  * @param cornerRadius Corner radius for the container (M3: largeIncreased = 20dp)
+ * @param seamRadius Corner radius on edges shared with neighbouring groups; non-zero
+ *   values produce the segmented-list look where rows sit in a stack with a small gap
+ * @param showDivider Whether to draw a divider under a collapsed parent row
  * @param isFirst Whether this is the first item in the list
  * @param isLast Whether this is the last item in the list
  * @param hapticsEnabled Whether haptic feedback is enabled
@@ -86,12 +92,16 @@ fun ExpandableConversationGroup(
     onArchiveToggle: (Conversation) -> Unit,
     onSwipeRight: (Conversation) -> Unit = {},
     cornerRadius: Dp = 20.dp, // M3: largeIncreased
+    seamRadius: Dp = 0.dp,
+    showDivider: Boolean = true,
     isFirst: Boolean = false,
     isLast: Boolean = false,
     hapticsEnabled: Boolean = true,
     modifier: Modifier = Modifier
 ) {
     val haptics = rememberHapticFeedback()
+    val parentInteractionSource = remember { MutableInteractionSource() }
+    val parentPressed by parentInteractionSource.collectIsPressedAsState()
 
     // Chevron rotation: spatial spring from the theme (can overshoot)
     val chevronRotation by animateFloatAsState(
@@ -102,18 +112,23 @@ fun ExpandableConversationGroup(
 
     // Calculate corner radii based on position and expansion state
     // M3 Expressive: Connected items share edges
-    val topCornerRadius = if (isFirst) cornerRadius else 0.dp
+    val topCornerRadius = if (isFirst) cornerRadius else seamRadius
     val bottomCornerRadius = when {
         isLast && !group.isExpanded -> cornerRadius
         isLast && group.isExpanded && !group.hasBranches -> cornerRadius
-        else -> 0.dp
+        else -> seamRadius
     }
 
-    val parentShape = RoundedCornerShape(
-        topStart = topCornerRadius,
-        topEnd = topCornerRadius,
-        bottomStart = bottomCornerRadius,
-        bottomEnd = bottomCornerRadius
+    // Pressed parent rows morph to the full outer radius so they lift out of the stack.
+    val parentShape = pressMorphShape(
+        resting = SwipeCornerSpec(
+            topStart = topCornerRadius,
+            topEnd = topCornerRadius,
+            bottomStart = bottomCornerRadius,
+            bottomEnd = bottomCornerRadius
+        ),
+        pressed = SwipeCornerSpec(cornerRadius, cornerRadius, cornerRadius, cornerRadius),
+        isPressed = parentPressed
     )
 
     Column(modifier = modifier.fillMaxWidth()) {
@@ -143,6 +158,8 @@ fun ExpandableConversationGroup(
                         modifier = Modifier
                             .fillMaxWidth()
                             .combinedClickable(
+                                interactionSource = parentInteractionSource,
+                                indication = ripple(),
                                 onClick = {
                                     haptics.perform(HapticPattern.CLICK, hapticsEnabled)
                                     onParentClick(group.parent.conversation.id)
@@ -283,7 +300,7 @@ fun ExpandableConversationGroup(
                     }
 
                     // Divider - M3: outlineVariant for subtle separation
-                    if (!group.isExpanded && !isLast) {
+                    if (showDivider && !group.isExpanded && !isLast) {
                         Spacer(
                             modifier = Modifier
                                 .fillMaxWidth()

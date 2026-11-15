@@ -59,7 +59,10 @@ import com.materialchat.ui.theme.ExpressiveShapes
  *
  * @param conversationItem The conversation data to display
  * @param onClick Callback when the item is clicked
- * @param shape Shape for the item (used for corner calculation)
+ * @param onLongClick Callback when the item is long-pressed
+ * @param shape Resting shape when [corners] is null
+ * @param corners Segmented resting corners; when set, the row morphs to
+ *   [SegmentedRowShapes.Pressed] while pressed and ignores [shape]
  * @param showDivider Whether to show a divider below this item
  * @param modifier Modifier for the item
  */
@@ -70,11 +73,17 @@ fun ConversationItem(
     onClick: () -> Unit,
     onLongClick: (() -> Unit)? = null,
     shape: Shape = CustomShapes.ConversationItem,
+    corners: SwipeCornerSpec? = null,
     showDivider: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
+    val rowShape = if (corners != null) {
+        pressMorphShape(resting = corners, pressed = SegmentedRowShapes.Pressed, isPressed = isPressed)
+    } else {
+        shape
+    }
 
     // Scale animation - shared spatial spring from the theme motion tokens
     val scale by animateFloatAsState(
@@ -87,9 +96,9 @@ fun ConversationItem(
     val baseContainerColor = if (conversationItem.isStreaming) {
         MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.48f)
     } else if (conversationItem.conversation.isArchived) {
-        MaterialTheme.colorScheme.surfaceContainer
+        MaterialTheme.colorScheme.surfaceContainerHigh
     } else {
-        MaterialTheme.colorScheme.surfaceContainerLow
+        MaterialTheme.colorScheme.surfaceContainer
     }
     val pressedOverlay = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)
     val backgroundColor by animateColorAsState(
@@ -106,7 +115,7 @@ fun ConversationItem(
         modifier = modifier
             .fillMaxWidth()
             .scale(scale)
-            .clip(shape)
+            .clip(rowShape)
             .background(backgroundColor)
             .combinedClickable(
                 interactionSource = interactionSource,
