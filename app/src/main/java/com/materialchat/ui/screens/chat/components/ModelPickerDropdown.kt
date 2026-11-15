@@ -23,7 +23,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.LoadingIndicator
 import com.materialchat.ui.components.seaglass.DropdownMenu
 import com.materialchat.ui.components.seaglass.DropdownMenuItem
 import com.materialchat.ui.theme.CustomShapes
@@ -236,6 +237,7 @@ private fun ModelDropdownMenu(
 /**
  * Loading state menu item.
  */
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun LoadingMenuItem() {
     DropdownMenuItem(
@@ -243,9 +245,8 @@ private fun LoadingMenuItem() {
             Row(
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(16.dp),
-                    strokeWidth = 2.dp,
+                LoadingIndicator(
+                    modifier = Modifier.size(20.dp),
                     color = MaterialTheme.colorScheme.primary
                 )
                 Spacer(modifier = Modifier.width(12.dp))

@@ -19,6 +19,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -92,12 +93,10 @@ import com.materialchat.domain.model.Message
 import com.materialchat.domain.model.MessageRole
 import com.materialchat.domain.model.ReasoningEffort
 import com.materialchat.ui.components.HapticPattern
-import com.materialchat.ui.components.MorphingSendButton
 import com.materialchat.ui.components.rememberHapticFeedback
 import com.materialchat.ui.navigation.LocalAnimatedVisibilityScope
 import com.materialchat.ui.navigation.LocalSharedTransitionScope
 import com.materialchat.ui.navigation.SHARED_ELEMENT_FAB_TO_INPUT
-import com.materialchat.ui.theme.CustomShapes
 import com.materialchat.ui.theme.ExpressiveMotion
 import com.materialchat.ui.theme.ExpressiveShapeToken
 import com.materialchat.ui.theme.LocalChatButtonShape
@@ -319,10 +318,23 @@ fun MessageInput(
                 basePillModifier
             }
 
+            // Squircle contour (the app's card contour) instead of a plain rounded rect;
+            // the container lifts one tone while the field has focus.
+            val fieldInteractionSource = remember { MutableInteractionSource() }
+            val fieldFocused by fieldInteractionSource.collectIsFocusedAsState()
+            val fieldColor by animateColorAsState(
+                targetValue = if (fieldFocused && !isStreaming) {
+                    MaterialTheme.colorScheme.surfaceContainerHighest
+                } else {
+                    MaterialTheme.colorScheme.surfaceContainerHigh
+                },
+                animationSpec = ExpressiveMotion.Effects.color(),
+                label = "composerFieldColor"
+            )
             Surface(
                 modifier = pillModifier,
-                shape = CustomShapes.MessageInputContainer,
-                color = MaterialTheme.colorScheme.surfaceContainerHighest,
+                shape = ComposerFieldShape,
+                color = fieldColor,
                 // Match FAB elevation so the morph does not pop flat after landing.
                 tonalElevation = 3.dp,
                 shadowElevation = 0.dp
@@ -331,6 +343,7 @@ fun MessageInput(
                     value = inputText,
                     onValueChange = onInputChange,
                     enabled = !isStreaming,
+                    interactionSource = fieldInteractionSource,
                     modifier = Modifier
                         .fillMaxWidth()
                         .heightIn(min = 56.dp, max = 168.dp)
@@ -379,10 +392,9 @@ fun MessageInput(
                 modifier = Modifier.defaultMinSize(minHeight = 48.dp)
             )
 
-            // M3 Expressive Morphing Send Button
-            // Morphs into a shape-shifting loading indicator when streaming
-            // Color and size change based on reasoning effort level
-            MorphingSendButton(
+            // M3 Expressive send / stop button: real filled Button with ButtonDefaults.shapes()
+            // press morph; idle / ready / streaming state machine (see ComposerSendButton).
+            ComposerSendButton(
                 isStreaming = isStreaming,
                 canSend = canSend,
                 onSend = {
@@ -393,7 +405,6 @@ fun MessageInput(
                     haptics.perform(HapticPattern.CONFIRM, hapticsEnabled)
                     onCancel()
                 },
-                modifier = Modifier.size(48.dp),
                 reasoningEffort = reasoningEffort
             )
         }

@@ -29,10 +29,9 @@ import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ContainedLoadingIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import com.materialchat.ui.components.seaglass.Scaffold
 import com.materialchat.ui.components.seaglass.Snackbar
@@ -90,18 +89,24 @@ import com.materialchat.ui.screens.chat.components.MessageInput
 import com.materialchat.ui.screens.chat.components.RedoModelPickerSheet
 import com.materialchat.ui.screens.chat.components.DateSeparator
 import com.materialchat.ui.screens.chat.components.ScrollToBottomFab
+import com.materialchat.ui.screens.chat.components.StreamingArrivalBar
+import com.materialchat.ui.screens.chat.components.StreamingArrivalPhase
 import com.materialchat.ui.screens.chat.components.shouldShowDateSeparator
 import com.materialchat.ui.screens.personas.components.ConversationStarterChips
 import com.materialchat.ui.theme.CustomShapes
 import com.materialchat.ui.theme.ExpressiveMotion
 import com.materialchat.ui.theme.ExpressiveShapes
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 import androidx.compose.ui.layout.onSizeChanged
 
 private const val TAG = "ChatScreen"
+
+/** How long after a stream delta the arrival bar keeps its full wave. */
+private const val ARRIVAL_WINDOW_MS = 650L
 
 /**
  * Maximum number of image attachments per message.
@@ -515,9 +520,10 @@ private fun LoadingContent(paddingValues: PaddingValues) {
             .padding(paddingValues),
         contentAlignment = Alignment.Center
     ) {
-        LoadingIndicator(
+        ContainedLoadingIndicator(
             modifier = Modifier.size(48.dp),
-            color = MaterialTheme.colorScheme.primary
+            containerColor = MaterialTheme.colorScheme.primaryContainer,
+            indicatorColor = MaterialTheme.colorScheme.primary
         )
     }
 }
@@ -689,6 +695,25 @@ private fun ChatContent(
     // Fix 2: Track streaming state to scroll when it ends (to reveal action buttons)
     val isLastMessageStreaming = lastMessage?.isStreaming ?: false
 
+    // "Something is actively arriving": true for a short window after every token/thinking
+    // delta, false while the model is between chunks. Drives the wavy arrival bar's
+    // amplitude only; no layout, scroll or haptic logic depends on it.
+    var tokensArriving by remember { mutableStateOf(false) }
+    LaunchedEffect(isLastMessageStreaming, lastContentVersion, lastThinkingVersion) {
+        if (!isLastMessageStreaming || (lastContentVersion == 0 && lastThinkingVersion == 0)) {
+            tokensArriving = false
+            return@LaunchedEffect
+        }
+        tokensArriving = true
+        delay(ARRIVAL_WINDOW_MS)
+        tokensArriving = false
+    }
+    val arrivalPhase = when {
+        !state.isStreaming -> StreamingArrivalPhase.Idle
+        tokensArriving -> StreamingArrivalPhase.Arriving
+        else -> StreamingArrivalPhase.Waiting
+    }
+
     // Auto-scroll when keyboard (IME) opens so bottom content stays visible
     LaunchedEffect(Unit) {
         snapshotFlow { imeBottom }
@@ -852,6 +877,15 @@ private fun ChatContent(
                 modifier = Modifier.onSizeChanged { inputHeightPx = it.height }
             )
         }
+
+            // Wavy arrival bar: fixed-height overlay just above the composer, no layout impact.
+            StreamingArrivalBar(
+                phase = arrivalPhase,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = with(density) { inputHeightPx.toDp() } + imePadding)
+                    .padding(horizontal = 24.dp)
+            )
 
             // M3 Expressive: Scroll-to-bottom FAB overlay
             ScrollToBottomFab(
