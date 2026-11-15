@@ -2,56 +2,54 @@ package com.materialchat.ui.screens.chat.components
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkHorizontally
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import com.materialchat.ui.components.seaglass.Surface
+import androidx.compose.material3.SmallExtendedFloatingActionButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.Alignment
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.materialchat.R
 import com.materialchat.ui.components.HapticPattern
 import com.materialchat.ui.components.rememberHapticFeedback
 import com.materialchat.ui.theme.ExpressiveMotion
 
 /**
- * M3 Expressive scroll-to-bottom FAB.
+ * M3 Expressive scroll-to-bottom affordance: a [SmallExtendedFloatingActionButton] that
+ * morphs its corners on press (16dp resting → 10dp pressed, spatial shape-morph spring)
+ * and extends with a "New" label when content arrived while the user was scrolled away.
  *
- * Appears when the user scrolls up in the chat, providing a quick way to jump
- * back to the latest message. Shows a "New" indicator when new content has
- * arrived while scrolled away.
- *
- * Follows M3 Expressive guidelines:
- * - Pill shape (fully rounded) for friendly, modern feel
- * - primaryContainer color for emphasis, surfaceContainerHigh for neutral
- * - Tonal elevation (no drop shadow) — prevents shadow-before-icon artifacts
- * - Slide + fade entrance (no scale) for clean appearance
- * - Subtle bobbing animation on the arrow icon to suggest downward scroll
- * - 48dp minimum touch target
- * - Haptic feedback on tap
+ * - primaryContainer tone, zero drop shadow (tonal only, no shadow-before-icon artifacts)
+ * - slide + fade + scale entrance; critically damped exit
+ * - subtle bobbing arrow to suggest "scroll down"
+ * - haptic feedback on tap
  */
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun ScrollToBottomFab(
     visible: Boolean,
@@ -66,14 +64,20 @@ fun ScrollToBottomFab(
         visible = visible,
         modifier = modifier,
         enter = slideInVertically(
-            animationSpec = ExpressiveMotion.Spatial.default(),
+            animationSpec = ExpressiveMotion.Spatial.playful(),
             initialOffsetY = { it }
+        ) + scaleIn(
+            animationSpec = ExpressiveMotion.Spatial.playful(),
+            initialScale = 0.7f
         ) + fadeIn(
             animationSpec = ExpressiveMotion.Effects.alpha()
         ),
         exit = slideOutVertically(
             animationSpec = spring(dampingRatio = 1.0f, stiffness = 500f),
             targetOffsetY = { it }
+        ) + scaleOut(
+            animationSpec = spring(dampingRatio = 1.0f, stiffness = 500f),
+            targetScale = 0.8f
         ) + fadeOut(
             animationSpec = ExpressiveMotion.Effects.alpha()
         )
@@ -91,50 +95,45 @@ fun ScrollToBottomFab(
             label = "bobOffset"
         )
 
-        Surface(
-            onClick = {
-                haptics.perform(HapticPattern.CLICK, hapticsEnabled)
-                onClick()
+        val interactionSource = remember { MutableInteractionSource() }
+        val pressed by interactionSource.collectIsPressedAsState()
+        val corner by animateDpAsState(
+            targetValue = if (pressed) 10.dp else 16.dp,
+            animationSpec = ExpressiveMotion.Spatial.shapeMorph(),
+            label = "scrollFabCorner"
+        )
+
+        SmallExtendedFloatingActionButton(
+            text = {
+                Text(
+                    text = stringResource(R.string.chat_new_messages),
+                    style = MaterialTheme.typography.labelLarge
+                )
             },
-            shape = RoundedCornerShape(999.dp),
-            color = MaterialTheme.colorScheme.primaryContainer,
-            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-            tonalElevation = 2.dp
-        ) {
-            Row(
-                modifier = Modifier
-                    .heightIn(min = 48.dp)
-                    .padding(horizontal = 12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Center
-            ) {
+            icon = {
                 Icon(
                     imageVector = Icons.Rounded.KeyboardArrowDown,
-                    contentDescription = "Scroll to bottom",
+                    contentDescription = stringResource(R.string.chat_scroll_to_bottom),
                     modifier = Modifier
                         .size(22.dp)
                         .graphicsLayer { translationY = bobOffset }
                 )
-                AnimatedVisibility(
-                    visible = hasNewContent,
-                    enter = expandHorizontally(
-                        animationSpec = ExpressiveMotion.Spatial.default()
-                    ) + fadeIn(
-                        animationSpec = ExpressiveMotion.Effects.alpha()
-                    ),
-                    exit = shrinkHorizontally(
-                        animationSpec = spring(dampingRatio = 1.0f, stiffness = 500f)
-                    ) + fadeOut(
-                        animationSpec = ExpressiveMotion.Effects.alpha()
-                    )
-                ) {
-                    Text(
-                        text = "New",
-                        style = MaterialTheme.typography.labelMedium,
-                        modifier = Modifier.padding(start = 4.dp)
-                    )
-                }
-            }
-        }
+            },
+            onClick = {
+                haptics.perform(HapticPattern.CLICK, hapticsEnabled)
+                onClick()
+            },
+            expanded = hasNewContent,
+            shape = RoundedCornerShape(corner),
+            containerColor = MaterialTheme.colorScheme.primaryContainer,
+            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+            elevation = FloatingActionButtonDefaults.elevation(
+                defaultElevation = 0.dp,
+                pressedElevation = 0.dp,
+                focusedElevation = 0.dp,
+                hoveredElevation = 0.dp
+            ),
+            interactionSource = interactionSource
+        )
     }
 }
