@@ -21,7 +21,6 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -36,7 +35,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -93,7 +91,6 @@ import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.TransformOrigin
@@ -109,7 +106,10 @@ import androidx.compose.ui.layout.layout
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.materialchat.R
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.materialchat.ui.components.ExpressiveFastScrollBar
 import com.materialchat.ui.components.HapticPattern
@@ -117,8 +117,8 @@ import com.materialchat.ui.components.fastScrollDateLabel
 import com.materialchat.ui.components.rememberHapticFeedback
 import com.materialchat.ui.screens.conversations.components.ConversationItem
 import com.materialchat.ui.screens.conversations.components.ExpandableConversationGroup
+import com.materialchat.ui.screens.conversations.components.SegmentedRowShapes
 import com.materialchat.ui.screens.conversations.components.SwipeToDeleteBox
-import com.materialchat.ui.screens.conversations.components.SwipeCornerSpec
 import com.materialchat.ui.screens.search.SearchUiState
 import com.materialchat.ui.screens.search.SearchViewModel
 import com.materialchat.ui.screens.search.components.ChatSearchBar
@@ -226,6 +226,7 @@ fun ConversationsScreen(
     }
 
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+    val statusText = homeStatusText(uiState)
 
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
@@ -258,6 +259,7 @@ fun ConversationsScreen(
                     // Normal mode - show regular top bar
                     ConversationsTopBar(
                         scrollBehavior = scrollBehavior,
+                        statusText = statusText,
                         onSearchClick = { isSearchActive = true },
                         onTempChatClick = { viewModel.createTemporaryConversation() }
                     )
@@ -309,7 +311,7 @@ fun ConversationsScreen(
                     renameText = conversation.title
                     showRenameDialog = true
                 },
-                onCreateTemporaryConversation = { viewModel.createTemporaryConversation() },
+                onCreateConversation = { viewModel.createNewConversation() },
                 onRetry = { viewModel.retry() },
                 onNavigateToSettings = { viewModel.navigateToSettings() },
                 onToggleGroupExpanded = { viewModel.toggleGroupExpanded(it) }
@@ -425,6 +427,7 @@ fun ConversationsScreen(
 @Composable
 private fun ConversationsTopBar(
     scrollBehavior: TopAppBarScrollBehavior,
+    statusText: String?,
     onSearchClick: () -> Unit = {},
     onTempChatClick: () -> Unit = {}
 ) {
@@ -750,6 +753,17 @@ private fun ConversationsTopBar(
             }
 
 
+            // Live status line above the title; fades out with the shape art on collapse.
+            if (statusText != null && decorAlpha > 0f) {
+                HomeStatusChip(
+                    text = statusText,
+                    modifier = Modifier
+                        .align(Alignment.BottomStart)
+                        .padding(bottom = baseBottomPadding + 50.dp)
+                        .graphicsLayer { alpha = decorAlpha }
+                )
+            }
+
             // Title row - aligned to bottom left with fixed padding
             Row(
                 modifier = Modifier
@@ -887,6 +901,23 @@ private fun TopBarShapeAction(
     }
 }
 
+/**
+ * One-line status for the header chip: chat count plus the active provider,
+ * or a setup hint while the list is empty. Null while loading or in error.
+ */
+@Composable
+private fun homeStatusText(uiState: ConversationsUiState): String? = when (uiState) {
+    is ConversationsUiState.Success -> {
+        val count = uiState.conversationGroups.size.takeIf { it > 0 } ?: uiState.conversations.size
+        val countText = pluralStringResource(R.plurals.home_status_chat_count, count, count)
+        uiState.activeProvider?.let { "$countText \u00B7 ${it.name}" } ?: countText
+    }
+    is ConversationsUiState.Empty -> stringResource(
+        if (uiState.hasActiveProvider) R.string.home_status_ready else R.string.home_status_no_provider
+    )
+    else -> null
+}
+
 private fun Modifier.shrinkWidth(factor: Float): Modifier = layout { measurable, constraints ->
     val placeable = measurable.measure(constraints)
     val width = (placeable.width * factor.coerceIn(0f, 1f)).roundToInt()
@@ -906,7 +937,7 @@ private fun ConversationsContent(
     onConversationArchiveToggle: (com.materialchat.domain.model.Conversation) -> Unit,
     onSelectFilter: (ConversationListFilter) -> Unit,
     onConversationSwipeRight: (com.materialchat.domain.model.Conversation) -> Unit = {},
-    onCreateTemporaryConversation: () -> Unit,
+    onCreateConversation: () -> Unit,
     onRetry: () -> Unit,
     onNavigateToSettings: () -> Unit,
     onToggleGroupExpanded: (String) -> Unit = {}
@@ -930,6 +961,7 @@ private fun ConversationsContent(
                 is ConversationsUiState.Empty -> {
                     EmptyContent(
                         hasActiveProvider = uiState.hasActiveProvider,
+                        onCreateConversation = onCreateConversation,
                         onNavigateToSettings = onNavigateToSettings,
                         modifier = Modifier.weight(1f)
                     )
@@ -986,6 +1018,7 @@ private fun ConversationsContent(
                                 filter = uiState.selectedFilter,
                                 hasActiveProvider = uiState.activeProvider != null,
                                 hasArchivedChats = uiState.archivedConversationGroups.isNotEmpty(),
+                                onCreateConversation = onCreateConversation,
                                 onNavigateToSettings = onNavigateToSettings,
                                 modifier = Modifier.weight(1f)
                             )
@@ -1143,55 +1176,26 @@ private fun LoadingContent(modifier: Modifier = Modifier) {
 @Composable
 private fun EmptyContent(
     hasActiveProvider: Boolean,
+    onCreateConversation: () -> Unit,
     onNavigateToSettings: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val haptics = rememberHapticFeedback()
-    Column(
+    HomeEmptyState(
+        headline = "No conversations yet",
+        supportingText = if (hasActiveProvider) {
+            "Tap the button below to start a new chat"
+        } else {
+            "Add an AI provider in settings to get started"
+        },
+        icon = Icons.Outlined.ChatBubbleOutline,
+        accent = EmptyStateAccent.Primary,
+        action = if (hasActiveProvider) {
+            EmptyStateAction(stringResource(R.string.home_empty_action_start_chat), onCreateConversation)
+        } else {
+            EmptyStateAction("Go to Settings", onNavigateToSettings)
+        },
         modifier = modifier
-            .fillMaxSize()
-            .padding(32.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        // Illustration
-        Image(
-            imageVector = Icons.Outlined.ChatBubbleOutline,
-            contentDescription = null,
-            modifier = Modifier.size(120.dp),
-            colorFilter = ColorFilter.tint(
-                MaterialTheme.colorScheme.primaryContainer
-            )
-        )
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        Text(
-            text = "No conversations yet",
-            style = MaterialTheme.typography.titleLarge,
-            color = MaterialTheme.colorScheme.onSurface,
-            textAlign = TextAlign.Center
-        )
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        Text(
-            text = if (hasActiveProvider) {
-                "Tap the button below to start a new chat"
-            } else {
-                "Add an AI provider in settings to get started"
-            },
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center
-        )
-
-        if (!hasActiveProvider) {
-            Spacer(modifier = Modifier.height(16.dp))
-
-            ExpressiveButton(onClick = { onNavigateToSettings() }, text = "Go to Settings", style = ExpressiveButtonStyle.FilledTonal)
-        }
-    }
+    )
 }
 
 @Composable
@@ -1199,70 +1203,34 @@ private fun FilteredEmptyContent(
     filter: ConversationListFilter,
     hasActiveProvider: Boolean,
     hasArchivedChats: Boolean,
+    onCreateConversation: () -> Unit,
     onNavigateToSettings: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val icon = if (filter == ConversationListFilter.ARCHIVED) {
-        Icons.Outlined.Archive
-    } else {
-        Icons.Outlined.ChatBubbleOutline
+    val archived = filter == ConversationListFilter.ARCHIVED
+    val body = when {
+        archived -> "Swipe any chat and tap Archive to keep it out of your main list."
+        hasArchivedChats -> "Your archived chats are tucked away. Start a new chat or switch to Archive."
+        hasActiveProvider -> "Tap the button below to start a new chat"
+        else -> "Add an AI provider in settings to get started"
     }
-    val title = if (filter == ConversationListFilter.ARCHIVED) {
-        "No archived chats"
-    } else {
-        "No active chats"
-    }
-    val body = if (filter == ConversationListFilter.ARCHIVED) {
-        "Swipe any chat and tap Archive to keep it out of your main list."
-    } else if (hasArchivedChats) {
-        "Your archived chats are tucked away. Start a new chat or switch to Archive."
-    } else if (hasActiveProvider) {
-        "Tap the button below to start a new chat"
-    } else {
-        "Add an AI provider in settings to get started"
+    val action = when {
+        archived -> null
+        hasActiveProvider -> EmptyStateAction(
+            label = stringResource(R.string.home_empty_action_start_chat),
+            onClick = onCreateConversation
+        )
+        else -> EmptyStateAction(label = "Go to Settings", onClick = onNavigateToSettings)
     }
 
-    Column(
+    HomeEmptyState(
+        headline = if (archived) "No archived chats" else "No active chats",
+        supportingText = body,
+        icon = if (archived) Icons.Outlined.Archive else Icons.Outlined.ChatBubbleOutline,
+        accent = if (archived) EmptyStateAccent.Secondary else EmptyStateAccent.Primary,
+        action = action,
         modifier = modifier
-            .fillMaxSize()
-            .padding(32.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            modifier = Modifier.size(96.dp),
-            tint = MaterialTheme.colorScheme.primaryContainer
-        )
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        Text(
-            text = title,
-            style = MaterialTheme.typography.titleLarge,
-            color = MaterialTheme.colorScheme.onSurface,
-            textAlign = TextAlign.Center
-        )
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        Text(
-            text = body,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center
-        )
-
-        if (!hasActiveProvider && filter == ConversationListFilter.ACTIVE) {
-            Spacer(modifier = Modifier.height(16.dp))
-            ExpressiveButton(
-                onClick = onNavigateToSettings,
-                text = "Go to Settings",
-                style = ExpressiveButtonStyle.FilledTonal
-            )
-        }
-    }
+    )
 }
 
 @Composable
@@ -1317,7 +1285,7 @@ private fun ConversationList(
     modifier: Modifier = Modifier
 ) {
     val haptics = rememberHapticFeedback()
-    val cornerRadius = 20.dp
+    val entrance = rememberStaggeredEntranceState()
     ConversationScrollHaptics(listState = listState, hapticsEnabled = hapticsEnabled)
 
     Box(modifier = modifier.fillMaxSize()) {
@@ -1330,27 +1298,14 @@ private fun ConversationList(
                 top = 16.dp,
                 bottom = 88.dp // Extra padding for FAB
             ),
-            verticalArrangement = Arrangement.spacedBy(0.dp)
+            verticalArrangement = Arrangement.spacedBy(SegmentedRowShapes.Gap)
         ) {
             itemsIndexed(
                 items = conversations,
                 key = { _, item -> item.conversation.id },
                 contentType = { _, item -> item.conversation.isArchived }
             ) { index, conversationItem ->
-            val isFirst = index == 0
-            val isLast = index == conversations.lastIndex
-            val baseCorners = when {
-                isFirst && isLast -> SwipeCornerSpec(cornerRadius, cornerRadius, cornerRadius, cornerRadius)
-                isFirst -> SwipeCornerSpec(cornerRadius, cornerRadius, 0.dp, 0.dp)
-                isLast -> SwipeCornerSpec(0.dp, 0.dp, cornerRadius, cornerRadius)
-                else -> SwipeCornerSpec(0.dp, 0.dp, 0.dp, 0.dp)
-            }
-            val itemShape = RoundedCornerShape(
-                topStart = baseCorners.topStart,
-                topEnd = baseCorners.topEnd,
-                bottomStart = baseCorners.bottomStart,
-                bottomEnd = baseCorners.bottomEnd
-            )
+            val baseCorners = SegmentedRowShapes.corners(index = index, count = conversations.size)
             SwipeToDeleteBox(
                 onDelete = { onConversationDelete(conversationItem.conversation) },
                 hapticsEnabled = hapticsEnabled,
@@ -1358,9 +1313,10 @@ private fun ConversationList(
                 isArchived = conversationItem.conversation.isArchived,
                 onSwipeRight = { onConversationSwipeRight(conversationItem.conversation) },
                 baseCorners = baseCorners,
-                activeCorners = SwipeCornerSpec(cornerRadius, cornerRadius, cornerRadius, cornerRadius),
+                activeCorners = SegmentedRowShapes.Pressed,
                 modifier = Modifier
                     .fillMaxWidth()
+                    .staggeredEntrance(index = index, state = entrance)
                     .animateItem(
                         fadeInSpec = ExpressiveMotion.ListItem.FadeIn,
                         fadeOutSpec = ExpressiveMotion.ListItem.FadeOut,
@@ -1374,8 +1330,7 @@ private fun ConversationList(
                         onConversationClick(conversationItem.conversation.id)
                     },
                     onLongClick = { onConversationLongClick(conversationItem) },
-                    shape = itemShape,
-                    showDivider = !isLast
+                    corners = baseCorners
                 )
             }
             }
@@ -1414,7 +1369,7 @@ private fun GroupedConversationList(
     hapticsEnabled: Boolean = true,
     modifier: Modifier = Modifier
 ) {
-    val cornerRadius = 20.dp
+    val entrance = rememberStaggeredEntranceState()
     ConversationScrollHaptics(listState = listState, hapticsEnabled = hapticsEnabled)
 
     Box(modifier = modifier.fillMaxSize()) {
@@ -1427,7 +1382,7 @@ private fun GroupedConversationList(
                 top = 16.dp,
                 bottom = 88.dp // Extra padding for FAB
             ),
-            verticalArrangement = Arrangement.spacedBy(0.dp)
+            verticalArrangement = Arrangement.spacedBy(SegmentedRowShapes.Gap)
         ) {
             itemsIndexed(
                 items = groups,
@@ -1447,12 +1402,15 @@ private fun GroupedConversationList(
                 onDelete = onConversationDelete,
                 onArchiveToggle = onConversationArchiveToggle,
                 onSwipeRight = onConversationSwipeRight,
-                cornerRadius = cornerRadius,
+                cornerRadius = SegmentedRowShapes.OuterRadius,
+                seamRadius = SegmentedRowShapes.InnerRadius,
+                showDivider = false,
                 isFirst = isFirst,
                 isLast = isLast,
                 hapticsEnabled = hapticsEnabled,
                 modifier = Modifier
                     .fillMaxWidth()
+                    .staggeredEntrance(index = index, state = entrance)
                     .animateItem(
                         fadeInSpec = ExpressiveMotion.ListItem.FadeIn,
                         fadeOutSpec = ExpressiveMotion.ListItem.FadeOut,
