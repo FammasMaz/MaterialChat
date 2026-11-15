@@ -430,18 +430,9 @@ fun MessageBubble(
                     ) {
                         ImageGenerationLoadingCard(modelName = message.modelName)
                     } else if (message.isStreaming && displayContent.isEmpty() && displayThinkingContent.isNullOrEmpty()) {
-                        // Initial streaming — compact M3 loading indicators
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(4.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            repeat(3) {
-                                LoadingIndicator(
-                                    modifier = Modifier.size(16.dp),
-                                    color = bubbleStyle.textColor.copy(alpha = 0.6f)
-                                )
-                            }
-                        }
+                        // Waiting for the first token: the assistant's "working on your answer"
+                        // surface, adapted to the bubble (see ChatWorkingIndicator).
+                        ChatWorkingIndicator(textColor = bubbleStyle.textColor)
                     } else if (message.isStreaming && displayContent.isEmpty()) {
                         // Thinking active, no main content yet — ThinkingSection handles indicator
                     } else {
