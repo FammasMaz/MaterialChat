@@ -5,6 +5,7 @@ import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.MaterialExpressiveTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MotionScheme
 import androidx.compose.material3.darkColorScheme
@@ -131,10 +132,10 @@ fun isDynamicColorSupported(): Boolean = Build.VERSION.SDK_INT >= Build.VERSION_
  * @param dynamicColor Whether to use dynamic colors derived from wallpaper (Android 12+)
  * @param content The composable content to apply the theme to
  */
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 /** Assistant-window particle decoration preference (Settings → Appearance). */
 val LocalNeuralExpressiveEnabled = staticCompositionLocalOf { true }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun MaterialChatTheme(
     themeMode: AppPreferences.ThemeMode = AppPreferences.ThemeMode.SYSTEM,
@@ -198,7 +199,7 @@ fun MaterialChatTheme(
         LocalGestureHapticsEnabled provides gestureHapticsEnabled,
         LocalNeuralExpressiveEnabled provides neuralExpressive
     ) {
-        MaterialTheme(
+        MaterialExpressiveTheme(
             colorScheme = colorScheme,
             typography = MaterialChatTypography,
             shapes = MaterialChatShapes,

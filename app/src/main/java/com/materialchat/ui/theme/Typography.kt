@@ -178,25 +178,25 @@ fun buildTypography(
     // Display - Extra large, impactful text
     displayLarge = TextStyle(
         fontFamily = MaterialChatExpressiveTitleFontFamily,
-        fontWeight = FontWeight.ExtraBold,
+        fontWeight = FontWeight.Bold,
         fontSize = (57 * sizeScale).sp,
-        lineHeight = (60 * sizeScale).sp,
+        lineHeight = (64 * sizeScale).sp,
         letterSpacing = (-0.35).sp,
         platformStyle = PlatformTextStyle(includeFontPadding = false)
     ),
     displayMedium = TextStyle(
         fontFamily = MaterialChatExpressiveTitleFontFamily,
-        fontWeight = FontWeight.ExtraBold,
+        fontWeight = FontWeight.Bold,
         fontSize = (45 * sizeScale).sp,
-        lineHeight = (48 * sizeScale).sp,
+        lineHeight = (52 * sizeScale).sp,
         letterSpacing = (-0.25).sp,
         platformStyle = PlatformTextStyle(includeFontPadding = false)
     ),
     displaySmall = TextStyle(
         fontFamily = MaterialChatExpressiveTitleFontFamily,
-        fontWeight = FontWeight.ExtraBold,
+        fontWeight = FontWeight.Bold,
         fontSize = (36 * sizeScale).sp,
-        lineHeight = (40 * sizeScale).sp,
+        lineHeight = (44 * sizeScale).sp,
         letterSpacing = (-0.15).sp,
         platformStyle = PlatformTextStyle(includeFontPadding = false)
     ),
@@ -204,17 +204,17 @@ fun buildTypography(
     // Headline - Section headers, app bar titles
     headlineLarge = TextStyle(
         fontFamily = MaterialChatExpressiveTitleFontFamily,
-        fontWeight = FontWeight.ExtraBold,
+        fontWeight = FontWeight.Bold,
         fontSize = (32 * sizeScale).sp,
-        lineHeight = (38 * sizeScale).sp,
+        lineHeight = (40 * sizeScale).sp,
         letterSpacing = (-0.1).sp,
         platformStyle = PlatformTextStyle(includeFontPadding = false)
     ),
     headlineMedium = TextStyle(
         fontFamily = MaterialChatExpressiveTitleFontFamily,
-        fontWeight = FontWeight.ExtraBold,
+        fontWeight = FontWeight.Bold,
         fontSize = (28 * sizeScale).sp,
-        lineHeight = (34 * sizeScale).sp,
+        lineHeight = (36 * sizeScale).sp,
         letterSpacing = 0.sp,
         platformStyle = PlatformTextStyle(includeFontPadding = false)
     ),
@@ -222,7 +222,7 @@ fun buildTypography(
         fontFamily = MaterialChatExpressiveTitleFontFamily,
         fontWeight = FontWeight.SemiBold,
         fontSize = (24 * sizeScale).sp,
-        lineHeight = (30 * sizeScale).sp,
+        lineHeight = (32 * sizeScale).sp,
         letterSpacing = 0.sp,
         platformStyle = PlatformTextStyle(includeFontPadding = false)
     ),

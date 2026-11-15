@@ -34,10 +34,11 @@ object ExpressiveMotion {
 
         /**
          * Default spatial spring for most interactions.
-         * M3 Expressive standard: dampingRatio=0.6, stiffness=380
+         * M3 Expressive standard: dampingRatio=0.8, stiffness=380
+         * (ExpressiveMotionTokens.defaultSpatialSpec in material3 1.5.0-alpha15).
          */
         fun <T> default(): SpringSpec<T> = spring(
-            dampingRatio = 0.6f,
+            dampingRatio = 0.8f,
             stiffness = 380f
         )
 
@@ -176,10 +177,11 @@ object ExpressiveMotion {
         /**
          * Color transition spring.
          * Smooth with NO bounce - colors should never overshoot.
+         * Matches ExpressiveMotionTokens.defaultEffectsSpec (1.0 / 1600).
          */
         fun <T> color(): SpringSpec<T> = spring(
             dampingRatio = 1.0f,
-            stiffness = 300f
+            stiffness = 1600f
         )
         
         /**
@@ -188,7 +190,7 @@ object ExpressiveMotion {
          */
         fun <T> alpha(): SpringSpec<T> = spring(
             dampingRatio = 1.0f,
-            stiffness = 300f
+            stiffness = 1600f
         )
         
         /**
@@ -197,7 +199,7 @@ object ExpressiveMotion {
          */
         fun <T> elevation(): SpringSpec<T> = spring(
             dampingRatio = 1.0f,
-            stiffness = 350f
+            stiffness = 1600f
         )
         
         /**
@@ -205,7 +207,7 @@ object ExpressiveMotion {
          */
         fun <T> blur(): SpringSpec<T> = spring(
             dampingRatio = 1.0f,
-            stiffness = 300f
+            stiffness = 1600f
         )
 
         /**

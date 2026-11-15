@@ -101,23 +101,27 @@ object ExpressiveShapes {
 
 /**
  * Standard Material 3 Expressive shape configuration.
- * Uses larger corner radii for the playful, friendly aesthetic.
+ *
+ * Radii follow the M3 Expressive shape scale, shifted one step up so the app keeps
+ * its soft, rounded identity: 8 / 12 / 16 / 20 / 32 dp are the spec's
+ * small, medium, large, largeIncreased and extraLargeIncreased tokens.
  */
 val MaterialChatShapes = Shapes(
-    // Extra small - chips, small badges (M3 Expressive: 4dp)
-    extraSmall = RoundedCornerShape(6.dp),
+    // Extra small - chips, small badges (spec small: 8dp)
+    extraSmall = RoundedCornerShape(8.dp),
 
-    // Small - buttons, text fields (M3 Expressive: 8dp)
+    // Small - buttons, text fields (spec medium: 12dp)
     small = RoundedCornerShape(12.dp),
 
-    // Medium - cards, dialogs (smooth 16dp containers)
-    medium = RoundedCornerShape(18.dp),
+    // Medium - cards, dialogs (spec large: 16dp)
+    medium = RoundedCornerShape(16.dp),
 
-    // Large - bottom sheets, navigation drawers, list cards
-    large = RoundedCornerShape(26.dp),
+    // Large - bottom sheets, navigation drawers, list cards (spec largeIncreased: 20dp)
+    large = RoundedCornerShape(20.dp),
 
     // Extra large - full-screen dialogs, hero containers, page sheets
-    extraLarge = RoundedCornerShape(34.dp)
+    // (spec extraLargeIncreased: 32dp)
+    extraLarge = RoundedCornerShape(32.dp)
 )
 
 /**
