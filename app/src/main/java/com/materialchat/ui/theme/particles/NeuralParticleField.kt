@@ -165,7 +165,7 @@ fun Modifier.neuralParticleField(
     /**
      * Whether the scattered dots are drawn. Turning them off keeps everything else — the
      * soft-edged fill, the edge blur and the inner glow — so a capsule can keep its feathered
-     * boundary while another texture (the assistant's dot lattice) owns the dots.
+     * boundary while another texture owns the dots.
      */
 ): Modifier = composed {
     val view = LocalView.current
@@ -182,7 +182,7 @@ fun Modifier.neuralParticleField(
     val latestActivation by rememberUpdatedState(activation)
     val latestColor by rememberUpdatedState(color)
     // The host gates (lifecycle, power saver, animator scale) are shared with the assistant's
-    // dot lattice: one observer set, one definition of "may this surface request frames".
+    // particle surfaces: one observer set, one definition of "may this surface request frames".
     val gate = rememberParticleMotionGate()
     val started = gate.started
     val powerSave = gate.powerSave

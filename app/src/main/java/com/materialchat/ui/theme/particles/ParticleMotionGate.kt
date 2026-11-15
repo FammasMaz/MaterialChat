@@ -1,7 +1,7 @@
 /*
  * The host-side gates every continuously animated decoration shares: the composition's
  * lifecycle (STARTED or not), the platform power-saver switch and the animator duration scale.
- * One observer set per host, reused by the particle field and the assistant's dot lattice, so
+ * One observer set per host, reused by every animated particle surface, so
  * there is exactly one definition of "may this surface keep requesting frames".
  */
 package com.materialchat.ui.theme.particles
