@@ -7,6 +7,9 @@ import com.materialchat.assistant.actions.AssistantCommandParser
 import com.materialchat.assistant.actions.ClockCommand
 import com.materialchat.assistant.actions.DeviceActionHandler
 import com.materialchat.assistant.actions.DeviceActionOutcome
+import com.materialchat.assistant.attach.AssistantAttachMode
+import com.materialchat.assistant.attach.AssistantAttachmentInbox
+import com.materialchat.util.AttachmentLimits
 import java.time.LocalDateTime
 import androidx.lifecycle.viewModelScope
 import com.materialchat.assistant.voice.AudioAmplitudeData
@@ -72,7 +75,11 @@ class AssistantViewModel(
     private val applicationScope: CoroutineScope,
     private val speechRuntime: AssistantSpeechRuntime,
     private val deviceActionHandler: DeviceActionHandler,
-    private val now: () -> LocalDateTime = { LocalDateTime.now() }
+    private val now: () -> LocalDateTime = { LocalDateTime.now() },
+    /** Where the attach activity leaves photos; the production instance unless a test supplies one. */
+    private val attachmentInbox: AssistantAttachmentInbox = AssistantAttachmentInbox.shared,
+    /** Deletes the file behind an attachment the user removed or that could not be taken. */
+    private val discardAttachment: (Attachment) -> Unit = {}
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(AssistantUiState())
@@ -108,6 +115,9 @@ class AssistantViewModel(
     private var speechQueue: AssistantSpeechQueue? = null
     private var speechStopped = false
 
+    /** The overlay left for the picker or camera; the typed question survives the hide. */
+    private var attachInProgress = false
+
     /** The persistent conversation ID - created on first query */
     private var currentConversationId: String? = null
 
@@ -137,6 +147,14 @@ class AssistantViewModel(
             }
         }
 
+        // Photos the attach activity delivered: first anything already waiting (the session
+        // that started the picker may have been destroyed meanwhile, so this ViewModel is the
+        // first to see them), then everything that arrives while this ViewModel lives.
+        takeDeliveredAttachments()
+        viewModelScope.launch {
+            attachmentInbox.pending.collect { waiting -> if (waiting.isNotEmpty()) takeDeliveredAttachments() }
+        }
+
         // Observe amplitude data from speech recognition
         viewModelScope.launch {
             speechRecognitionManager.amplitudeData.collect { data ->
@@ -163,10 +181,21 @@ class AssistantViewModel(
      * Called when the overlay is shown. Checks for session timeout and resets if needed.
      * Also triggers animation reset in the UI.
      */
-    fun onOverlayShown() {
+    fun onOverlayShown(resumeAfterAttach: Boolean = false) {
         if (overlayVisible) return
         overlayVisible = true
         val now = System.currentTimeMillis()
+
+        if (resumeAfterAttach) {
+            // Back from the picker or camera: the same turn continues with its typed text and
+            // its photos, and the microphone does not open on its own over them.
+            attachInProgress = false
+            lastActivityTimestamp = now
+            autoListenConsumed = _showTrigger.value + 1
+            _showTrigger.value++
+            return
+        }
+        attachInProgress = false
 
         // Start fresh unless the user chose to continue recent chats. The saved conversation
         // stays in the chat list either way; only the assistant's view of it resets.
@@ -207,6 +236,8 @@ class AssistantViewModel(
         cancelStreaming()
         stopSpeaking()
         currentConversationId = null
+        // Photos that were never sent are not kept on disk.
+        _pendingAttachments.value.forEach(discardAttachment)
         _pendingAttachments.value = emptyList()
         _messages.value = emptyList()
         _uiState.update {
@@ -702,9 +733,11 @@ class AssistantViewModel(
         overlayVisible = false
         cancelStreaming()
         stopSpeaking()
+        // Hidden for the picker or camera: the question being typed comes back with the photo.
+        val keepTyped = attachInProgress
         _uiState.update {
             it.copy(
-                textInput = "",
+                textInput = if (keepTyped) it.textInput else "",
                 userQuery = "",
                 response = "",
                 isLoading = false,
@@ -747,12 +780,55 @@ class AssistantViewModel(
     }
 
     /**
-     * Remove an image attachment.
+     * Remove an image attachment and delete its file.
      */
     fun removeAttachment(attachment: Attachment) {
+        var removed = false
         _pendingAttachments.update { attachments ->
-            attachments.filter { it.uri != attachment.uri }
+            attachments.filter { keep -> (keep.uri != attachment.uri).also { if (!it) removed = true } }
         }
+        if (removed) discardAttachment(attachment)
+    }
+
+    /**
+     * Asks the session to open the camera or the photo picker for this question. The picker
+     * runs in a separate activity (the overlay cannot receive an activity result), so the
+     * request is an event the session acts on; the photos come back through the inbox.
+     * Refused with the composer's wording once the per-message limit is reached.
+     */
+    fun requestAttach(mode: AssistantAttachMode) {
+        val room = AttachmentLimits.MAX_PER_MESSAGE - _pendingAttachments.value.size
+        if (room <= 0) {
+            _uiState.update { it.copy(notice = AttachmentLimits.limitNotice()) }
+            return
+        }
+        stopVoiceInput()
+        attachInProgress = true
+        lastActivityTimestamp = System.currentTimeMillis()
+        viewModelScope.launch { _events.emit(AssistantEvent.Attach(mode, room)) }
+    }
+
+    /** The session could not open the attach activity; the overlay stays and says why. */
+    fun onAttachLaunchFailed(error: String) {
+        attachInProgress = false
+        _uiState.update { it.copy(notice = error) }
+    }
+
+    /**
+     * Takes everything the attach activity published, exactly once. Photos beyond the
+     * per-message limit (two deliveries racing a full tray) are deleted and reported with the
+     * composer's wording rather than silently dropped.
+     */
+    private fun takeDeliveredAttachments() {
+        val delivered = attachmentInbox.drain()
+        if (delivered.isEmpty()) return
+        val room = (AttachmentLimits.MAX_PER_MESSAGE - _pendingAttachments.value.size).coerceAtLeast(0)
+        val kept = delivered.take(room)
+        val dropped = delivered.drop(room)
+        if (kept.isNotEmpty()) _pendingAttachments.update { it + kept }
+        dropped.forEach(discardAttachment)
+        if (dropped.isNotEmpty()) _uiState.update { it.copy(notice = AttachmentLimits.limitNotice()) }
+        lastActivityTimestamp = System.currentTimeMillis()
     }
 
     /**
@@ -797,6 +873,8 @@ data class AssistantUiState(
 sealed class AssistantEvent {
     data class OpenClock(val command: ClockCommand, val token: Long) : AssistantEvent()
     data class OpenInApp(val conversationId: String?) : AssistantEvent()
+    /** Open the camera or photo picker; [room] is how many more images this message can take. */
+    data class Attach(val mode: AssistantAttachMode, val room: Int) : AssistantEvent()
     data object Dismiss : AssistantEvent()
 }
 

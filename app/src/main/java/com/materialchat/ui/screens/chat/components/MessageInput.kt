@@ -868,10 +868,11 @@ private fun ReasoningOptionPill(
 }
 
 /**
- * Row of attachment previews with remove buttons.
+ * Row of attachment previews with remove buttons. Shared with the assistant overlay so pending
+ * photos look the same in both composers.
  */
 @Composable
-private fun AttachmentPreviewRow(
+internal fun AttachmentPreviewRow(
     attachments: List<Attachment>,
     onRemoveAttachment: (Attachment) -> Unit,
     modifier: Modifier = Modifier

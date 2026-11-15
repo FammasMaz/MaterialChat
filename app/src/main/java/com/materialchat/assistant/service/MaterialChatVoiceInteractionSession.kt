@@ -33,6 +33,8 @@ import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import com.materialchat.assistant.actions.ClockHandoff
 import com.materialchat.assistant.actions.AssistantActivityLauncher
 import com.materialchat.assistant.actions.DeviceActionHandler
+import com.materialchat.assistant.attach.AssistantAttachActivity
+import com.materialchat.util.AttachmentImporter
 import com.materialchat.MainActivity
 import com.materialchat.assistant.di.AssistantEntryPoint
 import com.materialchat.assistant.ui.ASSISTANT_KEEP_AWAKE_GRACE_MILLIS
@@ -79,6 +81,7 @@ class MaterialChatVoiceInteractionSession(
 
     private var overlayShown = false
     private var pendingShow = false
+    private var pendingResumeAfterAttach = false
     private var composeView: ComposeView? = null
     private var assistantViewModel: AssistantViewModel? = null
 
@@ -107,8 +110,15 @@ class MaterialChatVoiceInteractionSession(
 
         if (!overlayShown) {
             overlayShown = true
+            // The attach activity reopens the session with this flag: same turn, not a new chat.
+            val resume = args?.getBoolean(AssistantAttachActivity.EXTRA_RESUME_AFTER_ATTACH, false) == true
             val model = assistantViewModel
-            if (model == null) pendingShow = true else model.onOverlayShown()
+            if (model == null) {
+                pendingShow = true
+                pendingResumeAfterAttach = resume
+            } else {
+                model.onOverlayShown(resumeAfterAttach = resume)
+            }
         }
         // The overlay composes before the session window is shown, so re-assert the state now
         // that the window the user sees exists.
@@ -258,11 +268,14 @@ class MaterialChatVoiceInteractionSession(
             conversationRepository = entryPoint.conversationRepository(),
             generateConversationTitleUseCase = entryPoint.generateConversationTitleUseCase(),
             applicationScope = CoroutineScope(Dispatchers.IO + SupervisorJob()),
-            deviceActionHandler = DeviceActionHandler(context.applicationContext, assistantLauncher())
+            deviceActionHandler = DeviceActionHandler(context.applicationContext, assistantLauncher()),
+            discardAttachment = { AttachmentImporter.discard(context.applicationContext, it) }
         ) } })[AssistantViewModel::class.java]
         if (pendingShow && overlayShown) {
             pendingShow = false
-            assistantViewModel?.onOverlayShown()
+            val resume = pendingResumeAfterAttach
+            pendingResumeAfterAttach = false
+            assistantViewModel?.onOverlayShown(resumeAfterAttach = resume)
         }
 
         return ComposeView(context).apply {
@@ -334,6 +347,15 @@ class MaterialChatVoiceInteractionSession(
                 )
                 viewModel.onClockHandoff(event.token, error)
                 if (error == null) hide()
+            },
+            onRequestAttach = { event ->
+                // The picker and camera need an activity result, which a session cannot take:
+                // an invisible activity runs them and reopens the session with the photos.
+                val error = AssistantActivityLauncher.throughSession(
+                    startAssistantActivity = { startAssistantActivity(it) },
+                    startActivity = { context.startActivity(it) }
+                ).launch(AssistantAttachActivity.intent(context, event.mode, event.room))
+                if (error == null) hide() else viewModel.onAttachLaunchFailed(error)
             },
             assistScreenshot = assistScreenshot.value,
             onKeepScreenOnChanged = { busy -> onAssistantBusyChanged(busy) }

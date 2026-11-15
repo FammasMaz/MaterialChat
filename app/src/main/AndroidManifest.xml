@@ -85,6 +85,17 @@
             </intent-filter>
         </activity>
 
+        <!-- Runs the photo picker or camera for the assistant overlay, which lives in a
+             VoiceInteractionSession and cannot receive an activity result. Invisible, kept out
+             of recents, and in its own task so it never raises the main app. -->
+        <activity
+            android:name=".assistant.attach.AssistantAttachActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:taskAffinity=""
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|uiMode"
+            android:theme="@style/Theme.MaterialChat.Invisible" />
+
         <!-- FileProvider for sharing exported files -->
         <provider
             android:name="androidx.core.content.FileProvider"

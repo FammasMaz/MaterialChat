@@ -120,7 +120,13 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextOverflow
 import com.materialchat.assistant.ui.components.VoiceWaveform
+import com.materialchat.assistant.attach.AssistantAttachMode
+import com.materialchat.domain.model.Attachment
 import com.materialchat.domain.model.MessageRole
+import com.materialchat.ui.screens.chat.components.AttachmentPreviewRow
+import androidx.compose.material.icons.filled.AddPhotoAlternate
+import androidx.compose.material.icons.filled.PhotoCamera
+import androidx.compose.ui.graphics.vector.ImageVector
 
 /**
  * M3 Expressive Assistant Overlay.
@@ -149,9 +155,12 @@ fun AssistantOverlay(
     /** The platform's assist screenshot, painted as the shrinking backdrop; null leaves the scrim. */
     assistScreenshot: Bitmap? = null,
     /** Reports whether the assistant is working; the session applies the keep-awake grace. */
-    onKeepScreenOnChanged: (Boolean) -> Unit = {}
+    onKeepScreenOnChanged: (Boolean) -> Unit = {},
+    /** The user wants to add a photo; the session opens the camera or picker activity. */
+    onRequestAttach: (AssistantEvent.Attach) -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val pendingAttachments by viewModel.pendingAttachments.collectAsStateWithLifecycle()
     val voiceState by viewModel.voiceState.collectAsStateWithLifecycle()
     val amplitudeData by viewModel.amplitudeData.collectAsStateWithLifecycle()
     val messages by viewModel.messages.collectAsStateWithLifecycle()
@@ -281,6 +290,7 @@ fun AssistantOverlay(
             when (event) {
                 is AssistantEvent.OpenClock -> onOpenClock(event)
                 is AssistantEvent.OpenInApp -> onOpenInApp(event.conversationId)
+                is AssistantEvent.Attach -> onRequestAttach(event)
                 is AssistantEvent.Dismiss -> {
                     leavingState.value = true
                     delay(AssistantExitMotion.durationMillis(readAnimationScale(context)))
@@ -418,6 +428,9 @@ fun AssistantOverlay(
                     onOpenInApp = viewModel::openInApp,
                     onDismiss = viewModel::dismiss,
                     onNewChat = viewModel::startNewChat,
+                    pendingAttachments = pendingAttachments,
+                    onAttach = viewModel::requestAttach,
+                    onRemoveAttachment = viewModel::removeAttachment,
                     onCardBoundsChange = { cardBoundsInRoot = it },
                     softEdges = neuralExpressive,
                     leaving = leaving,
@@ -483,6 +496,11 @@ internal fun AssistantOverlayContent(
     onOpenInApp: () -> Unit,
     onDismiss: () -> Unit,
     onNewChat: () -> Unit,
+    /** Photos waiting to go with the question, shown as removable thumbnails above the pill. */
+    pendingAttachments: List<Attachment> = emptyList(),
+    /** Take a photo or choose one; the per-message limit is enforced by the caller. */
+    onAttach: (AssistantAttachMode) -> Unit = {},
+    onRemoveAttachment: (Attachment) -> Unit = {},
     /** Soft-edged pill: no own fill or shadow; the parent paints a blurred fill behind it. */
     softEdges: Boolean = false,
     /** The session is dismissing: the sheet drops and shrinks out before the window hides. */
@@ -665,6 +683,25 @@ internal fun AssistantOverlayContent(
                     scaleOut(animationSpec = AssistantMotion.stateSwitch(), targetScale = 0.9f)
             ) {
                 AssistantNoticeSurface(message = notice.orEmpty(), isError = isError)
+            }
+
+            // Photos for the question: removable thumbnails (the composer's own preview row) and
+            // the two ways to add one, with the composer's wording. The tray sits above the pill,
+            // so the pill's row keeps its geometry; it shows whenever a photo can be added (idle
+            // or typing) and while anything is attached, and leaves the state line alone while
+            // the assistant listens, thinks or speaks.
+            AnimatedVisibility(
+                visible = pendingAttachments.isNotEmpty() || keyboardMode || (!capturing && !busy),
+                enter = fadeIn(animationSpec = AssistantMotion.effect()) +
+                    scaleIn(animationSpec = AssistantMotion.stateSwitch(), initialScale = 0.9f),
+                exit = fadeOut(animationSpec = AssistantMotion.effect()) +
+                    scaleOut(animationSpec = AssistantMotion.stateSwitch(), targetScale = 0.9f)
+            ) {
+                AssistantAttachTray(
+                    attachments = pendingAttachments,
+                    onAttach = onAttach,
+                    onRemoveAttachment = onRemoveAttachment
+                )
             }
 
             // The pill.
@@ -1081,6 +1118,67 @@ private fun AssistantAnswerToolbar(
                 Icon(Icons.Default.Close, contentDescription = "End assistant session")
             }
         }
+    }
+}
+
+/**
+ * Pending photos and the attach actions. The thumbnails are the chat composer's preview row
+ * (64dp images, 48dp remove targets); the actions are tonal chips in the answer toolbar's
+ * style, trailing so they sit near the pill's primary button.
+ */
+@Composable
+private fun AssistantAttachTray(
+    attachments: List<Attachment>,
+    onAttach: (AssistantAttachMode) -> Unit,
+    onRemoveAttachment: (Attachment) -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 6.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        if (attachments.isNotEmpty()) {
+            // The remove button of each item overhangs its top edge; leave it room.
+            AttachmentPreviewRow(
+                attachments = attachments,
+                onRemoveAttachment = onRemoveAttachment,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 12.dp, start = 4.dp)
+                    .testTag("assistant_attachments")
+            )
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            AssistantAttachChip(
+                icon = Icons.Default.PhotoCamera,
+                label = "Take photo",
+                onClick = { onAttach(AssistantAttachMode.Camera) }
+            )
+            AssistantAttachChip(
+                icon = Icons.Default.AddPhotoAlternate,
+                label = "Attach photo",
+                onClick = { onAttach(AssistantAttachMode.Gallery) }
+            )
+        }
+    }
+}
+
+@Composable
+private fun AssistantAttachChip(icon: ImageVector, label: String, onClick: () -> Unit) {
+    FilledTonalButton(
+        onClick = onClick,
+        shape = AssistantShapes.Chip,
+        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
+        modifier = Modifier.height(40.dp)
+    ) {
+        Icon(imageVector = icon, contentDescription = null, modifier = Modifier.size(16.dp))
+        Spacer(Modifier.size(6.dp))
+        Text(label, style = AssistantTypography.action(MaterialTheme.typography))
     }
 }
 

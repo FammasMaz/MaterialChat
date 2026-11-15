@@ -73,6 +73,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.materialchat.domain.model.Attachment
 import com.materialchat.util.AttachmentImporter
+import com.materialchat.util.AttachmentLimits
 import com.materialchat.util.CameraCapture
 import com.materialchat.domain.model.MessageRole
 import com.materialchat.domain.model.ReasoningEffort
@@ -104,7 +105,7 @@ private const val TAG = "ChatScreen"
 /**
  * Maximum number of image attachments per message.
  */
-private const val MAX_ATTACHMENTS = 4
+private const val MAX_ATTACHMENTS = AttachmentLimits.MAX_PER_MESSAGE
 
 /**
  * Main chat screen showing the conversation with the AI.

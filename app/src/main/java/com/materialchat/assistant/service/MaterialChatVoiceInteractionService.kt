@@ -1,7 +1,9 @@
 package com.materialchat.assistant.service
 
+import android.os.Bundle
 import android.service.voice.VoiceInteractionService
 import android.service.voice.VoiceInteractionSession
+import android.util.Log
 
 /**
  * MaterialChat's VoiceInteractionService implementation.
@@ -21,7 +23,7 @@ class MaterialChatVoiceInteractionService : VoiceInteractionService() {
 
     override fun onCreate() {
         super.onCreate()
-        // Service created - the session service will handle actual interactions
+        instance = this
     }
 
     override fun onReady() {
@@ -37,5 +39,28 @@ class MaterialChatVoiceInteractionService : VoiceInteractionService() {
     override fun onShutdown() {
         super.onShutdown()
         // Clean up any resources
+    }
+
+    override fun onDestroy() {
+        if (instance === this) instance = null
+        super.onDestroy()
+    }
+
+    companion object {
+        private const val TAG = "MaterialChatAssistant"
+
+        @Volatile private var instance: MaterialChatVoiceInteractionService? = null
+
+        /**
+         * Shows the assistant session again after a hand-off (the photo picker or camera hid
+         * it). Returns false when the service is not alive or is no longer the system's
+         * assistant, in which case the platform throws and the user re-invokes it by hand.
+         */
+        fun reopenSession(args: Bundle?): Boolean {
+            val service = instance ?: return false
+            return runCatching { service.showSession(args, 0) }
+                .onFailure { Log.w(TAG, "Could not reopen the assistant session", it) }
+                .isSuccess
+        }
     }
 }
