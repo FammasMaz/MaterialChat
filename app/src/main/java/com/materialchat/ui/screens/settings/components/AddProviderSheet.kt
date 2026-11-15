@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.ime
@@ -37,8 +36,9 @@ import androidx.compose.material.icons.outlined.TextFields
 import com.materialchat.ui.components.seaglass.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import com.materialchat.ui.components.seaglass.FilterChip
-import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.ListItem
+import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.Icon
 import com.materialchat.ui.components.seaglass.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -119,7 +119,7 @@ fun AddProviderSheet(
         ModalBottomSheet(
             onDismissRequest = onDismiss,
             sheetState = sheetState,
-            shape = CustomShapes.BottomSheet,
+            shape = SettingsSheetShape,
             containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
             contentColor = MaterialTheme.colorScheme.onSurface
         ) {
@@ -427,8 +427,10 @@ private fun SheetHeader(
 }
 
 /**
- * Provider type selector using filter chips.
+ * Provider type selector: one segmented group of selectable list rows, so the
+ * choices read as a single object with the selected row filled in the accent.
  */
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun ProviderTypeSelector(
     selectedType: ProviderType,
@@ -442,17 +444,21 @@ private fun ProviderTypeSelector(
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Spacer(modifier = Modifier.height(8.dp))
-        Column(
-            modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            ProviderType.entries.filterNot { it.isOnDevice }.forEach { type ->
-                FilterChip(
+        val types = remember { ProviderType.entries.filterNot { it.isOnDevice } }
+        SettingsGroup {
+            types.forEachIndexed { index, type ->
+                ListItem(
                     selected = selectedType == type,
                     onClick = { if (enabled) onTypeSelected(type) },
                     enabled = enabled,
-                    label = { Text(text = type.displayName) },
-                    leadingIcon = {
+                    shapes = ListItemDefaults.segmentedShapes(index = index, count = types.size),
+                    colors = ListItemDefaults.segmentedColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                        selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                        selectedContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                        selectedLeadingContentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                    ),
+                    leadingContent = {
                         Icon(
                             imageVector = when (type) {
                                 ProviderType.OPENAI_COMPATIBLE -> Icons.Outlined.Cloud
@@ -464,18 +470,15 @@ private fun ProviderTypeSelector(
                                 ProviderType.AICORE_GEMINI_NANO -> Icons.Outlined.Memory
                             },
                             contentDescription = null,
-                            modifier = Modifier.size(18.dp)
+                            modifier = Modifier.size(24.dp)
                         )
-                    },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .defaultMinSize(minHeight = 48.dp),
-                    colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                        selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                        selectedLeadingIconColor = MaterialTheme.colorScheme.onPrimaryContainer
+                    }
+                ) {
+                    Text(
+                        text = type.displayName,
+                        style = MaterialTheme.typography.titleSmall
                     )
-                )
+                }
             }
         }
     }
