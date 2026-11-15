@@ -375,11 +375,17 @@ class SendMessageUseCase @Inject constructor(
                             model = imageModel,
                             outputFormat = outputFormat
                         )
+                        // updateMessage is a whole-row write built from the original placeholder,
+                        // which has no reasoning. Carry the streamed thinking (and its duration)
+                        // across, or the row that was already persisted with thinking_content
+                        // during the stream is rewritten with NULL and the reasoning is gone.
                         imageResult.onSuccess { attachment ->
                             conversationRepository.updateMessage(
                                 assistantMessage.copy(
                                     id = assistantMessageId,
                                     content = "",
+                                    thinkingContent = state.finalThinkingContent,
+                                    thinkingDurationMs = thinkingDurationMs,
                                     attachments = listOf(attachment),
                                     isStreaming = false,
                                     totalDurationMs = totalDurationMs,
@@ -393,6 +399,8 @@ class SendMessageUseCase @Inject constructor(
                                 assistantMessage.copy(
                                     id = assistantMessageId,
                                     content = "Image generation failed: ${error.message ?: "Unknown error"}",
+                                    thinkingContent = state.finalThinkingContent,
+                                    thinkingDurationMs = thinkingDurationMs,
                                     isStreaming = false,
                                     totalDurationMs = totalDurationMs,
                                     modelName = imageModel,

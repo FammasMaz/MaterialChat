@@ -41,6 +41,7 @@ import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -1053,7 +1054,11 @@ private fun ThinkingSection(
     val isThinkingPhase = isStreaming && !hasContent
     val haptics = rememberHapticFeedback()
 
-    var isExpanded by remember(isThinkingPhase, isStreaming) {
+    // alwaysShowThinking is part of the key: the preference is collected asynchronously and
+    // can arrive after a past conversation's bubbles have already composed, and the user can
+    // flip it while a chat is open. Without the key a completed message kept the initial
+    // (false) value and never expanded on its own.
+    var isExpanded by remember(isThinkingPhase, isStreaming, alwaysShowThinking) {
         mutableStateOf(
             when {
                 isThinkingPhase -> true              // Still thinking only — expanded
@@ -1069,31 +1074,51 @@ private fun ThinkingSection(
         isStreaming -> "Thinking..."
         else -> "Thought"
     }
+    // One readable line of the reasoning under the collapsed header, so past thinking is
+    // visibly present instead of hiding behind a 12sp label.
+    val previewLine = remember(thinkingContent) { thinkingContent.thinkingPreviewLine() }
+    val showPreview = !isExpanded && !isStreaming && previewLine.isNotEmpty()
 
     Column {
-        // Header row — tappable toggle
+        // Header row — a real disclosure affordance: tonal strip, 40dp hit target, chevron.
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(8.dp))
+                .clip(RoundedCornerShape(12.dp))
+                .background(textColor.copy(alpha = if (isExpanded) 0.04f else 0.07f))
                 .clickable { haptics.perform(HapticPattern.CLICK, hapticsEnabled); isExpanded = !isExpanded }
-                .padding(vertical = 4.dp),
+                .heightIn(min = 40.dp)
+                .padding(horizontal = 8.dp, vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
                 imageVector = if (isExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
                 contentDescription = if (isExpanded) "Collapse thinking" else "Expand thinking",
                 modifier = Modifier
-                    .size(16.dp)
-                    .alpha(0.6f),
+                    .size(18.dp)
+                    .alpha(0.75f),
                 tint = textColor
             )
-            Text(
-                text = headerText,
-                style = MaterialTheme.typography.labelMedium,
-                color = textColor.copy(alpha = 0.6f),
-                modifier = Modifier.padding(start = 4.dp)
-            )
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(start = 6.dp)
+            ) {
+                Text(
+                    text = headerText,
+                    style = MaterialTheme.typography.labelLarge,
+                    color = textColor.copy(alpha = 0.8f)
+                )
+                if (showPreview) {
+                    Text(
+                        text = previewLine,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = textColor.copy(alpha = 0.6f),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
         }
 
         // Collapsible thinking content: shared disclosure physics (ExpressiveMotion.Disclosure)

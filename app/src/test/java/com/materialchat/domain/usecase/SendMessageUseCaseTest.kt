@@ -2,6 +2,7 @@ package com.materialchat.domain.usecase
 
 import android.content.Context
 import com.materialchat.data.local.preferences.AppPreferences
+import com.materialchat.domain.model.Attachment
 import com.materialchat.domain.model.Conversation
 import com.materialchat.domain.model.Message
 import com.materialchat.domain.model.MessageRole
@@ -176,6 +177,61 @@ class SendMessageUseCaseTest {
         coVerify { conversationRepository.updateMessageContent("msg-assistant", "Hello!") }
         coVerify { conversationRepository.setMessageStreaming("msg-assistant", false) }
         coVerify { conversationRepository.updateMessageDurations("msg-assistant", null, any()) }
+    }
+
+    @Test
+    fun `invoke - image tool completion keeps the streamed thinking on the saved row`() = runTest {
+        // The reasoning is persisted during the stream via updateMessageContentWithThinking;
+        // the image-tool branch then rewrites the whole row from the placeholder. Before the
+        // fix that whole-row write carried thinkingContent = null and erased the reasoning.
+        val thinking = "The user wants a picture of a cat, so I should call the image tool."
+        setupSuccessfulFlow(
+            stream = flowOf(
+                StreamingState.Streaming(content = "", thinkingContent = thinking, messageId = "provider-id"),
+                StreamingState.Completed(
+                    finalContent = "[[materialchat.generate_image: a tabby cat on a windowsill]]",
+                    finalThinkingContent = thinking,
+                    messageId = "provider-id"
+                )
+            )
+        )
+        coEvery { chatRepository.generateImage(any(), any(), any(), any()) } returns Result.success(
+            Attachment(uri = "file:///images/cat.png", mimeType = "image/png")
+        )
+        val savedRows = mutableListOf<Message>()
+        coEvery { conversationRepository.updateMessage(capture(savedRows)) } returns Unit
+
+        invokeUseCase(userContent = "draw me a cat").toList()
+
+        assertEquals(1, savedRows.size)
+        val saved = savedRows.single()
+        assertEquals("msg-assistant", saved.id)
+        assertEquals(thinking, saved.thinkingContent)
+        assertEquals(1, saved.attachments.size)
+        assertTrue(!saved.isStreaming)
+    }
+
+    @Test
+    fun `invoke - image tool failure keeps the streamed thinking on the saved row`() = runTest {
+        val thinking = "Image tool call needed."
+        setupSuccessfulFlow(
+            stream = flowOf(
+                StreamingState.Completed(
+                    finalContent = "[[materialchat.generate_image: a cat]]",
+                    finalThinkingContent = thinking,
+                    messageId = "provider-id"
+                )
+            )
+        )
+        coEvery { chatRepository.generateImage(any(), any(), any(), any()) } returns
+            Result.failure(RuntimeException("quota"))
+        val savedRows = mutableListOf<Message>()
+        coEvery { conversationRepository.updateMessage(capture(savedRows)) } returns Unit
+
+        invokeUseCase(userContent = "draw me a cat").toList()
+
+        assertEquals(thinking, savedRows.single().thinkingContent)
+        assertTrue(savedRows.single().content.startsWith("Image generation failed"))
     }
 
     @Test
