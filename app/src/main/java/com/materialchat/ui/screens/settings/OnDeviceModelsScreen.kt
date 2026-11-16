@@ -65,6 +65,9 @@ import com.materialchat.ui.components.ExpressiveButton
 import com.materialchat.ui.components.ExpressiveButtonStyle
 import com.materialchat.ui.components.ExpressiveFilledIconButton
 import com.materialchat.ui.components.ExpressiveTopBarTitle
+import com.materialchat.ui.components.ExpressiveSnackbar
+import com.materialchat.ui.components.dialogEntrance
+import com.materialchat.ui.theme.ExpressiveShapes
 import com.materialchat.ui.theme.CustomShapes
 import kotlinx.coroutines.launch
 
@@ -127,12 +130,7 @@ fun OnDeviceModelsScreen(
         },
         snackbarHost = {
             SnackbarHost(snackbarHostState) { data ->
-                Snackbar(
-                    snackbarData = data,
-                    shape = CustomShapes.Snackbar,
-                    containerColor = MaterialTheme.colorScheme.inverseSurface,
-                    contentColor = MaterialTheme.colorScheme.inverseOnSurface
-                )
+                ExpressiveSnackbar(snackbarData = data)
             }
         }
     ) { padding ->
@@ -190,7 +188,8 @@ fun OnDeviceModelsScreen(
     pendingDelete?.let { state ->
         AlertDialog(
             onDismissRequest = { pendingDelete = null },
-            shape = CustomShapes.Dialog,
+            modifier = Modifier.dialogEntrance(),
+            shape = ExpressiveShapes.Dialog,
             containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
             title = { Text("Delete model") },
             text = {

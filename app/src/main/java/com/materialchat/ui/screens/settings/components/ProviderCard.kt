@@ -33,7 +33,15 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import com.materialchat.ui.components.ExpressiveButton
-import com.materialchat.ui.components.ExpressiveButtonStyle
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material3.MenuDefaults
+import androidx.compose.material3.SplitButtonDefaults
+import androidx.compose.material3.SplitButtonLayout
+import androidx.compose.ui.graphics.graphicsLayer
+import com.materialchat.ui.components.seaglass.DropdownMenu
+import com.materialchat.ui.components.seaglass.DropdownMenuItem
+import com.materialchat.ui.theme.SquircleShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -73,6 +81,7 @@ import com.materialchat.ui.theme.ExpressiveShapes
  * @param onTestConnection Callback when test is tapped
  * @param modifier Optional modifier
  */
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun ProviderCard(
     providerItem: ProviderUiItem,
@@ -93,6 +102,14 @@ fun ProviderCard(
         label = "cardScale"
     )
 
+    // Pressed morph: the squircle rounds further on the shape-morph spring, paired with the scale.
+    val cardRadius by animateDpAsState(
+        targetValue = if (isPressed) 34.dp else 28.dp,
+        animationSpec = ExpressiveMotion.Spatial.shapeMorph(),
+        label = "cardCorner"
+    )
+    val cardShape = SquircleShape(cardRadius)
+
     // Animate background color for active state
     val backgroundColor by animateColorAsState(
         targetValue = if (provider.isActive) {
@@ -110,7 +127,7 @@ fun ProviderCard(
         modifier = modifier
             .fillMaxWidth()
             .scale(scale)
-            .clip(ExpressiveShapes.Card)
+            .clip(cardShape)
             .pointerInput(Unit) {
                 detectTapGestures(
                     onPress = {
@@ -124,7 +141,7 @@ fun ProviderCard(
         colors = CardDefaults.cardColors(
             containerColor = backgroundColor
         ),
-        shape = ExpressiveShapes.Card,
+        shape = cardShape,
         elevation = CardDefaults.cardElevation(defaultElevation = if (provider.isActive) 3.dp else 1.dp)
     ) {
         Column(
@@ -191,18 +208,71 @@ fun ProviderCard(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Action buttons
+            // Actions: M3E split button. The primary action leads (Set Active, or Test once
+            // active); the remaining actions sit behind the trailing chevron so every action
+            // of the old button row is still reachable.
+            var actionsExpanded by remember { mutableStateOf(false) }
+            val chevronRotation by animateFloatAsState(
+                targetValue = if (actionsExpanded) 180f else 0f,
+                animationSpec = ExpressiveMotion.Spatial.default(),
+                label = "providerActionsChevron"
+            )
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                horizontalArrangement = Arrangement.End,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                if (!provider.isActive) {
-                    ExpressiveButton(onClick = { onActivate() }, text = "Set Active", style = ExpressiveButtonStyle.Text)
+                Box {
+                    SplitButtonLayout(
+                        leadingButton = {
+                            SplitButtonDefaults.TonalLeadingButton(
+                                onClick = {
+                                    haptics.perform(HapticPattern.CLICK)
+                                    if (provider.isActive) onTestConnection() else onActivate()
+                                }
+                            ) {
+                                Text(text = if (provider.isActive) "Test" else "Set Active")
+                            }
+                        },
+                        trailingButton = {
+                            SplitButtonDefaults.TonalTrailingButton(
+                                checked = actionsExpanded,
+                                onCheckedChange = { actionsExpanded = it }
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Filled.ArrowDropDown,
+                                    contentDescription = "More provider actions",
+                                    modifier = Modifier
+                                        .size(SplitButtonDefaults.TrailingIconSize)
+                                        .graphicsLayer { rotationZ = chevronRotation }
+                                )
+                            }
+                        }
+                    )
+                    DropdownMenu(
+                        expanded = actionsExpanded,
+                        onDismissRequest = { actionsExpanded = false },
+                        shape = CustomShapes.Dropdown
+                    ) {
+                        if (!provider.isActive) {
+                            DropdownMenuItem(
+                                text = { Text("Test") },
+                                onClick = {
+                                    actionsExpanded = false
+                                    onTestConnection()
+                                }
+                            )
+                        }
+                        DropdownMenuItem(
+                            text = { Text("Delete") },
+                            onClick = {
+                                actionsExpanded = false
+                                onDelete()
+                            },
+                            colors = MenuDefaults.itemColors(textColor = MaterialTheme.colorScheme.error)
+                        )
+                    }
                 }
-                ExpressiveButton(onClick = { onTestConnection() }, text = "Test", style = ExpressiveButtonStyle.Text)
-                Spacer(modifier = Modifier.weight(1f))
-                ExpressiveButton(onClick = { onDelete() }, text = "Delete", style = ExpressiveButtonStyle.Text)
             }
         }
     }

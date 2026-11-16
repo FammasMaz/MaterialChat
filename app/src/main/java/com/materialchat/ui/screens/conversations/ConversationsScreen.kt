@@ -70,6 +70,8 @@ import androidx.compose.material3.Text
 import com.materialchat.ui.components.seaglass.TextButton
 import com.materialchat.ui.components.ExpressiveButton
 import com.materialchat.ui.components.ExpressiveButtonStyle
+import com.materialchat.ui.components.ExpressiveSnackbar
+import com.materialchat.ui.components.dialogEntrance
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.runtime.Composable
@@ -269,13 +271,7 @@ fun ConversationsScreen(
         },
         snackbarHost = {
             SnackbarHost(hostState = snackbarHostState) { snackbarData ->
-                Snackbar(
-                    snackbarData = snackbarData,
-                    shape = CustomShapes.Snackbar,
-                    containerColor = MaterialTheme.colorScheme.inverseSurface,
-                    contentColor = MaterialTheme.colorScheme.inverseOnSurface,
-                    actionColor = MaterialTheme.colorScheme.inversePrimary
-                )
+                ExpressiveSnackbar(snackbarData = snackbarData)
             }
         }
     ) { paddingValues ->
@@ -335,6 +331,7 @@ fun ConversationsScreen(
                 showRenameDialog = false
                 renameConversation = null
             },
+            modifier = Modifier.dialogEntrance(),
             shape = ExpressiveShapes.Dialog,
             title = { Text("Edit Title") },
             text = {
@@ -867,6 +864,7 @@ private fun ConversationMetadataDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
+        modifier = Modifier.dialogEntrance(),
         shape = ExpressiveShapes.Dialog,
         title = { Text("Chat info") },
         text = {

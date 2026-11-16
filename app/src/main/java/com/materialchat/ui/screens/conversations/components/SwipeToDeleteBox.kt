@@ -96,6 +96,7 @@ fun SwipeToDeleteBox(
     var isOpen by remember { mutableStateOf(false) }
     var hasTriggeredRevealHaptic by remember { mutableStateOf(false) }
     var hasTriggeredDeleteHaptic by remember { mutableStateOf(false) }
+    var hasTriggeredEditHaptic by remember { mutableStateOf(false) }
 
     val actionButtonWidthDp = 84.dp
     val actionGapDp = 8.dp
@@ -137,13 +138,17 @@ fun SwipeToDeleteBox(
         (deleteThresholdPx - leftActionContentWidthPx).coerceAtLeast(1f)).coerceIn(0f, 1f)
     val rightProgress = (animatedOffsetX / rightActionThresholdPx).coerceIn(0f, 1f)
 
-    LaunchedEffect(leftProgress > 0.55f, deleteProgress >= 1f) {
+    LaunchedEffect(leftProgress > 0.55f, deleteProgress >= 1f, rightProgress >= 1f) {
         if (deleteProgress >= 1f && !hasTriggeredDeleteHaptic) {
             haptics.perform(HapticPattern.SWIPE_THRESHOLD, gestureHapticsEnabled)
             hasTriggeredDeleteHaptic = true
         } else if (leftProgress > 0.55f && !hasTriggeredRevealHaptic) {
             haptics.perform(HapticPattern.SEGMENT_TICK, hapticsEnabled)
             hasTriggeredRevealHaptic = true
+        } else if (rightProgress >= 1f && !hasTriggeredEditHaptic) {
+            // Edit threshold crossed: same tick as the reveal so the gesture family feels consistent.
+            haptics.perform(HapticPattern.SEGMENT_TICK, gestureHapticsEnabled)
+            hasTriggeredEditHaptic = true
         }
 
         if (leftProgress <= 0.55f) {
@@ -151,6 +156,9 @@ fun SwipeToDeleteBox(
         }
         if (deleteProgress < 1f) {
             hasTriggeredDeleteHaptic = false
+        }
+        if (rightProgress < 1f) {
+            hasTriggeredEditHaptic = false
         }
     }
 
@@ -201,13 +209,15 @@ fun SwipeToDeleteBox(
     }
     val deleteButtonWidth = deleteWidth.coerceAtLeast(actionButtonWidthDp)
 
+    // Icon pops past rest on the threshold spring the moment a threshold is crossed,
+    // then settles; below the threshold it only grows gently with the reveal.
     val iconScale by animateFloatAsState(
         targetValue = when {
-            deleteProgress >= 1f -> 1.18f
-            leftProgress > 0.5f || rightProgress > 0.5f -> 1.06f
+            deleteProgress >= 1f || rightProgress >= 1f -> 1.3f
+            leftProgress > 0.5f || rightProgress > 0.5f -> 1.08f
             else -> 0.92f
         },
-        animationSpec = ExpressiveMotion.Spatial.playful(),
+        animationSpec = ExpressiveMotion.Spatial.thresholdPop(),
         label = "iconScale"
     )
 
@@ -258,6 +268,7 @@ fun SwipeToDeleteBox(
                             width = archiveWidth,
                             iconScale = iconScale,
                             emphasized = false,
+                            slot = SwipeActionSlot.Leading,
                             onClick = {
                                 haptics.perform(HapticPattern.CLICK, hapticsEnabled)
                                 closeActions()
@@ -273,6 +284,7 @@ fun SwipeToDeleteBox(
                         width = deleteButtonWidth,
                         iconScale = iconScale,
                         emphasized = deleteProgress > 0.35f,
+                        slot = if (onArchive != null) SwipeActionSlot.Trailing else SwipeActionSlot.Only,
                         onClick = {
                             haptics.perform(HapticPattern.SWIPE_THRESHOLD, gestureHapticsEnabled)
                             closeActions()
@@ -306,6 +318,7 @@ fun SwipeToDeleteBox(
                         width = actionButtonWidthDp,
                         iconScale = iconScale,
                         emphasized = rightProgress > 0.72f,
+                        slot = SwipeActionSlot.Only,
                         onClick = {
                             haptics.perform(HapticPattern.CLICK, hapticsEnabled)
                             closeActions()
@@ -390,12 +403,25 @@ private fun SwipeActionButton(
     width: Dp,
     iconScale: Float,
     emphasized: Boolean,
+    slot: SwipeActionSlot,
     onClick: () -> Unit
 ) {
-    val actionShape by animateDpAsState(
-        targetValue = if (emphasized) ExpressiveShapes.SwipeAction.Emphasized else ExpressiveShapes.SwipeAction.Resting,
+    // Per-position corners: the edge toward a sibling action stays tight so the pair
+    // reads as one connected group; arming rounds every corner on the morph spring.
+    val outerRadius by animateDpAsState(
+        targetValue = if (emphasized) ExpressiveShapes.SwipeActionPosition.Armed else ExpressiveShapes.SwipeActionPosition.Outer,
         animationSpec = ExpressiveMotion.Spatial.shapeMorph(),
-        label = "actionShape"
+        label = "actionOuterRadius"
+    )
+    val innerRadius by animateDpAsState(
+        targetValue = if (emphasized) ExpressiveShapes.SwipeActionPosition.Armed else ExpressiveShapes.SwipeActionPosition.Inner,
+        animationSpec = ExpressiveMotion.Spatial.shapeMorph(),
+        label = "actionInnerRadius"
+    )
+    val corners = swipeActionCorners(
+        slot = slot,
+        outer = outerRadius.coerceAtLeast(0.dp),
+        inner = innerRadius.coerceAtLeast(0.dp)
     )
 
     Surface(
@@ -404,7 +430,12 @@ private fun SwipeActionButton(
             .width(width)
             .fillMaxHeight()
             .padding(vertical = 7.dp),
-        shape = RoundedCornerShape(actionShape),
+        shape = RoundedCornerShape(
+            topStart = corners.topStart,
+            topEnd = corners.topEnd,
+            bottomStart = corners.bottomStart,
+            bottomEnd = corners.bottomEnd
+        ),
         color = containerColor,
         contentColor = contentColor,
         tonalElevation = if (emphasized) 6.dp else 2.dp,

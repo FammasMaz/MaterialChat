@@ -1,3 +1,5 @@
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
+
 package com.materialchat.ui.screens.settings
 
 import androidx.compose.foundation.layout.Arrangement
@@ -10,6 +12,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import com.materialchat.ui.components.ExpressiveSlider
+import com.materialchat.ui.components.dialogEntrance
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
@@ -59,6 +63,7 @@ fun AssistantVoiceSettingsPanel(viewModel: AssistantVoiceSettingsViewModel = hil
     var removeKey by remember { mutableStateOf(false) }
     AlertDialog(
         onDismissRequest = { if (!saving) open = false },
+        modifier = Modifier.dialogEntrance(),
         title = { Text("Voice configuration") },
         text = {
             Column(
@@ -161,7 +166,7 @@ fun AssistantVoiceSettingsPanel(viewModel: AssistantVoiceSettingsViewModel = hil
                     OutlinedTextField(draft.languageTag.orEmpty(), { viewModel.stopPreview(); draft = draft.copy(languageTag = it) },
                         label = { Text("Language tag (e.g. en-US)") }, modifier = Modifier.fillMaxWidth())
                     Text("Speech rate: ${"%.2f".format(draft.speechRate)}×")
-                    Slider(value = draft.speechRate, onValueChange = { viewModel.stopPreview(); draft = draft.copy(speechRate = it) }, valueRange = 0.25f..2f)
+                    ExpressiveSlider(value = draft.speechRate, onValueChange = { viewModel.stopPreview(); draft = draft.copy(speechRate = it) }, valueRange = 0.25f..2f)
                     Button(enabled = !voicesLoading && !previewing, onClick = { viewModel.preview(draft) },
                         modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Preview draft voice") }
                     if (previewing) TextButton(onClick = viewModel::stopPreview) { Text("Stop preview") }
@@ -187,10 +192,10 @@ fun AssistantVoiceSettingsPanel(viewModel: AssistantVoiceSettingsViewModel = hil
                         }
                         is SherpaModelState.Downloading -> {
                             if (state.stage == SherpaModelState.Downloading.Stage.DOWNLOADING) {
-                                LinearProgressIndicator(progress = { state.progress }, modifier = Modifier.fillMaxWidth())
+                                LinearWavyProgressIndicator(progress = { state.progress }, modifier = Modifier.fillMaxWidth())
                                 Text("Downloading… ${formatModelBytes(state.downloadedBytes)} of ${formatModelBytes(state.totalBytes)}")
                             } else {
-                                LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                                LinearWavyProgressIndicator(modifier = Modifier.fillMaxWidth())
                                 Text(if (state.stage == SherpaModelState.Downloading.Stage.VERIFYING) "Verifying download…" else "Installing…")
                             }
                             TextButton(onClick = { viewModel.cancelSherpa(model) }) { Text("Cancel download") }
@@ -209,7 +214,7 @@ fun AssistantVoiceSettingsPanel(viewModel: AssistantVoiceSettingsViewModel = hil
                         label = { Text("Language tag (e.g. en-US)") }, modifier = Modifier.fillMaxWidth())
                     Text("Supertonic speaks English, Korean, Spanish, Portuguese and French; other languages use English. Kokoro is English only.")
                     Text("Speech rate: ${"%.2f".format(draft.speechRate)}×")
-                    Slider(value = draft.speechRate, onValueChange = { viewModel.stopPreview(); draft = draft.copy(speechRate = it) }, valueRange = 0.25f..2f)
+                    ExpressiveSlider(value = draft.speechRate, onValueChange = { viewModel.stopPreview(); draft = draft.copy(speechRate = it) }, valueRange = 0.25f..2f)
                     Button(enabled = state.isInstalled && !previewing, onClick = { viewModel.preview(draft) },
                         modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Preview neural voice") }
                     if (previewing) TextButton(onClick = viewModel::stopPreview) { Text("Stop preview") }
