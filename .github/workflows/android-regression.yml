@@ -55,6 +55,8 @@ jobs:
             -Dorg.gradle.jvmargs='-Xmx3g -Dfile.encoding=UTF-8'
 
       - name: Run real Android image, sharing and Room tests
+        id: device
+        continue-on-error: true
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: ${{ matrix.api }}
@@ -66,8 +68,48 @@ jobs:
           disable-animations: false
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -camera-front none
           script: |
-            ./gradlew :app:connectedGithubDebugAndroidTest --no-daemon --max-workers=2 -Pkotlin.compiler.execution.strategy=in-process -Dorg.gradle.jvmargs=-Xmx2g -Pandroid.testInstrumentationRunnerArguments.class=com.materialchat.util.AttachmentImporterTest,com.materialchat.util.GeneratedImageActionsTest,com.materialchat.data.repository.ConversationAttachmentCleanupTest,com.materialchat.ui.screens.chat.ChatViewModelAttachmentCleanupTest,com.materialchat.assistant.service.MaterialChatVoiceInteractionSessionTest,com.materialchat.assistant.voice.RecognitionContractTest,com.materialchat.assistant.ui.AssistantNeuralParticleFieldTest,com.materialchat.assistant.voice.SherpaNeuralSpeechTest,com.materialchat.assistant.attach.AssistantAttachmentDeliveryTest,com.materialchat.util.CameraCaptureTest
+            run_connected() {
+              ./gradlew :app:connectedGithubDebugAndroidTest --no-daemon --max-workers=2 -Pkotlin.compiler.execution.strategy=in-process -Dorg.gradle.jvmargs=-Xmx2g -Pandroid.testInstrumentationRunnerArguments.class=com.materialchat.util.AttachmentImporterTest,com.materialchat.util.GeneratedImageActionsTest,com.materialchat.data.repository.ConversationAttachmentCleanupTest,com.materialchat.ui.screens.chat.ChatViewModelAttachmentCleanupTest,com.materialchat.assistant.service.MaterialChatVoiceInteractionSessionTest,com.materialchat.assistant.voice.RecognitionContractTest,com.materialchat.assistant.ui.AssistantNeuralParticleFieldTest,com.materialchat.assistant.voice.SherpaNeuralSpeechTest,com.materialchat.assistant.attach.AssistantAttachmentDeliveryTest,com.materialchat.util.CameraCaptureTest
+            }
+            # The emulator occasionally drops adb right after the last test, which fails the
+            # Gradle task even though every test passed. One recovery attempt is cheap; the
+            # evidence step below still decides whether the run is acceptable.
+            run_connected || { echo 'connected run failed; restarting adb and retrying once'; adb kill-server || true; sleep 5; adb start-server || true; sleep 5; run_connected; }
             bash scripts/check-assistant-window.sh test-evidence/assistant
+
+      # The emulator runner's teardown can exit non-zero after a fully green run (adb dies
+      # while the emulator is being shut down). Judge the run on its evidence instead of on
+      # that exit code: every instrumented test must have passed, and the assistant gate
+      # must have written its pass marker.
+      - name: Judge the device evidence
+        if: always()
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import glob, sys, xml.etree.ElementTree as ET
+          files = glob.glob('app/build/outputs/androidTest-results/connected/**/TEST-*.xml', recursive=True)
+          if not files:
+              print('no instrumented test results were produced'); sys.exit(1)
+          tests = failures = errors = skipped = 0
+          for path in files:
+              root = ET.parse(path).getroot()
+              tests += int(root.get('tests', 0) or 0)
+              failures += int(root.get('failures', 0) or 0)
+              errors += int(root.get('errors', 0) or 0)
+              skipped += int(root.get('skipped', 0) or 0)
+              for case in root.iter('testcase'):
+                  for bad in list(case.iter('failure')) + list(case.iter('error')):
+                      print('FAILED:', case.get('classname'), case.get('name'))
+                      print((bad.text or '')[:2000])
+          print(f'instrumented tests={tests} failures={failures} errors={errors} skipped={skipped}')
+          if failures or errors:
+              sys.exit(1)
+          if tests < 49:
+              print('expected at least 49 instrumented tests; the run did not complete')
+              sys.exit(1)
+          PY
+          test -f test-evidence/assistant/gate-passed.txt
+          echo "device evidence complete: tests green and the assistant gate passed"
 
 
       - name: Record tested commit

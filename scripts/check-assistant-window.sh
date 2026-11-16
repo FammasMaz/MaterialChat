@@ -271,3 +271,5 @@ adb pull /sdcard/assistant-clock.xml "$out/clock-ui.xml"
 adb exec-out screencap -p > "$out/clock-screen.png"
 # A resumed Clock activity proves the session handoff escaped background-launch restrictions.
 grep -Ei '(ResumedActivity|topResumedActivity|mResumedActivity).*com\.(android|google\.android)\.deskclock' "$out/clock-activities.txt"
+
+echo "gate passed" > "$out/gate-passed.txt"
