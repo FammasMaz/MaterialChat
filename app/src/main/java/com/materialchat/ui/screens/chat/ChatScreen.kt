@@ -697,6 +697,21 @@ private fun ChatContent(
             }
         }
     }
+    // Unread count for the scroll FAB badge: messages that appeared while the user was
+    // scrolled away. Cleared the moment the list is back at the bottom. Shrinks (regenerate,
+    // sibling swap) never count.
+    var unreadCount by remember { mutableIntStateOf(0) }
+    var seenMessageCount by remember { mutableIntStateOf(state.messages.size) }
+    LaunchedEffect(state.messages.size, isAtBottom) {
+        val size = state.messages.size
+        if (isAtBottom) {
+            unreadCount = 0
+        } else if (size > seenMessageCount) {
+            unreadCount += size - seenMessageCount
+        }
+        seenMessageCount = size
+    }
+
     // Only re-enable auto-scroll when user returns to bottom (after scroll stops)
     LaunchedEffect(listState) {
         snapshotFlow { listState.isScrollInProgress to isAtBottom }
@@ -926,6 +941,7 @@ private fun ChatContent(
                 visible = !isAtBottom && state.messages.isNotEmpty()
                     && !(state.isStreaming && autoScrollEnabled),
                 hasNewContent = !isAtBottom && state.isStreaming,
+                unreadCount = unreadCount,
                 onClick = {
                     coroutineScope.launch {
                         autoScrollEnabled = true

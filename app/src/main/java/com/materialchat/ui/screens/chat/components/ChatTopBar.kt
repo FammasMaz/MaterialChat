@@ -5,7 +5,9 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.animateIntAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.spring
@@ -32,7 +34,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.MoreVert
@@ -154,6 +159,14 @@ fun ChatTopBar(
     }
     val shownTitle = revealedTitle(title, revealProgress.value)
     val titleAlpha = (revealProgress.value * 5f).coerceIn(0f, 1f)
+    // Typography emphasis across the fold: the expressive display face eases from Bold on the
+    // masthead to SemiBold in the compact row (and back) on the spatial spring. Upright only.
+    val titleWeight by animateIntAsState(
+        targetValue = if (isCollapsed) 600 else 700,
+        animationSpec = ExpressiveMotion.Spatial.default(),
+        label = "chatTitleWeight"
+    )
+    val titleFontWeight = FontWeight(titleWeight)
 
     // One tone in every scroll and fold state: the same colour as the scaffold behind the bar,
     // so neither a colour shift nor the bar's bottom corners show while the list scrolls.
@@ -244,7 +257,8 @@ fun ChatTopBar(
                             Text(
                                 text = shownTitle,
                                 style = MaterialTheme.typography.titleMedium.copy(
-                                    fontFamily = MaterialChatExpressiveTitleFontFamily
+                                    fontFamily = MaterialChatExpressiveTitleFontFamily,
+                                    fontWeight = titleFontWeight
                                 ),
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
@@ -328,7 +342,8 @@ fun ChatTopBar(
                         Text(
                             text = shownTitle,
                             style = MaterialTheme.typography.headlineSmall.copy(
-                                fontWeight = FontWeight.Bold
+                                fontFamily = MaterialChatExpressiveTitleFontFamily,
+                                fontWeight = titleFontWeight
                             ),
                             color = contentColor,
                             maxLines = 2,
@@ -498,16 +513,29 @@ private fun HeaderStatusChip(
             )
         }
     }
+    // Expressive chip shapes: a state that needs attention (context full) squares off to a
+    // 10dp "selected" shape so it is not read as one more neutral pill; the tappable Branched
+    // chip morphs to the same shape while pressed, on the spatial spring.
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val restingCorner = if (badge == ChatHeaderBadge.ContextCritical) 10.dp else 14.dp
+    val corner by animateDpAsState(
+        targetValue = if (isPressed) 8.dp else restingCorner,
+        animationSpec = ExpressiveMotion.Spatial.shapeMorph(),
+        label = "headerChipCorner"
+    )
+    val chipShape = RoundedCornerShape(corner)
     if (onClick != null) {
         Surface(
             onClick = onClick,
-            shape = CustomShapes.Pill,
+            shape = chipShape,
             color = container,
             contentColor = content,
+            interactionSource = interactionSource,
             modifier = Modifier.semantics { contentDescription = "$label. Open mind map" }
         ) { body() }
     } else {
-        Surface(shape = CustomShapes.Pill, color = container, contentColor = content) { body() }
+        Surface(shape = chipShape, color = container, contentColor = content) { body() }
     }
 }
 

@@ -2,6 +2,7 @@ package com.materialchat.ui.screens.chat.components
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
@@ -30,6 +31,7 @@ import com.materialchat.ui.components.seaglass.DropdownMenuItem
 import com.materialchat.ui.theme.CustomShapes
 import com.materialchat.ui.theme.ExpressiveMotion
 import com.materialchat.ui.theme.ExpressiveShapes
+import com.materialchat.ui.theme.SquircleShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import com.materialchat.ui.components.seaglass.Surface
@@ -154,10 +156,17 @@ private fun ModelButton(
         label = "modelButtonContentColor"
     )
 
+    // Open-state morph: the pill squares to 10dp corners while the menu is up so it reads as
+    // the anchor of the dropdown, and rounds back on the spatial spring when it closes.
+    val corner by animateDpAsState(
+        targetValue = if (isExpanded) 10.dp else 16.dp,
+        animationSpec = ExpressiveMotion.Spatial.shapeMorph(),
+        label = "modelButtonCorner"
+    )
     Surface(
         onClick = onClick,
         enabled = isEnabled,
-        shape = RoundedCornerShape(999.dp),
+        shape = RoundedCornerShape(corner),
         color = containerColor,
         contentColor = contentColor,
         tonalElevation = 0.dp,
@@ -288,6 +297,20 @@ private fun ModelMenuItem(
     onClick: () -> Unit
 ) {
     val haptics = rememberHapticFeedback()
+    val selectionTone by animateColorAsState(
+        targetValue = if (isSelected) {
+            MaterialTheme.colorScheme.secondaryContainer
+        } else {
+            MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0f)
+        },
+        animationSpec = ExpressiveMotion.Effects.color(),
+        label = "modelMenuSelectionTone"
+    )
+    val selectionRadius by animateDpAsState(
+        targetValue = if (isSelected) 16.dp else 24.dp,
+        animationSpec = ExpressiveMotion.Spatial.shapeMorph(),
+        label = "modelMenuSelectionRadius"
+    )
     // Animate text color on selection
     val textColor by animateColorAsState(
         targetValue = if (isSelected) {
@@ -329,13 +352,8 @@ private fun ModelMenuItem(
         },
         onClick = { haptics.perform(HapticPattern.CLICK); onClick() },
         // M3 Expressive: the selected row is a solid tonal squircle, not a translucent wash.
-        modifier = if (isSelected) {
-            Modifier.background(
-                MaterialTheme.colorScheme.secondaryContainer,
-                ExpressiveShapes.MenuSelection
-            )
-        } else {
-            Modifier
-        }
+        // Selection morphs in: the tone fades on the effects spring while the squircle
+        // tightens from 24dp to the 16dp MenuSelection radius on the spatial spring.
+        modifier = Modifier.background(selectionTone, SquircleShape(selectionRadius))
     )
 }

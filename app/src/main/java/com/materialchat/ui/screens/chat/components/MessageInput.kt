@@ -7,6 +7,7 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.expandVertically
@@ -74,6 +75,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -101,6 +103,7 @@ import com.materialchat.ui.theme.ExpressiveMotion
 import com.materialchat.ui.theme.ExpressiveShapeToken
 import com.materialchat.ui.theme.LocalChatButtonShape
 import com.materialchat.ui.theme.MaterialChatMotion
+import com.materialchat.ui.theme.SquircleShape
 import com.materialchat.ui.theme.expressiveControlShape
 import com.materialchat.ui.theme.toExpressiveShapeToken
 import kotlinx.coroutines.delay
@@ -228,10 +231,17 @@ fun MessageInput(
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             // Add menu - compact image actions, kept behind the familiar plus affordance.
+            // The + turns into a × on the spatial spring while the menu is open.
+            val plusRotation by animateFloatAsState(
+                targetValue = if (imageActionMenuExpanded) 45f else 0f,
+                animationSpec = ExpressiveMotion.Spatial.shapeMorph(),
+                label = "imageActionPlusRotation"
+            )
             Box {
                 InputShapeButton(
                     icon = Icons.Default.Add,
                     contentDescription = "Image actions",
+                    iconRotation = plusRotation,
                     enabled = !isStreaming,
                     containerColor = if (!isStreaming) {
                         MaterialTheme.colorScheme.tertiaryContainer
@@ -316,9 +326,17 @@ fun MessageInput(
                 animationSpec = ExpressiveMotion.Effects.color(),
                 label = "composerFieldColor"
             )
+            // Expressive focus morph: the squircle tightens from 28dp to 20dp on the spatial
+            // shape spring while the field has focus, alongside the tonal lift above.
+            val fieldRadius by animateDpAsState(
+                targetValue = if (fieldFocused && !isStreaming) 20.dp else 28.dp,
+                animationSpec = ExpressiveMotion.Spatial.shapeMorph(),
+                label = "composerFieldRadius"
+            )
+            val fieldShape = remember(fieldRadius) { SquircleShape(fieldRadius) }
             Surface(
                 modifier = pillModifier,
-                shape = ComposerFieldShape,
+                shape = fieldShape,
                 color = fieldColor,
                 // Match FAB elevation so the morph does not pop flat after landing.
                 tonalElevation = 3.dp,
@@ -413,7 +431,8 @@ private fun InputShapeButton(
     shapeToken: ExpressiveShapeToken,
     startAngle: Int,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    iconRotation: Float = 0f
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
@@ -461,7 +480,8 @@ private fun InputShapeButton(
             Icon(
                 imageVector = icon,
                 contentDescription = contentDescription,
-                tint = animatedContentColor
+                tint = animatedContentColor,
+                modifier = Modifier.graphicsLayer { rotationZ = iconRotation }
             )
         }
     }
@@ -488,10 +508,18 @@ private fun ImageActionMenu(
 
     val density = LocalDensity.current
     val menuAnchorOffset = with(density) { (48.dp + 12.dp).roundToPx() }
+    // Reveal reads as the menu growing out of the + button: it scales from the button's
+    // bottom-start corner on the spatial spring, and the group's outer corner relaxes from the
+    // button's roundness to the group's 20dp as it lands.
     val menuScale by animateFloatAsState(
-        targetValue = if (expanded) 1f else 0.88f,
+        targetValue = if (expanded) 1f else 0.6f,
         animationSpec = ExpressiveMotion.Spatial.playful(),
         label = "imageActionMenuScale"
+    )
+    val menuOuterCorner by animateDpAsState(
+        targetValue = if (expanded) 20.dp else 24.dp,
+        animationSpec = ExpressiveMotion.Spatial.shapeMorph(),
+        label = "imageActionMenuCorner"
     )
     val menuAlpha by animateFloatAsState(
         targetValue = if (expanded) 1f else 0f,
@@ -511,8 +539,11 @@ private fun ImageActionMenu(
         onDismissRequest = onDismiss,
         properties = PopupProperties(focusable = true)
     ) {
+        // One connected vertical group (2dp joins, per-position corners) instead of three
+        // floating pills.
+        val innerCorner = 8.dp
         Column(
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(2.dp),
             horizontalAlignment = Alignment.Start,
             modifier = Modifier
                 .wrapContentWidth(Alignment.Start)
@@ -529,6 +560,10 @@ private fun ImageActionMenu(
                 label = "Take photo",
                 containerColor = MaterialTheme.colorScheme.secondaryContainer,
                 contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                restingShape = RoundedCornerShape(
+                    topStart = menuOuterCorner, topEnd = menuOuterCorner,
+                    bottomStart = innerCorner, bottomEnd = innerCorner
+                ),
                 onClick = onTakePhoto
             )
             ImageActionPill(
@@ -536,6 +571,7 @@ private fun ImageActionMenu(
                 label = "Attach photo",
                 containerColor = MaterialTheme.colorScheme.tertiaryContainer,
                 contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
+                restingShape = RoundedCornerShape(innerCorner),
                 onClick = onAttachImage
             )
             ImageActionPill(
@@ -543,6 +579,10 @@ private fun ImageActionMenu(
                 label = "Create image",
                 containerColor = MaterialTheme.colorScheme.primaryContainer,
                 contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                restingShape = RoundedCornerShape(
+                    topStart = innerCorner, topEnd = innerCorner,
+                    bottomStart = menuOuterCorner, bottomEnd = menuOuterCorner
+                ),
                 onClick = onGenerateImage
             )
         }
@@ -555,19 +595,40 @@ private fun ImageActionPill(
     label: String,
     containerColor: androidx.compose.ui.graphics.Color,
     contentColor: androidx.compose.ui.graphics.Color,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    restingShape: Shape = RoundedCornerShape(999.dp)
 ) {
     val haptics = rememberHapticFeedback()
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    // Press morph: the item squares to 12dp on every corner and compresses slightly.
+    val pressedCorner by animateDpAsState(
+        targetValue = if (isPressed) 12.dp else 0.dp,
+        animationSpec = ExpressiveMotion.Spatial.shapeMorph(),
+        label = "imageActionPillPressCorner"
+    )
+    val shape = if (isPressed || pressedCorner > 0.dp) RoundedCornerShape(12.dp) else restingShape
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.96f else 1f,
+        animationSpec = ExpressiveMotion.Spatial.scale(),
+        label = "imageActionPillScale"
+    )
     Surface(
         onClick = {
             haptics.perform(HapticPattern.CLICK)
             onClick()
         },
-        shape = RoundedCornerShape(999.dp),
+        shape = shape,
         color = containerColor,
         contentColor = contentColor,
         tonalElevation = 3.dp,
-        modifier = Modifier.defaultMinSize(minHeight = 48.dp)
+        interactionSource = interactionSource,
+        modifier = Modifier
+            .defaultMinSize(minHeight = 48.dp)
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
     ) {
         Row(
             modifier = Modifier
@@ -872,14 +933,22 @@ internal fun AttachmentPreviewRow(
     onRemoveAttachment: (Attachment) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    // Pending attachments read as one connected group: per-position corners (16dp outer,
+    // 8dp joins) on the thumbnails, close joins between them.
     Row(
         modifier = modifier.horizontalScroll(rememberScrollState()),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
+        horizontalArrangement = Arrangement.spacedBy(2.dp)
     ) {
-        attachments.forEach { attachment ->
+        attachments.forEachIndexed { index, attachment ->
             AttachmentPreviewItem(
                 attachment = attachment,
-                onRemove = { onRemoveAttachment(attachment) }
+                onRemove = { onRemoveAttachment(attachment) },
+                shape = positionCorners(
+                    index = index,
+                    count = attachments.size,
+                    outer = 16.dp,
+                    inner = 8.dp
+                ).toShape()
             )
         }
     }
@@ -891,7 +960,8 @@ internal fun AttachmentPreviewRow(
 @Composable
 private fun AttachmentPreviewItem(
     attachment: Attachment,
-    onRemove: () -> Unit
+    onRemove: () -> Unit,
+    shape: Shape = RoundedCornerShape(16.dp)
 ) {
     val haptics = rememberHapticFeedback()
     val context = LocalContext.current
@@ -911,7 +981,7 @@ private fun AttachmentPreviewItem(
             contentScale = ContentScale.Crop,
             modifier = Modifier
                 .size(64.dp)
-                .clip(RoundedCornerShape(16.dp))
+                .clip(shape)
                 .align(Alignment.BottomStart)
         )
 
