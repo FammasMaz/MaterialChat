@@ -82,6 +82,7 @@ import com.materialchat.ui.screens.bookmarks.components.AddBookmarkSheet
 import com.materialchat.ui.screens.chat.components.ChatEmptyState
 import com.materialchat.ui.screens.chat.components.ChatEmptyStateCopy
 import com.materialchat.ui.screens.chat.components.ChatTopBar
+import com.materialchat.ui.screens.chat.components.MessageArrivalTracker
 import com.materialchat.ui.screens.chat.components.chatEmptyStateCopy
 import com.materialchat.ui.screens.chat.components.rememberChatHeaderScrollState
 import com.materialchat.ui.screens.chat.components.rememberChatListFlingBehavior
@@ -981,6 +982,14 @@ private fun MessageList(
     emptyStateCopy: ChatEmptyStateCopy? = null,
     modifier: Modifier = Modifier
 ) {
+    // Which bubbles arrive with the entrance animation: only ids created after the first
+    // composition, never the initial load, bulk swaps, or items scrolled back into view.
+    val arrivalTracker = remember { MessageArrivalTracker() }
+    remember(messages) {
+        arrivalTracker.sync(messages.map { it.message.id })
+        Unit
+    }
+
     Box(modifier = modifier.fillMaxSize()) {
         // Empty thread: expressive hero card instead of a blank list.
         if (messages.isEmpty() && emptyStateCopy != null) {
@@ -1084,6 +1093,9 @@ private fun MessageList(
                     { onQuoteMessage(messageItem.message.id) }
                 } else null,
                 hapticsEnabled = hapticsEnabled,
+                animateArrival = remember(messageItem.message.id) {
+                    arrivalTracker.shouldAnimate(messageItem.message.id)
+                },
                 modifier = Modifier
                     .animateItem(
                         fadeInSpec = spring(

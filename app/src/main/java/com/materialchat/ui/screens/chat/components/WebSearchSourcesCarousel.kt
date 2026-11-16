@@ -11,7 +11,10 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -208,6 +211,14 @@ fun WebSearchSourcesCarousel(
                         .height(140.dp)
                 ) { itemIndex ->
                     val result = metadata.results[itemIndex]
+                    // Per-position shapes: the first and last cards keep the large outer
+                    // radius on their outer edge, the joins between neighbours tighten.
+                    val cardShape = positionCorners(
+                        index = itemIndex,
+                        count = metadata.results.size,
+                        outer = 24.dp,
+                        inner = 12.dp
+                    ).toShape()
                     WebSearchSourceCard(
                         index = result.index,
                         title = result.title,
@@ -215,11 +226,13 @@ fun WebSearchSourcesCarousel(
                         pageUrl = result.url,
                         imageUrl = result.imageUrl,
                         faviconUrl = result.faviconUrl,
+                        position = itemIndex,
+                        count = metadata.results.size,
                         onClick = {
                             val intent = Intent(Intent.ACTION_VIEW, Uri.parse(result.url))
                             context.startActivity(intent)
                         },
-                        modifier = Modifier.maskClip(RoundedCornerShape(24.dp))
+                        modifier = Modifier.maskClip(cardShape)
                     )
                 }
             }
@@ -239,11 +252,24 @@ private fun WebSearchSourceCard(
     imageUrl: String?,
     faviconUrl: String?,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    position: Int = 0,
+    count: Int = 1
 ) {
     var resolvedImageUrl by remember(pageUrl, imageUrl, faviconUrl) {
         mutableStateOf(imageUrl ?: faviconUrl)
     }
+    // Press morph: corners tighten and the card compresses on the spatial springs.
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val cardShape = rememberPositionMorphShape(
+        index = position,
+        count = count,
+        isPressed = isPressed,
+        outer = 24.dp,
+        inner = 12.dp,
+        pressed = 14.dp
+    )
 
     LaunchedEffect(pageUrl, imageUrl) {
         if (imageUrl.isNullOrBlank()) {
@@ -257,9 +283,14 @@ private fun WebSearchSourceCard(
         modifier = modifier
             .fillMaxWidth()
             .height(132.dp)
-            .clip(RoundedCornerShape(24.dp))
-            .clickable(onClick = onClick),
-        shape = RoundedCornerShape(24.dp),
+            .expressivePressScale(isPressed)
+            .clip(cardShape)
+            .clickable(
+                interactionSource = interactionSource,
+                indication = LocalIndication.current,
+                onClick = onClick
+            ),
+        shape = cardShape,
         color = MaterialTheme.colorScheme.surfaceContainerHighest,
         contentColor = MaterialTheme.colorScheme.onSurface
     ) {

@@ -18,8 +18,9 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
-import com.materialchat.ui.components.seaglass.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import com.materialchat.ui.components.seaglass.Surface
 import androidx.compose.material3.Text
@@ -49,6 +50,7 @@ import com.materialchat.ui.theme.ExpressiveMotion
  * @param visible Whether the quote preview is visible
  * @param onDismiss Callback when the user clears the quote
  */
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun QuoteReplyPreview(
     quotedText: String,
@@ -114,12 +116,14 @@ fun QuoteReplyPreview(
                     )
                 }
 
-                // Close button — 48dp touch target per M3 spec
-                IconButton(
+                // Close button — 48dp touch target per M3 spec, M3E round→square press morph
+                // (IconButtonDefaults.shapes, spatial spring).
+                androidx.compose.material3.IconButton(
                     onClick = {
                         haptics.perform(HapticPattern.CLICK, hapticsEnabled)
                         onDismiss()
                     },
+                    shapes = IconButtonDefaults.shapes(),
                     modifier = Modifier.size(48.dp)
                 ) {
                     Icon(
