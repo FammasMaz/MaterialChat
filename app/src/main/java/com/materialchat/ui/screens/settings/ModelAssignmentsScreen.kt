@@ -1,3 +1,5 @@
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
+
 package com.materialchat.ui.screens.settings
 
 import androidx.compose.foundation.clickable
@@ -60,7 +62,7 @@ import com.materialchat.ui.components.ExpressiveButtonStyle
 import com.materialchat.ui.components.ExpressiveFilledIconButton
 import com.materialchat.ui.components.ExpressiveScreenBackdrop
 import com.materialchat.ui.components.ExpressiveSwitch
-import com.materialchat.ui.components.M3ExpressiveCircularProgress
+import androidx.compose.material3.LoadingIndicator
 import com.materialchat.ui.components.ExpressiveTopBarTitle
 import com.materialchat.ui.theme.CustomShapes
 
@@ -433,7 +435,7 @@ private fun TaskAssignmentCard(
             verticalAlignment = Alignment.CenterVertically
         ) {
             if (pickerState.isLoading) {
-                M3ExpressiveCircularProgress(modifier = Modifier.size(20.dp), size = 20.dp, strokeWidth = 2.dp)
+                LoadingIndicator(modifier = Modifier.size(20.dp))
                 Spacer(modifier = Modifier.width(8.dp))
             }
             Text(

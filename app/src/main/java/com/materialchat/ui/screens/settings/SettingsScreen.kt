@@ -1,3 +1,5 @@
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
+
 package com.materialchat.ui.screens.settings
 
 import android.Manifest
@@ -94,6 +96,9 @@ import androidx.compose.material3.SnackbarHostState
 import com.materialchat.ui.components.seaglass.Surface
 import androidx.compose.material3.SuggestionChipDefaults
 import com.materialchat.ui.components.ExpressiveSwitch
+import com.materialchat.ui.components.ExpressiveSlider
+import com.materialchat.ui.components.ExpressiveSnackbar
+import com.materialchat.ui.components.dialogEntrance
 import com.materialchat.ui.components.M3ExpressiveCircularProgress
 import androidx.compose.material3.Text
 import com.materialchat.ui.components.ExpressiveButtonStyle
@@ -442,13 +447,7 @@ fun SettingsScreen(
         },
         snackbarHost = {
             SnackbarHost(hostState = snackbarHostState) { snackbarData ->
-                Snackbar(
-                    snackbarData = snackbarData,
-                    shape = CustomShapes.Snackbar,
-                    containerColor = MaterialTheme.colorScheme.inverseSurface,
-                    contentColor = MaterialTheme.colorScheme.inverseOnSurface,
-                    actionColor = MaterialTheme.colorScheme.inversePrimary
-                )
+                ExpressiveSnackbar(snackbarData = snackbarData)
             }
         }
     ) { paddingValues ->
@@ -2063,7 +2062,7 @@ private fun FontSizeSelector(
             // M3 Slider with discrete steps at the preset sizes.
             // SEGMENT_TICK fires when the thumb snaps to a new stop — the
             // classic expressive slider feel (12 stops across the range).
-            Slider(
+            ExpressiveSlider(
                 value = selectedScale,
                 onValueChange = {
                     val segment = ((it - 0.85f) / 0.55f * 11f).roundToInt()
@@ -2321,11 +2320,7 @@ private fun TitleGenerationModelField(
                     enabled = !pickerState.isLoading
                 ) {
                     if (pickerState.isLoading) {
-                        M3ExpressiveCircularProgress(
-                            modifier = Modifier.size(18.dp),
-                            size = 18.dp,
-                            strokeWidth = 2.dp
-                        )
+                        LoadingIndicator(modifier = Modifier.size(18.dp))
                     } else {
                         Icon(
                             imageVector = Icons.Outlined.Refresh,
@@ -2433,11 +2428,7 @@ private fun TitleGenerationModelField(
                                 DropdownMenuItem(
                                     text = {
                                         Row(verticalAlignment = Alignment.CenterVertically) {
-                                            M3ExpressiveCircularProgress(
-                                                modifier = Modifier.size(16.dp),
-                                                size = 16.dp,
-                                                strokeWidth = 2.dp
-                                            )
+                                            LoadingIndicator(modifier = Modifier.size(16.dp))
                                             Spacer(modifier = Modifier.width(12.dp))
                                             Text("Loading models…")
                                         }
@@ -2709,6 +2700,7 @@ private fun BackupPasswordDialog(
 ) {
     AlertDialog(
         onDismissRequest = { if (!isBusy) onDismiss() },
+        modifier = Modifier.dialogEntrance(),
         shape = ExpressiveShapes.Dialog,
         title = { Text(text = title, style = MaterialTheme.typography.headlineSmall) },
         text = {
@@ -2759,6 +2751,7 @@ private fun RestoreBackupConfirmationDialog(
 ) {
     AlertDialog(
         onDismissRequest = { if (!isBusy) onDismiss() },
+        modifier = Modifier.dialogEntrance(),
         shape = ExpressiveShapes.Dialog,
         title = { Text(text = "Restore backup?", style = MaterialTheme.typography.headlineSmall) },
         text = {
@@ -2808,6 +2801,7 @@ private fun DeleteProviderDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
+        modifier = Modifier.dialogEntrance(),
         shape = ExpressiveShapes.Dialog,
         title = {
             Text(
@@ -3029,16 +3023,14 @@ private fun AboutSection(
 
                     when (updateState) {
                         is UpdateState.Checking -> {
-                            com.materialchat.ui.components.M3ExpressiveCircularProgress(
-                                size = 24.dp,
-                                strokeWidth = 2.dp,
+                            LoadingIndicator(
+                                modifier = Modifier.size(24.dp),
                                 color = MaterialTheme.colorScheme.primary
                             )
                         }
                         is UpdateState.Downloading -> {
-                            com.materialchat.ui.components.M3ExpressiveCircularProgress(
-                                size = 24.dp,
-                                strokeWidth = 2.dp,
+                            LoadingIndicator(
+                                modifier = Modifier.size(24.dp),
                                 color = MaterialTheme.colorScheme.primary
                             )
                         }
@@ -3428,7 +3420,7 @@ private fun WebSearchSection(
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                    Slider(
+                    ExpressiveSlider(
                         value = webSearchMaxResults.toFloat(),
                         onValueChange = {
                             val stop = it.roundToInt()
