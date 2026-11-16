@@ -79,7 +79,10 @@ import com.materialchat.domain.model.ReasoningEffort
 import com.materialchat.ui.components.HapticPattern
 import com.materialchat.ui.components.rememberHapticFeedback
 import com.materialchat.ui.screens.bookmarks.components.AddBookmarkSheet
+import com.materialchat.ui.screens.chat.components.ChatEmptyState
+import com.materialchat.ui.screens.chat.components.ChatEmptyStateCopy
 import com.materialchat.ui.screens.chat.components.ChatTopBar
+import com.materialchat.ui.screens.chat.components.chatEmptyStateCopy
 import com.materialchat.ui.screens.chat.components.rememberChatHeaderScrollState
 import com.materialchat.ui.screens.chat.components.ExportBottomSheet
 import com.materialchat.ui.screens.chat.components.FusionModelSelector
@@ -823,6 +826,15 @@ private fun ChatContent(
                 onOpenCanvas = onOpenCanvas,
                 onQuoteMessage = onQuoteMessage,
                 hapticsEnabled = state.hapticsEnabled,
+                emptyStateCopy = if (state.messages.isEmpty()) {
+                    chatEmptyStateCopy(
+                        modelName = state.modelName,
+                        personaName = state.persona?.name,
+                        hasStarters = state.persona?.conversationStarters?.isNotEmpty() == true
+                    )
+                } else {
+                    null
+                },
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxWidth()
@@ -939,9 +951,19 @@ private fun MessageList(
     onOpenCanvas: (com.materialchat.domain.model.CanvasArtifact) -> Unit = {},
     onQuoteMessage: (String) -> Unit = {},
     hapticsEnabled: Boolean = true,
+    emptyStateCopy: ChatEmptyStateCopy? = null,
     modifier: Modifier = Modifier
 ) {
     Box(modifier = modifier.fillMaxSize()) {
+        // Empty thread: expressive hero card instead of a blank list.
+        if (messages.isEmpty() && emptyStateCopy != null) {
+            ChatEmptyState(
+                copy = emptyStateCopy,
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .padding(horizontal = 24.dp)
+            )
+        }
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             state = listState,
