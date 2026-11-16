@@ -3,8 +3,13 @@ package com.materialchat.ui.screens.chat.components
 import android.graphics.BitmapFactory
 import android.util.Base64
 import android.widget.Toast
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.LocalIndication
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
@@ -180,6 +185,7 @@ fun MessageBubble(
     onOpenCanvas: ((com.materialchat.domain.model.CanvasArtifact) -> Unit)? = null,
     onQuoteMessage: (() -> Unit)? = null,
     hapticsEnabled: Boolean = true,
+    animateArrival: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     val message = messageItem.message
@@ -212,6 +218,27 @@ fun MessageBubble(
 
     // Double-tap bookmark burst state
     var bookmarkBurstTrigger by remember { mutableIntStateOf(0) }
+
+    // Expressive arrival for a message that was just created (never for an item scrolled into
+    // view — see MessageArrivalTracker): scale from 0.96 + fade on the spatial spring. When a
+    // stream completes the container settles once on the same spring.
+    val arrivalScale = remember { Animatable(if (animateArrival) MESSAGE_ARRIVAL_SCALE else 1f) }
+    val arrivalAlpha = remember { Animatable(if (animateArrival) 0f else 1f) }
+    LaunchedEffect(Unit) {
+        if (animateArrival) {
+            launch { arrivalAlpha.animateTo(1f, ExpressiveMotion.Effects.reveal()) }
+            arrivalScale.animateTo(1f, ExpressiveMotion.Spatial.default())
+        }
+    }
+    val settleScale = remember { Animatable(1f) }
+    var wasStreaming by remember { mutableStateOf(message.isStreaming) }
+    LaunchedEffect(message.isStreaming) {
+        if (wasStreaming && !message.isStreaming) {
+            settleScale.snapTo(STREAM_END_SETTLE_SCALE)
+            settleScale.animateTo(1f, ExpressiveMotion.Spatial.default())
+        }
+        wasStreaming = message.isStreaming
+    }
 
     val bubbleStyle = getBubbleStyle(
         isUser = isUser,
@@ -348,6 +375,16 @@ fun MessageBubble(
                     tonalElevation = if (isUser) 2.dp else 1.dp,
                     shadowElevation = 0.dp,
                     modifier = Modifier
+                        // Arrival / stream-end settle layer. Kept on the Surface (not the outer
+                        // Box) so the bookmark burst still overflows on API 26, where a
+                        // graphicsLayer clips outside-bounds drawing.
+                        .graphicsLayer {
+                            val scale = arrivalScale.value * settleScale.value
+                            scaleX = scale
+                            scaleY = scale
+                            alpha = arrivalAlpha.value
+                            transformOrigin = if (isUser) TransformOrigin(1f, 1f) else TransformOrigin(0f, 1f)
+                        }
                         .widthIn(min = 40.dp, max = bubbleStyle.maxWidth)
                         // Keep a little air around the bubble so tonal edges never kiss the list clip.
                         .padding(horizontal = 2.dp, vertical = 1.dp)
@@ -427,22 +464,40 @@ fun MessageBubble(
                         displayThinkingContent.isNullOrEmpty() && isImageGenerationMessage
                     ) {
                         ImageGenerationLoadingCard(modelName = message.modelName)
-                    } else if (message.isStreaming && displayContent.isEmpty() && displayThinkingContent.isNullOrEmpty()) {
-                        // Waiting for the first token: the assistant's "working on your answer"
-                        // surface, adapted to the bubble (see ChatWorkingIndicator).
-                        ChatWorkingIndicator(textColor = bubbleStyle.textColor)
-                    } else if (message.isStreaming && displayContent.isEmpty()) {
+                    } else if (message.isStreaming && displayContent.isEmpty() && !displayThinkingContent.isNullOrEmpty()) {
                         // Thinking active, no main content yet — ThinkingSection handles indicator
                     } else {
-                        MessageContent(
-                            content = displayContent,
-                            isStreaming = message.isStreaming,
-                            textColor = bubbleStyle.textColor,
-                            isAssistant = isAssistant,
-                            onOpenCanvas = onOpenCanvas,
-                            hapticsEnabled = hapticsEnabled
-                        )
-
+                        // Waiting for the first token shows the "working on your answer" surface
+                        // (ChatWorkingIndicator); the first token swaps it for the content on the
+                        // same spatial spring the bubble arrives on. No size transform: the
+                        // Surface's critically-damped animateContentSize owns the resize.
+                        val working = message.isStreaming && displayContent.isEmpty()
+                        AnimatedContent(
+                            targetState = working,
+                            transitionSpec = {
+                                (fadeIn(ExpressiveMotion.Effects.reveal()) +
+                                    scaleIn(
+                                        initialScale = MESSAGE_ARRIVAL_SCALE,
+                                        animationSpec = ExpressiveMotion.Spatial.default(),
+                                        transformOrigin = TransformOrigin(0f, 1f)
+                                    )) togetherWith fadeOut(ExpressiveMotion.Effects.reveal()) using null
+                            },
+                            contentAlignment = if (isUser) Alignment.TopEnd else Alignment.TopStart,
+                            label = "bubbleWorkingSwap"
+                        ) { isWorking ->
+                            if (isWorking) {
+                                ChatWorkingIndicator(textColor = bubbleStyle.textColor)
+                            } else {
+                                MessageContent(
+                                    content = displayContent,
+                                    isStreaming = message.isStreaming,
+                                    textColor = bubbleStyle.textColor,
+                                    isAssistant = isAssistant,
+                                    onOpenCanvas = onOpenCanvas,
+                                    hapticsEnabled = hapticsEnabled
+                                )
+                            }
+                        }
                     }
 
                     if (memoryMeta != null) {
@@ -990,13 +1045,31 @@ private fun ThinkingSection(
     val previewLine = remember(thinkingContent) { thinkingContent.thinkingPreviewLine() }
     val showPreview = !isExpanded && !isStreaming && previewLine.isNotEmpty()
 
+    // Shape morph on disclosure: the header container's radius tightens as it opens (it then
+    // reads as the top of a larger surface), the chevron rotates in place, the tone eases.
+    val headerRadius by animateDpAsState(
+        targetValue = if (isExpanded) 10.dp else 16.dp,
+        animationSpec = ExpressiveMotion.Spatial.shapeMorph(),
+        label = "thinkingHeaderRadius"
+    )
+    val chevronRotation by animateFloatAsState(
+        targetValue = if (isExpanded) 180f else 0f,
+        animationSpec = ExpressiveMotion.Spatial.default(),
+        label = "thinkingChevron"
+    )
+    val headerTone by animateColorAsState(
+        targetValue = textColor.copy(alpha = if (isExpanded) 0.04f else 0.07f),
+        animationSpec = ExpressiveMotion.Effects.color(),
+        label = "thinkingHeaderTone"
+    )
+
     Column {
         // Header row — a real disclosure affordance: tonal strip, 40dp hit target, chevron.
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(12.dp))
-                .background(textColor.copy(alpha = if (isExpanded) 0.04f else 0.07f))
+                .clip(RoundedCornerShape(headerRadius))
+                .background(headerTone)
                 .clickable { haptics.perform(HapticPattern.CLICK, hapticsEnabled); isExpanded = !isExpanded }
                 // Long chats: the list consumes the down while its scroll is in progress.
                 .tapThroughScroll { haptics.perform(HapticPattern.CLICK, hapticsEnabled); isExpanded = !isExpanded }
@@ -1005,11 +1078,12 @@ private fun ThinkingSection(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
-                imageVector = if (isExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                imageVector = Icons.Default.KeyboardArrowDown,
                 contentDescription = if (isExpanded) "Collapse thinking" else "Expand thinking",
                 modifier = Modifier
                     .size(18.dp)
-                    .alpha(0.75f),
+                    .alpha(0.75f)
+                    .graphicsLayer { rotationZ = chevronRotation },
                 tint = textColor
             )
             Column(
@@ -1022,7 +1096,14 @@ private fun ThinkingSection(
                     style = MaterialTheme.typography.labelLarge,
                     color = textColor.copy(alpha = 0.8f)
                 )
-                if (showPreview) {
+                // Preview line crossfades (and folds) rather than popping when the block opens.
+                AnimatedVisibility(
+                    visible = showPreview,
+                    enter = fadeIn(animationSpec = ExpressiveMotion.Disclosure.FadeIn) +
+                        expandVertically(animationSpec = ExpressiveMotion.Disclosure.Expand),
+                    exit = fadeOut(animationSpec = ExpressiveMotion.Disclosure.FadeOut) +
+                        shrinkVertically(animationSpec = ExpressiveMotion.Disclosure.Shrink)
+                ) {
                     Text(
                         text = previewLine,
                         style = MaterialTheme.typography.bodySmall,
@@ -1317,10 +1398,12 @@ private fun AttachmentImagesGrid(
         horizontalArrangement = Arrangement.spacedBy(if (isGeneratedImage) 8.dp else 4.dp),
         verticalArrangement = Arrangement.spacedBy(if (isGeneratedImage) 8.dp else 4.dp)
     ) {
-        attachments.forEach { attachment ->
+        attachments.forEachIndexed { index, attachment ->
             AttachmentImage(
                 attachment = attachment,
-                isGeneratedImage = isGeneratedImage
+                isGeneratedImage = isGeneratedImage,
+                index = index,
+                count = attachments.size
             )
         }
     }
@@ -1333,8 +1416,22 @@ private fun AttachmentImagesGrid(
 private fun AttachmentImage(
     attachment: Attachment,
     isGeneratedImage: Boolean,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    index: Int = 0,
+    count: Int = 1
 ) {
+    // Thumbnails form a connected group: per-position corners (16dp outer, 8dp joins) and a
+    // press morph that tightens the corners and compresses the card on the spatial springs.
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val thumbnailShape = rememberPositionMorphShape(
+        index = index,
+        count = count,
+        isPressed = isPressed,
+        outer = 16.dp,
+        inner = 8.dp,
+        pressed = 10.dp
+    )
     val generatedModifier = Modifier
         .fillMaxWidth()
         .aspectRatio(1f)
@@ -1342,12 +1439,13 @@ private fun AttachmentImage(
         .background(MaterialTheme.colorScheme.surfaceContainerHighest)
     val thumbnailModifier = Modifier
         .size(120.dp)
-        .clip(RoundedCornerShape(8.dp))
+        .expressivePressScale(isPressed)
+        .clip(thumbnailShape)
 
     var viewerOpen by remember { mutableStateOf(false) }
     val imageModifier = modifier
         .then(if (isGeneratedImage) generatedModifier else thumbnailModifier)
-        .clickable { viewerOpen = true }
+        .clickable(interactionSource = interactionSource, indication = LocalIndication.current) { viewerOpen = true }
 
     if (viewerOpen) {
         ImageViewerDialog(

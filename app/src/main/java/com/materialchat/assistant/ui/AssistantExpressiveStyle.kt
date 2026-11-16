@@ -82,6 +82,31 @@ internal object AssistantShapes {
     /** The action toolbar inside the answer surface: a full capsule, like an M3 floating toolbar. */
     val Toolbar = RoundedCornerShape(50)
 
+    /** Outer corner of a connected action group (answer toolbar icons, attach actions). */
+    val ConnectedOuterCorner: Dp = 20.dp
+
+    /** Join corner between neighbours inside a connected group. */
+    val ConnectedInnerCorner: Dp = 8.dp
+
+    /** Corner every grouped item (and the chrome icon buttons) tightens to while pressed. */
+    val ConnectedPressedCorner: Dp = 12.dp
+
+    /** Pressed shape shared by the connected groups and the chrome icon buttons. */
+    val ConnectedPressed = RoundedCornerShape(ConnectedPressedCorner)
+
+    /** Start/end corners of item [index] of [count] in a connected group. */
+    fun connectedCorners(index: Int, count: Int): Pair<Dp, Dp> {
+        if (count <= 1) return ConnectedOuterCorner to ConnectedOuterCorner
+        return (if (index == 0) ConnectedOuterCorner else ConnectedInnerCorner) to
+            (if (index == count - 1) ConnectedOuterCorner else ConnectedInnerCorner)
+    }
+
+    /** Per-position shape of one item in a connected group. */
+    fun connectedShape(index: Int, count: Int): RoundedCornerShape {
+        val (start, end) = connectedCorners(index, count)
+        return RoundedCornerShape(topStart = start, bottomStart = start, topEnd = end, bottomEnd = end)
+    }
+
     /** The pill's glyph container at rest, listening and speaking: a circle (40dp). */
     val GlyphRoundCorner: Dp = 20.dp
 

@@ -111,8 +111,15 @@ import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.ButtonGroupDefaults
+import androidx.compose.material3.ButtonShapes
+import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.IconButtonShapes
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.material.icons.outlined.ErrorOutline
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.LoadingIndicator
 import androidx.compose.ui.draw.clip
@@ -786,7 +793,15 @@ internal fun AssistantOverlayContent(
                         animationSpec = AssistantMotion.effect(),
                         label = "glyphContainer"
                     )
-                    val glyphContent = palette.glyph(phase).content
+                    // The content follows the container on the same effects spring: both ends
+                    // are the palette's contrast-resolved pairs, and the glyph never sits on
+                    // the new fill in the old fill's colour for longer than the fill itself
+                    // takes to arrive.
+                    val glyphContent by animateColorAsState(
+                        targetValue = palette.glyph(phase).content,
+                        animationSpec = AssistantMotion.effect(),
+                        label = "glyphContent"
+                    )
                     Box(
                         modifier = Modifier
                             .size(40.dp)
@@ -821,8 +836,10 @@ internal fun AssistantOverlayContent(
                                     )
                                     // The M3 Expressive loading indicator: polygons morphing into
                                     // one another, the spec's "working" motion, inside the square.
+                                    // Fills its 32dp slot so the polygon morph reads at pill
+                                    // size instead of as a small spinner.
                                     AssistantPhase.Thinking -> LoadingIndicator(
-                                        modifier = Modifier.size(28.dp),
+                                        modifier = Modifier.size(32.dp),
                                         color = glyphContent
                                     )
                                     AssistantPhase.Speaking -> Icon(
@@ -940,8 +957,36 @@ internal fun AssistantOverlayContent(
                             animationSpec = AssistantMotion.morph(),
                             label = "attachAffordance"
                         )
+                        // + -> x is a shape morph as well as a rotation: the 40dp container
+                        // goes from a transparent circle to the tonal rounded square of an M3
+                        // selected icon button, on the fast spatial spring; the geometry the
+                        // hosted gate measures (40dp, inside the 76dp row) is unchanged.
+                        val affordanceCorner by animateDpAsState(
+                            targetValue = if (attachReveal.open) AssistantShapes.ConnectedPressedCorner
+                            else AssistantShapes.GlyphRoundCorner,
+                            animationSpec = AssistantMotion.morph(),
+                            label = "attachAffordanceCorner"
+                        )
+                        val affordanceFill by animateColorAsState(
+                            targetValue = if (attachReveal.open) palette.chip.container else Color.Transparent,
+                            animationSpec = AssistantMotion.effect(),
+                            label = "attachAffordanceFill"
+                        )
+                        val affordanceContent by animateColorAsState(
+                            targetValue = if (attachReveal.open) palette.chip.content else palette.pill.body,
+                            animationSpec = AssistantMotion.effect(),
+                            label = "attachAffordanceContent"
+                        )
                         IconButton(
                             onClick = { attachReveal = attachReveal.toggled() },
+                            shapes = IconButtonShapes(
+                                shape = RoundedCornerShape(affordanceCorner),
+                                pressedShape = AssistantShapes.ConnectedPressed
+                            ),
+                            colors = IconButtonDefaults.iconButtonColors(
+                                containerColor = affordanceFill,
+                                contentColor = affordanceContent
+                            ),
                             modifier = Modifier
                                 .size(40.dp)
                                 .testTag("assistant_attach")
@@ -965,7 +1010,7 @@ internal fun AssistantOverlayContent(
                         exit = fadeOut(animationSpec = AssistantMotion.effect()) +
                             shrinkHorizontally(animationSpec = AssistantMotion.stateSwitch())
                     ) {
-                        IconButton(onClick = { if (keyboardMode) hideKeyboard() else enterKeyboard() }) {
+                        AssistantChromeIconButton(onClick = { if (keyboardMode) hideKeyboard() else enterKeyboard() }) {
                             Icon(
                                 imageVector = if (keyboardMode) Icons.Default.KeyboardHide else Icons.Default.Keyboard,
                                 contentDescription = if (keyboardMode) "Hide keyboard" else "Keyboard"
@@ -998,6 +1043,27 @@ internal fun AssistantOverlayContent(
                         label = "primaryCorner"
                     )
                     val primaryShape = RoundedCornerShape(primaryCorner)
+                    // Role colours cross-fade on the effects spring instead of swapping; the
+                    // endpoints are the palette's resolved pairs for each role.
+                    val primaryTarget = when (primaryRole) {
+                        "stop" -> palette.stopButton
+                        "interrupt" -> palette.interruptButton
+                        else -> palette.primaryButton
+                    }
+                    val primaryContainer by animateColorAsState(
+                        targetValue = primaryTarget.container,
+                        animationSpec = AssistantMotion.effect(),
+                        label = "primaryContainer"
+                    )
+                    val primaryContent by animateColorAsState(
+                        targetValue = primaryTarget.content,
+                        animationSpec = AssistantMotion.effect(),
+                        label = "primaryContent"
+                    )
+                    val primaryColors = IconButtonDefaults.filledIconButtonColors(
+                        containerColor = primaryContainer,
+                        contentColor = primaryContent
+                    )
                     val primaryModifier = Modifier
                         .size(56.dp)
                         .graphicsLayer {
@@ -1009,10 +1075,7 @@ internal fun AssistantOverlayContent(
                             onClick = submitTyped,
                             modifier = primaryModifier,
                             shape = primaryShape,
-                            colors = IconButtonDefaults.filledIconButtonColors(
-                                containerColor = palette.primaryButton.container,
-                                contentColor = palette.primaryButton.content
-                            )
+                            colors = primaryColors
                         ) {
                             Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "Send")
                         }
@@ -1020,10 +1083,7 @@ internal fun AssistantOverlayContent(
                             onClick = onStopVoice,
                             modifier = primaryModifier,
                             shape = primaryShape,
-                            colors = IconButtonDefaults.filledIconButtonColors(
-                                containerColor = palette.stopButton.container,
-                                contentColor = palette.stopButton.content
-                            )
+                            colors = primaryColors
                         ) {
                             Icon(Icons.Default.Stop, contentDescription = "Stop listening")
                         }
@@ -1031,10 +1091,7 @@ internal fun AssistantOverlayContent(
                             onClick = onInterrupt,
                             modifier = primaryModifier,
                             shape = primaryShape,
-                            colors = IconButtonDefaults.filledTonalIconButtonColors(
-                                containerColor = palette.interruptButton.container,
-                                contentColor = palette.interruptButton.content
-                            )
+                            colors = primaryColors
                         ) {
                             Icon(Icons.Default.Stop, contentDescription = "Interrupt")
                         }
@@ -1047,10 +1104,7 @@ internal fun AssistantOverlayContent(
                             enabled = voiceEnabled,
                             modifier = primaryModifier,
                             shape = primaryShape,
-                            colors = IconButtonDefaults.filledIconButtonColors(
-                                containerColor = palette.primaryButton.container,
-                                contentColor = palette.primaryButton.content
-                            )
+                            colors = primaryColors
                         ) {
                             Icon(Icons.Default.Mic, contentDescription = "Microphone")
                         }
@@ -1066,7 +1120,7 @@ internal fun AssistantOverlayContent(
                         exit = fadeOut(animationSpec = AssistantMotion.effect()) +
                             shrinkHorizontally(animationSpec = AssistantMotion.stateSwitch())
                     ) {
-                        IconButton(onClick = endSession) {
+                        AssistantChromeIconButton(onClick = endSession) {
                             Icon(Icons.Default.Close, contentDescription = "End assistant session")
                         }
                     }
@@ -1151,6 +1205,7 @@ private fun AssistantResponseSurface(
  * (surfaceContainerLow inside the tinted high container). Open in app is the one tonal chip; the
  * icon actions keep their 48dp targets, and End assistant session stays the trailing control.
  */
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun AssistantAnswerToolbar(
     showOpenInApp: Boolean,
@@ -1176,7 +1231,7 @@ private fun AssistantAnswerToolbar(
             if (showOpenInApp) {
                 FilledTonalButton(
                     onClick = onOpenInApp,
-                    shape = AssistantShapes.Chip,
+                    shapes = ButtonShapes(shape = AssistantShapes.Chip, pressedShape = AssistantShapes.ConnectedPressed),
                     colors = ButtonDefaults.filledTonalButtonColors(
                         containerColor = palette.chip.container,
                         contentColor = palette.chip.content
@@ -1194,19 +1249,52 @@ private fun AssistantAnswerToolbar(
                 }
             }
             Spacer(Modifier.weight(1f))
-            IconButton(onClick = onNewChat) {
-                Icon(Icons.Default.AddComment, contentDescription = "New chat")
-            }
-            if (showCopy) {
-                IconButton(onClick = onCopy) {
-                    Icon(Icons.Default.ContentCopy, contentDescription = "Copy response")
+            // The icon actions form one connected M3 Expressive group: 2dp joins, outer 20dp /
+            // inner 8dp corners by position, every item tightening to 12dp while pressed.
+            // Touch targets stay 48dp (the buttons keep their minimum interactive size).
+            val count = if (showCopy) 3 else 2
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                AssistantToolbarAction(index = 0, count = count, onClick = onNewChat) {
+                    Icon(Icons.Default.AddComment, contentDescription = "New chat")
                 }
-            }
-            IconButton(onClick = onClose) {
-                Icon(Icons.Default.Close, contentDescription = "End assistant session")
+                if (showCopy) {
+                    AssistantToolbarAction(index = 1, count = count, onClick = onCopy) {
+                        Icon(Icons.Default.ContentCopy, contentDescription = "Copy response")
+                    }
+                }
+                AssistantToolbarAction(index = count - 1, count = count, onClick = onClose) {
+                    Icon(Icons.Default.Close, contentDescription = "End assistant session")
+                }
             }
         }
     }
+}
+
+/** One item of the answer toolbar's connected group: tonal, per-position shape, press morph. */
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun AssistantToolbarAction(
+    index: Int,
+    count: Int,
+    onClick: () -> Unit,
+    content: @Composable () -> Unit
+) {
+    val palette = rememberAssistantSurfacePalette()
+    FilledTonalIconButton(
+        onClick = onClick,
+        shapes = IconButtonShapes(
+            shape = AssistantShapes.connectedShape(index, count),
+            pressedShape = AssistantShapes.ConnectedPressed
+        ),
+        colors = IconButtonDefaults.filledTonalIconButtonColors(
+            containerColor = palette.chip.container,
+            contentColor = palette.chip.content
+        ),
+        content = content
+    )
 }
 
 /**
@@ -1216,6 +1304,7 @@ private fun AssistantAnswerToolbar(
  * chips trailing under the pill's primary button. Each part folds in and out on its own, so
  * choosing an action closes the chips while the thumbnails stay.
  */
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun AssistantAttachRevealContent(
     attachments: List<Attachment>,
@@ -1253,17 +1342,23 @@ private fun AssistantAttachRevealContent(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(top = 14.dp, start = 18.dp, end = 10.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
+                // The two actions are one connected pair: 2dp join, outer corners only on
+                // the group's outside edges, press morph to 12dp. Same row, same 40dp height.
+                horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween, Alignment.End),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 AssistantAttachChip(
                     icon = Icons.Default.PhotoCamera,
                     label = "Take photo",
+                    index = 0,
+                    count = 2,
                     onClick = { onAttach(AssistantAttachMode.Camera) }
                 )
                 AssistantAttachChip(
                     icon = Icons.Default.AddPhotoAlternate,
                     label = "Attach photo",
+                    index = 1,
+                    count = 2,
                     onClick = { onAttach(AssistantAttachMode.Gallery) }
                 )
             }
@@ -1271,12 +1366,22 @@ private fun AssistantAttachRevealContent(
     }
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun AssistantAttachChip(icon: ImageVector, label: String, onClick: () -> Unit) {
+private fun AssistantAttachChip(
+    icon: ImageVector,
+    label: String,
+    index: Int,
+    count: Int,
+    onClick: () -> Unit
+) {
     val palette = rememberAssistantSurfacePalette()
     FilledTonalButton(
         onClick = onClick,
-        shape = AssistantShapes.Chip,
+        shapes = ButtonShapes(
+            shape = AssistantShapes.connectedShape(index, count),
+            pressedShape = AssistantShapes.ConnectedPressed
+        ),
         colors = ButtonDefaults.filledTonalButtonColors(
             containerColor = palette.chip.container,
             contentColor = palette.chip.content
@@ -1290,23 +1395,76 @@ private fun AssistantAttachChip(icon: ImageVector, label: String, onClick: () ->
     }
 }
 
+/**
+ * The pill's chrome icon buttons (keyboard toggle, session close): an M3 Expressive icon button
+ * whose shape tightens from a circle to a 12dp rounded square while pressed, with a short
+ * compression on the fast spatial spring. Transparent container, so the content colour is the
+ * pill's resolved body colour inherited from the Surface.
+ */
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun AssistantChromeIconButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val pressed by interactionSource.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (pressed) 0.9f else 1f,
+        animationSpec = AssistantMotion.morph(),
+        label = "chromePress"
+    )
+    IconButton(
+        onClick = onClick,
+        shapes = IconButtonShapes(
+            shape = RoundedCornerShape(AssistantShapes.GlyphRoundCorner),
+            pressedShape = AssistantShapes.ConnectedPressed
+        ),
+        modifier = modifier.graphicsLayer {
+            scaleX = scale
+            scaleY = scale
+        },
+        interactionSource = interactionSource,
+        content = content
+    )
+}
+
+/**
+ * Errors and limits above the pill: a leading glyph on the notice's own resolved content colour
+ * next to the message, inside the contrast-resolved notice / error-notice container. The
+ * container's arrival (fade + scale on the state-switch spring) is owned by the caller.
+ */
 @Composable
 private fun AssistantNoticeSurface(message: String, isError: Boolean) {
     val palette = rememberAssistantSurfacePalette()
+    val container = if (isError) palette.errorNotice.container else palette.notice.fill
+    val content = if (isError) palette.errorNotice.content else palette.notice.muted
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = AssistantShapes.Notice,
-        color = if (isError) palette.errorNotice.container else palette.notice.fill,
-        contentColor = if (isError) palette.errorNotice.content else palette.notice.muted,
+        color = container,
+        contentColor = content,
         tonalElevation = 2.dp
     ) {
-        Text(
-            text = message,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-            style = AssistantTypography.notice(MaterialTheme.typography),
-            color = if (isError) palette.errorNotice.content else palette.notice.muted,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp)
-        )
+        Row(
+            modifier = Modifier.padding(start = 14.dp, end = 16.dp, top = 10.dp, bottom = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Icon(
+                imageVector = if (isError) Icons.Outlined.ErrorOutline else Icons.Outlined.Info,
+                contentDescription = null,
+                modifier = Modifier.size(18.dp),
+                tint = content
+            )
+            Text(
+                text = message,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                style = AssistantTypography.notice(MaterialTheme.typography),
+                color = content
+            )
+        }
     }
 }

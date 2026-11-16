@@ -1,9 +1,15 @@
 package com.materialchat.ui.screens.chat.components
 
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -19,7 +25,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import com.materialchat.ui.components.seaglass.ModalBottomSheet
 import androidx.compose.material3.SheetState
@@ -27,14 +35,18 @@ import com.materialchat.ui.components.seaglass.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.materialchat.domain.model.AiModel
 import com.materialchat.ui.theme.CustomShapes
 import com.materialchat.ui.theme.ExpressiveMotion
+import com.materialchat.ui.theme.SquircleShape
 
 /**
  * Bottom sheet for picking a model to redo the response with.
@@ -46,7 +58,7 @@ import com.materialchat.ui.theme.ExpressiveMotion
  * @param onModelSelected Callback when a model is selected
  * @param onDismiss Callback when the sheet is dismissed
  */
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun RedoModelPickerSheet(
     isVisible: Boolean,
@@ -102,23 +114,69 @@ fun RedoModelPickerSheet(
                 )
 
                 if (isLoading && models.isEmpty()) {
-                    Text(
-                        text = "Loading models...",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(vertical = 16.dp)
-                    )
+                    // Same loading language as the header's model picker: the M3 Expressive
+                    // LoadingIndicator next to the status line.
+                    Row(
+                        modifier = Modifier.padding(vertical = 16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        LoadingIndicator(
+                            modifier = Modifier.size(24.dp),
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(
+                            text = "Loading models...",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 } else {
                     LazyColumn(
                         modifier = Modifier.heightIn(max = 400.dp)
                     ) {
                         items(models) { model ->
                             val isCurrentModel = model.id == currentModelName
+                            // Selected-state morph: the current model sits on a tonal squircle
+                            // that tightens on the spatial spring; every row compresses on press.
+                            val interactionSource = remember { MutableInteractionSource() }
+                            val isPressed by interactionSource.collectIsPressedAsState()
+                            val rowTone by animateColorAsState(
+                                targetValue = if (isCurrentModel) {
+                                    MaterialTheme.colorScheme.secondaryContainer
+                                } else {
+                                    MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0f)
+                                },
+                                animationSpec = ExpressiveMotion.Effects.color(),
+                                label = "redoModelRowTone"
+                            )
+                            val rowRadius by animateDpAsState(
+                                targetValue = when {
+                                    isPressed -> 12.dp
+                                    isCurrentModel -> 16.dp
+                                    else -> 24.dp
+                                },
+                                animationSpec = ExpressiveMotion.Spatial.shapeMorph(),
+                                label = "redoModelRowRadius"
+                            )
+                            val rowScale by animateFloatAsState(
+                                targetValue = if (isPressed) 0.97f else 1f,
+                                animationSpec = ExpressiveMotion.Spatial.scale(),
+                                label = "redoModelRowScale"
+                            )
+                            val rowShape = SquircleShape(rowRadius)
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .clip(RoundedCornerShape(16.dp))
-                                    .clickable { onModelSelected(model) }
+                                    .graphicsLayer {
+                                        scaleX = rowScale
+                                        scaleY = rowScale
+                                    }
+                                    .clip(rowShape)
+                                    .background(rowTone, rowShape)
+                                    .clickable(interactionSource = interactionSource, indication = null) {
+                                        onModelSelected(model)
+                                    }
                                     .padding(horizontal = 12.dp, vertical = 14.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {

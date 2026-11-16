@@ -82,6 +82,7 @@ import com.materialchat.ui.screens.bookmarks.components.AddBookmarkSheet
 import com.materialchat.ui.screens.chat.components.ChatEmptyState
 import com.materialchat.ui.screens.chat.components.ChatEmptyStateCopy
 import com.materialchat.ui.screens.chat.components.ChatTopBar
+import com.materialchat.ui.screens.chat.components.MessageArrivalTracker
 import com.materialchat.ui.screens.chat.components.chatEmptyStateCopy
 import com.materialchat.ui.screens.chat.components.rememberChatHeaderScrollState
 import com.materialchat.ui.screens.chat.components.rememberChatListFlingBehavior
@@ -696,6 +697,21 @@ private fun ChatContent(
             }
         }
     }
+    // Unread count for the scroll FAB badge: messages that appeared while the user was
+    // scrolled away. Cleared the moment the list is back at the bottom. Shrinks (regenerate,
+    // sibling swap) never count.
+    var unreadCount by remember { mutableIntStateOf(0) }
+    var seenMessageCount by remember { mutableIntStateOf(state.messages.size) }
+    LaunchedEffect(state.messages.size, isAtBottom) {
+        val size = state.messages.size
+        if (isAtBottom) {
+            unreadCount = 0
+        } else if (size > seenMessageCount) {
+            unreadCount += size - seenMessageCount
+        }
+        seenMessageCount = size
+    }
+
     // Only re-enable auto-scroll when user returns to bottom (after scroll stops)
     LaunchedEffect(listState) {
         snapshotFlow { listState.isScrollInProgress to isAtBottom }
@@ -925,6 +941,7 @@ private fun ChatContent(
                 visible = !isAtBottom && state.messages.isNotEmpty()
                     && !(state.isStreaming && autoScrollEnabled),
                 hasNewContent = !isAtBottom && state.isStreaming,
+                unreadCount = unreadCount,
                 onClick = {
                     coroutineScope.launch {
                         autoScrollEnabled = true
@@ -981,6 +998,14 @@ private fun MessageList(
     emptyStateCopy: ChatEmptyStateCopy? = null,
     modifier: Modifier = Modifier
 ) {
+    // Which bubbles arrive with the entrance animation: only ids created after the first
+    // composition, never the initial load, bulk swaps, or items scrolled back into view.
+    val arrivalTracker = remember { MessageArrivalTracker() }
+    remember(messages) {
+        arrivalTracker.sync(messages.map { it.message.id })
+        Unit
+    }
+
     Box(modifier = modifier.fillMaxSize()) {
         // Empty thread: expressive hero card instead of a blank list.
         if (messages.isEmpty() && emptyStateCopy != null) {
@@ -1084,6 +1109,9 @@ private fun MessageList(
                     { onQuoteMessage(messageItem.message.id) }
                 } else null,
                 hapticsEnabled = hapticsEnabled,
+                animateArrival = remember(messageItem.message.id) {
+                    arrivalTracker.shouldAnimate(messageItem.message.id)
+                },
                 modifier = Modifier
                     .animateItem(
                         fadeInSpec = spring(

@@ -1,9 +1,13 @@
 package com.materialchat.ui.screens.chat.components
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import com.materialchat.ui.components.seaglass.Surface
@@ -11,6 +15,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -22,8 +28,9 @@ import java.util.Locale
  *
  * Follows M3 Expressive guidelines:
  * - Pill shape (fully rounded) for a friendly, modern feel
- * - surfaceContainerHigh for subtle background containment
- * - labelMedium typography with onSurfaceVariant color
+ * - secondaryContainer tonal pill (content colour from the same pair) flanked by short
+ *   outlineVariant hairlines, so the day break reads as a divider and not as a message
+ * - labelMedium SemiBold typography; never italic
  * - Centered alignment with generous padding
  *
  * Displays smart date labels:
@@ -44,18 +51,35 @@ fun DateSeparator(
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically
     ) {
+        DateSeparatorRule()
         Surface(
             shape = RoundedCornerShape(999.dp),
-            color = MaterialTheme.colorScheme.surfaceContainerHigh,
-            contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+            color = MaterialTheme.colorScheme.secondaryContainer,
+            contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+            tonalElevation = 0.dp,
+            shadowElevation = 0.dp,
+            modifier = Modifier.padding(horizontal = 10.dp)
         ) {
             Text(
                 text = formatDateLabel(timestampMs),
-                style = MaterialTheme.typography.labelMedium,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)
+                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp)
             )
         }
+        DateSeparatorRule()
     }
+}
+
+/** Short hairline either side of the pill. */
+@Composable
+private fun DateSeparatorRule() {
+    Box(
+        modifier = Modifier
+            .width(28.dp)
+            .height(1.dp)
+            .clip(RoundedCornerShape(1.dp))
+            .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.7f))
+    )
 }
 
 /**

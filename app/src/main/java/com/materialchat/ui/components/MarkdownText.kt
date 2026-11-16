@@ -17,8 +17,18 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.unit.Dp
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.OpenInNew
@@ -625,8 +635,85 @@ private fun inlineMathWidthFactor(expression: String): Float {
     }
 }
 
+/** M3 Expressive container shapes for markdown blocks: 16dp outer container, 8dp inner elements. */
+private val MarkdownBlockOuterShape = RoundedCornerShape(16.dp)
+private val MarkdownBlockInnerShape = RoundedCornerShape(8.dp)
+
+/** Width of the fade drawn over a horizontally scrolling block's clipped edge. */
+private val MarkdownScrollEdgeFade = 20.dp
+
+/**
+ * Fades the start/end edge of a horizontally scrolling block into [color] while there is
+ * content hidden on that side. Draws plain gradient rects over the content (no BlendMode,
+ * no offscreen layer), so it renders the same on API 26 and above.
+ */
+private fun Modifier.horizontalEdgeFade(
+    scrollState: ScrollState,
+    color: Color,
+    width: Dp = MarkdownScrollEdgeFade
+): Modifier = drawWithContent {
+    drawContent()
+    val fadePx = width.toPx()
+    if (fadePx <= 0f || size.width <= fadePx * 2) return@drawWithContent
+    if (scrollState.value > 0) {
+        drawRect(
+            brush = Brush.horizontalGradient(
+                0f to color,
+                1f to color.copy(alpha = 0f),
+                startX = 0f,
+                endX = fadePx
+            ),
+            size = Size(fadePx, size.height)
+        )
+    }
+    if (scrollState.value < scrollState.maxValue) {
+        drawRect(
+            brush = Brush.horizontalGradient(
+                0f to color.copy(alpha = 0f),
+                1f to color,
+                startX = size.width - fadePx,
+                endX = size.width
+            ),
+            topLeft = Offset(size.width - fadePx, 0f),
+            size = Size(fadePx, size.height)
+        )
+    }
+}
+
+/**
+ * Expressive icon button for the code-block header: the M3E default icon-button shape pair
+ * (round at rest, morphing to the small rounded square while pressed, on the spatial
+ * spring) via [IconButtonDefaults.shapes].
+ */
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun CodeBlockActionButton(
+    icon: ImageVector,
+    contentDescription: String,
+    onClick: () -> Unit
+) {
+    androidx.compose.material3.IconButton(
+        onClick = onClick,
+        shapes = IconButtonDefaults.shapes(),
+        colors = IconButtonDefaults.iconButtonColors(
+            contentColor = MaterialTheme.colorScheme.primary
+        )
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = contentDescription,
+            modifier = Modifier.size(18.dp)
+        )
+    }
+}
+
 /**
  * Renders a code block with syntax highlighting styling.
+ *
+ * M3 Expressive container: 16dp outer shape, an 8dp inner language chip in the header strip,
+ * a copy button (and "Open in Canvas" for renderable artifacts) as expressive icon buttons
+ * with the press morph, and an edge fade over the horizontal scroll so clipped code reads as
+ * scrollable instead of cut off.
  */
 @Composable
 private fun CodeBlockView(
@@ -640,17 +727,21 @@ private fun CodeBlockView(
     val stringColor = MaterialTheme.colorScheme.tertiary
     val commentColor = MaterialTheme.colorScheme.onSurfaceVariant
     val numberColor = MaterialTheme.colorScheme.secondary
+    val chipTone = MaterialTheme.colorScheme.surfaceContainerHigh
+    val chipContent = MaterialTheme.colorScheme.onSurfaceVariant
 
     // Detect if this code block is a renderable artifact
     val artifact = remember(code, language) {
         ArtifactDetector.detect(code, language)
     }
+    val clipboard = LocalClipboardManager.current
+    val scrollState = rememberScrollState()
 
-    Box(
+    androidx.compose.foundation.layout.Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 8.dp)
-            .clip(RoundedCornerShape(20.dp))
+            .clip(MarkdownBlockOuterShape)
             .background(backgroundColor)
     ) {
         val highlightedCode = remember(code, language) {
@@ -665,6 +756,42 @@ private fun CodeBlockView(
             )
         }
 
+        // Header strip: language chip (inner 8dp container) + actions.
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = 10.dp, end = 2.dp, top = 4.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .clip(MarkdownBlockInnerShape)
+                    .background(chipTone)
+                    .padding(horizontal = 8.dp, vertical = 3.dp)
+            ) {
+                Text(
+                    text = language?.trim()?.takeIf { it.isNotEmpty() }?.lowercase() ?: "code",
+                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Medium),
+                    color = chipContent,
+                    maxLines = 1
+                )
+            }
+            Spacer(modifier = Modifier.weight(1f))
+            CodeBlockActionButton(
+                icon = Icons.Default.ContentCopy,
+                contentDescription = "Copy code",
+                onClick = { clipboard.setText(AnnotatedString(code)) }
+            )
+            // "Open in Canvas" button for eligible code blocks
+            if (artifact != null && onOpenCanvas != null) {
+                CodeBlockActionButton(
+                    icon = Icons.AutoMirrored.Outlined.OpenInNew,
+                    contentDescription = "Open in Canvas",
+                    onClick = { onOpenCanvas(artifact) }
+                )
+            }
+        }
+
         Text(
             text = highlightedCode,
             style = MaterialTheme.typography.bodyMedium.copy(
@@ -673,34 +800,11 @@ private fun CodeBlockView(
                 lineHeight = 20.sp
             ),
             modifier = Modifier
-                .horizontalScroll(rememberScrollState())
-                .padding(12.dp)
-                .then(
-                    if (artifact != null && onOpenCanvas != null) {
-                        Modifier.padding(end = 40.dp)
-                    } else Modifier
-                )
+                .fillMaxWidth()
+                .horizontalEdgeFade(scrollState, backgroundColor)
+                .horizontalScroll(scrollState)
+                .padding(start = 12.dp, end = 12.dp, top = 2.dp, bottom = 12.dp)
         )
-
-        // "Open in Canvas" button for eligible code blocks
-        if (artifact != null && onOpenCanvas != null) {
-            IconButton(
-                onClick = { onOpenCanvas(artifact) },
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(4.dp)
-                    .size(48.dp),
-                colors = IconButtonDefaults.iconButtonColors(
-                    contentColor = MaterialTheme.colorScheme.primary
-                )
-            ) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Outlined.OpenInNew,
-                    contentDescription = "Open in Canvas",
-                    modifier = Modifier.size(18.dp)
-                )
-            }
-        }
     }
 }
 
@@ -1601,7 +1705,10 @@ private fun TableView(
     val tableContainer = MaterialTheme.colorScheme.surfaceContainerLow
     val headerBackground = MaterialTheme.colorScheme.surfaceContainerHigh
     val alternateRowColor = MaterialTheme.colorScheme.surfaceContainer
-    val tableShape = MaterialTheme.shapes.large
+    // M3E: 16dp outer container; the header strip is its own tonal container whose bottom
+    // edge carries the 8dp inner radius.
+    val tableShape = MarkdownBlockOuterShape
+    val headerShape = RoundedCornerShape(bottomStart = 8.dp, bottomEnd = 8.dp)
 
     val numCols = maxOf(
         headers.size,
@@ -1655,13 +1762,20 @@ private fun TableView(
             shadowElevation = 0.dp,
             border = BorderStroke(1.dp, outlineColor.copy(alpha = 0.62f))
         ) {
-            Box(modifier = Modifier.horizontalScroll(scrollState)) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    // Edge fade over the clipped side so a wide table reads as scrollable.
+                    .horizontalEdgeFade(scrollState, tableContainer)
+                    .horizontalScroll(scrollState)
+            ) {
                 androidx.compose.foundation.layout.Column(
                     modifier = Modifier.width(tableWidth)
                 ) {
                     Row(
                         modifier = Modifier
                             .width(tableWidth)
+                            .clip(headerShape)
                             .background(headerBackground)
                     ) {
                         repeat(numCols) { index ->
@@ -1680,11 +1794,12 @@ private fun TableView(
                         }
                     }
 
+                    // The header's rounded bottom edge separates it from the body; a 2dp
+                    // breath instead of a hairline so the inner radius stays readable.
                     Spacer(
                         modifier = Modifier
                             .width(tableWidth)
-                            .height(1.dp)
-                            .background(outlineColor.copy(alpha = 0.72f))
+                            .height(2.dp)
                     )
 
                     rows.forEachIndexed { rowIndex, row ->
