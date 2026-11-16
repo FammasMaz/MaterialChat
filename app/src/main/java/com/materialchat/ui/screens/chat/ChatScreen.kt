@@ -84,6 +84,7 @@ import com.materialchat.ui.screens.chat.components.ChatEmptyStateCopy
 import com.materialchat.ui.screens.chat.components.ChatTopBar
 import com.materialchat.ui.screens.chat.components.chatEmptyStateCopy
 import com.materialchat.ui.screens.chat.components.rememberChatHeaderScrollState
+import com.materialchat.ui.screens.chat.components.rememberChatListFlingBehavior
 import com.materialchat.ui.screens.chat.components.ExportBottomSheet
 import com.materialchat.ui.screens.chat.components.FusionModelSelector
 import com.materialchat.ui.screens.chat.components.FusionProgressView
@@ -774,7 +775,10 @@ private fun ChatContent(
                 // After streaming ends: larger buffer (~56dp) to reveal action buttons
                 val overflow = (lastVisible.offset + lastVisible.size) -
                     layoutInfo.viewportEndOffset + actionButtonHeightPx
-                if (overflow > 0) {
+                // Only animate when there is somewhere to scroll: a no-op animateScrollBy at
+                // the end of the list still holds the scroll session open for its whole
+                // duration, during which every tap inside the bubbles is swallowed.
+                if (overflow > 0 && listState.canScrollForward) {
                     listState.animateScrollBy(
                         overflow.toFloat(),
                         animationSpec = spring(
@@ -967,6 +971,9 @@ private fun MessageList(
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             state = listState,
+            // Settles instead of trailing off: an open scroll session makes the list consume
+            // every tap and cancel every table drag inside the bubbles (see tapThroughScroll).
+            flingBehavior = rememberChatListFlingBehavior(),
             contentPadding = PaddingValues(
                 // Symmetric insets so bubble tonal edges are never clipped unevenly.
                 start = 16.dp,

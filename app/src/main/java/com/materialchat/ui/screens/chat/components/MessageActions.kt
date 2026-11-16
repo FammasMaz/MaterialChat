@@ -47,6 +47,7 @@ import androidx.compose.ui.unit.dp
 import com.materialchat.ui.components.HapticPattern
 import com.materialchat.ui.components.rememberHapticFeedback
 import com.materialchat.ui.components.seaglass.Surface
+import com.materialchat.ui.components.tapThroughScroll
 import com.materialchat.ui.theme.ExpressiveMotion
 
 /** The actions an assistant message can offer, in their display order. */
@@ -311,7 +312,13 @@ private fun ActionContainer(
                         longPress()
                     }
                 }
-            ),
+            )
+            // Long chats: the list consumes the down while its scroll is in progress, so the
+            // clickable above never sees the tap. This path takes over only then.
+            .tapThroughScroll {
+                haptics.perform(hapticPattern, hapticsEnabled)
+                onClick()
+            },
         shape = RoundedCornerShape(cornerRadius),
         color = containerColor,
         contentColor = contentColor,

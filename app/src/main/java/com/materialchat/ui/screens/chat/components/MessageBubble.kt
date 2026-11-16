@@ -72,6 +72,7 @@ import com.materialchat.ui.components.ExpressiveButtonStyle
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import com.materialchat.ui.components.seaglass.Surface
+import com.materialchat.ui.components.tapThroughScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.animation.core.tween
@@ -997,6 +998,8 @@ private fun ThinkingSection(
                 .clip(RoundedCornerShape(12.dp))
                 .background(textColor.copy(alpha = if (isExpanded) 0.04f else 0.07f))
                 .clickable { haptics.perform(HapticPattern.CLICK, hapticsEnabled); isExpanded = !isExpanded }
+                // Long chats: the list consumes the down while its scroll is in progress.
+                .tapThroughScroll { haptics.perform(HapticPattern.CLICK, hapticsEnabled); isExpanded = !isExpanded }
                 .heightIn(min = 40.dp)
                 .padding(horizontal = 8.dp, vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically
@@ -1239,7 +1242,10 @@ private fun MemoryIndicatorChip(
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
-            },
+            }
+            // Long chats: the list consumes the down while its scroll is in progress, so the
+            // Surface's own clickable never sees the tap. This path takes over only then.
+            .tapThroughScroll(onClick = onClick),
         shape = RoundedCornerShape(cornerRadius),
         color = containerColor,
         contentColor = contentColor,
