@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import com.materialchat.ui.components.seaglass.DropdownMenu
 import androidx.compose.material3.MaterialTheme
@@ -33,6 +32,8 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.materialchat.ui.screens.chat.ContextWindowLevel
 import com.materialchat.ui.screens.chat.ContextWindowUsage
@@ -48,7 +49,8 @@ fun ContextWindowIndicator(
     modifier: Modifier = Modifier
 ) {
     val indicatorColors = contextIndicatorColors(usage.level)
-    val label = usage.formatTokenLabel()
+    val label = ContextWindowLabels.tokenLabel(usage.usedTokens, usage.maxTokens)
+    val detail = ContextWindowLabels.detailLabel(usage.modelName, usage.maxTokens, usage.isApproximate)
     var expanded by remember { mutableStateOf(false) }
 
     Box(modifier = modifier) {
@@ -78,9 +80,11 @@ fun ContextWindowIndicator(
             expanded = expanded,
             onDismissRequest = { expanded = false }
         ) {
+            // Fixed width: the popup sits against the screen's end edge, and a width that
+            // depended on leftover space let the token label wrap to one glyph per line.
             Column(
                 modifier = Modifier
-                    .widthIn(min = 180.dp, max = 240.dp)
+                    .width(ContextWindowLabels.MenuWidth)
                     .padding(horizontal = 16.dp, vertical = 12.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
@@ -97,16 +101,24 @@ fun ContextWindowIndicator(
                         modifier = Modifier.size(24.dp)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
+                    // Always one line; ContextWindowLabels bounds its length so it fits the
+                    // fixed menu width without ellipsis.
                     Text(
                         text = label,
                         style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        softWrap = false,
+                        overflow = TextOverflow.Visible
                     )
                 }
+                // Deliberate multi-line block: wraps at word boundaries, never letter-stacks.
                 Text(
-                    text = usage.detailLabel(),
+                    text = detail,
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 3,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
         }
@@ -212,27 +224,45 @@ private data class ContextIndicatorColors(
     val progress: Color
 )
 
-private fun ContextWindowUsage.formatTokenLabel(): String {
-    val used = compactTokenCount(usedTokens)
-    val max = maxTokens?.let { compactTokenCount(it) }
-    return if (max != null) "~$used / $max" else "~$used used"
-}
+/**
+ * Pure label policy for the context-window popup, kept out of the composable so the
+ * width contract is unit-testable on the JVM.
+ *
+ * [tokenLabel] is at most [MaxTokenLabelLength] characters, which comfortably fits one
+ * line of bodyMedium next to the 24dp ring inside [MenuWidth]; the composable lays it
+ * out with `softWrap = false` so it can never letter-stack.
+ */
+internal object ContextWindowLabels {
+    /** Fixed popup content width; not derived from leftover anchor space. */
+    val MenuWidth: Dp = 232.dp
 
-private fun ContextWindowUsage.detailLabel(): String {
-    val model = modelName.takeIf { it.isNotBlank() } ?: "selected model"
-    val suffix = if (isApproximate) "Approximate" else "Reported"
-    return if (maxTokens == null) {
-        "$suffix token estimate for $model. Model limit unknown."
-    } else {
-        "$suffix chat context used for $model."
+    /** "~999.9M / 999.9M" is the longest shape [tokenLabel] produces. */
+    const val MaxTokenLabelLength = 16
+
+    fun tokenLabel(usedTokens: Int, maxTokens: Int?): String {
+        val used = compactTokenCount(usedTokens)
+        val max = maxTokens?.let { compactTokenCount(it) }
+        return if (max != null) "~$used / $max" else "~$used used"
     }
-}
 
-private fun compactTokenCount(tokens: Int): String {
-    return when {
-        tokens >= 1_000_000 -> String.format(Locale.US, "%.1fM", tokens / 1_000_000f)
-        tokens >= 10_000 -> "${tokens / 1_000}K"
-        tokens >= 1_000 -> String.format(Locale.US, "%.1fK", tokens / 1_000f)
-        else -> tokens.toString()
+    fun detailLabel(modelName: String, maxTokens: Int?, isApproximate: Boolean): String {
+        val model = modelName.takeIf { it.isNotBlank() } ?: "selected model"
+        val suffix = if (isApproximate) "Approximate" else "Reported"
+        return if (maxTokens == null) {
+            "$suffix token estimate for $model. Model limit unknown."
+        } else {
+            "$suffix chat context used for $model."
+        }
+    }
+
+    fun compactTokenCount(tokens: Int): String {
+        val safe = tokens.coerceAtLeast(0)
+        return when {
+            safe >= 1_000_000_000 -> String.format(Locale.US, "%.1fB", safe / 1_000_000_000f)
+            safe >= 1_000_000 -> String.format(Locale.US, "%.1fM", safe / 1_000_000f)
+            safe >= 10_000 -> "${safe / 1_000}K"
+            safe >= 1_000 -> String.format(Locale.US, "%.1fK", safe / 1_000f)
+            else -> safe.toString()
+        }
     }
 }
