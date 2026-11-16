@@ -43,6 +43,7 @@ import com.materialchat.ui.screens.conversations.ConversationUiItem
 import com.materialchat.ui.theme.CustomShapes
 import com.materialchat.ui.theme.ExpressiveMotion
 import com.materialchat.ui.theme.ExpressiveShapes
+import com.materialchat.ui.theme.SquircleShape
 
 /**
  * M3 Expressive conversation item in the conversations list.
@@ -92,6 +93,15 @@ fun ConversationItem(
         label = "scale"
     )
 
+    // Leading tile rounds off while pressed (shape morph spring), so the press reads
+    // as a shape change on the row itself, not only a ripple.
+    val tileCorner by animateDpAsState(
+        targetValue = if (isPressed) ExpressiveShapes.RowTile.Pressed else ExpressiveShapes.RowTile.Resting,
+        animationSpec = ExpressiveMotion.Spatial.shapeMorph(),
+        label = "tileCorner"
+    )
+    val tileShape = remember(tileCorner) { SquircleShape(tileCorner.coerceAtLeast(0.dp)) }
+
     // Background color animation - effects spring (no overshoot)
     val baseContainerColor = if (conversationItem.isStreaming) {
         MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.48f)
@@ -133,7 +143,7 @@ fun ConversationItem(
             Box(
                 modifier = Modifier
                     .size(48.dp)
-                    .clip(ExpressiveShapes.Tile)
+                    .clip(tileShape)
                     .background(MaterialTheme.colorScheme.primaryContainer),
                 contentAlignment = Alignment.Center
             ) {

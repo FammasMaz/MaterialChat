@@ -90,6 +90,29 @@ object ExpressiveShapes {
         val Resting = 22.dp
         val Emphasized = 28.dp
     }
+
+    /**
+     * Per-position corner radii for the swipe-reveal action pills. The edge facing
+     * the screen edge keeps the full radius; the edge shared with a sibling action
+     * is tighter so a pair reads as one connected group, like the segmented rows
+     * beside it. Once an action is armed every corner goes to [Armed].
+     */
+    object SwipeActionPosition {
+        /** Corner on the edge facing away from the neighbouring action. */
+        val Outer: Dp = 24.dp
+
+        /** Corner on the edge shared with the neighbouring action. */
+        val Inner: Dp = 10.dp
+
+        /** Every corner once an action is emphasised (armed / expanding). */
+        val Armed: Dp = 28.dp
+    }
+
+    /** Leading squircle tile on list rows: resting radius and the rounder pressed radius. */
+    object RowTile {
+        val Resting: Dp = 18.dp
+        val Pressed: Dp = 24.dp
+    }
 }
 
 /**

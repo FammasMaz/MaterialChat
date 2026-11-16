@@ -166,6 +166,31 @@ object ExpressiveMotion {
             dampingRatio = 0.75f,
             stiffness = 200f
         )
+
+        /**
+         * Threshold pop for icons that cross a gesture threshold (swipe arm, drag
+         * commit). Low damping so the icon visibly overshoots and settles.
+         */
+        fun <T> thresholdPop(): SpringSpec<T> = spring(
+            dampingRatio = 0.45f,
+            stiffness = 700f
+        )
+
+        /**
+         * Pulse of a disclosure control (chevron tile) when its group opens or closes.
+         */
+        fun <T> disclosurePulse(): SpringSpec<T> = spring(
+            dampingRatio = 0.55f,
+            stiffness = 650f
+        )
+
+        /**
+         * Dialog entrance: scale from slightly below rest with a touch of overshoot.
+         */
+        fun <T> dialogEnter(): SpringSpec<T> = spring(
+            dampingRatio = 0.7f,
+            stiffness = 520f
+        )
     }
 
     /**

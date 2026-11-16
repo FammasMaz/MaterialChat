@@ -1,6 +1,7 @@
 package com.materialchat.ui.screens.conversations.components
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.expandVertically
@@ -39,6 +40,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -50,6 +52,7 @@ import com.materialchat.ui.components.HapticPattern
 import com.materialchat.ui.components.rememberHapticFeedback
 import com.materialchat.ui.theme.ExpressiveMotion
 import com.materialchat.ui.theme.ExpressiveShapes
+import com.materialchat.ui.theme.SquircleShape
 
 /**
  * M3 Expressive expandable conversation group component.
@@ -118,6 +121,22 @@ fun ExpandableConversationGroup(
         label = "chevronCorner"
     )
 
+    // Chevron tile pulses up on open (disclosure spring) so the toggle reads as a
+    // container morph, not just a rotating glyph.
+    val chevronScale by animateFloatAsState(
+        targetValue = if (group.isExpanded) 1.12f else 1f,
+        animationSpec = ExpressiveMotion.Spatial.disclosurePulse(),
+        label = "chevronScale"
+    )
+
+    // Leading tile rounds off while the parent row is pressed, like ConversationItem.
+    val tileCorner by animateDpAsState(
+        targetValue = if (parentPressed) ExpressiveShapes.RowTile.Pressed else ExpressiveShapes.RowTile.Resting,
+        animationSpec = ExpressiveMotion.Spatial.shapeMorph(),
+        label = "parentTileCorner"
+    )
+    val tileShape = remember(tileCorner) { SquircleShape(tileCorner.coerceAtLeast(0.dp)) }
+
     // Calculate corner radii based on position and expansion state
     // M3 Expressive: Connected items share edges
     val topCornerRadius = if (isFirst) cornerRadius else seamRadius
@@ -182,7 +201,7 @@ fun ExpandableConversationGroup(
                         Box(
                             modifier = Modifier
                                 .size(44.dp)
-                                .clip(ExpressiveShapes.Tile)
+                                .clip(tileShape)
                                 .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f)),
                             contentAlignment = Alignment.Center
                         ) {
@@ -297,7 +316,9 @@ fun ExpandableConversationGroup(
                                     } else {
                                         MaterialTheme.colorScheme.surfaceContainerHigh
                                     },
-                                    modifier = Modifier.size(32.dp) // Visual size, touch target handled by parent
+                                    modifier = Modifier
+                                        .size(32.dp) // Visual size, touch target handled by parent
+                                        .scale(chevronScale)
                                 ) {
                                 Box(contentAlignment = Alignment.Center) {
                                     Icon(
@@ -344,6 +365,9 @@ fun ExpandableConversationGroup(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
+                    // Branch count changes (add/delete) resize on the content-size spring
+                    // instead of snapping; enter/exit stays on the disclosure physics above.
+                    .animateContentSize(animationSpec = ExpressiveMotion.Spatial.contentSize())
                     .padding(
                         start = 16.dp,
                         end = 16.dp,
