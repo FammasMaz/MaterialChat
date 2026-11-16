@@ -389,8 +389,7 @@ fun MessageInput(
                 onCancel = {
                     haptics.perform(HapticPattern.CONFIRM, hapticsEnabled)
                     onCancel()
-                },
-                reasoningEffort = reasoningEffort
+                }
             )
         }
 
