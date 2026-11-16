@@ -5,7 +5,10 @@ import androidx.compose.animation.core.SpringSpec
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ColorScheme
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Typography
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.text.TextStyle
@@ -148,13 +151,8 @@ internal object AssistantColors {
         AssistantPhase.Speaking -> scheme.tertiaryContainer
     }
 
-    /** The glyph itself on [glyphContainer]. */
-    fun glyphContent(scheme: ColorScheme, phase: AssistantPhase): Color = when (phase) {
-        AssistantPhase.Idle -> scheme.primary
-        AssistantPhase.Capturing -> scheme.onPrimaryContainer
-        AssistantPhase.Thinking -> scheme.onSecondaryContainer
-        AssistantPhase.Speaking -> scheme.onTertiaryContainer
-    }
+    // The glyph's own colour is resolved against its container (or the pill fill while the
+    // container is transparent) by AssistantSurfacePalette, never read from a role directly.
 
     /** The thinking surface: the highest surface container leaning toward the secondary container. */
     fun thinkingSurface(scheme: ColorScheme): Color =
@@ -162,4 +160,19 @@ internal object AssistantColors {
 
     /** The action toolbar strip inside the answer surface: one container step below the answer. */
     fun toolbarSurface(scheme: ColorScheme): Color = scheme.surfaceContainerLow
+}
+
+/**
+ * The assistant's fills and the content colours resolved against each, for the current scheme.
+ * Every text/icon colour in the assistant window comes from here, so it is chosen against the
+ * fill it is drawn on rather than assumed from a theme role.
+ */
+@Composable
+internal fun rememberAssistantSurfacePalette(): AssistantSurfacePalette {
+    val scheme = MaterialTheme.colorScheme
+    // Under Sea Glass the shared Surface wrapper makes every container transparent glass over
+    // the window backdrop, so the fills the text sits on are not the container colours.
+    val mode = if (com.materialchat.ui.components.seaglass.LocalSeaGlassEnabled.current) AssistantSurfaceMode.SeaGlass
+    else AssistantSurfaceMode.Opaque
+    return remember(scheme, mode) { AssistantSurfacePalette.resolve(scheme, mode) }
 }

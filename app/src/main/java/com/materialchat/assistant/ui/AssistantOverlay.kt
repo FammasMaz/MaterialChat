@@ -108,6 +108,7 @@ import androidx.compose.material.icons.filled.KeyboardHide
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.FilledIconButton
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -371,7 +372,7 @@ fun AssistantOverlay(
                     // As in essentials' Gemini pill: the pill's own colour is painted as a
                     // soft-edged capsule with the accent glowing inside along the edge, and the
                     // scattered dots drift in the band around that blurred edge.
-                    featherColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    featherColor = AssistantColors.pillFill(MaterialTheme.colorScheme),
                     style = ParticleFieldStyle(innerBand = 20.dp),
                     color = MaterialTheme.colorScheme.primary,
                     enabled = neuralExpressive,
@@ -517,6 +518,8 @@ internal fun AssistantOverlayContent(
     val keyboard = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
     val context = LocalContext.current
     val focusRequester = remember { FocusRequester() }
+    // Content colours resolved against the fills they are drawn on (see AssistantContrast).
+    val palette = rememberAssistantSurfacePalette()
 
     val voiceEnabled = hasMicPermission && uiState.isVoiceInputEnabled
     val capturing = voiceState is VoiceState.Listening || voiceState is VoiceState.Processing
@@ -716,9 +719,11 @@ internal fun AssistantOverlayContent(
                     // The particle field and soft fill wrap the pill itself.
                     .onGloballyPositioned { onCardBoundsChange(it.boundsInRoot()) },
                 shape = AssistantShapes.Pill,
-                color = if (softEdges) Color.Transparent else MaterialTheme.colorScheme.surfaceContainerHigh,
+                color = if (softEdges) Color.Transparent else palette.pill.fill,
                 // A transparent Surface would otherwise pick black content (icons were black).
-                contentColor = MaterialTheme.colorScheme.onSurface,
+                // The content colour is resolved against the pill's painted fill, which is the
+                // same colour whether the particle field feathers it or the Surface paints it.
+                contentColor = palette.pill.body,
                 tonalElevation = if (softEdges) 0.dp else 6.dp,
                 shadowElevation = if (softEdges) 0.dp else 16.dp
             ) {
@@ -781,7 +786,7 @@ internal fun AssistantOverlayContent(
                         animationSpec = AssistantMotion.effect(),
                         label = "glyphContainer"
                     )
-                    val glyphContent = AssistantColors.glyphContent(MaterialTheme.colorScheme, phase)
+                    val glyphContent = palette.glyph(phase).content
                     Box(
                         modifier = Modifier
                             .size(40.dp)
@@ -853,7 +858,7 @@ internal fun AssistantOverlayContent(
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis,
                                     style = AssistantTypography.prompt(MaterialTheme.typography),
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    color = palette.pill.muted
                                 )
                             }
                             BasicTextField(
@@ -863,10 +868,10 @@ internal fun AssistantOverlayContent(
                                     .fillMaxWidth()
                                     .focusRequester(focusRequester),
                                 textStyle = AssistantTypography.input(MaterialTheme.typography).copy(
-                                    color = MaterialTheme.colorScheme.onSurface
+                                    color = palette.pill.body
                                 ),
                                 singleLine = true,
-                                cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                                cursorBrush = SolidColor(palette.pill.accent),
                                 keyboardOptions = KeyboardOptions(
                                     capitalization = KeyboardCapitalization.Sentences,
                                     imeAction = ImeAction.Send
@@ -909,8 +914,8 @@ internal fun AssistantOverlayContent(
                                     overflow = TextOverflow.Ellipsis,
                                     style = if (current.emphasised) AssistantTypography.transcript(MaterialTheme.typography)
                                     else AssistantTypography.prompt(MaterialTheme.typography),
-                                    color = if (current.emphasised) MaterialTheme.colorScheme.onSurface
-                                    else MaterialTheme.colorScheme.onSurfaceVariant,
+                                    color = if (current.emphasised) palette.pill.body
+                                    else palette.pill.muted,
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .semantics { liveRegion = LiveRegionMode.Polite }
@@ -1005,8 +1010,8 @@ internal fun AssistantOverlayContent(
                             modifier = primaryModifier,
                             shape = primaryShape,
                             colors = IconButtonDefaults.filledIconButtonColors(
-                                containerColor = MaterialTheme.colorScheme.primary,
-                                contentColor = MaterialTheme.colorScheme.onPrimary
+                                containerColor = palette.primaryButton.container,
+                                contentColor = palette.primaryButton.content
                             )
                         ) {
                             Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "Send")
@@ -1016,8 +1021,8 @@ internal fun AssistantOverlayContent(
                             modifier = primaryModifier,
                             shape = primaryShape,
                             colors = IconButtonDefaults.filledIconButtonColors(
-                                containerColor = MaterialTheme.colorScheme.primaryContainer,
-                                contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                                containerColor = palette.stopButton.container,
+                                contentColor = palette.stopButton.content
                             )
                         ) {
                             Icon(Icons.Default.Stop, contentDescription = "Stop listening")
@@ -1026,7 +1031,10 @@ internal fun AssistantOverlayContent(
                             onClick = onInterrupt,
                             modifier = primaryModifier,
                             shape = primaryShape,
-                            colors = IconButtonDefaults.filledTonalIconButtonColors()
+                            colors = IconButtonDefaults.filledTonalIconButtonColors(
+                                containerColor = palette.interruptButton.container,
+                                contentColor = palette.interruptButton.content
+                            )
                         ) {
                             Icon(Icons.Default.Stop, contentDescription = "Interrupt")
                         }
@@ -1040,8 +1048,8 @@ internal fun AssistantOverlayContent(
                             modifier = primaryModifier,
                             shape = primaryShape,
                             colors = IconButtonDefaults.filledIconButtonColors(
-                                containerColor = MaterialTheme.colorScheme.primary,
-                                contentColor = MaterialTheme.colorScheme.onPrimary
+                                containerColor = palette.primaryButton.container,
+                                contentColor = palette.primaryButton.content
                             )
                         ) {
                             Icon(Icons.Default.Mic, contentDescription = "Microphone")
@@ -1083,6 +1091,7 @@ private fun AssistantResponseSurface(
 ) {
     val maxHeight = (LocalConfiguration.current.screenHeightDp * 0.55f).dp
     val hasAssistantText = messages.any { it.role == MessageRole.ASSISTANT && it.content.isNotBlank() }
+    val palette = rememberAssistantSurfacePalette()
     // The answer surface is the primary content of the expanded screen, not a card floating above
     // the pill: the accent-tinted high container with wide organic top corners carries the
     // exchange with generous insets (M3 containment: a filled container groups the question and
@@ -1094,8 +1103,8 @@ private fun AssistantResponseSurface(
             .fillMaxWidth()
             .heightIn(max = maxHeight),
         shape = AssistantShapes.Answer,
-        color = AssistantColors.answerSurface(MaterialTheme.colorScheme),
-        contentColor = MaterialTheme.colorScheme.onSurface,
+        color = palette.answer.fill,
+        contentColor = palette.answer.body,
         tonalElevation = 4.dp,
         shadowElevation = 12.dp
     ) {
@@ -1121,8 +1130,8 @@ private fun AssistantResponseSurface(
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                     style = AssistantTypography.notice(MaterialTheme.typography),
-                    color = if (isError) MaterialTheme.colorScheme.error
-                    else MaterialTheme.colorScheme.onSurfaceVariant
+                    color = if (isError) palette.answer.error
+                    else palette.answer.muted
                 )
             }
             AssistantAnswerToolbar(
@@ -1151,11 +1160,12 @@ private fun AssistantAnswerToolbar(
     onCopy: () -> Unit,
     onClose: () -> Unit
 ) {
+    val palette = rememberAssistantSurfacePalette()
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = AssistantShapes.Toolbar,
-        color = AssistantColors.toolbarSurface(MaterialTheme.colorScheme),
-        contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+        color = palette.toolbar.fill,
+        contentColor = palette.toolbar.muted
     ) {
         Row(
             modifier = Modifier
@@ -1167,6 +1177,10 @@ private fun AssistantAnswerToolbar(
                 FilledTonalButton(
                     onClick = onOpenInApp,
                     shape = AssistantShapes.Chip,
+                    colors = ButtonDefaults.filledTonalButtonColors(
+                        containerColor = palette.chip.container,
+                        contentColor = palette.chip.content
+                    ),
                     contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
                     modifier = Modifier.height(40.dp)
                 ) {
@@ -1259,9 +1273,14 @@ private fun AssistantAttachRevealContent(
 
 @Composable
 private fun AssistantAttachChip(icon: ImageVector, label: String, onClick: () -> Unit) {
+    val palette = rememberAssistantSurfacePalette()
     FilledTonalButton(
         onClick = onClick,
         shape = AssistantShapes.Chip,
+        colors = ButtonDefaults.filledTonalButtonColors(
+            containerColor = palette.chip.container,
+            contentColor = palette.chip.content
+        ),
         contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
         modifier = Modifier.height(40.dp)
     ) {
@@ -1273,11 +1292,12 @@ private fun AssistantAttachChip(icon: ImageVector, label: String, onClick: () ->
 
 @Composable
 private fun AssistantNoticeSurface(message: String, isError: Boolean) {
+    val palette = rememberAssistantSurfacePalette()
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = AssistantShapes.Notice,
-        color = if (isError) MaterialTheme.colorScheme.errorContainer
-        else MaterialTheme.colorScheme.surfaceContainerHigh,
+        color = if (isError) palette.errorNotice.container else palette.notice.fill,
+        contentColor = if (isError) palette.errorNotice.content else palette.notice.muted,
         tonalElevation = 2.dp
     ) {
         Text(
@@ -1285,8 +1305,7 @@ private fun AssistantNoticeSurface(message: String, isError: Boolean) {
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
             style = AssistantTypography.notice(MaterialTheme.typography),
-            color = if (isError) MaterialTheme.colorScheme.onErrorContainer
-            else MaterialTheme.colorScheme.onSurfaceVariant,
+            color = if (isError) palette.errorNotice.content else palette.notice.muted,
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp)
         )
     }
