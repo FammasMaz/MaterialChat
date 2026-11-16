@@ -183,7 +183,7 @@ fun MessageInput(
         modifier = modifier
             .fillMaxWidth()
             .navigationBarsPadding()
-            .padding(horizontal = 8.dp, vertical = 8.dp)
+            .padding(start = 8.dp, end = 8.dp, top = 4.dp, bottom = 6.dp)
     ) {
         // Quote reply preview (shown when user swipes to quote a message)
         QuoteReplyPreview(
@@ -331,7 +331,7 @@ fun MessageInput(
                     interactionSource = fieldInteractionSource,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .heightIn(min = 56.dp, max = 168.dp)
+                        .heightIn(min = 48.dp, max = 168.dp)
                         .verticalScroll(textScrollState)
                         .focusRequester(focusRequester),
                     textStyle = MaterialTheme.typography.bodyLarge.copy(
@@ -354,7 +354,7 @@ fun MessageInput(
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 18.dp, vertical = 14.dp),
+                                .padding(horizontal = 18.dp, vertical = 12.dp),
                             contentAlignment = Alignment.CenterStart
                         ) {
                             if (inputText.isEmpty()) {

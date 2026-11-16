@@ -635,8 +635,9 @@ private fun ChatContent(
 
     // Fix 1: Visual buffer during streaming (20dp to prevent bottom cutoff)
     val scrollBufferPx = remember(density) { with(density) { 20.dp.toPx() } }
-    // Fix 2: Larger buffer for action buttons when streaming ends (~56dp)
-    val actionButtonHeightPx = remember(density) { with(density) { 56.dp.toPx() } }
+    // Settle buffer when streaming ends. The action row is part of the last item, so only a
+    // small breathing margin is needed above the composer (was 56dp of dead space).
+    val actionButtonHeightPx = remember(density) { with(density) { 12.dp.toPx() } }
 
     // Fix 3: NestedScrollConnection to detect upward scroll gestures immediately
     val autoScrollConnection = remember {
@@ -948,8 +949,8 @@ private fun MessageList(
                 // Symmetric insets so bubble tonal edges are never clipped unevenly.
                 start = 16.dp,
                 end = 16.dp,
-                top = 8.dp,
-                bottom = 8.dp
+                top = 4.dp,
+                bottom = 4.dp
             ),
             verticalArrangement = Arrangement.spacedBy(0.dp)
         ) {

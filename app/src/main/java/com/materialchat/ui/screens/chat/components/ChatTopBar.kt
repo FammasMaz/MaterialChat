@@ -188,7 +188,7 @@ fun ChatTopBar(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .heightIn(min = 64.dp)
+                    .heightIn(min = 56.dp)
                     .padding(horizontal = 6.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -305,7 +305,7 @@ fun ChatTopBar(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(start = 20.dp, end = 20.dp, bottom = 16.dp)
+                        .padding(start = 20.dp, end = 20.dp, bottom = 10.dp)
                 ) {
                     Row(verticalAlignment = Alignment.Top) {
                         if (icon != null) {
@@ -330,7 +330,7 @@ fun ChatTopBar(
                                 .alpha(titleAlpha)
                         )
                     }
-                    Spacer(modifier = Modifier.height(10.dp))
+                    Spacer(modifier = Modifier.height(6.dp))
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -385,7 +385,7 @@ fun ChatTopBar(
                     ) {
                         Row(
                             modifier = Modifier
-                                .padding(top = 12.dp)
+                                .padding(top = 8.dp)
                                 .semantics { contentDescription = streamingLabel ?: "" },
                             verticalAlignment = Alignment.CenterVertically
                         ) {
