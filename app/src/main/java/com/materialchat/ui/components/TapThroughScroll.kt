@@ -23,11 +23,17 @@ import androidx.compose.ui.input.pointer.pointerInput
  * slop, and fires [onClick] on the up — stopping the list and pressing the control happen
  * together, which is what the user meant by the tap. An unconsumed down is left to the
  * normal click handling, so this never double-fires.
+ *
+ * The down is observed in the Initial pass on purpose: that pass runs parent-first, so the
+ * only thing that can have consumed it by then is an ancestor such as the scrolling list.
+ * Observing in the Main pass would also see a consumption by the control's own `clickable`
+ * when that clickable sits later in the modifier chain (as `Surface(onClick)` places it) —
+ * then both would fire and a toggle would cancel itself out.
  */
 fun Modifier.tapThroughScroll(enabled: Boolean = true, onClick: () -> Unit): Modifier =
     if (!enabled) this else pointerInput(onClick) {
         awaitEachGesture {
-            val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Main)
+            val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
             if (!down.isConsumed) return@awaitEachGesture
             val slop = viewConfiguration.touchSlop
             var tapped = false
