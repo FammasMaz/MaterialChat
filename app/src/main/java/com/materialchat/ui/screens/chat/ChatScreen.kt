@@ -3,7 +3,7 @@ package com.materialchat.ui.screens.chat
 import android.content.Intent
 import android.net.Uri
 import android.util.Log
-import androidx.activity.compose.BackHandler
+import androidx.activity.compose.PredictiveBackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -85,6 +85,9 @@ import com.materialchat.ui.screens.chat.components.ChatTopBar
 import com.materialchat.ui.screens.chat.components.chatEmptyStateCopy
 import com.materialchat.ui.screens.chat.components.rememberChatHeaderScrollState
 import com.materialchat.ui.screens.chat.components.rememberChatListFlingBehavior
+import com.materialchat.ui.screens.chat.components.ChatBackHandling
+import com.materialchat.ui.screens.chat.components.chatBackTransform
+import com.materialchat.ui.screens.chat.components.resolveChatBackHandling
 import com.materialchat.ui.screens.chat.components.ExportBottomSheet
 import com.materialchat.ui.screens.chat.components.FusionModelSelector
 import com.materialchat.ui.screens.chat.components.FusionProgressView
@@ -310,8 +313,21 @@ fun ChatScreen(
 
     val isEphemeral = (uiState as? ChatUiState.Success)?.isEphemeral == true
 
-    BackHandler {
-        viewModel.navigateBack()
+    // Predictive back. A normal conversation never intercepts the gesture: the NavHost pops the
+    // chat itself, so the system's native predictive-back animation plays. Only a temporary
+    // conversation intercepts (it has to delete itself or, mid-stream, become a normal chat
+    // before leaving); there the gesture drives the screen transform and the cleanup runs on
+    // commit, with a spring back to rest on cancel.
+    val backProgress = remember { Animatable(0f) }
+    PredictiveBackHandler(
+        enabled = resolveChatBackHandling(isEphemeral) == ChatBackHandling.InterceptForEphemeralCleanup
+    ) { progress ->
+        try {
+            progress.collect { event -> backProgress.snapTo(event.progress) }
+            viewModel.navigateBack()
+        } catch (_: kotlin.coroutines.cancellation.CancellationException) {
+            backProgress.animateTo(0f, animationSpec = ExpressiveMotion.Spatial.default())
+        }
     }
 
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
@@ -324,6 +340,13 @@ fun ChatScreen(
 
     Scaffold(
         modifier = Modifier
+            .graphicsLayer {
+                val transform = chatBackTransform(backProgress.value)
+                scaleX = transform.scale
+                scaleY = transform.scale
+                translationX = size.width * transform.translationXFraction
+                alpha = transform.alpha
+            }
             .nestedScroll(scrollBehavior.nestedScrollConnection)
             .nestedScroll(headerScrollState.nestedScrollConnection),
         containerColor = if (isEphemeral) MaterialTheme.colorScheme.tertiaryContainer
