@@ -2,12 +2,14 @@ package com.materialchat.ui.screens.chat.components
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
@@ -19,16 +21,26 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Outline
+import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.asComposePath
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
+import androidx.graphics.shapes.Morph
+import androidx.graphics.shapes.toPath
 import com.materialchat.R
 import com.materialchat.ui.theme.ExpressiveMotion
 import com.materialchat.ui.theme.SquircleShape
@@ -46,17 +58,53 @@ internal fun composerSendState(isStreaming: Boolean, canSend: Boolean): Composer
 }
 
 /**
- * The composer's send / stop control as a real M3 Expressive filled [Button].
+ * Where each state sits on the button's shape track. The track is two chained morphs over
+ * [MaterialShapes]: 0 = four-sided cookie (idle, nothing to send), 1 = circle (ready to
+ * send), 2 = rounded square (streaming: the stop block). A press pushes the contour toward
+ * the neighbouring shape (circle squares off, square softens) so the press reads as a shape
+ * morph, the M3 Expressive button gesture, rather than only a scale dip.
+ */
+internal const val COMPOSER_SEND_TRACK_END = 2f
+
+internal fun composerSendShapeProgress(state: ComposerSendState, pressed: Boolean): Float = when (state) {
+    ComposerSendState.Idle -> 0f
+    ComposerSendState.Ready -> if (pressed) 1.35f else 1f
+    ComposerSendState.Streaming -> if (pressed) 1.65f else COMPOSER_SEND_TRACK_END
+}
+
+/**
+ * A [Shape] that walks a two-segment morph track: [first] for progress 0..1, [second] for
+ * 1..2. [MaterialShapes] polygons are normalised to the unit square, so the path is scaled
+ * to the outline size. Pure path geometry; works on every supported API level.
+ */
+internal class ComposerSendTrackShape(
+    private val first: Morph,
+    private val second: Morph,
+    private val progress: Float
+) : Shape {
+    override fun createOutline(size: Size, layoutDirection: LayoutDirection, density: Density): Outline {
+        val clamped = progress.coerceIn(0f, COMPOSER_SEND_TRACK_END)
+        val path = if (clamped <= 1f) {
+            first.toPath(clamped)
+        } else {
+            second.toPath(clamped - 1f)
+        }
+        path.transform(android.graphics.Matrix().apply { setScale(size.width, size.height) })
+        return Outline.Generic(path.asComposePath())
+    }
+}
+
+/**
+ * The composer's send / stop control as an M3 Expressive filled [Button] whose contour
+ * morphs between states.
  *
- * State machine: [ComposerSendState.Idle] (nothing to send, disabled, neutral tone),
- * [ComposerSendState.Ready] (filled primary, send glyph) and [ComposerSendState.Streaming]
- * (error-container stop button with a plain, calm stop glyph). While streaming nothing inside
- * the button animates continuously: the only motion is the one-shot glyph swap and the
- * component's own press morph.
- *
- * Press feedback is the component's own shape morph from [ButtonDefaults.shapes] (round →
- * pressed corner), driven by the theme's expressive motion scheme. Colours are effects
- * springs (no overshoot). Nothing here retargets per frame.
+ * State machine: [ComposerSendState.Idle] (nothing to send, disabled, neutral tone, cookie
+ * contour), [ComposerSendState.Ready] (filled primary, circle, send glyph) and
+ * [ComposerSendState.Streaming] (error-container rounded-square stop button with a plain,
+ * calm stop glyph). The contour and press feedback ride the theme's spatial shape-morph
+ * spring, scale dips on the spatial scale spring, colours are effects springs (no
+ * overshoot). While streaming nothing animates continuously: the only motion is the one-shot
+ * glyph swap and the press morph.
  *
  * Behaviour: tap sends when ready, cancels when streaming, and is disabled otherwise.
  */
@@ -71,6 +119,24 @@ internal fun ComposerSendButton(
 ) {
     val scheme = MaterialTheme.colorScheme
     val state = composerSendState(isStreaming, canSend)
+    val interactionSource = remember { MutableInteractionSource() }
+    val pressed by interactionSource.collectIsPressedAsState()
+
+    val idleToReady = remember { Morph(MaterialShapes.Cookie4Sided, MaterialShapes.Circle) }
+    val readyToStreaming = remember { Morph(MaterialShapes.Circle, MaterialShapes.Square) }
+    val trackProgress by animateFloatAsState(
+        targetValue = composerSendShapeProgress(state, pressed),
+        animationSpec = ExpressiveMotion.Spatial.shapeMorph(),
+        label = "composerSendShape"
+    )
+    val shape = remember(trackProgress) {
+        ComposerSendTrackShape(idleToReady, readyToStreaming, trackProgress)
+    }
+    val scale by animateFloatAsState(
+        targetValue = if (pressed && state != ComposerSendState.Idle) 0.92f else 1f,
+        animationSpec = ExpressiveMotion.Spatial.scale(),
+        label = "composerSendScale"
+    )
 
     val containerColor by animateColorAsState(
         targetValue = when (state) {
@@ -98,7 +164,6 @@ internal fun ComposerSendButton(
             ComposerSendState.Idle -> R.string.chat_send_message_disabled
         }
     )
-    val interactionSource = remember { MutableInteractionSource() }
 
     Button(
         onClick = {
@@ -108,9 +173,13 @@ internal fun ComposerSendButton(
                 ComposerSendState.Idle -> Unit
             }
         },
-        shapes = ButtonDefaults.shapes(),
+        shape = shape,
         modifier = modifier
             .size(48.dp)
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
             .semantics { contentDescription = description },
         enabled = state != ComposerSendState.Idle,
         colors = ButtonDefaults.buttonColors(
