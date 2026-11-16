@@ -216,7 +216,7 @@ private fun AssistantBubble(
             TypingIndicator(
                 dotSize = 7.dp,
                 dotSpacing = 4.dp,
-                color = palette.answer.muted.copy(alpha = 0.6f)
+                color = palette.answer.indicator
             )
         }
     }

@@ -2,6 +2,7 @@ package com.materialchat.assistant.ui
 
 import androidx.compose.material3.ColorScheme
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.pow
@@ -11,12 +12,13 @@ import kotlin.math.pow
  *
  * The assistant paints several of its own fills (the feathered pill, the accent-tinted answer
  * surface, the thinking tone) and runs under every theme the app can produce: light or dark,
- * static palette or wallpaper-dynamic, pitch black or not. A content colour taken from a theme
- * role alone (`onSurface` because "this is a surface") is only right while the fill really is
- * that role's surface. Here every text and icon colour is chosen against the colour of the fill
- * it is drawn on: the preferred Material role is kept whenever it already meets the required
- * ratio, otherwise the next role in line is tried, and pure white or black close the list so a
- * readable colour always exists (for any opaque fill the better of white/black is >= 4.58:1).
+ * static palette or wallpaper-dynamic, pitch black or not, opaque or Sea Glass. A content colour
+ * taken from a theme role alone (`onSurface` because "this is a surface") is only right while
+ * the fill really is that role's surface. Here every text and icon colour is chosen against the
+ * colour(s) the fill can actually present: the preferred Material role is kept whenever it meets
+ * the required ratio against every one of them, otherwise the next role in line is tried, and
+ * pure white or black close the list so a readable colour always exists (for any opaque fill the
+ * better of white/black is >= 4.58:1).
  *
  * Pure Kotlin: no composition, no Android, so the JVM test can enumerate themes.
  */
@@ -26,6 +28,15 @@ internal object AssistantContrast {
 
     /** WCAG AA for icons, graphical objects and large text. */
     const val ICON = 3.0
+
+    /** The window scrim drawn under every assistant surface (AssistantOverlay, `Color.Black` at 0.42). */
+    const val SCRIM_ALPHA = 0.42f
+
+    /**
+     * How much of the backdrop a Sea Glass container shows through (SeaGlassAppearance's
+     * `transparency = 0.72f`): the glass is modelled as the tint at 28% over the backdrop.
+     */
+    const val GLASS_TRANSPARENCY = 0.72f
 
     /** WCAG relative luminance of [color] taken as opaque sRGB. */
     fun relativeLuminance(color: Color): Double {
@@ -58,15 +69,24 @@ internal object AssistantContrast {
         return (max(l1, l2) + 0.05) / (min(l1, l2) + 0.05)
     }
 
+    /** The lowest ratio [foreground] reaches against any of [fills]. */
+    fun contrastRatio(foreground: Color, fills: List<Color>): Double =
+        fills.minOf { contrastRatio(foreground, it) }
+
     /**
      * The first of [candidates] (in order of preference, pure white and black appended) that
-     * reaches [minimum] against [fill]; if none does, the candidate with the highest ratio.
+     * reaches [minimum] against every one of [fills]; if none does, the candidate whose worst
+     * ratio is highest.
      */
-    fun pick(fill: Color, candidates: List<Color>, minimum: Double): Color {
+    fun pick(fills: List<Color>, candidates: List<Color>, minimum: Double): Color {
+        require(fills.isNotEmpty()) { "a content colour needs at least one fill" }
         val all = candidates + listOf(Color.White, Color.Black)
-        all.firstOrNull { contrastRatio(it, fill) >= minimum }?.let { return it }
-        return all.maxByOrNull { contrastRatio(it, fill) } ?: Color.Black
+        all.firstOrNull { contrastRatio(it, fills) >= minimum }?.let { return it }
+        return all.maxByOrNull { contrastRatio(it, fills) } ?: Color.Black
     }
+
+    fun pick(fill: Color, candidates: List<Color>, minimum: Double): Color =
+        pick(listOf(fill), candidates, minimum)
 
     private fun opaque(color: Color): Color = if (color.alpha >= 1f) color else color.copy(alpha = 1f)
 
@@ -87,12 +107,49 @@ internal data class AssistantContrastPair(
     val passes: Boolean get() = ratio >= minimum
 }
 
-/** A tonal container and the content colour resolved against it. */
-internal data class AssistantTonal(val container: Color, val content: Color)
+/**
+ * How the assistant's containers reach the screen.
+ *
+ * Opaque: a `Surface` paints its colour, so the fill IS the container colour. Sea Glass: the
+ * shared `Surface` wrapper makes every container transparent and draws glass tinted with the
+ * container colour (a transparent container is tinted with `surfaceContainer`), so what the text
+ * sits on is the tint blended with whatever is behind the window. That backdrop is the theme's
+ * own ambient background (SeaGlassAppearance paints it under the content), either plain or
+ * darkened by the assistant's 42% scrim; both extremes are modelled so a content colour has to
+ * read against the lightest and the darkest fill the glass can show.
+ */
+internal enum class AssistantSurfaceMode { Opaque, SeaGlass }
 
-/** Content colours resolved against one opaque [fill]. */
+/** The colours a painted container can present, for the given [mode]. */
+internal fun assistantFills(container: Color, scheme: ColorScheme, mode: AssistantSurfaceMode): List<Color> =
+    when (mode) {
+        AssistantSurfaceMode.Opaque -> listOf(
+            if (container.alpha >= 1f) container
+            else AssistantContrast.compositeOver(container, scheme.surfaceContainerHigh)
+        )
+        AssistantSurfaceMode.SeaGlass -> {
+            val tint = if (container.alpha == 0f) scheme.surfaceContainer
+            else AssistantContrast.compositeOver(container, scheme.background)
+            val ambient = scheme.background
+            val scrimmed = AssistantContrast.compositeOver(
+                Color.Black.copy(alpha = AssistantContrast.SCRIM_ALPHA), ambient
+            )
+            listOf(
+                lerp(tint, ambient, AssistantContrast.GLASS_TRANSPARENCY),
+                lerp(tint, scrimmed, AssistantContrast.GLASS_TRANSPARENCY)
+            )
+        }
+    }
+
+/** A tonal container, the content colour resolved against it, and the fills it was checked on. */
+internal data class AssistantTonal(val container: Color, val content: Color, val fills: List<Color>)
+
+/** Content colours resolved against every fill one container can present. */
 internal data class AssistantContentColors(
-    val fill: Color,
+    /** The colour the container is painted with (what the `Surface` receives). */
+    val container: Color,
+    /** The colours the container can present on screen; every content colour reads on all of them. */
+    val fills: List<Color>,
     /** Primary text and the icons that inherit `LocalContentColor` (>= 4.5:1). */
     val body: Color,
     /** Secondary text: prompts, status lines, notices (>= 4.5:1). */
@@ -100,36 +157,53 @@ internal data class AssistantContentColors(
     /** Accent marks: the idle sparkle, the text cursor (>= 3:1, an icon). */
     val accent: Color,
     /** Error text on this fill (>= 4.5:1). */
-    val error: Color
+    val error: Color,
+    /** Decorative marks (the typing dots): a translucent muted tone when that still reads, else solid (>= 3:1). */
+    val indicator: Color
 ) {
+    /** The container colour itself; kept for callers that paint the fill. */
+    val fill: Color get() = container
+
     companion object {
-        fun on(fill: Color, scheme: ColorScheme): AssistantContentColors = AssistantContentColors(
-            fill = fill,
-            body = AssistantContrast.pick(
-                fill, listOf(scheme.onSurface, scheme.inverseOnSurface), AssistantContrast.BODY_TEXT
-            ),
-            muted = AssistantContrast.pick(
-                fill, listOf(scheme.onSurfaceVariant, scheme.onSurface, scheme.inverseOnSurface),
-                AssistantContrast.BODY_TEXT
-            ),
-            accent = AssistantContrast.pick(
-                fill, listOf(scheme.primary, scheme.onPrimaryContainer, scheme.onSurface, scheme.inverseOnSurface),
-                AssistantContrast.ICON
-            ),
-            error = AssistantContrast.pick(
-                fill, listOf(scheme.error, scheme.onErrorContainer, scheme.onSurface, scheme.inverseOnSurface),
+        fun on(container: Color, scheme: ColorScheme, mode: AssistantSurfaceMode): AssistantContentColors {
+            val fills = assistantFills(container, scheme, mode)
+            val body = AssistantContrast.pick(
+                fills, listOf(scheme.onSurface, scheme.inverseOnSurface), AssistantContrast.BODY_TEXT
+            )
+            val muted = AssistantContrast.pick(
+                fills, listOf(scheme.onSurfaceVariant, scheme.onSurface, scheme.inverseOnSurface),
                 AssistantContrast.BODY_TEXT
             )
-        )
+            return AssistantContentColors(
+                container = container,
+                fills = fills,
+                body = body,
+                muted = muted,
+                accent = AssistantContrast.pick(
+                    fills,
+                    listOf(scheme.primary, scheme.onPrimaryContainer, scheme.onSurface, scheme.inverseOnSurface),
+                    AssistantContrast.ICON
+                ),
+                error = AssistantContrast.pick(
+                    fills, listOf(scheme.error, scheme.onErrorContainer, scheme.onSurface, scheme.inverseOnSurface),
+                    AssistantContrast.BODY_TEXT
+                ),
+                indicator = AssistantContrast.pick(
+                    fills, listOf(muted.copy(alpha = 0.6f), muted, body), AssistantContrast.ICON
+                )
+            )
+        }
     }
 }
 
 /**
  * Every fill the assistant window paints and the content colour resolved for each, from one
- * [ColorScheme]. The overlay reads colours from here instead of from theme roles; [pairs] lists
- * the same values for the contrast test, so the test and the UI cannot drift apart.
+ * [ColorScheme] and surface [mode]. The overlay reads colours from here instead of from theme
+ * roles; [pairs] lists the same values for the contrast test, so the test and the UI cannot
+ * drift apart.
  */
 internal data class AssistantSurfacePalette(
+    val mode: AssistantSurfaceMode,
     /** The 76dp pill: its feathered fill (or opaque surface) and the text/icons on it. */
     val pill: AssistantContentColors,
     /** The answer surface above the pill. */
@@ -161,16 +235,23 @@ internal data class AssistantSurfacePalette(
 ) {
     fun glyph(phase: AssistantPhase): AssistantTonal = glyphs.getValue(phase)
 
-    /** Every container/content pair with its required ratio. */
+    /** Every container/content pair with its required ratio, one per fill the container can present. */
     fun pairs(): List<AssistantContrastPair> = buildList {
         fun text(name: String, c: AssistantContentColors) {
-            add(AssistantContrastPair("$name body", c.fill, c.body, AssistantContrast.BODY_TEXT))
-            add(AssistantContrastPair("$name muted", c.fill, c.muted, AssistantContrast.BODY_TEXT))
-            add(AssistantContrastPair("$name accent", c.fill, c.accent, AssistantContrast.ICON))
-            add(AssistantContrastPair("$name error", c.fill, c.error, AssistantContrast.BODY_TEXT))
+            c.fills.forEachIndexed { i, fill ->
+                val n = if (c.fills.size == 1) name else "$name[$i]"
+                add(AssistantContrastPair("$n body", fill, c.body, AssistantContrast.BODY_TEXT))
+                add(AssistantContrastPair("$n muted", fill, c.muted, AssistantContrast.BODY_TEXT))
+                add(AssistantContrastPair("$n accent", fill, c.accent, AssistantContrast.ICON))
+                add(AssistantContrastPair("$n error", fill, c.error, AssistantContrast.BODY_TEXT))
+                add(AssistantContrastPair("$n indicator", fill, c.indicator, AssistantContrast.ICON))
+            }
         }
         fun tonal(name: String, t: AssistantTonal, minimum: Double) {
-            add(AssistantContrastPair(name, t.container, t.content, minimum))
+            t.fills.forEachIndexed { i, fill ->
+                val n = if (t.fills.size == 1) name else "$name[$i]"
+                add(AssistantContrastPair(n, fill, t.content, minimum))
+            }
         }
         text("pill", pill)
         text("answer", answer)
@@ -185,45 +266,66 @@ internal data class AssistantSurfacePalette(
         tonal("stop button", stopButton, AssistantContrast.ICON)
         tonal("interrupt button", interruptButton, AssistantContrast.ICON)
         tonal("thinking badge", thinkingBadge, AssistantContrast.ICON)
-        for ((phase, glyph) in glyphs) {
-            val container = if (glyph.container.alpha == 0f) pill.fill else glyph.container
-            add(AssistantContrastPair("glyph $phase", container, glyph.content, AssistantContrast.ICON))
-        }
+        for ((phase, glyph) in glyphs) tonal("glyph $phase", glyph, AssistantContrast.ICON)
     }
 
     companion object {
-        fun resolve(scheme: ColorScheme): AssistantSurfacePalette {
-            fun tonal(container: Color, preferred: Color, minimum: Double) = AssistantTonal(
-                container,
-                AssistantContrast.pick(
-                    container, listOf(preferred, scheme.onSurface, scheme.inverseOnSurface), minimum
+        fun resolve(scheme: ColorScheme, mode: AssistantSurfaceMode = AssistantSurfaceMode.Opaque): AssistantSurfacePalette {
+            // Tonal containers are painted as plain backgrounds or Material buttons, never through
+            // the glass Surface wrapper (buttons keep their own fill under Sea Glass; see
+            // SeaGlassMaterialComponents.glassColors, which only clears container colours of the
+            // wrapped components the assistant does not use), so they are opaque in every mode.
+            fun tonal(container: Color, preferred: Color, minimum: Double, over: Color? = null): AssistantTonal {
+                val fills = if (over == null) assistantFills(container, scheme, AssistantSurfaceMode.Opaque)
+                else listOf(AssistantContrast.compositeOver(container, over))
+                return AssistantTonal(
+                    container,
+                    AssistantContrast.pick(fills, listOf(preferred, scheme.onSurface, scheme.inverseOnSurface), minimum),
+                    fills
                 )
-            )
-            val pillFill = AssistantColors.pillFill(scheme)
-            val pill = AssistantContentColors.on(pillFill, scheme)
-            val answerFill = AssistantColors.answerSurface(scheme)
+            }
+            val pill = AssistantContentColors.on(AssistantColors.pillFill(scheme), scheme, mode)
+            val answer = AssistantContentColors.on(AssistantColors.answerSurface(scheme), scheme, mode)
             val glyphs = AssistantPhase.values().associateWith { phase ->
                 val container = AssistantColors.glyphContainer(scheme, phase)
                 when (phase) {
-                    AssistantPhase.Idle -> AssistantTonal(container, pill.accent)
+                    // Transparent container: the sparkle sits on the pill's own fill(s).
+                    AssistantPhase.Idle -> AssistantTonal(container, pill.accent, pill.fills)
                     AssistantPhase.Capturing -> tonal(container, scheme.onPrimaryContainer, AssistantContrast.ICON)
                     AssistantPhase.Thinking -> tonal(container, scheme.onSecondaryContainer, AssistantContrast.ICON)
                     AssistantPhase.Speaking -> tonal(container, scheme.onTertiaryContainer, AssistantContrast.ICON)
                 }
             }
             return AssistantSurfacePalette(
+                mode = mode,
                 pill = pill,
-                answer = AssistantContentColors.on(answerFill, scheme),
-                thinking = AssistantContentColors.on(AssistantColors.thinkingSurface(scheme), scheme),
-                toolbar = AssistantContentColors.on(AssistantColors.toolbarSurface(scheme), scheme),
-                notice = AssistantContentColors.on(scheme.surfaceContainerHigh, scheme),
-                errorNotice = tonal(scheme.errorContainer, scheme.onErrorContainer, AssistantContrast.BODY_TEXT),
-                query = tonal(AssistantColors.querySurface(scheme), scheme.onPrimaryContainer, AssistantContrast.BODY_TEXT),
+                answer = answer,
+                thinking = AssistantContentColors.on(AssistantColors.thinkingSurface(scheme), scheme, mode),
+                toolbar = AssistantContentColors.on(AssistantColors.toolbarSurface(scheme), scheme, mode),
+                notice = AssistantContentColors.on(scheme.surfaceContainerHigh, scheme, mode),
+                // The error notice and the question bubble are glass Surfaces too.
+                errorNotice = AssistantTonal(
+                    scheme.errorContainer,
+                    AssistantContrast.pick(
+                        assistantFills(scheme.errorContainer, scheme, mode),
+                        listOf(scheme.onErrorContainer, scheme.error, scheme.onSurface, scheme.inverseOnSurface),
+                        AssistantContrast.BODY_TEXT
+                    ),
+                    assistantFills(scheme.errorContainer, scheme, mode)
+                ),
+                query = AssistantTonal(
+                    AssistantColors.querySurface(scheme),
+                    AssistantContrast.pick(
+                        assistantFills(AssistantColors.querySurface(scheme), scheme, mode),
+                        listOf(scheme.onPrimaryContainer, scheme.onSurface, scheme.inverseOnSurface),
+                        AssistantContrast.BODY_TEXT
+                    ),
+                    assistantFills(AssistantColors.querySurface(scheme), scheme, mode)
+                ),
                 chip = tonal(scheme.secondaryContainer, scheme.onSecondaryContainer, AssistantContrast.BODY_TEXT),
                 continueChip = tonal(
-                    AssistantContrast.compositeOver(scheme.primaryContainer.copy(alpha = 0.7f), answerFill),
-                    scheme.onPrimaryContainer,
-                    AssistantContrast.BODY_TEXT
+                    scheme.primaryContainer.copy(alpha = 0.7f), scheme.onPrimaryContainer,
+                    AssistantContrast.BODY_TEXT, over = answer.fills.first()
                 ),
                 primaryButton = tonal(scheme.primary, scheme.onPrimary, AssistantContrast.ICON),
                 stopButton = tonal(scheme.primaryContainer, scheme.onPrimaryContainer, AssistantContrast.ICON),

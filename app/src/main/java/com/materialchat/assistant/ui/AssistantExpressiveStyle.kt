@@ -170,5 +170,9 @@ internal object AssistantColors {
 @Composable
 internal fun rememberAssistantSurfacePalette(): AssistantSurfacePalette {
     val scheme = MaterialTheme.colorScheme
-    return remember(scheme) { AssistantSurfacePalette.resolve(scheme) }
+    // Under Sea Glass the shared Surface wrapper makes every container transparent glass over
+    // the window backdrop, so the fills the text sits on are not the container colours.
+    val mode = if (com.materialchat.ui.components.seaglass.LocalSeaGlassEnabled.current) AssistantSurfaceMode.SeaGlass
+    else AssistantSurfaceMode.Opaque
+    return remember(scheme, mode) { AssistantSurfacePalette.resolve(scheme, mode) }
 }
