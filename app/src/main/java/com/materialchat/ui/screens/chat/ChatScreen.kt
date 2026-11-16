@@ -450,7 +450,6 @@ fun ChatScreen(
                     onConversationStarterSelected = { starter ->
                         viewModel.updateInputText(starter)
                     },
-                    onFusionToggle = { viewModel.toggleFusionMode() },
                     onShowFusionSelector = { viewModel.showFusionModelSelector() },
                     editingMessageId = state.editingMessageId,
                     editingText = state.editingText,
@@ -601,7 +600,6 @@ private fun ChatContent(
     reasoningEffort: ReasoningEffort,
     onReasoningEffortChange: (ReasoningEffort) -> Unit,
     onConversationStarterSelected: (String) -> Unit,
-    onFusionToggle: () -> Unit,
     onShowFusionSelector: () -> Unit,
     editingMessageId: String?,
     editingText: String,
@@ -866,9 +864,6 @@ private fun ChatContent(
                 onRemoveAttachment = onRemoveAttachment,
                 reasoningEffort = reasoningEffort,
                 onReasoningEffortChange = onReasoningEffortChange,
-                fusionEnabled = state.fusionConfig.isEnabled,
-                fusionModelCount = state.fusionConfig.selectedModels.size,
-                onFusionToggle = onFusionToggle,
                 hapticsEnabled = state.hapticsEnabled,
                 shouldAutoFocus = state.messages.isEmpty(),
                 quotedMessage = quotedMessage,

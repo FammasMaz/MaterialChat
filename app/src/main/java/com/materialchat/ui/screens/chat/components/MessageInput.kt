@@ -146,9 +146,6 @@ fun MessageInput(
     onRemoveAttachment: (Attachment) -> Unit = {},
     reasoningEffort: ReasoningEffort = ReasoningEffort.HIGH,
     onReasoningEffortChange: (ReasoningEffort) -> Unit = {},
-    fusionEnabled: Boolean = false,
-    fusionModelCount: Int = 0,
-    onFusionToggle: () -> Unit = {},
     modifier: Modifier = Modifier,
     hapticsEnabled: Boolean = true,
     shouldAutoFocus: Boolean = false,
@@ -275,18 +272,6 @@ fun MessageInput(
                     }
                 )
             }
-
-            // Fusion mode toggle - M3 Expressive merge icon with badge.
-            // Menu is a Popup, so do not shove neighbors sideways when the plus opens.
-            FusionModeToggle(
-                isEnabled = fusionEnabled,
-                modelCount = fusionModelCount,
-                enabled = !isStreaming,
-                onClick = {
-                    haptics.perform(HapticPattern.CLICK, hapticsEnabled)
-                    onFusionToggle()
-                }
-            )
 
             // Text input pill - shared element for FAB morph
             val sharedTransitionScope = LocalSharedTransitionScope.current
