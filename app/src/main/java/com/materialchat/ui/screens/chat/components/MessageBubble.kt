@@ -61,8 +61,6 @@ import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Share
-import androidx.compose.material.icons.outlined.Bolt
-import androidx.compose.material.icons.outlined.BookmarkBorder
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.ErrorOutline
 import androidx.compose.material3.ButtonDefaults
@@ -73,7 +71,6 @@ import com.materialchat.ui.components.ExpressiveButton
 import com.materialchat.ui.components.ExpressiveButtonStyle
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ripple
 import com.materialchat.ui.components.seaglass.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -565,127 +562,49 @@ fun MessageBubble(
                     }
                 }
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    // Action buttons (including bookmark and stats toggle)
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        if (messageItem.showActions) {
-                            MessageActions(
-                                showCopy = displayContent.isNotEmpty(),
-                                showRegenerate = messageItem.isLastAssistantMessage && !isImageGenerationMessage && onRegenerate != null,
-                                showBranch = onBranch != null,
-                                showRedoWithModel = messageItem.isLastAssistantMessage && !isImageGenerationMessage && onRedoWithModel != null,
-                                onCopy = onCopy,
-                                onRegenerate = onRegenerate,
-                                onBranch = onBranch,
-                                onRedoWithModel = onRedoWithModel
-                            )
-                        }
-
-                        // Speed stats — one element morphing between button and pill
-                        if (hasStats) {
-                            val st = messageItem.generationStats
-                            StatsPillButton(
-                                expanded = statsExpanded,
-                                tpsText = st.lastTps?.let { "%.0f tok/s".format(it) },
-                                ttftText = st.lastTtftMs?.let(::formatSpeedMs),
-                                avgText = st.avgTps?.let { "avg %.0f".format(it) },
-                                totalText = message.totalDurationMs?.let(::formatSpeedMs),
-                                onClick = { statsExpanded = !statsExpanded }
-                            )
-                        }
-
-                        // Bookmark button — tap to toggle, long-press for detail sheet
-                        if (onBookmarkToggle != null) {
-                            val bookmarkInteractionSource = remember { MutableInteractionSource() }
-                            val bookmarkPressed by bookmarkInteractionSource.collectIsPressedAsState()
-                            val bookmarkRadius by animateDpAsState(
-                                targetValue = when {
-                                    bookmarkPressed -> 14.dp
-                                    isBookmarked -> 18.dp
-                                    else -> 24.dp
-                                },
-                                animationSpec = com.materialchat.ui.theme.ExpressiveMotion.Spatial.shapeMorph(),
-                                label = "bookmarkActionShape"
-                            )
-                            val bookmarkScale by animateFloatAsState(
-                                targetValue = if (bookmarkPressed) 0.90f else 1f,
-                                animationSpec = com.materialchat.ui.theme.ExpressiveMotion.Spatial.scale(),
-                                label = "bookmarkActionScale"
-                            )
-                            val bookmarkContainer by animateColorAsState(
-                                targetValue = if (isBookmarked) {
-                                    MaterialTheme.colorScheme.primaryContainer
-                                } else {
-                                    MaterialTheme.colorScheme.surfaceContainerHigh
-                                },
-                                animationSpec = com.materialchat.ui.theme.ExpressiveMotion.Effects.color(),
-                                label = "bookmarkActionContainer"
-                            )
-                            val bookmarkContent by animateColorAsState(
-                                targetValue = if (isBookmarked) {
-                                    MaterialTheme.colorScheme.onPrimaryContainer
-                                } else {
-                                    MaterialTheme.colorScheme.onSurfaceVariant
-                                },
-                                animationSpec = com.materialchat.ui.theme.ExpressiveMotion.Effects.color(),
-                                label = "bookmarkActionContent"
-                            )
-
-                            Surface(
-                                modifier = Modifier
-                                    .size(44.dp)
-                                    .graphicsLayer {
-                                        scaleX = bookmarkScale
-                                        scaleY = bookmarkScale
-                                    }
-                                    .combinedClickable(
-                                        interactionSource = bookmarkInteractionSource,
-                                        indication = ripple(),
-                                        onClick = {
-                                            haptics.perform(HapticPattern.MORPH_TRANSITION, hapticsEnabled)
-                                            onBookmarkToggle()
-                                        },
-                                        onLongClick = {
-                                            haptics.perform(HapticPattern.LONG_PRESS, hapticsEnabled)
-                                            onBookmarkLongPress?.invoke()
-                                        }
-                                    ),
-                                shape = RoundedCornerShape(bookmarkRadius),
-                                color = bookmarkContainer,
-                                contentColor = bookmarkContent,
-                                tonalElevation = 0.dp,
-                                shadowElevation = 0.dp
-                            ) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    Icon(
-                                        imageVector = if (isBookmarked) Icons.Filled.Bookmark
-                                                      else Icons.Outlined.BookmarkBorder,
-                                        contentDescription = if (isBookmarked) "Remove bookmark"
-                                                             else "Bookmark message",
-                                        modifier = Modifier.size(20.dp),
-                                        tint = bookmarkContent
-                                    )
-                                }
-                            }
-                        }
-                    }
-
-                    // Reply time
-                    if (message.totalDurationMs != null) {
-                        Text(
-                            text = formatDuration(message.totalDurationMs),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.55f)
+                val st = messageItem.generationStats
+                MessageActionRow(
+                    specs = if (messageItem.showActions) {
+                        messageActionSpecs(
+                            showCopy = displayContent.isNotEmpty(),
+                            showBranch = onBranch != null,
+                            showRedoWithModel = messageItem.isLastAssistantMessage && !isImageGenerationMessage && onRedoWithModel != null,
+                            showRegenerate = messageItem.isLastAssistantMessage && !isImageGenerationMessage && onRegenerate != null
                         )
-                    }
-                }
+                    } else {
+                        emptyList()
+                    },
+                    onAction = { kind ->
+                        when (kind) {
+                            MessageActionKind.Copy -> onCopy()
+                            MessageActionKind.Branch -> onBranch?.invoke()
+                            MessageActionKind.RedoWithModel -> onRedoWithModel?.invoke()
+                            MessageActionKind.Regenerate -> onRegenerate?.invoke()
+                        }
+                    },
+                    stats = if (hasStats && st != null) {
+                        MessageSpeedStats(
+                            tps = st.lastTps?.let { "%.0f tok/s".format(it) },
+                            ttft = st.lastTtftMs?.let(::formatSpeedMs),
+                            total = message.totalDurationMs?.let(::formatSpeedMs),
+                            avg = st.avgTps?.let { "avg %.0f".format(it) }
+                        )
+                    } else {
+                        null
+                    },
+                    statsExpanded = statsExpanded,
+                    onToggleStats = { statsExpanded = !statsExpanded },
+                    bookmark = onBookmarkToggle?.let { toggle ->
+                        BookmarkActionState(
+                            isBookmarked = isBookmarked,
+                            onToggle = toggle,
+                            onLongPress = onBookmarkLongPress
+                        )
+                    },
+                    elapsedLabel = message.totalDurationMs?.let(::formatDuration),
+                    hapticsEnabled = hapticsEnabled,
+                    modifier = Modifier.fillMaxWidth()
+                )
             } else if (isAssistant && !message.isStreaming && displayContent.isEmpty() && messageItem.isErrored && onRetry != null) {
                 // Error/empty response: show retry button
                 Spacer(modifier = Modifier.height(8.dp))
