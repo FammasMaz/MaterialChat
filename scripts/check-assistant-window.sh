@@ -1,6 +1,24 @@
 #!/usr/bin/env bash
 set -euo pipefail
 out="${1:-test-evidence/assistant}"
+
+# adb exits 255 when its transport to the emulator drops for a moment (the hosted runner's
+# emulator does this between steps; run 43980771577 lost the device right after the keyboard
+# tap with every test and every assertion green). Retry only that exit code, after waiting for
+# the device to come back; any other failure, and every assertion below, still aborts the gate.
+adb() {
+  local attempt rc
+  for attempt in 1 2 3; do
+    command adb "$@" && return 0
+    rc=$?
+    [ "$rc" -eq 255 ] || return "$rc"
+    echo "adb transport dropped (exit 255) on attempt $attempt: adb $*; waiting for the device" >&2
+    timeout 90 command adb wait-for-device || true
+    sleep 3
+  done
+  echo "adb transport did not recover: adb $*" >&2
+  return 255
+}
 mkdir -p "$out"
 component=com.materialchat/com.materialchat.assistant.service.MaterialChatVoiceInteractionService
 # Connected tests uninstall their target APK on completion; restore it for system invocation.
