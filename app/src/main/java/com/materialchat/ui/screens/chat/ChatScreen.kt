@@ -450,7 +450,6 @@ fun ChatScreen(
                     onConversationStarterSelected = { starter ->
                         viewModel.updateInputText(starter)
                     },
-                    onShowFusionSelector = { viewModel.showFusionModelSelector() },
                     editingMessageId = state.editingMessageId,
                     editingText = state.editingText,
                     onStartEditing = { viewModel.startEditingMessage(it) },
@@ -600,7 +599,6 @@ private fun ChatContent(
     reasoningEffort: ReasoningEffort,
     onReasoningEffortChange: (ReasoningEffort) -> Unit,
     onConversationStarterSelected: (String) -> Unit,
-    onShowFusionSelector: () -> Unit,
     editingMessageId: String?,
     editingText: String,
     onStartEditing: (String) -> Unit,
