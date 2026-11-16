@@ -104,8 +104,10 @@ import kotlin.math.sin
  *
  * @param headerScrollState Scroll-driven fold state from [rememberChatHeaderScrollState]; null
  *   keeps the header permanently expanded.
- * @param scrollBehavior Kept for call-site compatibility; its content offset lifts the container
- *   tone once content has scrolled under the bar.
+ * @param scrollBehavior Kept for call-site compatibility only. The container tone is fixed
+ *   (see [resolveChatHeaderTone]): it never lifts when content scrolls under the bar, because
+ *   the bar is cut with 24dp bottom corners over a scaffold of the same colour and any tonal
+ *   difference reveals those corners as an artifact while the list scrolls.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -153,12 +155,18 @@ fun ChatTopBar(
     val shownTitle = revealedTitle(title, revealProgress.value)
     val titleAlpha = (revealProgress.value * 5f).coerceIn(0f, 1f)
 
-    val contentScrolledUnder = (scrollBehavior?.state?.contentOffset ?: 0f) < -1f
+    // One tone in every scroll and fold state: the same colour as the scaffold behind the bar,
+    // so neither a colour shift nor the bar's bottom corners show while the list scrolls.
     val containerColor by animateColorAsState(
-        targetValue = when {
-            isEphemeral -> scheme.tertiaryContainer
-            contentScrolledUnder -> scheme.surfaceContainerHigh
-            else -> scheme.surfaceContainer
+        targetValue = when (
+            resolveChatHeaderTone(
+                isEphemeral = isEphemeral,
+                contentScrolledUnder = (scrollBehavior?.state?.contentOffset ?: 0f) < -1f,
+                isCollapsed = isCollapsed
+            )
+        ) {
+            ChatHeaderTone.Ephemeral -> scheme.tertiaryContainer
+            ChatHeaderTone.Standard -> scheme.surfaceContainer
         },
         animationSpec = ExpressiveMotion.Effects.color(),
         label = "chatHeaderContainer"

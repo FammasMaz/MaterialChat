@@ -54,3 +54,23 @@ fun revealedTitle(title: String, progress: Float): String {
     val visible = (title.length * progress.coerceIn(0f, 1f)).toInt()
     return title.take(visible)
 }
+
+/**
+ * Container tone of the chat header. [Standard] is the scaffold's own `surfaceContainer`,
+ * [Ephemeral] the temporary-chat `tertiaryContainer`.
+ */
+enum class ChatHeaderTone { Standard, Ephemeral }
+
+/**
+ * Resolves the header's container tone. Deliberately independent of scroll position and of
+ * the fold state: the header is cut with 24dp bottom corners over a scaffold of the same
+ * colour, so any tonal lift while content scrolls under it both shifts the colour and reveals
+ * those corners. Only the conversation kind changes the tone.
+ */
+@Suppress("UNUSED_PARAMETER")
+fun resolveChatHeaderTone(
+    isEphemeral: Boolean,
+    contentScrolledUnder: Boolean = false,
+    isCollapsed: Boolean = false
+): ChatHeaderTone =
+    if (isEphemeral) ChatHeaderTone.Ephemeral else ChatHeaderTone.Standard
