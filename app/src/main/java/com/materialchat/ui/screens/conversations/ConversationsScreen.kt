@@ -1108,7 +1108,7 @@ private fun ConversationList(
                 start = 16.dp,
                 end = 24.dp,
                 top = 16.dp,
-                bottom = 88.dp // Extra padding for FAB
+                bottom = listBottomClearance() // clears the floating toolbar and its "+"
             ),
             verticalArrangement = Arrangement.spacedBy(SegmentedRowShapes.Gap)
         ) {
@@ -1159,7 +1159,7 @@ private fun ConversationList(
             hapticsEnabled = hapticsEnabled,
             modifier = Modifier
                 .align(Alignment.CenterEnd)
-                .padding(top = 16.dp, bottom = 88.dp, end = 2.dp)
+                .padding(top = 16.dp, bottom = listBottomClearance(), end = 2.dp)
         )
     }
 }
@@ -1192,7 +1192,7 @@ private fun GroupedConversationList(
                 start = 16.dp,
                 end = 24.dp,
                 top = 16.dp,
-                bottom = 88.dp // Extra padding for FAB
+                bottom = listBottomClearance() // clears the floating toolbar and its "+"
             ),
             verticalArrangement = Arrangement.spacedBy(SegmentedRowShapes.Gap)
         ) {
@@ -1243,7 +1243,7 @@ private fun GroupedConversationList(
             hapticsEnabled = hapticsEnabled,
             modifier = Modifier
                 .align(Alignment.CenterEnd)
-                .padding(top = 16.dp, bottom = 88.dp, end = 2.dp)
+                .padding(top = 16.dp, bottom = listBottomClearance(), end = 2.dp)
         )
     }
 }

@@ -190,7 +190,8 @@ fun BranchConversationItem(
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f, fill = false)
                         )
 
                         if (conversationItem.conversation.isArchived) {
@@ -213,11 +214,7 @@ fun BranchConversationItem(
                 if (conversationItem.isStreaming) {
                     BranchActiveIndicator()
                 } else {
-                    Text(
-                        text = conversationItem.relativeTime,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    RowDateLabel(text = conversationItem.relativeTime)
                 }
             }
         }

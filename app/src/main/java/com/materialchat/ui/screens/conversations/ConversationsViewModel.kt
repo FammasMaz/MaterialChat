@@ -1,6 +1,5 @@
 package com.materialchat.ui.screens.conversations
 
-import android.text.format.DateUtils
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.materialchat.data.local.preferences.AppPreferences
@@ -473,16 +472,12 @@ class ConversationsViewModel @Inject constructor(
     }
 
     /**
-     * Formats a timestamp to a human-readable relative time string.
+     * Formats a timestamp to a compact single-line date label (see [RelativeDateLabel]).
+     * DateUtils' relative spans ("4 novembre") were long enough to be squeezed into
+     * one glyph per line next to a long model id.
      */
     private fun formatRelativeTime(timestamp: Long): String {
-        val now = System.currentTimeMillis()
-        return DateUtils.getRelativeTimeSpanString(
-            timestamp,
-            now,
-            DateUtils.MINUTE_IN_MILLIS,
-            DateUtils.FORMAT_ABBREV_RELATIVE
-        ).toString()
+        return RelativeDateLabel.format(timestampMs = timestamp, nowMs = System.currentTimeMillis())
     }
 
     private fun buildDisplayData(

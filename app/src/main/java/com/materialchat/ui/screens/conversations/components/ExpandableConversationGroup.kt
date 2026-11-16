@@ -217,13 +217,17 @@ fun ExpandableConversationGroup(
                                         .padding(horizontal = 8.dp, vertical = 2.dp)
                                 )
 
-                                // Model name
+                                // Model name absorbs the squeeze (weighted + ellipsis) so the
+                                // date is never crushed into one glyph per line.
                                 Text(
                                     text = group.parent.conversation.modelName,
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
+                                    overflow = TextOverflow.Ellipsis,
+                                    // Only weighted child: the unweighted date is measured
+                                    // first and keeps its intrinsic width.
+                                    modifier = Modifier.weight(1f)
                                 )
 
                                 if (group.parent.conversation.isArchived) {
@@ -252,16 +256,12 @@ fun ExpandableConversationGroup(
                                 }
 
                                 // Time rides the metadata line: as a sibling of the title it
-                                // clipped names that had room to spare.
-                                Spacer(modifier = Modifier.weight(1f))
+                                // clipped names that had room to spare. No weighted spacer: it
+                                // would halve the model name's share of the slack.
                                 if (group.parent.isStreaming) {
                                     GroupActiveIndicator()
                                 } else {
-                                    Text(
-                                        text = group.parent.relativeTime,
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
+                                    RowDateLabel(text = group.parent.relativeTime)
                                 }
                             }
                         }

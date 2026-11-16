@@ -184,13 +184,18 @@ fun ConversationItem(
                             .padding(horizontal = 8.dp, vertical = 2.dp)
                     )
 
-                    // Model name - uses onSurfaceVariant
+                    // Model name absorbs the squeeze: weighted so a long id
+                    // ("upstage_studio/claude-fable-5.1") ellipsises instead of
+                    // crushing the date into one glyph per line.
                     Text(
                         text = conversationItem.conversation.modelName,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                        overflow = TextOverflow.Ellipsis,
+                        // fill = true: this is the only weighted child, so the date (measured
+                        // first, unweighted) always keeps its intrinsic width.
+                        modifier = Modifier.weight(1f)
                     )
 
                     if (conversationItem.conversation.isArchived) {
@@ -206,16 +211,12 @@ fun ConversationItem(
                     }
 
                     // Time rides the metadata line so the title gets the full row width; as a
-                    // sibling of the title it clipped names that had room to spare.
-                    Spacer(modifier = Modifier.weight(1f))
+                    // sibling of the title it clipped names that had room to spare. No weighted
+                    // spacer here: it would halve the model name's share of the slack.
                     if (conversationItem.isStreaming) {
                         ActiveConversationIndicator()
                     } else {
-                        Text(
-                            text = conversationItem.relativeTime,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                        RowDateLabel(text = conversationItem.relativeTime)
                     }
                 }
 
@@ -250,12 +251,13 @@ fun ConversationItem(
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun ActiveConversationIndicator() {
-    Column(
-        horizontalAlignment = Alignment.End,
-        verticalArrangement = Arrangement.spacedBy(4.dp)
+    // Horizontal so a streaming row stays the same height as its neighbours.
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
         LoadingIndicator(
-            modifier = Modifier.size(28.dp),
+            modifier = Modifier.size(22.dp),
             color = MaterialTheme.colorScheme.primary
         )
         Text(
