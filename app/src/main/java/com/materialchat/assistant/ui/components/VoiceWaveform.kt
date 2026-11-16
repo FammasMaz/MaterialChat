@@ -4,6 +4,7 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.SpringSpec
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
@@ -32,6 +33,14 @@ import com.materialchat.ui.theme.ExpressiveMotion
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.sin
+
+/**
+ * Spring for one waveform bar moving from [current] to [target]: expressive overshoot on the way
+ * up (the spatial playful spring) and a critically damped settle on the way down, so a loud
+ * syllable snaps in and the decay never re-rises past where it is heading.
+ */
+internal fun waveformBarSpec(current: Float, target: Float): SpringSpec<Float> =
+    if (target >= current) ExpressiveMotion.Spatial.playful() else ExpressiveMotion.Spatial.collapse()
 
 /**
  * M3 Expressive voice waveform visualization component.
@@ -70,9 +79,10 @@ fun VoiceWaveform(
         amplitudeData.amplitudes.forEachIndexed { index, amplitude ->
             if (index < barAnimatables.size) {
                 launch {
-                    barAnimatables[index].animateTo(
+                    val bar = barAnimatables[index]
+                    bar.animateTo(
                         targetValue = amplitude,
-                        animationSpec = ExpressiveMotion.Spatial.playful()
+                        animationSpec = waveformBarSpec(current = bar.value, target = amplitude)
                     )
                 }
             }
