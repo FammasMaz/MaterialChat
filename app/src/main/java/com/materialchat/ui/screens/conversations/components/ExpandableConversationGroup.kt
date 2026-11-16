@@ -49,6 +49,7 @@ import com.materialchat.ui.screens.conversations.ConversationGroupUiItem
 import com.materialchat.ui.components.HapticPattern
 import com.materialchat.ui.components.rememberHapticFeedback
 import com.materialchat.ui.theme.ExpressiveMotion
+import com.materialchat.ui.theme.ExpressiveShapes
 
 /**
  * M3 Expressive expandable conversation group component.
@@ -110,6 +111,13 @@ fun ExpandableConversationGroup(
         label = "chevronRotation"
     )
 
+    // Chevron tile rounds off while the group is open (spatial shape-morph spring)
+    val chevronCorner by animateDpAsState(
+        targetValue = if (group.isExpanded) 16.dp else 8.dp,
+        animationSpec = ExpressiveMotion.Spatial.shapeMorph(),
+        label = "chevronCorner"
+    )
+
     // Calculate corner radii based on position and expansion state
     // M3 Expressive: Connected items share edges
     val topCornerRadius = if (isFirst) cornerRadius else seamRadius
@@ -169,20 +177,28 @@ fun ExpandableConversationGroup(
                             .padding(horizontal = 16.dp, vertical = 12.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        // Chat icon or emoji - 40dp for visual prominence
-                        if (group.parent.conversation.icon != null) {
-                            Text(
-                                text = group.parent.conversation.icon,
-                                style = MaterialTheme.typography.headlineMedium,
-                                modifier = Modifier.size(40.dp)
-                            )
-                        } else {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Outlined.Chat,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(40.dp)
-                            )
+                        // Tonal squircle tile for the icon or emoji: the same leading
+                        // treatment as ConversationItem so both row kinds read as one list.
+                        Box(
+                            modifier = Modifier
+                                .size(44.dp)
+                                .clip(ExpressiveShapes.Tile)
+                                .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            if (group.parent.conversation.icon != null) {
+                                Text(
+                                    text = group.parent.conversation.icon,
+                                    style = MaterialTheme.typography.headlineSmall
+                                )
+                            } else {
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Outlined.Chat,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            }
                         }
 
                         Spacer(modifier = Modifier.width(16.dp))
@@ -274,8 +290,13 @@ fun ExpandableConversationGroup(
                                         haptics.perform(HapticPattern.CLICK, hapticsEnabled)
                                         onExpandToggle(group.parent.conversation.id)
                                     },
-                                    shape = RoundedCornerShape(8.dp), // M3: small
-                                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                    // Morphs small → rounder when open, on the shape-morph spring.
+                                    shape = RoundedCornerShape(chevronCorner),
+                                    color = if (group.isExpanded) {
+                                        MaterialTheme.colorScheme.secondaryContainer
+                                    } else {
+                                        MaterialTheme.colorScheme.surfaceContainerHigh
+                                    },
                                     modifier = Modifier.size(32.dp) // Visual size, touch target handled by parent
                                 ) {
                                 Box(contentAlignment = Alignment.Center) {

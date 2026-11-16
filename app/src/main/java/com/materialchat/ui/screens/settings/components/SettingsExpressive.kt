@@ -19,9 +19,11 @@ import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
+import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.ToggleButton
+import androidx.compose.material3.toShape
 import androidx.compose.material3.ToggleButtonDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.key
@@ -84,6 +86,7 @@ val SettingsSheetShape: Shape = object : Shape {
  * @param modifier Optional modifier.
  * @param supporting One-line description shown under the title, if any.
  */
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun SettingsSectionHeader(
     title: String,
@@ -97,9 +100,11 @@ fun SettingsSectionHeader(
             .padding(top = 12.dp, bottom = 2.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
+        // Cookie tile: section headers are the one place on Settings that carries an
+        // expressive silhouette, so they stay scannable as landmarks.
         Surface(
-            modifier = Modifier.size(40.dp),
-            shape = ExpressiveShapes.Tile,
+            modifier = Modifier.size(44.dp),
+            shape = MaterialShapes.Cookie9Sided.toShape(),
             color = MaterialTheme.colorScheme.primaryContainer,
             contentColor = MaterialTheme.colorScheme.onPrimaryContainer
         ) {

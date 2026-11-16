@@ -26,6 +26,9 @@ import androidx.compose.material.icons.outlined.Key
 import androidx.compose.material.icons.outlined.KeyOff
 import com.materialchat.ui.components.seaglass.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.MaterialShapes
+import androidx.compose.material3.toShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -50,6 +53,7 @@ import com.materialchat.ui.components.rememberHapticFeedback
 import com.materialchat.ui.screens.settings.ProviderUiItem
 import com.materialchat.ui.theme.CustomShapes
 import com.materialchat.ui.theme.ExpressiveMotion
+import com.materialchat.ui.theme.ExpressiveShapes
 
 /**
  * Material 3 Expressive provider card component.
@@ -106,7 +110,7 @@ fun ProviderCard(
         modifier = modifier
             .fillMaxWidth()
             .scale(scale)
-            .clip(CustomShapes.ProviderCard)
+            .clip(ExpressiveShapes.Card)
             .pointerInput(Unit) {
                 detectTapGestures(
                     onPress = {
@@ -120,7 +124,7 @@ fun ProviderCard(
         colors = CardDefaults.cardColors(
             containerColor = backgroundColor
         ),
-        shape = CustomShapes.ProviderCard,
+        shape = ExpressiveShapes.Card,
         elevation = CardDefaults.cardElevation(defaultElevation = if (provider.isActive) 3.dp else 1.dp)
     ) {
         Column(
@@ -215,7 +219,7 @@ private fun ProviderTypeIcon(
     Box(
         modifier = modifier
             .size(48.dp)
-            .clip(RoundedCornerShape(18.dp))
+            .clip(ExpressiveShapes.Tile)
             .background(MaterialTheme.colorScheme.secondaryContainer),
         contentAlignment = Alignment.Center
     ) {
@@ -239,14 +243,16 @@ private fun ProviderTypeIcon(
 /**
  * Checkmark indicator for the active provider.
  */
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun ActiveIndicator(
     modifier: Modifier = Modifier
 ) {
+    // Cookie badge: the one expressive shape on the card, reserved for "active".
     Box(
         modifier = modifier
-            .size(32.dp)
-            .clip(CustomShapes.SendButton)
+            .size(34.dp)
+            .clip(MaterialShapes.Cookie9Sided.toShape())
             .background(MaterialTheme.colorScheme.onPrimaryContainer),
         contentAlignment = Alignment.Center
     ) {

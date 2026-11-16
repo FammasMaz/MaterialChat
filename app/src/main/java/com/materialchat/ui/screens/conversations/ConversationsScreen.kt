@@ -34,6 +34,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.lazy.LazyColumn
@@ -51,8 +52,6 @@ import com.materialchat.ui.components.seaglass.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
-import com.materialchat.ui.components.seaglass.FilterChip
-import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialShapes
 import com.materialchat.ui.components.rememberDeviceTilt
@@ -920,6 +919,12 @@ private fun formatMetadataTime(timestamp: Long): String {
     return DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT).format(Date(timestamp))
 }
 
+/**
+ * Chats / Archive switch as one M3 Expressive connected button group: the selected
+ * segment morphs its shape and the pressed one its width on the shared spatial spring.
+ * The archived count stays in the label so no information is lost.
+ */
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun ConversationFilterBar(
     selectedFilter: ConversationListFilter,
@@ -927,46 +932,75 @@ private fun ConversationFilterBar(
     onSelectFilter: (ConversationListFilter) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Row(
-        modifier = modifier,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        FilterChip(
-            selected = selectedFilter == ConversationListFilter.ACTIVE,
-            onClick = { onSelectFilter(ConversationListFilter.ACTIVE) },
-            label = { Text("Chats") },
-            colors = FilterChipDefaults.filterChipColors(
-                selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
-            )
-        )
+    val haptics = rememberHapticFeedback()
+    val activeSelected = selectedFilter == ConversationListFilter.ACTIVE
+    val archivedSelected = selectedFilter == ConversationListFilter.ARCHIVED
+    val activeSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+    val archivedSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
 
-        FilterChip(
-            selected = selectedFilter == ConversationListFilter.ARCHIVED,
-            onClick = { onSelectFilter(ConversationListFilter.ARCHIVED) },
-            label = {
-                Text(
-                    if (archivedCount > 0) "Archive ($archivedCount)" else "Archive"
-                )
-            },
-            leadingIcon = {
-                Icon(
-                    imageVector = if (selectedFilter == ConversationListFilter.ARCHIVED) {
-                        Icons.Outlined.Unarchive
-                    } else {
-                        Icons.Outlined.Archive
-                    },
-                    contentDescription = null,
-                    modifier = Modifier.size(18.dp)
-                )
-            },
-            colors = FilterChipDefaults.filterChipColors(
-                selectedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
-                selectedLabelColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                selectedLeadingIconColor = MaterialTheme.colorScheme.onSecondaryContainer
-            )
+    androidx.compose.material3.ButtonGroup(
+        modifier = modifier,
+        horizontalArrangement = Arrangement.spacedBy(
+            androidx.compose.material3.ButtonGroupDefaults.ConnectedSpaceBetween
         )
+    ) {
+        androidx.compose.material3.ToggleButton(
+            checked = activeSelected,
+            onCheckedChange = {
+                if (!activeSelected) {
+                    haptics.perform(HapticPattern.CLICK)
+                    onSelectFilter(ConversationListFilter.ACTIVE)
+                }
+            },
+            modifier = Modifier
+                .weight(1f)
+                .animateWidth(activeSource),
+            shapes = androidx.compose.material3.ButtonGroupDefaults.connectedLeadingButtonShapes(),
+            interactionSource = activeSource,
+            colors = androidx.compose.material3.ToggleButtonDefaults.toggleButtonColors(
+                checkedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                checkedContentColor = MaterialTheme.colorScheme.onPrimaryContainer
+            )
+        ) {
+            Icon(
+                imageVector = Icons.Outlined.ChatBubbleOutline,
+                contentDescription = null,
+                modifier = Modifier.size(androidx.compose.material3.ToggleButtonDefaults.IconSize)
+            )
+            Spacer(modifier = Modifier.width(androidx.compose.material3.ToggleButtonDefaults.IconSpacing))
+            Text(text = "Chats", maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
+
+        androidx.compose.material3.ToggleButton(
+            checked = archivedSelected,
+            onCheckedChange = {
+                if (!archivedSelected) {
+                    haptics.perform(HapticPattern.CLICK)
+                    onSelectFilter(ConversationListFilter.ARCHIVED)
+                }
+            },
+            modifier = Modifier
+                .weight(1f)
+                .animateWidth(archivedSource),
+            shapes = androidx.compose.material3.ButtonGroupDefaults.connectedTrailingButtonShapes(),
+            interactionSource = archivedSource,
+            colors = androidx.compose.material3.ToggleButtonDefaults.toggleButtonColors(
+                checkedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
+                checkedContentColor = MaterialTheme.colorScheme.onSecondaryContainer
+            )
+        ) {
+            Icon(
+                imageVector = if (archivedSelected) Icons.Outlined.Unarchive else Icons.Outlined.Archive,
+                contentDescription = null,
+                modifier = Modifier.size(androidx.compose.material3.ToggleButtonDefaults.IconSize)
+            )
+            Spacer(modifier = Modifier.width(androidx.compose.material3.ToggleButtonDefaults.IconSpacing))
+            Text(
+                text = if (archivedCount > 0) "Archive ($archivedCount)" else "Archive",
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
     }
 }
 

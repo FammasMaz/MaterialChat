@@ -554,6 +554,7 @@ private fun FormTextField(
 /**
  * Save button with loading state.
  */
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun SaveButton(
     isEditing: Boolean,
@@ -561,11 +562,14 @@ private fun SaveButton(
     canSubmit: Boolean,
     onClick: () -> Unit
 ) {
-    Button(
+    // Shape-morphing M3 Expressive button: rounds off while pressed. The SeaGlass Button
+    // wrapper has no `shapes` parameter, so this is the Material 3 button directly
+    // (same as the home empty-state action).
+    androidx.compose.material3.Button(
         onClick = onClick,
         enabled = canSubmit && !isSaving,
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(24.dp)
+        shapes = androidx.compose.material3.ButtonDefaults.shapes()
     ) {
         if (isSaving) {
             com.materialchat.ui.components.M3ExpressiveInlineLoading(

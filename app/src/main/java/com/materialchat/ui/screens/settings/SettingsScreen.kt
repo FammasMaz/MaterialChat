@@ -1291,7 +1291,7 @@ private fun BackupRestoreSection(
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerLow
         ),
-        shape = RoundedCornerShape(24.dp)
+        shape = ExpressiveShapes.Card
     ) {
         Column(
             modifier = Modifier
@@ -1405,7 +1405,7 @@ private fun PremiumStatusCard(
                 MaterialTheme.colorScheme.onSurface
             }
         ),
-        shape = RoundedCornerShape(24.dp)
+        shape = ExpressiveShapes.Card
     ) {
         Row(
             modifier = Modifier
@@ -1467,7 +1467,7 @@ private fun RemoveAdsCard(
             containerColor = MaterialTheme.colorScheme.secondaryContainer,
             contentColor = MaterialTheme.colorScheme.onSecondaryContainer
         ),
-        shape = RoundedCornerShape(24.dp)
+        shape = ExpressiveShapes.Card
     ) {
         Column(
             modifier = Modifier
@@ -1525,7 +1525,7 @@ private fun RewardedPremiumCard(
             containerColor = MaterialTheme.colorScheme.tertiaryContainer,
             contentColor = MaterialTheme.colorScheme.onTertiaryContainer
         ),
-        shape = RoundedCornerShape(24.dp)
+        shape = ExpressiveShapes.Card
     ) {
         Column(
             modifier = Modifier
@@ -1595,7 +1595,7 @@ private fun ThemeModeSelector(
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerLow
         ),
-        shape = RoundedCornerShape(24.dp)
+        shape = ExpressiveShapes.Card
     ) {
         Column(
             modifier = Modifier
@@ -1643,7 +1643,7 @@ private fun ColorPaletteSelector(
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerLow
         ),
-        shape = RoundedCornerShape(24.dp)
+        shape = ExpressiveShapes.Card
     ) {
         Column(
             modifier = Modifier
@@ -1749,7 +1749,7 @@ private fun ChatBubbleStyleSelector(
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerLow
         ),
-        shape = RoundedCornerShape(24.dp)
+        shape = ExpressiveShapes.Card
     ) {
         Column(
             modifier = Modifier
@@ -1853,7 +1853,7 @@ private fun ControlShapeStyleSelector(
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerLow
         ),
-        shape = RoundedCornerShape(24.dp)
+        shape = ExpressiveShapes.Card
     ) {
         Column(
             modifier = Modifier
@@ -2010,7 +2010,7 @@ private fun FontSizeSelector(
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerLow
         ),
-        shape = RoundedCornerShape(24.dp)
+        shape = ExpressiveShapes.Card
     ) {
         Column(
             modifier = Modifier
@@ -2132,7 +2132,7 @@ private fun AiGeneratedTitlesToggle(
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerLow
         ),
-        shape = RoundedCornerShape(24.dp)
+        shape = ExpressiveShapes.Card
     ) {
         Row(
             modifier = Modifier
@@ -2184,7 +2184,7 @@ private fun PreferOnDeviceTitleModelToggle(
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerLow
         ),
-        shape = RoundedCornerShape(24.dp)
+        shape = ExpressiveShapes.Card
     ) {
         Row(
             modifier = Modifier
@@ -2289,7 +2289,7 @@ private fun TitleGenerationModelField(
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerLow
         ),
-        shape = RoundedCornerShape(24.dp)
+        shape = ExpressiveShapes.Card
     ) {
         Column(
             modifier = Modifier
@@ -2540,7 +2540,7 @@ private fun DefaultImageGenerationModelField(
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerLow
         ),
-        shape = RoundedCornerShape(24.dp)
+        shape = ExpressiveShapes.Card
     ) {
         Column(
             modifier = Modifier
@@ -2645,7 +2645,7 @@ private fun DefaultImageOutputFormatField(
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerLow
         ),
-        shape = RoundedCornerShape(24.dp)
+        shape = ExpressiveShapes.Card
     ) {
         Column(
             modifier = Modifier
@@ -2900,7 +2900,7 @@ private fun AboutSection(
             colors = CardDefaults.cardColors(
                 containerColor = MaterialTheme.colorScheme.surfaceContainerLow
             ),
-            shape = RoundedCornerShape(24.dp)
+            shape = ExpressiveShapes.Card
         ) {
             Row(
                 modifier = Modifier
@@ -2943,7 +2943,7 @@ private fun AboutSection(
             colors = CardDefaults.cardColors(
                 containerColor = MaterialTheme.colorScheme.surfaceContainerLow
             ),
-            shape = RoundedCornerShape(24.dp)
+            shape = ExpressiveShapes.Card
         ) {
             Row(
                 modifier = Modifier
@@ -2990,7 +2990,7 @@ private fun AboutSection(
             colors = CardDefaults.cardColors(
                 containerColor = MaterialTheme.colorScheme.surfaceContainerLow
             ),
-            shape = RoundedCornerShape(24.dp)
+            shape = ExpressiveShapes.Card
         ) {
             Column(
                 modifier = Modifier
@@ -3156,7 +3156,7 @@ private fun AssistantSection(
                 colors = CardDefaults.cardColors(
                     containerColor = MaterialTheme.colorScheme.errorContainer
                 ),
-                shape = RoundedCornerShape(24.dp)
+                shape = ExpressiveShapes.Card
             ) {
                 Row(
                     modifier = Modifier
@@ -3230,7 +3230,7 @@ private fun AssistantSection(
                 colors = CardDefaults.cardColors(
                     containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
                 ),
-                shape = RoundedCornerShape(24.dp)
+                shape = ExpressiveShapes.Card
             ) {
                 Row(
                     modifier = Modifier
@@ -3283,7 +3283,7 @@ private fun WebSearchSection(
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerLow
         ),
-        shape = RoundedCornerShape(24.dp)
+        shape = ExpressiveShapes.Card
     ) {
         Column(
             modifier = Modifier
