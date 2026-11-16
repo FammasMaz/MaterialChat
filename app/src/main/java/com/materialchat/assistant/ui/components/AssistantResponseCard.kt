@@ -41,6 +41,7 @@ import com.materialchat.assistant.ui.AssistantMessage
 import com.materialchat.assistant.ui.AssistantMotion
 import com.materialchat.assistant.ui.AssistantShapes
 import com.materialchat.assistant.ui.AssistantTypography
+import com.materialchat.assistant.ui.rememberAssistantSurfacePalette
 import com.materialchat.domain.model.MessageRole
 import com.materialchat.ui.components.MarkdownText
 import com.materialchat.ui.screens.chat.components.TypingIndicator
@@ -163,7 +164,8 @@ private fun UserQueryBubble(query: String) {
     val maxBubbleWidth = (configuration.screenWidthDp * 0.82f).dp
 
     // Bold tonal fill: the question sits in the full primary container on the tinted answer surface.
-    val userBubbleColor = AssistantColors.querySurface(MaterialTheme.colorScheme)
+    val palette = rememberAssistantSurfacePalette()
+    val userBubbleColor = palette.query.container
 
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -178,7 +180,7 @@ private fun UserQueryBubble(query: String) {
             Text(
                 text = query,
                 style = AssistantTypography.query(MaterialTheme.typography),
-                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                color = palette.query.content,
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
             )
         }
@@ -195,6 +197,7 @@ private fun AssistantBubble(
     isStreaming: Boolean
 ) {
     // The answer is plain text on the response surface, like Gemini; only the question is a bubble.
+    val palette = rememberAssistantSurfacePalette()
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -205,7 +208,7 @@ private fun AssistantBubble(
         if (response.isNotEmpty()) {
             MarkdownText(
                 markdown = response,
-                textColor = MaterialTheme.colorScheme.onSurface,
+                textColor = palette.answer.body,
                 style = AssistantTypography.answer(MaterialTheme.typography)
             )
         }
@@ -213,7 +216,7 @@ private fun AssistantBubble(
             TypingIndicator(
                 dotSize = 7.dp,
                 dotSpacing = 4.dp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                color = palette.answer.muted.copy(alpha = 0.6f)
             )
         }
     }
@@ -238,6 +241,7 @@ private fun AssistantThinkingSurface() {
     // delay: the composition owns no timers (see AssistantOverlay's keep-awake contract).
     val entrance = remember { Animatable(0.88f) }
     LaunchedEffect(Unit) { entrance.animateTo(1f, AssistantMotion.surfaceReveal()) }
+    val palette = rememberAssistantSurfacePalette()
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Start) {
         Surface(
             modifier = Modifier
@@ -248,8 +252,8 @@ private fun AssistantThinkingSurface() {
                     transformOrigin = TransformOrigin(0f, 1f)
                 },
             shape = AssistantShapes.Thinking,
-            color = AssistantColors.thinkingSurface(MaterialTheme.colorScheme),
-            contentColor = MaterialTheme.colorScheme.onSurface,
+            color = palette.thinking.fill,
+            contentColor = palette.thinking.body,
             tonalElevation = 2.dp
         ) {
             Row(
@@ -261,24 +265,24 @@ private fun AssistantThinkingSurface() {
                     modifier = Modifier
                         .size(40.dp)
                         .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.secondaryContainer),
+                        .background(palette.thinkingBadge.container),
                     contentAlignment = Alignment.Center
                 ) {
                     LoadingIndicator(
                         modifier = Modifier.size(30.dp),
-                        color = MaterialTheme.colorScheme.onSecondaryContainer
+                        color = palette.thinkingBadge.content
                     )
                 }
                 Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Text(
                         text = "Thinking",
                         style = AssistantTypography.thinkingTitle(MaterialTheme.typography),
-                        color = MaterialTheme.colorScheme.onSurface
+                        color = palette.thinking.body
                     )
                     Text(
                         text = "Working on your answer",
                         style = AssistantTypography.thinkingStatus(MaterialTheme.typography),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = palette.thinking.muted
                     )
                 }
             }
@@ -291,6 +295,7 @@ private fun AssistantThinkingSurface() {
  */
 @Composable
 private fun ContinueInAppButton(onClick: () -> Unit) {
+    val palette = rememberAssistantSurfacePalette()
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.End
@@ -299,6 +304,7 @@ private fun ContinueInAppButton(onClick: () -> Unit) {
             onClick = onClick,
             shape = MaterialTheme.shapes.medium,  // 12dp from theme
             color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f),
+            contentColor = palette.continueChip.content,
             modifier = Modifier.height(48.dp)
         ) {
             Row(
@@ -310,12 +316,12 @@ private fun ContinueInAppButton(onClick: () -> Unit) {
                     imageVector = Icons.AutoMirrored.Filled.OpenInNew,
                     contentDescription = null,
                     modifier = Modifier.size(14.dp),
-                    tint = MaterialTheme.colorScheme.onPrimaryContainer
+                    tint = palette.continueChip.content
                 )
                 Text(
                     text = "Continue in App",
                     style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                    color = palette.continueChip.content
                 )
             }
         }
