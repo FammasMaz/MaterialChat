@@ -1,6 +1,5 @@
 package com.materialchat.ui.screens.conversations
 
-import android.text.format.DateUtils
 import app.cash.turbine.test
 import com.materialchat.data.local.preferences.AppPreferences
 import com.materialchat.domain.model.Conversation
@@ -14,8 +13,6 @@ import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
-import io.mockk.mockkStatic
-import io.mockk.unmockkStatic
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -60,10 +57,6 @@ class ConversationsViewModelTest {
 
     @Before
     fun setUp() {
-        mockkStatic(DateUtils::class)
-        every {
-            DateUtils.getRelativeTimeSpanString(any(), any(), any(), any())
-        } returns "now"
         every { getConversations.observeConversations() } returns conversations
         every { repository.observeArchivedConversations() } returns archived
         every { repository.observeStreamingConversationIds() } returns streamingIds
@@ -76,7 +69,6 @@ class ConversationsViewModelTest {
     @After
     fun tearDown() {
         Dispatchers.resetMain()
-        unmockkStatic(DateUtils::class)
     }
 
     @Test
