@@ -28,7 +28,7 @@ fun Modifier.dialogEntrance(): Modifier {
     val scale = remember { Animatable(DialogEntranceScale) }
     val alpha = remember { Animatable(0f) }
     LaunchedEffect(Unit) {
-        launch { scale.animateTo(1f, ExpressiveMotion.Spatial.menuOpen()) }
+        launch { scale.animateTo(1f, ExpressiveMotion.Spatial.dialogEnter()) }
         launch { alpha.animateTo(1f, ExpressiveMotion.Effects.reveal()) }
     }
     return graphicsLayer {
