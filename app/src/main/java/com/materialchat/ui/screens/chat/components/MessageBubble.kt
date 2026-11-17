@@ -216,8 +216,6 @@ fun MessageBubble(
     var hasTriggeredSwipeHaptic by remember { mutableStateOf(false) }
     var swipeGestureWidthPx by remember { mutableIntStateOf(0) }
 
-    // Double-tap bookmark burst state
-    var bookmarkBurstTrigger by remember { mutableIntStateOf(0) }
 
     // Expressive arrival for a message that was just created (never for an item scrolled into
     // view — see MessageArrivalTracker): scale from 0.96 + fade on the spatial spring. When a
@@ -404,15 +402,6 @@ fun MessageBubble(
                                     onClick = {},
                                     onLongClick = { haptics.perform(HapticPattern.CLICK, hapticsEnabled); showUserContextMenu = true }
                                 )
-                            } else if (isAssistant && !message.isStreaming && displayContent.isNotEmpty() && onBookmarkToggle != null) {
-                                // Double-tap to bookmark (hero moment)
-                                Modifier.combinedClickable(
-                                    onClick = {},
-                                    onDoubleClick = {
-                                        onBookmarkToggle()
-                                        bookmarkBurstTrigger++
-                                    }
-                                )
                             } else Modifier
                         )
                 ) {
@@ -517,15 +506,6 @@ fun MessageBubble(
                     }
 
                 }
-                }
-
-                // Double-tap bookmark burst animation overlay (hero moment)
-                if (isAssistant) {
-                    BookmarkBurstAnimation(
-                        trigger = bookmarkBurstTrigger,
-                        hapticsEnabled = hapticsEnabled,
-                        modifier = Modifier.align(Alignment.Center)
-                    )
                 }
 
                 // User message floating context menu (long-press)
