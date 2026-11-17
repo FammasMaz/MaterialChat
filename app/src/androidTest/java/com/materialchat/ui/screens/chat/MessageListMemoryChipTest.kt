@@ -8,14 +8,17 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.get
+import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.junit4.createComposeRule
-import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.printToLog
 import androidx.compose.ui.test.swipeUp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.materialchat.domain.model.MemoryMessageMetadata
@@ -89,13 +92,41 @@ class MessageListMemoryChipTest {
         return { scope }
     }
 
-    private fun tapFirstVisibleMemoryChip() {
-        compose.onAllNodesWithText("Memory saved").onFirst().performClick()
+    /**
+     * Index of the first chip whose whole bounds sit inside the viewport, so the tap can never
+     * land on a sliver of a chip that the list has scrolled half out of view.
+     */
+    private fun fullyVisibleChipIndex(): Int {
+        val root = compose.onRoot().fetchSemanticsNode().boundsInRoot
+        val chips = compose.onAllNodesWithText("Memory saved").fetchSemanticsNodes()
+        val index = chips.indexOfFirst { chip ->
+            val b = chip.boundsInRoot
+            b.top >= root.top && b.bottom <= root.bottom && b.left >= root.left && b.right <= root.right
+        }
+        assertTrue(
+            "test precondition: a memory chip must be fully in view; chips=${chips.map { it.boundsInRoot }} root=$root",
+            index >= 0
+        )
+        return index
     }
 
-    private fun assertPanelOpen() {
-        compose.onAllNodesWithContentDescription("Hide memory details").onFirst().assertIsDisplayed()
-        compose.onAllNodesWithText("Prefers tea", substring = true).onFirst().assertIsDisplayed()
+    private fun tapFullyVisibleMemoryChip(): Int {
+        val index = fullyVisibleChipIndex()
+        compose.onAllNodesWithText("Memory saved")[index].assertIsDisplayed().performClick()
+        return index
+    }
+
+    private fun assertPanelOpen(chipIndex: Int) {
+        try {
+            // The chevron flips the moment the toggle fires, so this separates "the tap never
+            // reached the chip" from "the toggle fired but the panel never showed".
+            compose.onAllNodesWithText("Memory saved")[chipIndex]
+                .assert(hasContentDescription("Hide memory details")) { "chip tapped but its state never toggled" }
+            compose.onAllNodesWithText("Prefers tea", substring = true).onFirst().assertIsDisplayed()
+        } catch (failure: AssertionError) {
+            compose.onRoot().printToLog("MemoryChipTest")
+            throw failure
+        }
     }
 
     @Test
@@ -103,10 +134,10 @@ class MessageListMemoryChipTest {
         setRealList(LazyListState(firstVisibleItemIndex = 59))
         compose.waitForIdle()
 
-        tapFirstVisibleMemoryChip()
+        val chip = tapFullyVisibleMemoryChip()
         compose.waitForIdle()
 
-        assertPanelOpen()
+        assertPanelOpen(chip)
     }
 
     @Test
@@ -118,11 +149,12 @@ class MessageListMemoryChipTest {
         compose.onRoot().performTouchInput { swipeUp() }
         compose.waitForIdle()
         assertTrue("test precondition: the fling must have moved the list", listState.firstVisibleItemIndex > 0 || listState.firstVisibleItemScrollOffset > 0)
+        assertTrue("test precondition: the fling must have settled", !listState.isScrollInProgress)
 
-        tapFirstVisibleMemoryChip()
+        val chip = tapFullyVisibleMemoryChip()
         compose.waitForIdle()
 
-        assertPanelOpen()
+        assertPanelOpen(chip)
     }
 
     @Test
@@ -138,11 +170,11 @@ class MessageListMemoryChipTest {
         compose.mainClock.advanceTimeBy(250)
         assertTrue("test precondition: list scroll must be in progress", listState.isScrollInProgress)
 
-        tapFirstVisibleMemoryChip()
+        val chip = tapFullyVisibleMemoryChip()
         repeat(3) { compose.mainClock.advanceTimeByFrame() }
         compose.mainClock.autoAdvance = true
         compose.waitForIdle()
 
-        assertPanelOpen()
+        assertPanelOpen(chip)
     }
 }
