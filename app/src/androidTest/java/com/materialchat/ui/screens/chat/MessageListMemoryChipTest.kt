@@ -11,6 +11,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasContentDescription
+import androidx.compose.ui.test.isDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onFirst
@@ -98,12 +99,19 @@ class MessageListMemoryChipTest {
     private fun fullyVisibleChipIndex(): Int {
         val root = compose.onRoot().fetchSemanticsNode().boundsInRoot
         val chips = compose.onAllNodesWithText("Memory saved").fetchSemanticsNodes()
-        val index = chips.indexOfFirst { chip ->
-            val b = chip.boundsInRoot
-            b.top >= root.top && b.bottom <= root.bottom && b.left >= root.left && b.right <= root.right
-        }
+        // Compose's own displayed check: placed, not clipped away, inside the window. A bare
+        // bounds comparison is fooled by a prefetched/unplaced item whose bounds read as
+        // Rect.Zero (0,0,0,0 sits "inside" any viewport) and by a chip half scrolled out.
+        val index = chips.indices.firstOrNull { i ->
+            val b = chips[i].boundsInRoot
+            b.width > 0f && b.height > 0f &&
+                b.top >= root.top && b.bottom <= root.bottom &&
+                compose.onAllNodesWithText("Memory saved")[i].isDisplayed()
+        } ?: -1
         assertTrue(
-            "test precondition: a memory chip must be fully in view; chips=${chips.map { it.boundsInRoot }} root=$root",
+            "test precondition: a placed, displayed memory chip must be fully in view; " +
+                "chips=" + chips.map { "${it.boundsInRoot} placed=${it.layoutInfo.isPlaced}" } +
+                " root=$root",
             index >= 0
         )
         return index
