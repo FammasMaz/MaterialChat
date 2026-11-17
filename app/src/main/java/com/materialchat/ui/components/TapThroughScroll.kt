@@ -2,7 +2,10 @@ package com.materialchat.ui.components
 
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.composed
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.changedToUpIgnoreConsumed
 import androidx.compose.ui.input.pointer.pointerInput
@@ -29,25 +32,33 @@ import androidx.compose.ui.input.pointer.pointerInput
  * Observing in the Main pass would also see a consumption by the control's own `clickable`
  * when that clickable sits later in the modifier chain (as `Surface(onClick)` places it) —
  * then both would fire and a toggle would cancel itself out.
+ *
+ * The pointer handler is keyed on nothing and reads [onClick] through [rememberUpdatedState]:
+ * keying it on the lambda would restart the handler whenever the caller recomposed with a
+ * fresh lambda instance, and a restart between the down and the up silently drops the tap
+ * (the new handler only starts listening at the next down).
  */
 fun Modifier.tapThroughScroll(enabled: Boolean = true, onClick: () -> Unit): Modifier =
-    if (!enabled) this else pointerInput(onClick) {
-        awaitEachGesture {
-            val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
-            if (!down.isConsumed) return@awaitEachGesture
-            val slop = viewConfiguration.touchSlop
-            var tapped = false
-            while (true) {
-                val event = awaitPointerEvent(PointerEventPass.Main)
-                if (event.changes.size > 1) break
-                val change = event.changes.firstOrNull { it.id == down.id } ?: break
-                val travelled = (change.position - down.position).getDistance()
-                if (change.changedToUpIgnoreConsumed()) {
-                    tapped = travelled <= slop
-                    break
+    if (!enabled) this else composed {
+        val currentOnClick by rememberUpdatedState(onClick)
+        pointerInput(Unit) {
+            awaitEachGesture {
+                val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+                if (!down.isConsumed) return@awaitEachGesture
+                val slop = viewConfiguration.touchSlop
+                var tapped = false
+                while (true) {
+                    val event = awaitPointerEvent(PointerEventPass.Main)
+                    if (event.changes.size > 1) break
+                    val change = event.changes.firstOrNull { it.id == down.id } ?: break
+                    val travelled = (change.position - down.position).getDistance()
+                    if (change.changedToUpIgnoreConsumed()) {
+                        tapped = travelled <= slop
+                        break
+                    }
+                    if (!change.pressed || travelled > slop) break
                 }
-                if (!change.pressed || travelled > slop) break
+                if (tapped) currentOnClick()
             }
-            if (tapped) onClick()
         }
     }
