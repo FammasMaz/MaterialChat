@@ -973,7 +973,7 @@ private fun ChatContent(
  * Scrollable message list with proper styling.
  */
 @Composable
-private fun MessageList(
+internal fun MessageList(
     messages: List<MessageUiItem>,
     listState: androidx.compose.foundation.lazy.LazyListState,
     onCopyMessage: (String) -> Unit,
