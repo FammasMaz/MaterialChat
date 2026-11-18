@@ -6,6 +6,7 @@ import com.materialchat.assistant.actions.DeviceActionHandler
 import com.materialchat.assistant.actions.DeviceActionOutcome
 import com.materialchat.assistant.voice.*
 import com.materialchat.data.local.preferences.AppPreferences
+import com.materialchat.data.local.preferences.AssistantScreenContextSettings
 import com.materialchat.data.local.preferences.AssistantVoiceSettings
 import com.materialchat.domain.model.*
 import com.materialchat.domain.repository.*
@@ -54,6 +55,7 @@ class AssistantViewModelTest {
         every { preferences.assistantVoiceSettings } returns settings
         every { preferences.systemPrompt } returns flowOf("system")
         every { preferences.reasoningEffort } returns flowOf(ReasoningEffort.HIGH)
+        every { preferences.assistantScreenContextSettings } returns flowOf(AssistantScreenContextSettings())
         coEvery { providers.getActiveProvider() } returns active
         coEvery { providers.getProvider("voice") } returns override
         coEvery { create.withProviderAndModel(any(), any()) } returns "conversation"

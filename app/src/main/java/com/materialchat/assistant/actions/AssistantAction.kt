@@ -16,6 +16,12 @@ sealed interface AssistantAction {
 
     /** Performed by [DeviceActionHandler], which reports the real outcome. */
     data class Device(val action: DeviceAction) : AssistantAction
+
+    /**
+     * The model asked for the capture of the screen the assistant was opened over; the
+     * ViewModel resends the same turn with it attached (see ScreenContextPrompt).
+     */
+    data object ScreenContext : AssistantAction
 }
 
 /**

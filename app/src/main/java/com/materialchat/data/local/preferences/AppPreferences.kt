@@ -85,6 +85,9 @@ class AppPreferences(private val context: Context) {
         val ASSISTANT_ENABLED = booleanPreferencesKey("assistant_enabled")
         val ASSISTANT_VOICE_ENABLED = booleanPreferencesKey("assistant_voice_enabled")
         val ASSISTANT_TTS_ENABLED = booleanPreferencesKey("assistant_tts_enabled")
+        val ASSISTANT_SCREEN_CONTEXT_MODE = stringPreferencesKey("assistant_screen_context_mode")
+        val ASSISTANT_SCREEN_CONTEXT_SCREENSHOT = booleanPreferencesKey("assistant_screen_context_screenshot")
+        val ASSISTANT_SCREEN_CONTEXT_TEXT = booleanPreferencesKey("assistant_screen_context_text")
         val BEAUTIFUL_MODEL_NAMES = booleanPreferencesKey("beautiful_model_names")
         val ALWAYS_SHOW_THINKING = booleanPreferencesKey("always_show_thinking")
         val SHOW_TOKEN_COUNTER = booleanPreferencesKey("show_token_counter")
@@ -800,6 +803,23 @@ class AppPreferences(private val context: Context) {
     suspend fun setAssistantTtsEnabled(enabled: Boolean) {
         dataStore.edit { preferences ->
             preferences[Keys.ASSISTANT_TTS_ENABLED] = enabled
+        }
+    }
+
+    /** Settings > Assistant > Screen context (see [AssistantScreenContextSettings]). */
+    val assistantScreenContextSettings: Flow<AssistantScreenContextSettings> = dataStore.data.map { preferences ->
+        AssistantScreenContextSettings(
+            mode = ScreenContextMode.fromStored(preferences[Keys.ASSISTANT_SCREEN_CONTEXT_MODE]),
+            includeScreenshot = preferences[Keys.ASSISTANT_SCREEN_CONTEXT_SCREENSHOT] ?: true,
+            includeScreenText = preferences[Keys.ASSISTANT_SCREEN_CONTEXT_TEXT] ?: true
+        )
+    }.distinctUntilChanged()
+
+    suspend fun setAssistantScreenContextSettings(value: AssistantScreenContextSettings) {
+        dataStore.edit { preferences ->
+            preferences[Keys.ASSISTANT_SCREEN_CONTEXT_MODE] = value.mode.name
+            preferences[Keys.ASSISTANT_SCREEN_CONTEXT_SCREENSHOT] = value.includeScreenshot
+            preferences[Keys.ASSISTANT_SCREEN_CONTEXT_TEXT] = value.includeScreenText
         }
     }
 

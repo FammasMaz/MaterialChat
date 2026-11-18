@@ -10,6 +10,7 @@ import com.materialchat.assistant.voice.SpeechRecognitionManager
 import com.materialchat.assistant.voice.TextToSpeechManager
 import com.materialchat.assistant.voice.TtsInitResult
 import com.materialchat.data.local.preferences.AppPreferences
+import com.materialchat.data.local.preferences.AssistantScreenContextSettings
 import com.materialchat.data.local.preferences.AssistantVoiceSettings
 import com.materialchat.domain.model.Attachment
 import com.materialchat.domain.model.ReasoningEffort
@@ -64,6 +65,7 @@ class AssistantViewModelAttachmentsTest {
         every { preferences.assistantVoiceSettings } returns MutableStateFlow(AssistantVoiceSettings())
         every { preferences.systemPrompt } returns flowOf("system")
         every { preferences.reasoningEffort } returns flowOf(ReasoningEffort.HIGH)
+        every { preferences.assistantScreenContextSettings } returns flowOf(AssistantScreenContextSettings())
         val store = ViewModelStore().also { stores += it }
         return AssistantViewModel(
             speechRecognitionManager = recognition,

@@ -100,6 +100,7 @@ object ActionDirectives {
                 else -> null
             }
             "toggle_mute" -> AssistantAction.Device(DeviceAction.ToggleMute)
+            "screen_context" -> AssistantAction.ScreenContext
             "open_settings" -> {
                 val panel = when (obj.string("panel")?.lowercase(Locale.ROOT)?.replace("-", "")) {
                     "wifi" -> DeviceAction.SettingsPanel.WIFI
