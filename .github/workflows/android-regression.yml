@@ -98,8 +98,8 @@ jobs:
           print(f'instrumented tests={tests} failures={failures} errors={errors} skipped={skipped}')
           if failures or errors:
               sys.exit(1)
-          if tests < 51:
-              print('expected at least 51 instrumented tests; the run did not complete')
+          if tests < 62:
+              print('expected at least 62 instrumented tests; the run did not complete')
               sys.exit(1)
           PY
           test -f test-evidence/assistant/gate-passed.txt
