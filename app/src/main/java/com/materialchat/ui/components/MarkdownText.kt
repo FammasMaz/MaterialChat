@@ -33,10 +33,10 @@ import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.OpenInNew
 import androidx.compose.material3.Icon
-import com.materialchat.ui.components.seaglass.IconButton
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
-import com.materialchat.ui.components.seaglass.Surface
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -109,7 +109,7 @@ fun MarkdownText(
     fillWidth: Boolean = true,
     onOpenCanvas: ((CanvasArtifact) -> Unit)? = null
 ) {
-    // Derive from the live scheme so code blocks follow the active palette (e.g. SeaGlass)
+    // Derive from the live scheme so code blocks follow the active palette
     // instead of static lavender constants.
     val scheme = MaterialTheme.colorScheme
     val codeBlockBackground = if (scheme.background.luminance() < 0.5f) {
