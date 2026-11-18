@@ -32,7 +32,6 @@ import androidx.compose.foundation.gestures.awaitHorizontalTouchSlopOrCancellati
 import androidx.compose.foundation.gestures.horizontalDrag
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
-import androidx.compose.ui.input.pointer.changedToUpIgnoreConsumed
 import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -104,8 +103,6 @@ import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.layout.LayoutCoordinates
-import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -226,7 +223,6 @@ fun MessageBubble(
     // (see BubbleTapRouter): on long chats on real devices those controls have missed taps
     // the bubble itself received.
     val tapRouter = remember { BubbleTapRouter() }
-    var contentCoordinates by remember { mutableStateOf<LayoutCoordinates?>(null) }
 
     // Expressive arrival for a message that was just created (never for an item scrolled into
     // view — see MessageArrivalTracker): scale from 0.96 + fade on the spatial spring. When a
@@ -407,6 +403,11 @@ fun MessageBubble(
                             ),
                             alignment = if (isUser) Alignment.TopEnd else Alignment.TopStart
                         )
+                        // Last-resort tap delivery for the memory chips and the thinking header,
+                        // on the bubble's own node: when the bubble ripples this node provably
+                        // received the gesture while the chip's node did not (see
+                        // BubbleTapRouter). Must sit before the combinedClickable below.
+                        .bubbleTapRouting(tapRouter)
                         .then(
                             if (isUser && !isEditing && !message.isStreaming && displayContent.isNotEmpty()) {
                                 Modifier.combinedClickable(
@@ -427,32 +428,6 @@ fun MessageBubble(
                 ) {
                 Column(
                     modifier = Modifier
-                        .onGloballyPositioned { contentCoordinates = it }
-                        // Last-resort tap delivery: a tap the inner controls left unconsumed is
-                        // handed to the registered control under it (memory chips, thinking
-                        // header). A control whose own click handling worked consumed the up,
-                        // so this never fires twice; a routed tap is consumed here so the
-                        // bubble stops rippling for a tap that belonged to a chip.
-                        .pointerInput(tapRouter) {
-                            awaitEachGesture {
-                                val down = awaitFirstDown(requireUnconsumed = false)
-                                val slop = viewConfiguration.touchSlop
-                                while (true) {
-                                    val event = awaitPointerEvent()
-                                    if (event.changes.size > 1) break
-                                    val change = event.changes.firstOrNull { it.id == down.id } ?: break
-                                    val travelled = (change.position - down.position).getDistance()
-                                    if (change.changedToUpIgnoreConsumed()) {
-                                        if (!change.isConsumed && travelled <= slop) {
-                                            val root = contentCoordinates?.localToRoot(change.position)
-                                            if (root != null && tapRouter.route(root)) change.consume()
-                                        }
-                                        break
-                                    }
-                                    if (!change.pressed || travelled > slop) break
-                                }
-                            }
-                        }
                         .padding(
                             horizontal = bubbleStyle.horizontalPadding,
                             vertical = bubbleStyle.verticalPadding
@@ -1101,6 +1076,10 @@ private fun ThinkingSection(
         label = "thinkingHeaderTone"
     )
 
+    // The header's own click paths report the delivery to the bubble router so the bubble
+    // never fires the same tap a second time (see BubbleTapRouter).
+    val toggle = tapRouter.delivering { haptics.perform(HapticPattern.CLICK, hapticsEnabled); isExpanded = !isExpanded }
+
     Column {
         // Header row — a real disclosure affordance: tonal strip, 40dp hit target, chevron.
         Row(
@@ -1108,9 +1087,9 @@ private fun ThinkingSection(
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(headerRadius))
                 .background(headerTone)
-                .clickable { haptics.perform(HapticPattern.CLICK, hapticsEnabled); isExpanded = !isExpanded }
+                .clickable(onClick = toggle)
                 // Long chats: the list consumes the down while its scroll is in progress.
-                .tapThroughScroll { haptics.perform(HapticPattern.CLICK, hapticsEnabled); isExpanded = !isExpanded }
+                .tapThroughScroll(onClick = toggle)
                 // Bubble-level last resort when neither path above saw the tap (see BubbleTapRouter).
                 .bubbleTapTarget(tapRouter, "thinking") { haptics.perform(HapticPattern.CLICK, hapticsEnabled); isExpanded = !isExpanded }
                 .heightIn(min = 40.dp)
@@ -1363,8 +1342,12 @@ private fun MemoryIndicatorChip(
         label = "memoryChipScale"
     )
 
+    // The chip's own click paths report the delivery to the bubble router so the bubble never
+    // fires the same tap a second time (see BubbleTapRouter).
+    val deliver = tapRouter.delivering(onClick)
+
     Surface(
-        onClick = onClick,
+        onClick = deliver,
         modifier = Modifier
             .height(48.dp)
             .graphicsLayer {
@@ -1373,7 +1356,7 @@ private fun MemoryIndicatorChip(
             }
             // Long chats: the list consumes the down while its scroll is in progress, so the
             // Surface's own clickable never sees the tap. This path takes over only then.
-            .tapThroughScroll(onClick = onClick)
+            .tapThroughScroll(onClick = deliver)
             // Bubble-level last resort when neither path above saw the tap (see BubbleTapRouter).
             .bubbleTapTarget(tapRouter, routeKey, onClick),
         shape = RoundedCornerShape(cornerRadius),
