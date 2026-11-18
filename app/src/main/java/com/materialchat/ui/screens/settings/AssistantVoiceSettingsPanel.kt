@@ -12,6 +12,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import com.materialchat.ui.components.ExpressiveButton
+import com.materialchat.ui.components.ExpressiveButtonStyle
 import com.materialchat.ui.components.ExpressiveSlider
 import com.materialchat.ui.components.dialogEntrance
 import androidx.compose.ui.platform.LocalContext
@@ -33,9 +35,14 @@ import com.materialchat.domain.model.ReasoningEffort
 fun AssistantVoiceSettingsPanel(viewModel: AssistantVoiceSettingsViewModel = hiltViewModel()) {
     var open by remember { mutableStateOf(false) }
     val context = LocalContext.current
-    OutlinedButton(onClick = { open = true }, modifier = Modifier.fillMaxWidth()) {
-        Text("Voice configuration")
-    }
+    // The Settings list's outlined expressive button, so this entry matches the screen-context
+    // button under it and the other full-width actions on the screen.
+    ExpressiveButton(
+        onClick = { open = true },
+        text = "Voice configuration",
+        style = ExpressiveButtonStyle.Outlined,
+        modifier = Modifier.fillMaxWidth()
+    )
     if (!open) return
     DisposableEffect(viewModel) {
         viewModel.openVoicePicker()

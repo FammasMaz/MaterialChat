@@ -11,7 +11,6 @@ import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material.icons.outlined.Notes
 import androidx.compose.material.icons.outlined.Screenshot
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -28,6 +27,8 @@ import com.materialchat.assistant.screen.ScreenContextAccess
 import com.materialchat.data.local.preferences.AppPreferences
 import com.materialchat.data.local.preferences.AssistantScreenContextSettings
 import com.materialchat.data.local.preferences.ScreenContextMode
+import com.materialchat.ui.components.ExpressiveButton
+import com.materialchat.ui.components.ExpressiveButtonStyle
 import com.materialchat.ui.screens.settings.components.SettingsGroup
 import com.materialchat.ui.screens.settings.components.SettingsToggleRow
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -127,17 +128,19 @@ fun AssistantScreenContextSettingsPanel(viewModel: AssistantScreenContextSetting
         // Everywhere else the system settings page is the only way.
         val requestIntent = remember(context) { ScreenContextAccess.requestIntent(context) }
         val requestLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { }
-        OutlinedButton(
+        // The same outlined expressive button (press scale + corner morph, click haptic) the rest
+        // of Settings uses for its full-width actions.
+        ExpressiveButton(
             onClick = {
                 if (requestIntent == null || runCatching { requestLauncher.launch(requestIntent) }.isFailure) {
                     ScreenContextAccess.openSettings(context)
                 }
             },
+            text = if (requestIntent != null) "Allow screen context" else "Open digital assistant settings",
+            style = ExpressiveButtonStyle.Outlined,
             modifier = Modifier
                 .fillMaxWidth()
                 .testTag("assistant_screen_context_open_settings")
-        ) {
-            Text(if (requestIntent != null) "Allow screen context" else "Open digital assistant settings")
-        }
+        )
     }
 }

@@ -316,7 +316,7 @@ class AssistantViewModel(
         cancelStreaming()
         val token = ++recognition
         if (!speechRecognitionManager.isAvailable()) {
-            _voiceState.value = VoiceState.Error("Speech recognition not available")
+            _voiceState.value = VoiceState.Error("Speech recognition is not available on this device")
             return
         }
 
@@ -497,7 +497,7 @@ class AssistantViewModel(
                     val provider = settings.providerId?.let { providerRepository.getProvider(it) }
                         ?: if (settings.providerId == null) providerRepository.getActiveProvider() else null
                     if (provider == null) {
-                        handleError("No active AI provider. Please configure one in Settings.")
+                        handleError("No active AI provider. Add one in Settings.")
                         stagedScreen?.let(discardAttachment)
                         queue.finish()
                         return@coroutineScope
@@ -687,7 +687,7 @@ class AssistantViewModel(
                             }
                             is StreamingState.Error -> {
                                 queue.cancel()
-                                handleError(state.error.message ?: "An error occurred")
+                                handleError(state.error.message ?: "Something went wrong. Try again.")
                             }
                             is StreamingState.Cancelled -> {
                                 queue.cancel()
