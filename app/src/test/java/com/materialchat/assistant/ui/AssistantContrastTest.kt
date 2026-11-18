@@ -16,15 +16,13 @@ import java.util.Locale
  * Every text/icon colour the assistant window draws must read against the fill it is drawn on:
  * WCAG AA, 4.5:1 for body text and 3:1 for icons, for every theme the app can produce.
  *
- * Enumerated: the eleven static palettes in light, dark and pitch-black dark; three
+ * Enumerated: the ten static palettes in light, dark and pitch-black dark; three
  * dynamic-seed-like schemes (built with lightColorScheme/darkColorScheme from varied seeds, the
- * way Material You tones come out) in the same three modes; each under opaque surfaces and under
- * Sea Glass (where the shared Surface wrapper makes containers transparent and the text sits on
- * tinted glass over the window backdrop, plain or under the assistant's 42% scrim).
+ * way Material You tones come out) in the same three modes: 39 appearances in all.
  */
 class AssistantContrastTest {
 
-    private data class Theme(val name: String, val scheme: ColorScheme, val mode: AssistantSurfaceMode)
+    private data class Theme(val name: String, val scheme: ColorScheme)
 
     private val themes: List<Theme> by lazy {
         buildList {
@@ -46,11 +44,14 @@ class AssistantContrastTest {
             "dynamic amber dark" to dynamicLike(seedAmber, dark = true),
             "dynamic amber pitch-black" to dynamicLike(seedAmber, dark = true).pitchBlack()
         )
-        for ((name, scheme) in statics + dynamics) {
-            add(Theme("$name / opaque", scheme, AssistantSurfaceMode.Opaque))
-            add(Theme("$name / sea-glass", scheme, AssistantSurfaceMode.SeaGlass))
+        for ((name, scheme) in statics + dynamics) add(Theme(name, scheme))
         }
-        }
+    }
+
+    @Test fun themeMatrixCoversEveryAppearance() {
+        // 10 static palettes x (light, dark, pitch-black) + 3 dynamic seeds x the same three.
+        assertEquals(39, themes.size)
+        assertEquals(themes.size, themes.map { it.name }.distinct().size)
     }
 
     @Test fun contrastRatioMatchesWcagReferenceValues() {
@@ -85,7 +86,7 @@ class AssistantContrastTest {
     @Test fun everyResolvedPairMeetsWcagAaInEveryTheme() {
         val failures = buildList {
             for (theme in themes) {
-                val palette = AssistantSurfacePalette.resolve(theme.scheme, theme.mode)
+                val palette = AssistantSurfacePalette.resolve(theme.scheme)
                 for (pair in palette.pairs()) if (!pair.passes) add("${theme.name}: ${pair.name} ${pair.ratio.fmt()} < ${pair.minimum}")
             }
         }
@@ -104,10 +105,10 @@ class AssistantContrastTest {
     }
 
     @Test fun thePreferredRoleIsKeptWhereverItAlreadyReads() {
-        // The resolver must not repaint themes that were fine: on every opaque static palette the
+        // The resolver must not repaint themes that were fine: on every static palette the
         // pill keeps onSurface / onSurfaceVariant exactly as the theme defines them.
-        for (theme in themes.filter { it.mode == AssistantSurfaceMode.Opaque && it.name.startsWith("VIOLET") }) {
-            val palette = AssistantSurfacePalette.resolve(theme.scheme, theme.mode)
+        for (theme in themes.filter { it.name.startsWith("VIOLET") }) {
+            val palette = AssistantSurfacePalette.resolve(theme.scheme)
             assertEquals(theme.name, theme.scheme.onSurface, palette.pill.body)
             assertEquals(theme.name, theme.scheme.onSurfaceVariant, palette.pill.muted)
             assertEquals(theme.name, theme.scheme.onPrimary, palette.primaryButton.content)
@@ -119,8 +120,8 @@ class AssistantContrastTest {
      * each content colour read from a theme role by name, never from the fill. This is the
      * baseline the resolver replaces; the test below records which themes it broke.
      */
-    private fun legacyPairs(scheme: ColorScheme, mode: AssistantSurfaceMode): List<AssistantContrastPair> {
-        fun fills(container: Color) = assistantFills(container, scheme, mode)
+    private fun legacyPairs(scheme: ColorScheme): List<AssistantContrastPair> {
+        fun fills(container: Color) = assistantFills(container, scheme)
         val pill = fills(scheme.surfaceContainerHigh)
         val answer = fills(lerp(scheme.surfaceContainerHigh, scheme.primaryContainer, 0.22f))
         val thinking = fills(lerp(scheme.surfaceContainerHighest, scheme.secondaryContainer, 0.35f))
@@ -150,32 +151,25 @@ class AssistantContrastTest {
     @Test fun legacyRoleOnlyColoursFailWhereTheFillLeavesTheRole() {
         val failures = buildList {
             for (theme in themes) {
-                for (pair in legacyPairs(theme.scheme, theme.mode)) if (!pair.passes) add(theme to pair)
+                for (pair in legacyPairs(theme.scheme)) if (!pair.passes) add(theme to pair)
             }
         }
         val report = failures.joinToString("\n") { (t, p) -> "${t.name}: ${p.name} ${p.ratio.fmt()} < ${p.minimum}" }
         println("LEGACY FAILURES (${failures.size}):\n$report")
         assertTrue("the role-only baseline was expected to fail somewhere:\n$report", failures.isNotEmpty())
-        // Dark-on-dark: a light theme's dark text/accent roles (made for a ~0.85-luminance
-        // surface) on Sea Glass darkened by the 42% scrim (luminance ~0.35): the pill prompt,
-        // the idle sparkle, the notice/status lines and the error text all drop below AA.
-        assertTrue(report, failures.any { (t, p) ->
-            t.mode == AssistantSurfaceMode.SeaGlass && t.name.contains("light") &&
-                AssistantContrast.relativeLuminance(p.content) < 0.2 && AssistantContrast.relativeLuminance(p.container) < 0.4
-        })
         // Light-on-light: the typing dots (onSurfaceVariant at 60% alpha) washed into the light
-        // answer surface under every opaque light palette (2.86..2.92 < 3:1).
+        // answer surface under every light palette (2.86..2.92 < 3:1).
         assertTrue(report, failures.any { (t, p) ->
-            t.mode == AssistantSurfaceMode.Opaque && t.name.contains("light") && p.name.contains("typing dots") &&
+            t.name.contains("light") && p.name.contains("typing dots") &&
                 AssistantContrast.relativeLuminance(p.container) > 0.6
         })
         // Negative finding, kept on purpose: no dark or pitch-black theme fails at the baseline.
-        // The dark role set stays readable on the scrimmed glass and the pitch-black ramp only
-        // flattens the screen-filling surfaces the assistant never paints text on.
+        // The dark role set stays readable and the pitch-black ramp only flattens the
+        // screen-filling surfaces the assistant never paints text on.
         assertTrue(report, failures.all { (t, _) -> t.name.contains("light") })
         // And the resolver reads on every one of those fills.
         for ((theme, _) in failures.distinctBy { it.first.name }) {
-            val resolved = AssistantSurfacePalette.resolve(theme.scheme, theme.mode).pairs().filterNot { it.passes }
+            val resolved = AssistantSurfacePalette.resolve(theme.scheme).pairs().filterNot { it.passes }
             assertTrue("${theme.name}: $resolved", resolved.isEmpty())
         }
     }
