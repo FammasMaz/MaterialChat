@@ -1,8 +1,6 @@
 package com.materialchat.assistant.ui
 
-import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.SpringSpec
-import androidx.compose.animation.core.spring
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
@@ -32,11 +30,11 @@ internal object AssistantMotion {
     // Every spec here is either the shared theme token (ui/theme/Motion.kt) or a documented
     // assistant-specific derivation of one; no spring is hand-rolled at a call site.
 
-    /** Glyph and state-line switches (listening -> thinking -> speaking): quick, with visible overshoot. */
-    fun <T> stateSwitch(): SpringSpec<T> = spring(dampingRatio = 0.55f, stiffness = 520f)
+    /** Glyph and state-line switches (listening -> thinking -> speaking): the shared fast spatial token. */
+    fun <T> stateSwitch(): SpringSpec<T> = ExpressiveMotion.Spatial.fast()
 
-    /** The answer surface appearing or leaving: a soft, weighty settle (slower than the shared container token). */
-    fun <T> surfaceReveal(): SpringSpec<T> = spring(dampingRatio = 0.62f, stiffness = 300f)
+    /** The answer surface and the attach reveal appearing or leaving: the shared default spatial token. */
+    fun <T> surfaceReveal(): SpringSpec<T> = ExpressiveMotion.Spatial.default()
 
     /** Sheet entrance: the shared M3 Expressive container spatial token. */
     fun <T> container(): SpringSpec<T> = ExpressiveMotion.Spatial.container()
@@ -47,21 +45,19 @@ internal object AssistantMotion {
     /**
      * The whole surface leaving: it drops and shrinks on a critically damped spring, so the exit
      * never overshoots back into view (M3: expressive motion overshoots on arrival, not departure).
-     * Settles well inside [AssistantExitMotion]'s 320 ms window.
+     * The shared critically damped collapse token (1.0 / 420) settles in about 250 ms, inside
+     * [AssistantExitMotion]'s 320 ms window.
      */
-    fun <T> exit(): SpringSpec<T> = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = 700f)
+    fun <T> exit(): SpringSpec<T> = ExpressiveMotion.Spatial.collapse()
 
-    /** Shape morphs of small components (the glyph container): M3 `spring.fast.spatial`, expressive. */
-    fun <T> morph(): SpringSpec<T> = spring(dampingRatio = 0.7f, stiffness = 1400f)
+    /** Shape morphs of small components (the glyph container, the `+` -> `x` affordance): the shared fast spatial token. */
+    fun <T> morph(): SpringSpec<T> = ExpressiveMotion.Spatial.fast()
 
     /** The primary action changing role: the shared threshold pop (overshoots, then settles). */
     fun <T> pop(): SpringSpec<T> = ExpressiveMotion.Spatial.thresholdPop()
 
-    /**
-     * Expand/collapse of the answer surface while a reply streams in. Softer than the shared
-     * contentSize token on purpose: the target moves with every streamed word.
-     */
-    fun <T> contentSize(): SpringSpec<T> = spring(dampingRatio = 0.75f, stiffness = 340f)
+    /** Expand/collapse of the answer surface while a reply streams in: the shared contentSize token. */
+    fun <T> contentSize(): SpringSpec<T> = ExpressiveMotion.Spatial.contentSize()
 
     /** Non-spatial effects (alpha, colour): the shared effects token, never bouncy. */
     fun <T> effect(): SpringSpec<T> = ExpressiveMotion.Effects.color()

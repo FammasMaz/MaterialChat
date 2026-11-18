@@ -28,7 +28,7 @@ internal object AssistantContrast {
     /** WCAG AA for icons, graphical objects and large text. */
     const val ICON = 3.0
 
-    /** The window scrim drawn under every assistant surface (AssistantOverlay, `Color.Black` at 0.42). */
+    /** The window scrim drawn under every assistant surface (AssistantOverlay: the theme's `scrim` role at 0.42). */
     const val SCRIM_ALPHA = 0.42f
 
     /** WCAG relative luminance of [color] taken as opaque sRGB. */

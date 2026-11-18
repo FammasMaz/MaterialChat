@@ -81,6 +81,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.materialchat.assistant.ui.components.AssistantResponseCard
 import com.materialchat.assistant.voice.VoiceState
 import com.materialchat.data.local.preferences.AppPreferences
+import com.materialchat.ui.theme.ExpressiveMotion
 import com.materialchat.ui.theme.MaterialChatTheme
 import com.materialchat.ui.theme.isDynamicColorSupported
 import com.materialchat.ui.theme.particles.CapsuleBackdropBlur
@@ -348,7 +349,8 @@ fun AssistantOverlay(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.42f))
+                // The theme's scrim role (black in every palette) at the alpha the contrast model assumes.
+                .background(MaterialTheme.colorScheme.scrim.copy(alpha = AssistantContrast.SCRIM_ALPHA))
                 // The edge light frames the whole window (before the keyboard padding) and sits
                 // under the pill and its particle field (before them in the chain). The hosted
                 // gate's control band stays outside its reach; see scripts/check-assistant-window.sh.
@@ -1525,7 +1527,7 @@ private fun AssistantChromeIconButton(
     val pressed by interactionSource.collectIsPressedAsState()
     val scale by animateFloatAsState(
         targetValue = if (pressed) 0.9f else 1f,
-        animationSpec = AssistantMotion.morph(),
+        animationSpec = ExpressiveMotion.Press.Scale,
         label = "chromePress"
     )
     IconButton(
