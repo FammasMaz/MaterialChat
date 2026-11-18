@@ -96,7 +96,8 @@ val SurfaceContainerHighestDark = Color(0xFF3B3148)
 val OutlineLight = Color(0xFF7F7192)
 val OutlineVariantLight = Color(0xFFCFC2DE)
 
-val OutlineDark = Color(0xFF9D91AA)
+// Retuned from 0xFF9D91AA (2.96:1 on SurfaceVariantDark) to clear WCAG 3:1 on every dark surface.
+val OutlineDark = Color(0xFFA296AF)
 val OutlineVariantDark = Color(0xFF51465E)
 
 // Inverse colors
