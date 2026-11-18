@@ -132,7 +132,7 @@ fun SystemPromptField(
                     Spacer(modifier = Modifier.width(12.dp))
                     Column {
                         Text(
-                            text = "System Prompt",
+                            text = "System prompt",
                             style = MaterialTheme.typography.titleSmall,
                             color = MaterialTheme.colorScheme.onSurface
                         )

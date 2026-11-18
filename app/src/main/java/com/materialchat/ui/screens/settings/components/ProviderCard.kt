@@ -233,7 +233,7 @@ fun ProviderCard(
                                     if (provider.isActive) onTestConnection() else onActivate()
                                 }
                             ) {
-                                Text(text = if (provider.isActive) "Test" else "Set Active")
+                                Text(text = if (provider.isActive) "Test" else "Set active")
                             }
                         },
                         trailingButton = {

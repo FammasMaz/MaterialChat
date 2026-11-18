@@ -334,7 +334,7 @@ fun ConversationsScreen(
             },
             modifier = Modifier.dialogEntrance(),
             shape = ExpressiveShapes.Dialog,
-            title = { Text("Edit Title") },
+            title = { Text("Edit title") },
             text = {
                 Column {
                     OutlinedTextField(

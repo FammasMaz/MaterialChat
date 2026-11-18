@@ -881,7 +881,7 @@ private fun SuccessContent(
         // Providers Section
         item {
             SettingsSectionHeader(
-                title = "AI Providers",
+                title = "AI providers",
                 icon = Icons.Outlined.Cloud,
                 supporting = stringResource(R.string.settings_section_providers_supporting)
             )
@@ -933,7 +933,7 @@ private fun SuccessContent(
         // Premium & Ads Section
         item {
             SettingsSectionHeader(
-                title = "Premium & Ads",
+                title = "Premium & ads",
                 icon = Icons.Outlined.AutoAwesome,
                 supporting = stringResource(R.string.settings_section_premium_supporting)
             )
@@ -991,7 +991,7 @@ private fun SuccessContent(
                 SettingsNavRow(
                     index = 0,
                     count = 1,
-                    title = "Interaction & Motion",
+                    title = "Interaction & motion",
                     icon = Icons.Outlined.Vibration,
                     supporting = "Per-component haptics, button shapes, and expressive motion controls",
                     onClick = onNavigateToInteractionSettings
@@ -1012,7 +1012,7 @@ private fun SuccessContent(
                     SettingsToggleRow(
                         index = 0,
                         count = rowCount,
-                        title = "Dynamic Color",
+                        title = "Dynamic color",
                         supporting = "Use colors from your wallpaper",
                         icon = Icons.Outlined.Palette,
                         checked = uiState.dynamicColorEnabled,
@@ -1061,7 +1061,7 @@ private fun SuccessContent(
                 SettingsToggleRow(
                     index = 0,
                     count = 3,
-                    title = "Haptic Feedback",
+                    title = "Haptic feedback",
                     supporting = "Vibrate on interactions",
                     icon = Icons.Outlined.Vibration,
                     checked = uiState.hapticsEnabled,
@@ -1079,7 +1079,7 @@ private fun SuccessContent(
                 SettingsToggleRow(
                     index = 2,
                     count = 3,
-                    title = "Beautiful Model Names",
+                    title = "Beautiful model names",
                     supporting = if (activeProvider != null) {
                         "Using ${activeProvider.name} • Tap to filter by provider"
                     } else {
@@ -1106,7 +1106,7 @@ private fun SuccessContent(
                 SettingsToggleRow(
                     index = 0,
                     count = 3,
-                    title = "Remember Last Model",
+                    title = "Remember last model",
                     supporting = "New chats use your last selected model",
                     icon = Icons.Outlined.History,
                     checked = uiState.rememberLastModelEnabled,
@@ -1115,7 +1115,7 @@ private fun SuccessContent(
                 SettingsToggleRow(
                     index = 1,
                     count = 3,
-                    title = "Always Show Thinking",
+                    title = "Always show thinking",
                     supporting = "Show model reasoning content by default",
                     icon = Icons.Outlined.Psychology,
                     checked = uiState.alwaysShowThinking,
@@ -1124,7 +1124,7 @@ private fun SuccessContent(
                 SettingsToggleRow(
                     index = 2,
                     count = 3,
-                    title = "Token Counter",
+                    title = "Token counter",
                     supporting = "Show word and estimated token count while typing",
                     icon = Icons.Outlined.Numbers,
                     checked = uiState.showTokenCounter,
@@ -1149,7 +1149,7 @@ private fun SuccessContent(
                     count = 1,
                     title = "Memories",
                     icon = Icons.Outlined.Memory,
-                    supporting = "Review, search, and delete passive memories saved on this device.",
+                    supporting = "Review, search, and delete passive memories saved on this device",
                     onClick = onNavigateToMemories
                 )
             }
@@ -1165,7 +1165,7 @@ private fun SuccessContent(
         // Web Search Section
         item {
             SettingsSectionHeader(
-                title = "Web Search",
+                title = "Web search",
                 icon = Icons.Outlined.Language,
                 supporting = stringResource(R.string.settings_section_web_search_supporting)
             )
@@ -1213,7 +1213,7 @@ private fun SuccessContent(
         // System Prompt Section
         item {
             SettingsSectionHeader(
-                title = "System Prompt",
+                title = "System prompt",
                 icon = Icons.Outlined.Description,
                 supporting = stringResource(R.string.settings_section_system_prompt_supporting)
             )
@@ -3175,7 +3175,7 @@ private fun AssistantSection(
             SettingsToggleRow(
                 index = 0,
                 count = rowCount,
-                title = "System Assistant",
+                title = "System assistant",
                 supporting = "Replace default assistant on your device",
                 icon = Icons.Outlined.SmartToy,
                 checked = assistantEnabled,
@@ -3185,7 +3185,7 @@ private fun AssistantSection(
                 SettingsToggleRow(
                     index = 1,
                     count = rowCount,
-                    title = "Voice Input",
+                    title = "Voice input",
                     supporting = "Use microphone for voice queries",
                     icon = Icons.Outlined.Mic,
                     checked = voiceEnabled,
@@ -3194,7 +3194,7 @@ private fun AssistantSection(
                 SettingsToggleRow(
                     index = 2,
                     count = rowCount,
-                    title = "Read Aloud",
+                    title = "Read aloud",
                     supporting = "Use text-to-speech for responses",
                     icon = Icons.Outlined.RecordVoiceOver,
                     checked = ttsEnabled,
