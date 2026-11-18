@@ -22,12 +22,12 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
-import com.materialchat.ui.components.seaglass.Card
+import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
-import com.materialchat.ui.components.seaglass.IconButton
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import com.materialchat.ui.components.seaglass.SuggestionChip
+import androidx.compose.material3.SuggestionChip
 import androidx.compose.material3.SuggestionChipDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable

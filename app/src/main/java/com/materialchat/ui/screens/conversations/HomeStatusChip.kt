@@ -14,7 +14,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.materialchat.ui.components.seaglass.Surface
+import androidx.compose.material3.Surface
 import com.materialchat.ui.theme.CustomShapes
 
 /**

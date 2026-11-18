@@ -51,7 +51,7 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import com.materialchat.ui.components.HapticPattern
 import com.materialchat.ui.components.rememberHapticFeedback
-import com.materialchat.ui.components.seaglass.Surface
+import androidx.compose.material3.Surface
 import com.materialchat.ui.components.tapThroughScroll
 import com.materialchat.ui.theme.ExpressiveMotion
 

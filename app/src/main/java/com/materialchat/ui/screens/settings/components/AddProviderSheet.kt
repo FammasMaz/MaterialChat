@@ -33,17 +33,17 @@ import androidx.compose.material.icons.outlined.Key
 import androidx.compose.material.icons.outlined.Link
 import androidx.compose.material.icons.outlined.Memory
 import androidx.compose.material.icons.outlined.TextFields
-import com.materialchat.ui.components.seaglass.Button
+import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.Icon
-import com.materialchat.ui.components.seaglass.IconButton
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import com.materialchat.ui.components.seaglass.ModalBottomSheet
-import com.materialchat.ui.components.seaglass.OutlinedTextField
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.SheetState
 import androidx.compose.material3.Text
@@ -562,9 +562,8 @@ private fun SaveButton(
     canSubmit: Boolean,
     onClick: () -> Unit
 ) {
-    // Shape-morphing M3 Expressive button: rounds off while pressed. The SeaGlass Button
-    // wrapper has no `shapes` parameter, so this is the Material 3 button directly
-    // (same as the home empty-state action).
+    // Shape-morphing M3 Expressive button: rounds off while pressed (same as the home
+    // empty-state action).
     androidx.compose.material3.Button(
         onClick = onClick,
         enabled = canSubmit && !isSaving,

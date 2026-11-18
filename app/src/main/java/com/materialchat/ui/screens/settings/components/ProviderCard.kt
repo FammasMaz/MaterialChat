@@ -24,7 +24,7 @@ import androidx.compose.material.icons.outlined.Memory
 import androidx.compose.material.icons.outlined.SmartToy
 import androidx.compose.material.icons.outlined.Key
 import androidx.compose.material.icons.outlined.KeyOff
-import com.materialchat.ui.components.seaglass.Card
+import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.MaterialShapes
@@ -39,8 +39,8 @@ import androidx.compose.material3.MenuDefaults
 import androidx.compose.material3.SplitButtonDefaults
 import androidx.compose.material3.SplitButtonLayout
 import androidx.compose.ui.graphics.graphicsLayer
-import com.materialchat.ui.components.seaglass.DropdownMenu
-import com.materialchat.ui.components.seaglass.DropdownMenuItem
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import com.materialchat.ui.theme.SquircleShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
