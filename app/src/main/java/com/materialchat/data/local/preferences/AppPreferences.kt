@@ -240,8 +240,8 @@ class AppPreferences(private val context: Context) {
      */
     val themePalette: Flow<ThemePalette> = dataStore.data.map { preferences ->
         val paletteName = preferences[Keys.THEME_PALETTE] ?: DEFAULT_THEME_PALETTE.name
-        // Removed or unknown values (for example the retired SEA_GLASS appearance) fall back
-        // to the default palette instead of crashing on valueOf.
+        // Removed or unknown values (for example a retired appearance that was persisted by an
+        // older build) fall back to the default palette instead of crashing on valueOf.
         try {
             ThemePalette.valueOf(paletteName)
         } catch (e: IllegalArgumentException) {
