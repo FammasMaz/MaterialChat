@@ -218,9 +218,11 @@ fun buildTypography(
         letterSpacing = 0.sp,
         platformStyle = PlatformTextStyle(includeFontPadding = false)
     ),
+    // MaterialChatExpressiveTitleFontFamily only ships a Bold instance, so SemiBold here
+    // already rendered as Bold; declare what is drawn.
     headlineSmall = TextStyle(
         fontFamily = MaterialChatExpressiveTitleFontFamily,
-        fontWeight = FontWeight.SemiBold,
+        fontWeight = FontWeight.Bold,
         fontSize = (24 * sizeScale).sp,
         lineHeight = (32 * sizeScale).sp,
         letterSpacing = 0.sp,

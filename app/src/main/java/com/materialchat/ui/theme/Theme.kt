@@ -210,21 +210,6 @@ fun MaterialChatTheme(
 }
 
 /**
- * Replaces the surface ramp with true black, the way an OLED-tuned theme does.
- *
- * Only the surfaces that fill the screen are flattened; raised containers keep their
- * tonal step so cards and sheets stay distinguishable.
- */
-private fun ColorScheme.withPitchBlackSurfaces(): ColorScheme = copy(
-    background = androidx.compose.ui.graphics.Color.Black,
-    surface = androidx.compose.ui.graphics.Color.Black,
-    surfaceContainerLowest = androidx.compose.ui.graphics.Color.Black,
-    surfaceContainerLow = androidx.compose.ui.graphics.Color.Black,
-    surfaceContainer = androidx.compose.ui.graphics.Color.Black,
-    surfaceDim = androidx.compose.ui.graphics.Color.Black
-)
-
-/**
  * Selects the appropriate color scheme based on theme and dynamic color settings.
  *
  * @param darkTheme Whether to use dark theme colors

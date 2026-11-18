@@ -279,7 +279,7 @@ object MaterialChatThemePalettes {
         onPrimary = Color.White,
         primaryContainer = Color(0xFFE2DEFF),
         onPrimaryContainer = Color(0xFF160A78),
-        secondary = Color(0xAA2F96),
+        secondary = Color(0xFFAA2F96),
         onSecondary = Color.White,
         secondaryContainer = Color(0xFFFFD6F1),
         onSecondaryContainer = Color(0xFF3A0032),
