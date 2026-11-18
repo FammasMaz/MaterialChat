@@ -397,10 +397,9 @@ fun MessageBubble(
                             // Streaming responses retarget this animation many times per second.
                             // Use a critically-damped spring and top alignment so the bubble can
                             // keep morphing without vertically bobbing around its center.
-                            animationSpec = spring(
-                                dampingRatio = Spring.DampingRatioNoBouncy,
-                                stiffness = 520f
-                            ),
+                            // Shared slow-effects token: critically damped (never bobs) and stiff
+                            // enough that the bubble tracks word-by-word growth without lag.
+                            animationSpec = ExpressiveMotion.Effects.slow(),
                             alignment = if (isUser) Alignment.TopEnd else Alignment.TopStart
                         )
                         // Last-resort tap delivery for the memory chips and the thinking header,
@@ -1343,12 +1342,12 @@ private fun MemoryIndicatorChip(
             expanded -> 16.dp
             else -> MessageActionOuterCorner
         },
-        animationSpec = com.materialchat.ui.theme.ExpressiveMotion.Spatial.shapeMorph(),
+        animationSpec = ExpressiveMotion.Press.Shape,
         label = "memoryChipShape"
     )
     val scale by animateFloatAsState(
         targetValue = if (isPressed) 0.96f else 1f,
-        animationSpec = com.materialchat.ui.theme.ExpressiveMotion.Spatial.scale(),
+        animationSpec = ExpressiveMotion.Press.Scale,
         label = "memoryChipScale"
     )
 
@@ -1601,6 +1600,7 @@ private fun ImageGenerationLoadingCard(
     modelName: String?,
     modifier: Modifier = Modifier
 ) {
+    val palette = rememberChatSurfacePalette()
     Surface(
         modifier = modifier
             .fillMaxWidth()
@@ -1648,7 +1648,8 @@ private fun ImageGenerationLoadingCard(
                     Text(
                         text = modelName,
                         style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.72f),
+                        // Resolved against the tinted card fill; never an on* role at alpha.
+                        color = palette.imageLoadingMuted,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )

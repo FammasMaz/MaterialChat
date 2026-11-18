@@ -85,7 +85,7 @@ fun FusionModelSelector(
             dragHandle = {
                 Surface(
                     modifier = Modifier.padding(vertical = 12.dp),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+                    color = MaterialTheme.colorScheme.outline,
                     shape = MaterialTheme.shapes.extraLarge
                 ) {
                     Spacer(
@@ -167,7 +167,7 @@ fun FusionModelSelector(
                                     color = if (isSelected) {
                                         MaterialTheme.colorScheme.tertiary
                                     } else if (!canSelect) {
-                                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                                        MaterialTheme.colorScheme.onSurfaceVariant
                                     } else {
                                         MaterialTheme.colorScheme.onSurface
                                     },

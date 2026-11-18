@@ -80,7 +80,7 @@ fun ExportBottomSheet(
             dragHandle = {
                 Surface(
                     modifier = Modifier.padding(vertical = 12.dp),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+                    color = MaterialTheme.colorScheme.outline,
                     shape = MaterialTheme.shapes.extraLarge
                 ) {
                     Spacer(

@@ -32,6 +32,7 @@ import com.materialchat.ui.theme.CustomShapes
 import com.materialchat.ui.theme.ExpressiveMotion
 import com.materialchat.ui.theme.ExpressiveShapes
 import com.materialchat.ui.theme.SquircleShape
+import com.materialchat.ui.theme.readableMutedOn
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -87,7 +88,7 @@ fun ModelPickerDropdown(
     // Spring-physics scale animation on press
     val scale by animateFloatAsState(
         targetValue = if (isPressed) 0.95f else 1f,
-        animationSpec = ExpressiveMotion.Spatial.scale(),
+        animationSpec = ExpressiveMotion.Press.Scale,
         label = "scale"
     )
 
@@ -150,7 +151,8 @@ private fun ModelButton(
         targetValue = if (isEnabled) {
             MaterialTheme.colorScheme.onSecondaryContainer
         } else {
-            MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.6f)
+            // Disabled while streaming: muted role resolved on the pill fill, not an on* role at alpha.
+            MaterialTheme.colorScheme.readableMutedOn(MaterialTheme.colorScheme.secondaryContainer)
         },
         animationSpec = ExpressiveMotion.Effects.color(),
         label = "modelButtonContentColor"

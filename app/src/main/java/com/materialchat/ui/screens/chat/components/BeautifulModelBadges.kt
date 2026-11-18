@@ -2,9 +2,7 @@ package com.materialchat.ui.screens.chat.components
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
@@ -36,6 +34,8 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 
 import com.materialchat.ui.theme.CustomShapes
+import com.materialchat.ui.theme.ExpressiveMotion
+import com.materialchat.ui.theme.readableMutedOn
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -66,25 +66,6 @@ import androidx.compose.ui.unit.dp
 import com.materialchat.domain.model.AiModel
 import com.materialchat.ui.util.ModelNameParser
 import com.materialchat.ui.util.ParsedModelName
-
-/**
- * M3 Expressive Spring Tokens
- * - Fast spatial: For small components (badges, buttons)
- * - Default spatial: For partial screen animations
- */
-private object M3Springs {
-    // Fast spatial spring - for badge press/scale animations
-    val FastSpatial = spring<Float>(
-        dampingRatio = 0.6f,  // Some bounce for expressive feel
-        stiffness = 400f      // Fast resolution
-    )
-
-    // Default effects spring - for color/opacity (no overshoot)
-    val DefaultEffects = spring<androidx.compose.ui.graphics.Color>(
-        dampingRatio = Spring.DampingRatioNoBouncy,
-        stiffness = Spring.StiffnessMedium
-    )
-}
 
 /**
  * Beautiful dual pill badge component for displaying model names.
@@ -255,7 +236,7 @@ private fun SearchField(
             Text(
                 text = placeholder,
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         },
         leadingIcon = {
@@ -352,7 +333,7 @@ private fun ProviderFilterBadge(
     // M3 Expressive: Fast spatial spring for press animation
     val scale by animateFloatAsState(
         targetValue = if (isPressed) 0.95f else 1f,
-        animationSpec = M3Springs.FastSpatial,
+        animationSpec = ExpressiveMotion.Press.Scale,
         label = "providerBadgeScale"
     )
 
@@ -362,7 +343,7 @@ private fun ProviderFilterBadge(
             isFiltering || isDropdownExpanded -> MaterialTheme.colorScheme.primaryContainer
             else -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.88f)
         },
-        animationSpec = M3Springs.DefaultEffects,
+        animationSpec = ExpressiveMotion.Effects.color(),
         label = "providerContainerColor"
     )
 
@@ -370,9 +351,9 @@ private fun ProviderFilterBadge(
         targetValue = if (enabled) {
             MaterialTheme.colorScheme.onPrimaryContainer
         } else {
-            MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.6f)
+            MaterialTheme.colorScheme.readableMutedOn(MaterialTheme.colorScheme.primaryContainer)
         },
-        animationSpec = M3Springs.DefaultEffects,
+        animationSpec = ExpressiveMotion.Effects.color(),
         label = "providerContentColor"
     )
 
@@ -403,10 +384,7 @@ private fun ProviderFilterBadge(
                 )
                 .padding(horizontal = 8.dp, vertical = 4.dp)
                 .animateContentSize(
-                    animationSpec = spring(
-                        dampingRatio = 0.7f,
-                        stiffness = 400f
-                    )
+                    animationSpec = ExpressiveMotion.Spatial.contentSize()
                 ),
             contentAlignment = Alignment.Center
         ) {
@@ -529,7 +507,7 @@ private fun ProviderFilterBadge(
                                 Text(
                                     text = "Load models to see providers",
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
                         },
@@ -547,7 +525,7 @@ private fun ProviderFilterBadge(
                             } else {
                                 MaterialTheme.colorScheme.onSurface
                             },
-                            animationSpec = M3Springs.DefaultEffects,
+                            animationSpec = ExpressiveMotion.Effects.color(),
                             label = "providerItemTextColor"
                         )
 
@@ -652,7 +630,7 @@ private fun ModelPickerBadge(
     // M3 Expressive: Fast spatial spring for press animation
     val scale by animateFloatAsState(
         targetValue = if (isPressed) 0.95f else 1f,
-        animationSpec = M3Springs.FastSpatial,
+        animationSpec = ExpressiveMotion.Press.Scale,
         label = "modelBadgeScale"
     )
 
@@ -663,7 +641,7 @@ private fun ModelPickerBadge(
         } else {
             MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.78f)
         },
-        animationSpec = M3Springs.DefaultEffects,
+        animationSpec = ExpressiveMotion.Effects.color(),
         label = "modelContainerColor"
     )
 
@@ -671,9 +649,9 @@ private fun ModelPickerBadge(
         targetValue = if (!isStreaming) {
             MaterialTheme.colorScheme.onSecondaryContainer
         } else {
-            MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.6f)
+            MaterialTheme.colorScheme.readableMutedOn(MaterialTheme.colorScheme.secondaryContainer)
         },
-        animationSpec = M3Springs.DefaultEffects,
+        animationSpec = ExpressiveMotion.Effects.color(),
         label = "modelContentColor"
     )
 
@@ -704,10 +682,7 @@ private fun ModelPickerBadge(
                 )
                 .padding(horizontal = 8.dp, vertical = 4.dp)
                 .animateContentSize(
-                    animationSpec = spring(
-                        dampingRatio = 0.7f,
-                        stiffness = 400f
-                    )
+                    animationSpec = ExpressiveMotion.Spatial.contentSize()
                 ),
             contentAlignment = Alignment.Center
         ) {
@@ -803,7 +778,7 @@ private fun ModelPickerBadge(
                                     Text(
                                         text = "Try selecting a different provider",
                                         style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                 }
                             }
@@ -820,7 +795,7 @@ private fun ModelPickerBadge(
                                 Text(
                                     text = "${searchedModels.size} model${if (searchedModels.size != 1) "s" else ""}",
                                     style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             },
                             onClick = { },
@@ -840,7 +815,7 @@ private fun ModelPickerBadge(
                             } else {
                                 MaterialTheme.colorScheme.onSurface
                             },
-                            animationSpec = M3Springs.DefaultEffects,
+                            animationSpec = ExpressiveMotion.Effects.color(),
                             label = "menuItemTextColor"
                         )
 
@@ -865,7 +840,7 @@ private fun ModelPickerBadge(
                                             Text(
                                                 text = parsedModel.provider,
                                                 style = MaterialTheme.typography.labelSmall,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                                                 maxLines = 1,
                                                 overflow = TextOverflow.Ellipsis
                                             )

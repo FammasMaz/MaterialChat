@@ -84,6 +84,7 @@ import com.materialchat.ui.screens.chat.ContextWindowUsage
 import com.materialchat.ui.theme.CustomShapes
 import com.materialchat.ui.theme.ExpressiveMotion
 import com.materialchat.ui.theme.MaterialChatExpressiveTitleFontFamily
+import com.materialchat.ui.theme.readableMutedOn
 import com.materialchat.ui.theme.particles.rememberParticleMotionGate
 import com.materialchat.ui.util.ModelNameParser
 import kotlin.math.PI
@@ -186,7 +187,8 @@ fun ChatTopBar(
         label = "chatHeaderContainer"
     )
     val contentColor = if (isEphemeral) scheme.onTertiaryContainer else scheme.onSurface
-    val mutedColor = if (isEphemeral) scheme.onTertiaryContainer.copy(alpha = 0.78f) else scheme.onSurfaceVariant
+    // Muted text on the ephemeral tertiary bar is resolved against that fill, never an on* role at alpha.
+    val mutedColor = if (isEphemeral) scheme.readableMutedOn(scheme.tertiaryContainer) else scheme.onSurfaceVariant
     val badges = resolveChatHeaderBadges(
         isEphemeral = isEphemeral,
         isArchived = isArchived,
@@ -530,7 +532,7 @@ private fun HeaderStatusChip(
     val restingCorner = if (badge == ChatHeaderBadge.ContextCritical) 10.dp else 14.dp
     val corner by animateDpAsState(
         targetValue = if (isPressed) 8.dp else restingCorner,
-        animationSpec = ExpressiveMotion.Spatial.shapeMorph(),
+        animationSpec = ExpressiveMotion.Press.Shape,
         label = "headerChipCorner"
     )
     val chipShape = RoundedCornerShape(corner)

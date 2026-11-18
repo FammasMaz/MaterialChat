@@ -135,7 +135,7 @@ internal fun ComposerSendButton(
     }
     val scale by animateFloatAsState(
         targetValue = if (pressed && state != ComposerSendState.Idle) 0.92f else 1f,
-        animationSpec = ExpressiveMotion.Spatial.scale(),
+        animationSpec = ExpressiveMotion.Press.Scale,
         label = "composerSendScale"
     )
 

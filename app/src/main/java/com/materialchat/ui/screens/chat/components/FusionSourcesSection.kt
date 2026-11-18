@@ -22,6 +22,8 @@ import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import com.materialchat.ui.theme.readableMutedOn
+import com.materialchat.ui.theme.readableOn
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -148,7 +150,7 @@ private fun SourceResponseCard(
                     Text(
                         text = formatSourceDuration(durationMs),
                         style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.55f)
+                        color = MaterialTheme.colorScheme.readableMutedOn(MaterialTheme.colorScheme.surfaceContainerHighest)
                     )
                 }
             }
@@ -158,7 +160,7 @@ private fun SourceResponseCard(
             // Response content
             MarkdownText(
                 markdown = content,
-                textColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.85f),
+                textColor = MaterialTheme.colorScheme.readableOn(MaterialTheme.colorScheme.surfaceContainerHighest),
                 style = MaterialTheme.typography.bodySmall
             )
         }

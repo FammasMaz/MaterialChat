@@ -264,7 +264,7 @@ private fun FusionModelCard(
                         Text(
                             text = formatDuration(response.durationMs),
                             style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     } else if (response.isStreaming && response.content.isNotEmpty()) {
                         Text(
@@ -282,7 +282,7 @@ private fun FusionModelCard(
                     Text(
                         text = response.content,
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 3,
                         overflow = TextOverflow.Ellipsis
                     )

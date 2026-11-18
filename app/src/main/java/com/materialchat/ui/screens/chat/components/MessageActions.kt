@@ -361,17 +361,17 @@ private fun ActionSegment(
     val corners = connectedSegmentCorners(position, pressed)
     val startCorner by animateDpAsState(
         targetValue = corners.start,
-        animationSpec = ExpressiveMotion.Spatial.shapeMorph(),
+        animationSpec = ExpressiveMotion.Press.Shape,
         label = "messageActionStartCorner"
     )
     val endCorner by animateDpAsState(
         targetValue = corners.end,
-        animationSpec = ExpressiveMotion.Spatial.shapeMorph(),
+        animationSpec = ExpressiveMotion.Press.Shape,
         label = "messageActionEndCorner"
     )
     val scale by animateFloatAsState(
         targetValue = if (pressed) 0.94f else 1f,
-        animationSpec = ExpressiveMotion.Spatial.scale(),
+        animationSpec = ExpressiveMotion.Press.Scale,
         label = "messageActionScale"
     )
     val containerColor by animateColorAsState(

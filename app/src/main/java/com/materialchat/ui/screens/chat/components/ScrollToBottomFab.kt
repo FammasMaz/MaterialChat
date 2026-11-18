@@ -142,7 +142,7 @@ fun ScrollToBottomFab(
         val pressed by interactionSource.collectIsPressedAsState()
         val pressCorner by animateDpAsState(
             targetValue = if (pressed) ScrollFabPressedCorner else ScrollFabRestingCorner,
-            animationSpec = ExpressiveMotion.Spatial.shapeMorph(),
+            animationSpec = ExpressiveMotion.Press.Shape,
             label = "scrollFabCorner"
         )
         val corner = if (pressed) pressCorner else maxOf(pressCorner, arrival.value)
