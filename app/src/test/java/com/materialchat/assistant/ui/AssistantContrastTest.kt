@@ -100,8 +100,42 @@ class AssistantContrastTest {
             "answer body", "answer muted", "answer indicator", "thinking body", "thinking muted",
             "toolbar muted", "notice muted", "error notice", "query bubble", "chip", "continue chip",
             "primary button", "stop button", "interrupt button", "thinking badge",
+            // 2.41.0: the Screen chip and its remove icon, the Using-screen marker, the
+            // unavailable notice's settings chip, the toolbar's icon actions, the thumbnails'
+            // remove buttons. The thinking surface's two lines are "thinking body"/"thinking muted".
+            "screen chip", "screen chip remove", "screen used marker", "screen settings button",
+            "toolbar action", "attachment remove",
             "glyph Idle", "glyph Capturing", "glyph Thinking", "glyph Speaking"
         )) assertTrue("missing pair $expected in $names", expected in names)
+    }
+
+    @Test fun surfacesAddedIn2410ReadInEveryTheme() {
+        // Same enumeration as everyResolvedPairMeetsWcagAaInEveryTheme, scoped so a regression on
+        // one of the newer surfaces names itself.
+        val newer = listOf(
+            "screen chip", "screen chip remove", "screen used marker", "screen settings button",
+            "toolbar action", "attachment remove", "thinking body", "thinking muted"
+        )
+        val failures = buildList {
+            for (theme in themes) {
+                val pairs = AssistantSurfacePalette.resolve(theme.scheme).pairs()
+                    .filter { p -> newer.any { p.name == it || p.name.startsWith("$it[") } }
+                assertTrue("${theme.name}: no pairs found", pairs.isNotEmpty())
+                for (pair in pairs) if (!pair.passes) add("${theme.name}: ${pair.name} ${pair.ratio.fmt()} < ${pair.minimum}")
+            }
+        }
+        assertTrue("${failures.size} newer pair(s) below WCAG AA:\n" + failures.joinToString("\n"), failures.isEmpty())
+    }
+
+    @Test fun attachmentRemoveIsCheckedAsTheSharedRowPaintsIt() {
+        // The thumbnail remove button lives in the chat composer's AttachmentPreviewRow (not
+        // assistant-owned) and paints onErrorContainer on errorContainer unconditionally; the
+        // palette records exactly that pair rather than a resolved substitute.
+        for (theme in themes) {
+            val t = AssistantSurfacePalette.resolve(theme.scheme).attachmentRemove
+            assertEquals(theme.name, theme.scheme.errorContainer, t.container)
+            assertEquals(theme.name, theme.scheme.onErrorContainer, t.content)
+        }
     }
 
     @Test fun thePreferredRoleIsKeptWhereverItAlreadyReads() {

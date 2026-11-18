@@ -120,6 +120,7 @@ import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.material.icons.outlined.ErrorOutline
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Screenshot
+import androidx.compose.material.icons.outlined.Settings
 import com.materialchat.assistant.screen.ScreenContextAccess
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.LoadingIndicator
@@ -1209,10 +1210,11 @@ private fun AssistantResponseSurface(
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                     modifier = Modifier.testTag("assistant_screen_used")
                 ) {
+                    // 16dp: the same icon size the chips and the Screen chip use.
                     Icon(
                         imageVector = Icons.Outlined.Screenshot,
                         contentDescription = null,
-                        modifier = Modifier.size(14.dp),
+                        modifier = Modifier.size(16.dp),
                         tint = palette.answer.muted
                     )
                     Text(
@@ -1233,12 +1235,15 @@ private fun AssistantResponseSurface(
                 )
             }
             if (screenContextUnavailable) {
-                androidx.compose.material3.TextButton(
+                // The same tonal chip as every other action on the answer surface (a bare text
+                // button read as a different design pass, and its primary-coloured label was
+                // the one text on this fill not resolved against it).
+                AssistantActionChip(
+                    icon = Icons.Outlined.Settings,
+                    label = "Open assistant settings",
                     onClick = onOpenScreenContextSettings,
                     modifier = Modifier.testTag("assistant_screen_settings")
-                ) {
-                    Text("Open assistant settings", style = AssistantTypography.action(MaterialTheme.typography))
-                }
+                )
             }
             AssistantAnswerToolbar(
                 showOpenInApp = showOpenInApp,
@@ -1281,24 +1286,11 @@ private fun AssistantAnswerToolbar(
             verticalAlignment = Alignment.CenterVertically
         ) {
             if (showOpenInApp) {
-                FilledTonalButton(
-                    onClick = onOpenInApp,
-                    shapes = ButtonShapes(shape = AssistantShapes.Chip, pressedShape = AssistantShapes.ConnectedPressed),
-                    colors = ButtonDefaults.filledTonalButtonColors(
-                        containerColor = palette.chip.container,
-                        contentColor = palette.chip.content
-                    ),
-                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
-                    modifier = Modifier.height(40.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.OpenInNew,
-                        contentDescription = null,
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Spacer(Modifier.size(6.dp))
-                    Text("Open in app", style = AssistantTypography.action(MaterialTheme.typography))
-                }
+                AssistantActionChip(
+                    icon = Icons.AutoMirrored.Filled.OpenInNew,
+                    label = "Open in app",
+                    onClick = onOpenInApp
+                )
             }
             Spacer(Modifier.weight(1f))
             // The icon actions form one connected M3 Expressive group: 2dp joins, outer 20dp /
@@ -1415,18 +1407,16 @@ private fun AssistantAttachRevealContent(
                 horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween, Alignment.End),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                AssistantAttachChip(
+                AssistantActionChip(
                     icon = Icons.Default.PhotoCamera,
                     label = "Take photo",
-                    index = 0,
-                    count = 2,
+                    shape = AssistantShapes.connectedShape(index = 0, count = 2),
                     onClick = { onAttach(AssistantAttachMode.Camera) }
                 )
-                AssistantAttachChip(
+                AssistantActionChip(
                     icon = Icons.Default.AddPhotoAlternate,
                     label = "Attach photo",
-                    index = 1,
-                    count = 2,
+                    shape = AssistantShapes.connectedShape(index = 1, count = 2),
                     onClick = { onAttach(AssistantAttachMode.Gallery) }
                 )
             }
@@ -1434,28 +1424,31 @@ private fun AssistantAttachRevealContent(
     }
 }
 
+/**
+ * The one labelled action chip of the assistant window: 40dp tonal capsule (or a per-position
+ * connected shape), 16dp leading icon, bold label, 12dp press morph, the contrast-resolved chip
+ * pair. Open in app, Take photo, Attach photo and Open assistant settings all draw this, so
+ * every labelled action on the answer surface and inside the opened pill reads as one family.
+ */
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun AssistantAttachChip(
+private fun AssistantActionChip(
     icon: ImageVector,
     label: String,
-    index: Int,
-    count: Int,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    shape: RoundedCornerShape = AssistantShapes.Chip
 ) {
     val palette = rememberAssistantSurfacePalette()
     FilledTonalButton(
         onClick = onClick,
-        shapes = ButtonShapes(
-            shape = AssistantShapes.connectedShape(index, count),
-            pressedShape = AssistantShapes.ConnectedPressed
-        ),
+        shapes = ButtonShapes(shape = shape, pressedShape = AssistantShapes.ConnectedPressed),
         colors = ButtonDefaults.filledTonalButtonColors(
             containerColor = palette.chip.container,
             contentColor = palette.chip.content
         ),
         contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
-        modifier = Modifier.height(40.dp)
+        modifier = modifier.height(40.dp)
     ) {
         Icon(imageVector = icon, contentDescription = null, modifier = Modifier.size(16.dp))
         Spacer(Modifier.size(6.dp))

@@ -291,7 +291,9 @@ private fun AssistantThinkingSurface() {
 }
 
 /**
- * Compact continue button styled as chip.
+ * The card's own continue chip, drawn only when a host does not supply an action row (the
+ * overlay passes `showContinueButton = false`). Kept in the pill's chip language: the 40dp
+ * capsule, 16dp icon, bold action label, the palette's continue-chip pair.
  */
 @Composable
 private fun ContinueInAppButton(onClick: () -> Unit) {
@@ -302,25 +304,25 @@ private fun ContinueInAppButton(onClick: () -> Unit) {
     ) {
         Surface(
             onClick = onClick,
-            shape = MaterialTheme.shapes.medium,  // 12dp from theme
-            color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f),
+            shape = AssistantShapes.Chip,
+            color = palette.continueChip.container,
             contentColor = palette.continueChip.content,
-            modifier = Modifier.height(48.dp)
+            modifier = Modifier.height(40.dp)
         ) {
             Row(
-                modifier = Modifier.padding(horizontal = 12.dp),
+                modifier = Modifier.padding(horizontal = 14.dp),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.OpenInNew,
                     contentDescription = null,
-                    modifier = Modifier.size(14.dp),
+                    modifier = Modifier.size(16.dp),
                     tint = palette.continueChip.content
                 )
                 Text(
-                    text = "Continue in App",
-                    style = MaterialTheme.typography.labelSmall,
+                    text = "Continue in app",
+                    style = AssistantTypography.action(MaterialTheme.typography),
                     color = palette.continueChip.content
                 )
             }

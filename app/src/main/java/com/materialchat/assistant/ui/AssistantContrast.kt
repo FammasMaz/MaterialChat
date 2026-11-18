@@ -198,6 +198,11 @@ internal data class AssistantSurfacePalette(
     val interruptButton: AssistantTonal,
     /** The secondary circle holding the thinking surface's loading indicator. */
     val thinkingBadge: AssistantTonal,
+    /**
+     * The remove button on a pending photo thumbnail (AttachmentPreviewRow, shared with the chat
+     * composer): the error container with onErrorContainer exactly as that row paints it.
+     */
+    val attachmentRemove: AssistantTonal,
     /** The pill's leading glyph per phase; the idle container is transparent and sits on the pill fill. */
     val glyphs: Map<AssistantPhase, AssistantTonal>
 ) {
@@ -234,6 +239,18 @@ internal data class AssistantSurfacePalette(
         tonal("stop button", stopButton, AssistantContrast.ICON)
         tonal("interrupt button", interruptButton, AssistantContrast.ICON)
         tonal("thinking badge", thinkingBadge, AssistantContrast.ICON)
+        // 2.41.0 surfaces. The Screen chip, its remove icon, the unavailable notice's settings
+        // chip and the toolbar's icon actions all paint the tonal chip pair; the Using-screen
+        // marker is the answer's muted tone as a 16dp icon next to its text.
+        tonal("screen chip", chip, AssistantContrast.BODY_TEXT)
+        tonal("screen chip remove", chip, AssistantContrast.ICON)
+        tonal("screen settings button", chip, AssistantContrast.BODY_TEXT)
+        tonal("toolbar action", chip, AssistantContrast.ICON)
+        answer.fills.forEachIndexed { i, fill ->
+            val n = if (answer.fills.size == 1) "screen used marker" else "screen used marker[$i]"
+            add(AssistantContrastPair(n, fill, answer.muted, AssistantContrast.ICON))
+        }
+        tonal("attachment remove", attachmentRemove, AssistantContrast.ICON)
         for ((phase, glyph) in glyphs) tonal("glyph $phase", glyph, AssistantContrast.ICON)
     }
 
@@ -295,6 +312,10 @@ internal data class AssistantSurfacePalette(
                 stopButton = tonal(scheme.primaryContainer, scheme.onPrimaryContainer, AssistantContrast.ICON),
                 interruptButton = tonal(scheme.secondaryContainer, scheme.onSecondaryContainer, AssistantContrast.ICON),
                 thinkingBadge = tonal(scheme.secondaryContainer, scheme.onSecondaryContainer, AssistantContrast.ICON),
+                // Not resolved: this is what the shared AttachmentPreviewRow draws, checked as drawn.
+                attachmentRemove = AssistantTonal(
+                    scheme.errorContainer, scheme.onErrorContainer, assistantFills(scheme.errorContainer, scheme)
+                ),
                 glyphs = glyphs
             )
         }
