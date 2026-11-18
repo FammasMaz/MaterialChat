@@ -200,6 +200,7 @@ fun MessageActionRow(
     if (specs.isEmpty() && stats == null && bookmark == null && elapsedLabel == null) return
 
     val segmentCount = specs.size + (if (stats != null) 1 else 0) + (if (bookmark != null) 1 else 0)
+    val palette = rememberChatSurfacePalette()
     val iconWidth by animateDpAsState(
         targetValue = messageActionSegmentWidth(statsExpanded),
         animationSpec = ExpressiveMotion.Spatial.contentSize(),
@@ -296,7 +297,9 @@ fun MessageActionRow(
             Text(
                 text = elapsedLabel.orEmpty(),
                 style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                // Sits on the list background; resolved there (onSurfaceVariant at 0.7 was
+                // 3.9:1 on light palettes).
+                color = palette.metaLabel,
                 maxLines = 1,
                 modifier = Modifier.padding(start = 10.dp)
             )
