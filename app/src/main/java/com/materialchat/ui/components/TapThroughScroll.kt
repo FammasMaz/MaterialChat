@@ -54,6 +54,9 @@ fun Modifier.tapThroughScroll(enabled: Boolean = true, onClick: () -> Unit): Mod
                     val travelled = (change.position - down.position).getDistance()
                     if (change.changedToUpIgnoreConsumed()) {
                         tapped = travelled <= slop
+                        // Claim the up so the bubble's last-resort router (BubbleTapRouter)
+                        // does not deliver the same tap a second time.
+                        if (tapped) change.consume()
                         break
                     }
                     if (!change.pressed || travelled > slop) break

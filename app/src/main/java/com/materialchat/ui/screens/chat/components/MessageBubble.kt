@@ -32,6 +32,7 @@ import androidx.compose.foundation.gestures.awaitHorizontalTouchSlopOrCancellati
 import androidx.compose.foundation.gestures.horizontalDrag
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.ui.input.pointer.changedToUpIgnoreConsumed
 import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -69,14 +70,14 @@ import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.ErrorOutline
 import androidx.compose.material3.ButtonDefaults
-import com.materialchat.ui.components.seaglass.DropdownMenu
+import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.LoadingIndicator
 import com.materialchat.ui.components.ExpressiveButton
 import com.materialchat.ui.components.ExpressiveButtonStyle
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import com.materialchat.ui.components.seaglass.Surface
+import androidx.compose.material3.Surface
 import com.materialchat.ui.components.tapThroughScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -103,6 +104,8 @@ import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.LayoutCoordinates
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -218,6 +221,12 @@ fun MessageBubble(
 
     // Double-tap bookmark burst state
     var bookmarkBurstTrigger by remember { mutableIntStateOf(0) }
+
+    // Bubble-level last-resort tap delivery for the memory chips and the thinking header
+    // (see BubbleTapRouter): on long chats on real devices those controls have missed taps
+    // the bubble itself received.
+    val tapRouter = remember { BubbleTapRouter() }
+    var contentCoordinates by remember { mutableStateOf<LayoutCoordinates?>(null) }
 
     // Expressive arrival for a message that was just created (never for an item scrolled into
     // view — see MessageArrivalTracker): scale from 0.96 + fade on the spatial spring. When a
@@ -418,6 +427,32 @@ fun MessageBubble(
                 ) {
                 Column(
                     modifier = Modifier
+                        .onGloballyPositioned { contentCoordinates = it }
+                        // Last-resort tap delivery: a tap the inner controls left unconsumed is
+                        // handed to the registered control under it (memory chips, thinking
+                        // header). A control whose own click handling worked consumed the up,
+                        // so this never fires twice; a routed tap is consumed here so the
+                        // bubble stops rippling for a tap that belonged to a chip.
+                        .pointerInput(tapRouter) {
+                            awaitEachGesture {
+                                val down = awaitFirstDown(requireUnconsumed = false)
+                                val slop = viewConfiguration.touchSlop
+                                while (true) {
+                                    val event = awaitPointerEvent()
+                                    if (event.changes.size > 1) break
+                                    val change = event.changes.firstOrNull { it.id == down.id } ?: break
+                                    val travelled = (change.position - down.position).getDistance()
+                                    if (change.changedToUpIgnoreConsumed()) {
+                                        if (!change.isConsumed && travelled <= slop) {
+                                            val root = contentCoordinates?.localToRoot(change.position)
+                                            if (root != null && tapRouter.route(root)) change.consume()
+                                        }
+                                        break
+                                    }
+                                    if (!change.pressed || travelled > slop) break
+                                }
+                            }
+                        }
                         .padding(
                             horizontal = bubbleStyle.horizontalPadding,
                             vertical = bubbleStyle.verticalPadding
@@ -427,6 +462,7 @@ fun MessageBubble(
                     if (isAssistant && !displayThinkingContent.isNullOrEmpty()) {
                         ThinkingSection(
                             thinkingContent = displayThinkingContent,
+                            tapRouter = tapRouter,
                             textColor = bubbleStyle.textColor,
                             isStreaming = message.isStreaming,
                             hasContent = displayContent.isNotEmpty(),
@@ -504,6 +540,7 @@ fun MessageBubble(
                         Spacer(modifier = Modifier.height(8.dp))
                         MemoryDisclosure(
                             metadata = memoryMeta,
+                            tapRouter = tapRouter,
                             hapticsEnabled = hapticsEnabled
                         )
                     }
@@ -1013,6 +1050,7 @@ private fun ThinkingSection(
     hasContent: Boolean = false,
     thinkingDurationMs: Long? = null,
     alwaysShowThinking: Boolean = false,
+    tapRouter: BubbleTapRouter,
     hapticsEnabled: Boolean = true
 ) {
     // Determine the current phase to drive auto-collapse
@@ -1073,6 +1111,8 @@ private fun ThinkingSection(
                 .clickable { haptics.perform(HapticPattern.CLICK, hapticsEnabled); isExpanded = !isExpanded }
                 // Long chats: the list consumes the down while its scroll is in progress.
                 .tapThroughScroll { haptics.perform(HapticPattern.CLICK, hapticsEnabled); isExpanded = !isExpanded }
+                // Bubble-level last resort when neither path above saw the tap (see BubbleTapRouter).
+                .bubbleTapTarget(tapRouter, "thinking") { haptics.perform(HapticPattern.CLICK, hapticsEnabled); isExpanded = !isExpanded }
                 .heightIn(min = 40.dp)
                 .padding(horizontal = 8.dp, vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically
@@ -1202,6 +1242,7 @@ private fun ModelSiblingRow(
 @Composable
 private fun MemoryDisclosure(
     metadata: MemoryMessageMetadata,
+    tapRouter: BubbleTapRouter,
     hapticsEnabled: Boolean,
     modifier: Modifier = Modifier
 ) {
@@ -1224,6 +1265,8 @@ private fun MemoryDisclosure(
             if (metadata.saved.isNotEmpty()) {
                 MemoryIndicatorChip(
                     label = if (metadata.saved.size == 1) "Memory saved" else "Memory saved · ${metadata.saved.size}",
+                    tapRouter = tapRouter,
+                    routeKey = "memory-saved",
                     icon = Icons.Filled.AutoAwesome,
                     containerColor = MaterialTheme.colorScheme.tertiaryContainer,
                     contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
@@ -1237,6 +1280,8 @@ private fun MemoryDisclosure(
             if (metadata.recalled.isNotEmpty()) {
                 MemoryIndicatorChip(
                     label = if (metadata.recalled.size == 1) "Memory used" else "Memory used · ${metadata.recalled.size}",
+                    tapRouter = tapRouter,
+                    routeKey = "memory-used",
                     icon = Icons.Filled.Bookmark,
                     containerColor = MaterialTheme.colorScheme.secondaryContainer,
                     contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
@@ -1297,6 +1342,8 @@ private fun MemoryIndicatorChip(
     containerColor: Color,
     contentColor: Color,
     expanded: Boolean,
+    tapRouter: BubbleTapRouter,
+    routeKey: String,
     onClick: () -> Unit
 ) {
     val interactionSource = remember { MutableInteractionSource() }
@@ -1326,7 +1373,9 @@ private fun MemoryIndicatorChip(
             }
             // Long chats: the list consumes the down while its scroll is in progress, so the
             // Surface's own clickable never sees the tap. This path takes over only then.
-            .tapThroughScroll(onClick = onClick),
+            .tapThroughScroll(onClick = onClick)
+            // Bubble-level last resort when neither path above saw the tap (see BubbleTapRouter).
+            .bubbleTapTarget(tapRouter, routeKey, onClick),
         shape = RoundedCornerShape(cornerRadius),
         color = containerColor,
         contentColor = contentColor,

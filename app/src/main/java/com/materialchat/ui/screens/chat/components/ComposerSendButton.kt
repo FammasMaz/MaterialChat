@@ -59,9 +59,10 @@ internal fun composerSendState(isStreaming: Boolean, canSend: Boolean): Composer
 
 /**
  * Where each state sits on the button's shape track. The track is two chained morphs over
- * [MaterialShapes]: 0 = four-sided cookie (idle, nothing to send), 1 = circle (ready to
- * send), 2 = rounded square (streaming: the stop block). A press pushes the contour toward
- * the neighbouring shape (circle squares off, square softens) so the press reads as a shape
+ * [MaterialShapes]: 0 = four-sided cookie (idle, nothing to send), 1 = nine-sided scalloped
+ * cookie (ready to send — a plain circle read as the old button next to the expressive attach
+ * control), 2 = rounded square (streaming: the stop block). A press pushes the contour toward
+ * the neighbouring shape (cookie squares off, square softens) so the press reads as a shape
  * morph, the M3 Expressive button gesture, rather than only a scale dip.
  */
 internal const val COMPOSER_SEND_TRACK_END = 2f
@@ -99,7 +100,7 @@ internal class ComposerSendTrackShape(
  * morphs between states.
  *
  * State machine: [ComposerSendState.Idle] (nothing to send, disabled, neutral tone, cookie
- * contour), [ComposerSendState.Ready] (filled primary, circle, send glyph) and
+ * contour), [ComposerSendState.Ready] (filled primary, scalloped cookie, send glyph) and
  * [ComposerSendState.Streaming] (error-container rounded-square stop button with a plain,
  * calm stop glyph). The contour and press feedback ride the theme's spatial shape-morph
  * spring, scale dips on the spatial scale spring, colours are effects springs (no
@@ -122,8 +123,8 @@ internal fun ComposerSendButton(
     val interactionSource = remember { MutableInteractionSource() }
     val pressed by interactionSource.collectIsPressedAsState()
 
-    val idleToReady = remember { Morph(MaterialShapes.Cookie4Sided, MaterialShapes.Circle) }
-    val readyToStreaming = remember { Morph(MaterialShapes.Circle, MaterialShapes.Square) }
+    val idleToReady = remember { Morph(MaterialShapes.Cookie4Sided, MaterialShapes.Cookie9Sided) }
+    val readyToStreaming = remember { Morph(MaterialShapes.Cookie9Sided, MaterialShapes.Square) }
     val trackProgress by animateFloatAsState(
         targetValue = composerSendShapeProgress(state, pressed),
         animationSpec = ExpressiveMotion.Spatial.shapeMorph(),
