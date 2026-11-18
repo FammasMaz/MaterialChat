@@ -879,7 +879,8 @@ private fun MathBlockView(
             .fillMaxWidth()
             .padding(vertical = 4.dp)
             .clipToBounds()
-            .clip(RoundedCornerShape(8.dp))
+            // Same outer container as code blocks and tables: one shape language per block.
+            .clip(MarkdownBlockOuterShape)
             .background(backgroundColor.copy(alpha = 0.5f))
     ) {
         AndroidView(
@@ -936,7 +937,7 @@ private fun NativeMathBlockView(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 4.dp)
-            .clip(RoundedCornerShape(8.dp))
+            .clip(MarkdownBlockOuterShape)
             .background(backgroundColor.copy(alpha = 0.5f))
     ) {
         SelectionContainer(modifier = Modifier.align(Alignment.Center)) {

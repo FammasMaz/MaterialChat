@@ -84,7 +84,8 @@ fun WebSearchSourcesCarousel(
         animationSpec = com.materialchat.ui.theme.ExpressiveMotion.Spatial.default(),
         label = "webSearchSourcesChevron"
     )
-    val containerShape = RoundedCornerShape(24.dp)
+    // Shared disclosure-panel contour (20dp squircle), the same as the memory panel above it.
+    val containerShape = com.materialchat.ui.theme.ExpressiveShapes.DisclosurePanel
 
     Column(
         modifier = modifier
