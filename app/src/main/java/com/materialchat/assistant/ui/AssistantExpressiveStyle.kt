@@ -16,6 +16,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.materialchat.ui.theme.ExpressiveMotion
 
 /**
  * Assistant-local Material 3 Expressive tokens.
@@ -28,17 +29,20 @@ import androidx.compose.ui.unit.sp
  * with the particle field and the hosted geometry gate and stay as they are.
  */
 internal object AssistantMotion {
+    // Every spec here is either the shared theme token (ui/theme/Motion.kt) or a documented
+    // assistant-specific derivation of one; no spring is hand-rolled at a call site.
+
     /** Glyph and state-line switches (listening -> thinking -> speaking): quick, with visible overshoot. */
     fun <T> stateSwitch(): SpringSpec<T> = spring(dampingRatio = 0.55f, stiffness = 520f)
 
-    /** The answer surface appearing or leaving: a soft, weighty settle. */
+    /** The answer surface appearing or leaving: a soft, weighty settle (slower than the shared container token). */
     fun <T> surfaceReveal(): SpringSpec<T> = spring(dampingRatio = 0.62f, stiffness = 300f)
 
-    /** Sheet entrance (M3 Expressive standard spatial). */
-    fun <T> container(): SpringSpec<T> = spring(dampingRatio = 0.6f, stiffness = 380f)
+    /** Sheet entrance: the shared M3 Expressive container spatial token. */
+    fun <T> container(): SpringSpec<T> = ExpressiveMotion.Spatial.container()
 
-    /** Sheet entrance scale: the bouncy hero spring. */
-    fun <T> playful(): SpringSpec<T> = spring(dampingRatio = 0.5f, stiffness = 400f)
+    /** Sheet entrance scale: the shared bouncy hero token. */
+    fun <T> playful(): SpringSpec<T> = ExpressiveMotion.Spatial.playful()
 
     /**
      * The whole surface leaving: it drops and shrinks on a critically damped spring, so the exit
@@ -50,14 +54,17 @@ internal object AssistantMotion {
     /** Shape morphs of small components (the glyph container): M3 `spring.fast.spatial`, expressive. */
     fun <T> morph(): SpringSpec<T> = spring(dampingRatio = 0.7f, stiffness = 1400f)
 
-    /** The primary action changing role: a short pop. */
-    fun <T> pop(): SpringSpec<T> = spring(dampingRatio = 0.45f, stiffness = 650f)
+    /** The primary action changing role: the shared threshold pop (overshoots, then settles). */
+    fun <T> pop(): SpringSpec<T> = ExpressiveMotion.Spatial.thresholdPop()
 
-    /** Expand/collapse of the answer surface while a reply streams in. */
+    /**
+     * Expand/collapse of the answer surface while a reply streams in. Softer than the shared
+     * contentSize token on purpose: the target moves with every streamed word.
+     */
     fun <T> contentSize(): SpringSpec<T> = spring(dampingRatio = 0.75f, stiffness = 340f)
 
-    /** Non-spatial effects (alpha, colour): fast and never bouncy. */
-    fun <T> effect(): SpringSpec<T> = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = 1200f)
+    /** Non-spatial effects (alpha, colour): the shared effects token, never bouncy. */
+    fun <T> effect(): SpringSpec<T> = ExpressiveMotion.Effects.color()
 }
 
 internal object AssistantShapes {
