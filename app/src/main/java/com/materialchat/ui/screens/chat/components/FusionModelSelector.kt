@@ -102,10 +102,7 @@ fun FusionModelSelector(
                     .padding(horizontal = 16.dp)
                     .padding(bottom = 32.dp)
                     .animateContentSize(
-                        animationSpec = spring(
-                            dampingRatio = Spring.DampingRatioMediumBouncy,
-                            stiffness = Spring.StiffnessMediumLow
-                        )
+                        animationSpec = com.materialchat.ui.theme.ExpressiveMotion.Spatial.contentSize()
                     )
             ) {
                 Text(

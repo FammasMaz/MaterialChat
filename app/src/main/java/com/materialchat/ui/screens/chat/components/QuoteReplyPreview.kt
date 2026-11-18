@@ -71,7 +71,7 @@ fun QuoteReplyPreview(
             animationSpec = ExpressiveMotion.Effects.alpha()
         ),
         exit = shrinkVertically(
-            animationSpec = spring(dampingRatio = 1.0f, stiffness = 500f)
+            animationSpec = ExpressiveMotion.Spatial.collapse()
         ) + fadeOut(
             animationSpec = ExpressiveMotion.Effects.alpha()
         )

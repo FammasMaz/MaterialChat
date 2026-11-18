@@ -1335,10 +1335,13 @@ private fun MemoryIndicatorChip(
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
     val cornerRadius by animateDpAsState(
+        // One shape language with the action group under the bubble: 20dp outer corner at
+        // rest, 16dp (the thinking/code container radius) while its panel is open, and the
+        // group's 14dp pressed radius while pressed.
         targetValue = when {
-            isPressed -> 14.dp
-            expanded -> 18.dp
-            else -> 24.dp
+            isPressed -> MessageActionPressedCorner
+            expanded -> 16.dp
+            else -> MessageActionOuterCorner
         },
         animationSpec = com.materialchat.ui.theme.ExpressiveMotion.Spatial.shapeMorph(),
         label = "memoryChipShape"

@@ -81,10 +81,7 @@ fun WebSearchSourcesCarousel(
     ) { mutableStateOf(initiallyExpanded) }
     val chevronRotation by animateFloatAsState(
         targetValue = if (expanded) 180f else 0f,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioNoBouncy,
-            stiffness = Spring.StiffnessMediumLow
-        ),
+        animationSpec = com.materialchat.ui.theme.ExpressiveMotion.Spatial.default(),
         label = "webSearchSourcesChevron"
     )
     val containerShape = RoundedCornerShape(24.dp)
@@ -93,10 +90,7 @@ fun WebSearchSourcesCarousel(
         modifier = modifier
             .fillMaxWidth()
             .animateContentSize(
-                animationSpec = spring(
-                    dampingRatio = Spring.DampingRatioNoBouncy,
-                    stiffness = Spring.StiffnessMediumLow
-                )
+                animationSpec = com.materialchat.ui.theme.ExpressiveMotion.Spatial.contentSize()
             )
     ) {
         Spacer(modifier = Modifier.height(8.dp))
@@ -181,22 +175,11 @@ fun WebSearchSourcesCarousel(
 
         AnimatedVisibility(
             visible = expanded,
-            enter = fadeIn(
-                animationSpec = spring(dampingRatio = 1f, stiffness = Spring.StiffnessMediumLow)
-            ) + expandVertically(
-                animationSpec = spring(
-                    dampingRatio = Spring.DampingRatioNoBouncy,
-                    stiffness = Spring.StiffnessMediumLow
-                )
-            ),
-            exit = fadeOut(
-                animationSpec = spring(dampingRatio = 1f, stiffness = Spring.StiffnessMediumLow)
-            ) + shrinkVertically(
-                animationSpec = spring(
-                    dampingRatio = Spring.DampingRatioNoBouncy,
-                    stiffness = Spring.StiffnessMediumLow
-                )
-            )
+            // Shared disclosure physics (ExpressiveMotion.Disclosure).
+            enter = fadeIn(animationSpec = com.materialchat.ui.theme.ExpressiveMotion.Disclosure.FadeIn) +
+                expandVertically(animationSpec = com.materialchat.ui.theme.ExpressiveMotion.Disclosure.Expand),
+            exit = fadeOut(animationSpec = com.materialchat.ui.theme.ExpressiveMotion.Disclosure.FadeOut) +
+                shrinkVertically(animationSpec = com.materialchat.ui.theme.ExpressiveMotion.Disclosure.Shrink)
         ) {
             Column {
                 Spacer(modifier = Modifier.height(8.dp))

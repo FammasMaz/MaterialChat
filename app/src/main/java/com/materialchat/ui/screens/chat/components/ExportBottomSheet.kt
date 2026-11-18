@@ -18,7 +18,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Code
 import androidx.compose.material.icons.outlined.Description
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -102,6 +103,7 @@ fun ExportBottomSheet(
  * Content of the export bottom sheet.
  */
 @Composable
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 private fun ExportBottomSheetContent(
     isExporting: Boolean,
     onExportFormat: (ExportConversationUseCase.ExportFormat) -> Unit
@@ -138,9 +140,9 @@ private fun ExportBottomSheetContent(
                     .padding(vertical = 24.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                com.materialchat.ui.components.M3ExpressiveCircularProgress(
-                    size = 24.dp,
-                    strokeWidth = 2.dp,
+                // M3 Expressive working state: the official LoadingIndicator, not a spinner.
+                LoadingIndicator(
+                    modifier = Modifier.size(24.dp),
                     color = MaterialTheme.colorScheme.primary
                 )
                 Spacer(modifier = Modifier.width(16.dp))

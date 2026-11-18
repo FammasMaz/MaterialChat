@@ -30,10 +30,11 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import com.materialchat.ui.components.M3ExpressiveCircularProgress
+
 import com.materialchat.ui.theme.CustomShapes
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -305,7 +306,7 @@ private fun SearchField(
  * Provider filter badge with dropdown and search.
  * M3 Expressive: 48dp min touch target, spring animations, pill shape.
  */
-@OptIn(ExperimentalFoundationApi::class)
+@OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun ProviderFilterBadge(
     text: String,
@@ -486,10 +487,9 @@ private fun ProviderFilterBadge(
                     DropdownMenuItem(
                         text = {
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                M3ExpressiveCircularProgress(
-                                    modifier = Modifier.size(16.dp),
-                                    size = 16.dp,
-                                    strokeWidth = 2.dp
+                                LoadingIndicator(
+                                    modifier = Modifier.size(20.dp),
+                                    color = MaterialTheme.colorScheme.primary
                                 )
                                 Spacer(modifier = Modifier.width(12.dp))
                                 Text(
@@ -603,7 +603,7 @@ private fun ProviderFilterBadge(
  * Model badge with picker and search functionality.
  * M3 Expressive: 48dp min touch target, spring animations, pill shape.
  */
-@OptIn(ExperimentalFoundationApi::class)
+@OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun ModelPickerBadge(
     text: String,
@@ -760,10 +760,9 @@ private fun ModelPickerBadge(
                     DropdownMenuItem(
                         text = {
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                M3ExpressiveCircularProgress(
-                                    modifier = Modifier.size(16.dp),
-                                    size = 16.dp,
-                                    strokeWidth = 2.dp
+                                LoadingIndicator(
+                                    modifier = Modifier.size(20.dp),
+                                    color = MaterialTheme.colorScheme.primary
                                 )
                                 Spacer(modifier = Modifier.width(12.dp))
                                 Text(
