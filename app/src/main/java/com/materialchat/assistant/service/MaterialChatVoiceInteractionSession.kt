@@ -38,6 +38,7 @@ import com.materialchat.MainActivity
 import com.materialchat.assistant.di.AssistantEntryPoint
 import com.materialchat.assistant.screen.AssistScreenshots
 import com.materialchat.assistant.screen.AssistStructureReader
+import com.materialchat.assistant.screen.ScreenContextAccess
 import com.materialchat.assistant.screen.ScreenContext
 import com.materialchat.assistant.ui.ASSISTANT_KEEP_AWAKE_GRACE_MILLIS
 import com.materialchat.assistant.ui.AssistantOverlay
@@ -376,6 +377,16 @@ class MaterialChatVoiceInteractionSession(
                     startActivity = { context.startActivity(it) }
                 ).launch(AssistantAttachActivity.intent(context, event.mode, event.room))
                 if (error == null) hide() else viewModel.onAttachLaunchFailed(error)
+            },
+            onOpenScreenContextSettings = {
+                // The switches live on the system's digital-assistant page; opening it ends
+                // this invocation like any other app launch from the overlay.
+                val intent = ScreenContextAccess.settingsIntents(context).firstOrNull()
+                if (intent == null) {
+                    Log.w(TAG, "no settings activity for screen context")
+                } else {
+                    assistantLauncher().launch(intent)?.let { Log.w(TAG, "screen-context settings: $it") }
+                }
             },
             onKeepScreenOnChanged = { busy -> onAssistantBusyChanged(busy) }
         )

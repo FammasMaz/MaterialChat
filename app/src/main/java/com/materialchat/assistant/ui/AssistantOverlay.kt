@@ -119,6 +119,8 @@ import androidx.compose.material3.IconButtonShapes
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.material.icons.outlined.ErrorOutline
 import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.Screenshot
+import com.materialchat.assistant.screen.ScreenContextAccess
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.LoadingIndicator
 import androidx.compose.ui.draw.clip
@@ -165,10 +167,13 @@ fun AssistantOverlay(
     /** Reports whether the assistant is working; the session applies the keep-awake grace. */
     onKeepScreenOnChanged: (Boolean) -> Unit = {},
     /** The user wants to add a photo; the session opens the camera or picker activity. */
-    onRequestAttach: (AssistantEvent.Attach) -> Unit = {}
+    onRequestAttach: (AssistantEvent.Attach) -> Unit = {},
+    /** The screen could not be read; the session opens the system's digital-assistant settings. */
+    onOpenScreenContextSettings: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val pendingAttachments by viewModel.pendingAttachments.collectAsStateWithLifecycle()
+    val screenAttachment by viewModel.screenAttachment.collectAsStateWithLifecycle()
     val voiceState by viewModel.voiceState.collectAsStateWithLifecycle()
     val amplitudeData by viewModel.amplitudeData.collectAsStateWithLifecycle()
     val messages by viewModel.messages.collectAsStateWithLifecycle()
@@ -436,6 +441,9 @@ fun AssistantOverlay(
                     pendingAttachments = pendingAttachments,
                     onAttach = viewModel::requestAttach,
                     onRemoveAttachment = viewModel::removeAttachment,
+                    screenAttachment = screenAttachment,
+                    onRemoveScreenContext = viewModel::removeScreenContext,
+                    onOpenScreenContextSettings = onOpenScreenContextSettings,
                     onCardBoundsChange = { cardBoundsInRoot = it },
                     softEdges = neuralExpressive,
                     leaving = leaving,
@@ -506,6 +514,11 @@ internal fun AssistantOverlayContent(
     /** Take a photo or choose one; the per-message limit is enforced by the caller. */
     onAttach: (AssistantAttachMode) -> Unit = {},
     onRemoveAttachment: (Attachment) -> Unit = {},
+    /** The screen capture staged for this question, shown as a labelled removable chip in the opened pill. */
+    screenAttachment: Attachment? = null,
+    onRemoveScreenContext: () -> Unit = {},
+    /** The question wanted the screen and nothing arrived: opens the system's digital-assistant settings. */
+    onOpenScreenContextSettings: () -> Unit = {},
     /** Soft-edged pill: no own fill or shadow; the parent paints a blurred fill behind it. */
     softEdges: Boolean = false,
     /** The session is dismissing: the sheet drops and shrinks out before the window hides. */
@@ -530,9 +543,14 @@ internal fun AssistantOverlayContent(
     val thinking = busy && !speaking && !capturing
     val hasResponse = messages.isNotEmpty() || uiState.isLoading
     val isError = uiState.error != null || voiceState is VoiceState.Error
+    // Worded for what the platform reports (API 37 request state when available).
+    val screenUnavailableNotice = remember(context) {
+        ScreenContextAccess.notice(ScreenContextAccess.requestState(context))
+    }
     val notice = uiState.error
         ?: (voiceState as? VoiceState.Error)?.message
         ?: uiState.notice
+        ?: screenUnavailableNotice.takeIf { uiState.screenContextUnavailable }
         ?: when {
             !hasMicPermission -> "Enable microphone permission in system settings to speak."
             !uiState.isVoiceInputEnabled -> "Voice input is disabled in settings."
@@ -547,9 +565,11 @@ internal fun AssistantOverlayContent(
     // cluster opens the two attach actions within the pill's own surface; pending photos keep the
     // pill opened on their own so the thumbnails stay removable.
     var attachReveal by remember { mutableStateOf(AssistantAttachRevealState()) }
+    // The staged screen capture opens the pill exactly like a photo would.
+    val attachmentCount = pendingAttachments.size + (if (screenAttachment != null) 1 else 0)
     val attachAffordanceVisible =
-        AssistantAttachRevealState.affordanceVisible(keyboardMode, pendingAttachments.size)
-    val attachExpanded = AssistantAttachRevealState.expanded(attachReveal.open, pendingAttachments.size)
+        AssistantAttachRevealState.affordanceVisible(keyboardMode, attachmentCount)
+    val attachExpanded = AssistantAttachRevealState.expanded(attachReveal.open, attachmentCount)
     LaunchedEffect(attachAffordanceVisible) {
         attachReveal = attachReveal.affordanceVisibilityChanged(attachAffordanceVisible)
     }
@@ -682,6 +702,9 @@ internal fun AssistantOverlayContent(
                     isLoading = uiState.isLoading,
                     notice = notice,
                     isError = isError,
+                    screenContextUsed = uiState.screenContextUsed,
+                    screenContextUnavailable = uiState.screenContextUnavailable,
+                    onOpenScreenContextSettings = onOpenScreenContextSettings,
                     showOpenInApp = hasContent,
                     onOpenInApp = onOpenInApp,
                     onNewChat = onNewChat,
@@ -751,7 +774,9 @@ internal fun AssistantOverlayContent(
                             attachReveal = attachReveal.modeChosen()
                             onAttach(mode)
                         },
-                        onRemoveAttachment = onRemoveAttachment
+                        onRemoveAttachment = onRemoveAttachment,
+                        screenAttachment = screenAttachment,
+                        onRemoveScreenContext = onRemoveScreenContext
                     )
                 }
 
@@ -1131,6 +1156,11 @@ private fun AssistantResponseSurface(
     isLoading: Boolean,
     notice: String?,
     isError: Boolean,
+    /** The answer was produced with the screen capture: the small "Using screen" marker. */
+    screenContextUsed: Boolean = false,
+    /** The question wanted the screen and nothing arrived: the notice gets a settings button. */
+    screenContextUnavailable: Boolean = false,
+    onOpenScreenContextSettings: () -> Unit = {},
     showOpenInApp: Boolean,
     onOpenInApp: () -> Unit,
     onNewChat: () -> Unit,
@@ -1172,15 +1202,43 @@ private fun AssistantResponseSurface(
                     .fillMaxWidth()
                     .weight(1f, fill = false)
             )
+            if (screenContextUsed) {
+                // The user must be able to tell that screen data went out with this question.
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    modifier = Modifier.testTag("assistant_screen_used")
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.Screenshot,
+                        contentDescription = null,
+                        modifier = Modifier.size(14.dp),
+                        tint = palette.answer.muted
+                    )
+                    Text(
+                        text = "Using screen",
+                        style = AssistantTypography.notice(MaterialTheme.typography),
+                        color = palette.answer.muted
+                    )
+                }
+            }
             if (notice != null) {
                 Text(
                     text = notice,
-                    maxLines = 2,
+                    maxLines = if (screenContextUnavailable) 4 else 2,
                     overflow = TextOverflow.Ellipsis,
                     style = AssistantTypography.notice(MaterialTheme.typography),
                     color = if (isError) palette.answer.error
                     else palette.answer.muted
                 )
+            }
+            if (screenContextUnavailable) {
+                androidx.compose.material3.TextButton(
+                    onClick = onOpenScreenContextSettings,
+                    modifier = Modifier.testTag("assistant_screen_settings")
+                ) {
+                    Text("Open assistant settings", style = AssistantTypography.action(MaterialTheme.typography))
+                }
             }
             AssistantAnswerToolbar(
                 showOpenInApp = showOpenInApp,
@@ -1304,26 +1362,42 @@ private fun AssistantAttachRevealContent(
     attachments: List<Attachment>,
     showActions: Boolean,
     onAttach: (AssistantAttachMode) -> Unit,
-    onRemoveAttachment: (Attachment) -> Unit
+    onRemoveAttachment: (Attachment) -> Unit,
+    /** The staged screen capture, above the photos, with its own remove target. */
+    screenAttachment: Attachment? = null,
+    onRemoveScreenContext: () -> Unit = {}
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
         AnimatedVisibility(
-            visible = attachments.isNotEmpty(),
+            visible = attachments.isNotEmpty() || screenAttachment != null,
             enter = fadeIn(animationSpec = AssistantMotion.effect()) +
                 expandVertically(animationSpec = AssistantMotion.surfaceReveal(), expandFrom = Alignment.Bottom),
             exit = fadeOut(animationSpec = AssistantMotion.effect()) +
                 shrinkVertically(animationSpec = AssistantMotion.surfaceReveal(), shrinkTowards = Alignment.Bottom)
         ) {
-            // The remove button of each item overhangs its top edge by 12dp; the top inset
-            // keeps it inside the capsule's clip.
-            AttachmentPreviewRow(
-                attachments = attachments,
-                onRemoveAttachment = onRemoveAttachment,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 16.dp, start = 18.dp, end = 18.dp)
-                    .testTag("assistant_attachments")
-            )
+            Column(modifier = Modifier.fillMaxWidth()) {
+                if (screenAttachment != null) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 14.dp, start = 18.dp, end = 18.dp)
+                    ) {
+                        AssistantScreenChip(attachment = screenAttachment, onRemove = onRemoveScreenContext)
+                    }
+                }
+                if (attachments.isNotEmpty()) {
+                    // The remove button of each item overhangs its top edge by 12dp; the top inset
+                    // keeps it inside the capsule's clip.
+                    AttachmentPreviewRow(
+                        attachments = attachments,
+                        onRemoveAttachment = onRemoveAttachment,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 16.dp, start = 18.dp, end = 18.dp)
+                            .testTag("assistant_attachments")
+                    )
+                }
+            }
         }
         AnimatedVisibility(
             visible = showActions,
@@ -1386,6 +1460,58 @@ private fun AssistantAttachChip(
         Icon(imageVector = icon, contentDescription = null, modifier = Modifier.size(16.dp))
         Spacer(Modifier.size(6.dp))
         Text(label, style = AssistantTypography.action(MaterialTheme.typography))
+    }
+}
+
+/**
+ * The staged screen capture inside the opened pill: a labelled chip with the capture's
+ * thumbnail and its own remove target, so the user sees that the screen is about to go out
+ * with the question and can take it out. Kept apart from the photo thumbnails because it is
+ * not a photo the user chose.
+ */
+@Composable
+private fun AssistantScreenChip(attachment: Attachment, onRemove: () -> Unit) {
+    val palette = rememberAssistantSurfacePalette()
+    Surface(
+        shape = AssistantShapes.Chip,
+        color = palette.chip.container,
+        contentColor = palette.chip.content,
+        modifier = Modifier
+            .height(40.dp)
+            .testTag("assistant_screen_chip")
+    ) {
+        Row(
+            modifier = Modifier.padding(start = 6.dp, end = 2.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            coil.compose.AsyncImage(
+                model = coil.request.ImageRequest.Builder(LocalContext.current).data(attachment.uri).build(),
+                contentDescription = "Screen capture",
+                contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                modifier = Modifier
+                    .size(28.dp)
+                    .clip(RoundedCornerShape(8.dp))
+            )
+            Icon(
+                imageVector = Icons.Outlined.Screenshot,
+                contentDescription = null,
+                modifier = Modifier.size(16.dp)
+            )
+            Text("Screen", style = AssistantTypography.action(MaterialTheme.typography))
+            IconButton(
+                onClick = onRemove,
+                modifier = Modifier
+                    .size(32.dp)
+                    .testTag("assistant_screen_remove")
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Close,
+                    contentDescription = "Remove screen context",
+                    modifier = Modifier.size(16.dp)
+                )
+            }
+        }
     }
 }
 
