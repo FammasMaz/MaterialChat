@@ -75,7 +75,7 @@ class MessageBubbleTapRoutingTest {
         compose.waitUntil(2_000) {
             compose.onAllNodesWithContentDescription("Hide memory details").fetchSemanticsNodes().isNotEmpty()
         }
-        compose.onAllNodesWithText("Prefers tea").onFirst().assertIsDisplayed()
+        compose.onAllNodesWithText("Prefers tea", substring = true).onFirst().assertIsDisplayed()
 
         compose.onAllNodesWithText("Memory saved").onFirst().performClick()
         compose.waitUntil(2_000) {
