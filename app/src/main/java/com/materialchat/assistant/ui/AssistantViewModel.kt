@@ -9,6 +9,7 @@ import com.materialchat.assistant.actions.DeviceActionHandler
 import com.materialchat.assistant.actions.DeviceActionOutcome
 import com.materialchat.assistant.attach.AssistantAttachMode
 import com.materialchat.assistant.attach.AssistantAttachmentInbox
+import com.materialchat.assistant.screen.ScreenContext
 import com.materialchat.util.AttachmentLimits
 import java.time.LocalDateTime
 import androidx.lifecycle.viewModelScope
@@ -100,6 +101,14 @@ class AssistantViewModel(
 
     private val _pendingAttachments = MutableStateFlow<List<Attachment>>(emptyList())
     val pendingAttachments: StateFlow<List<Attachment>> = _pendingAttachments.asStateFlow()
+
+    /**
+     * The screen the assistant was opened over, as the platform delivered it for this
+     * invocation (see [ScreenContext]); null until something arrives and after the session
+     * hides. The session owns and releases the bitmap; this is a view of it.
+     */
+    private val _screenContext = MutableStateFlow<ScreenContext?>(null)
+    val screenContext: StateFlow<ScreenContext?> = _screenContext.asStateFlow()
 
     /** Message history for display in the overlay */
     private val _messages = MutableStateFlow<List<AssistantMessage>>(emptyList())
@@ -770,6 +779,11 @@ class AssistantViewModel(
         viewModelScope.launch {
             _events.emit(AssistantEvent.OpenInApp(conversationId = currentConversationId))
         }
+    }
+
+    /** The session delivers each half of the capture as it arrives, and null when it hides. */
+    fun onScreenContext(context: ScreenContext?) {
+        _screenContext.value = context
     }
 
     /**

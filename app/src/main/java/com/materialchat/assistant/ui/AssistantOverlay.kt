@@ -2,7 +2,6 @@ package com.materialchat.assistant.ui
 
 import android.Manifest
 import android.content.pm.PackageManager
-import android.graphics.Bitmap
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.LiveRegionMode
@@ -163,8 +162,6 @@ fun AssistantOverlay(
     onDismiss: () -> Unit,
     onOpenInApp: (String?) -> Unit,
     onOpenClock: (AssistantEvent.OpenClock) -> Unit,
-    /** The platform's assist screenshot, painted as the shrinking backdrop; null leaves the scrim. */
-    assistScreenshot: Bitmap? = null,
     /** Reports whether the assistant is working; the session applies the keep-awake grace. */
     onKeepScreenOnChanged: (Boolean) -> Unit = {},
     /** The user wants to add a photo; the session opens the camera or picker activity. */
@@ -345,9 +342,6 @@ fun AssistantOverlay(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                // The shrinking screenshot backdrop is disabled: a persistent shrink did not read
-                // as the intended press pulse (shrink, then spring back). assistScreenshotBackdrop
-                // stays available for that follow-up.
                 .background(Color.Black.copy(alpha = 0.42f))
                 // The edge light frames the whole window (before the keyboard padding) and sits
                 // under the pill and its particle field (before them in the chain). The hosted

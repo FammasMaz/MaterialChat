@@ -8,7 +8,6 @@ import android.graphics.Bitmap
 import android.os.Bundle
 import android.service.voice.VoiceInteractionSession
 import android.util.Log
-import androidx.compose.runtime.mutableStateOf
 import android.view.View
 import android.view.ViewGroup
 import android.view.WindowManager
@@ -37,6 +36,9 @@ import com.materialchat.assistant.attach.AssistantAttachActivity
 import com.materialchat.util.AttachmentImporter
 import com.materialchat.MainActivity
 import com.materialchat.assistant.di.AssistantEntryPoint
+import com.materialchat.assistant.screen.AssistScreenshots
+import com.materialchat.assistant.screen.AssistStructureReader
+import com.materialchat.assistant.screen.ScreenContext
 import com.materialchat.assistant.ui.ASSISTANT_KEEP_AWAKE_GRACE_MILLIS
 import com.materialchat.assistant.ui.AssistantOverlay
 import com.materialchat.assistant.ui.AssistantViewModel
@@ -86,12 +88,12 @@ class MaterialChatVoiceInteractionSession(
     private var assistantViewModel: AssistantViewModel? = null
 
     /**
-     * The assist screenshot of the screen the assistant was opened over, when the platform
-     * delivers one (shown with SHOW_WITH_SCREENSHOT, "Use screenshot" enabled for the assistant
-     * app, no secure window, keyguard not locked). The overlay paints it as a shrinking backdrop;
-     * it is released on hide.
+     * What the platform told us about the screen the assistant was opened over, for this
+     * invocation only: the view tree arrives through onHandleAssist and the screenshot through
+     * onHandleScreenshot, each only when the user enabled it for the digital assistant app.
+     * Merged here, handed to the ViewModel, and released when the session hides.
      */
-    private val assistScreenshot = mutableStateOf<Bitmap?>(null)
+    private var screenContext: ScreenContext? = null
 
     init {
         savedStateRegistryController.performAttach()
@@ -227,19 +229,31 @@ class MaterialChatVoiceInteractionSession(
         lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_PAUSE)
         lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_STOP)
         super.onHide()
-        releaseScreenshot()
+        releaseScreenContext()
     }
 
-    /** Drops the backdrop first so no later frame can draw the recycled bitmap. */
-    private fun releaseScreenshot() {
-        val previous = assistScreenshot.value
-        assistScreenshot.value = null
-        previous?.recycle()
+    /**
+     * The capture lives for one invocation. The ViewModel forgets it before the bitmap is
+     * recycled, so no later frame or send can touch a dead bitmap.
+     */
+    private fun releaseScreenContext() {
+        val previous = screenContext
+        screenContext = null
+        assistantViewModel?.onScreenContext(null)
+        previous?.release()
+    }
+
+    /** Merges one platform delivery into the current capture and publishes it. */
+    private fun updateScreenContext(update: (ScreenContext) -> ScreenContext) {
+        val base = screenContext ?: ScreenContext(capturedAt = System.currentTimeMillis())
+        val next = update(base)
+        screenContext = next
+        assistantViewModel?.onScreenContext(next)
     }
 
     override fun onDestroy() {
         sessionScope.cancel()
-        releaseScreenshot()
+        releaseScreenContext()
         lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_DESTROY)
         viewModelStoreInstance.clear()
         composeView = null
@@ -277,6 +291,8 @@ class MaterialChatVoiceInteractionSession(
             pendingResumeAfterAttach = false
             assistantViewModel?.onOverlayShown(resumeAfterAttach = resume)
         }
+        // Assist data can arrive before the content view exists; the new ViewModel gets it too.
+        screenContext?.let { assistantViewModel?.onScreenContext(it) }
 
         return ComposeView(context).apply {
             composeView = this
@@ -357,7 +373,6 @@ class MaterialChatVoiceInteractionSession(
                 ).launch(AssistantAttachActivity.intent(context, event.mode, event.room))
                 if (error == null) hide() else viewModel.onAttachLaunchFailed(error)
             },
-            assistScreenshot = assistScreenshot.value,
             onKeepScreenOnChanged = { busy -> onAssistantBusyChanged(busy) }
         )
     }
@@ -407,8 +422,43 @@ class MaterialChatVoiceInteractionSession(
     ) {
         @Suppress("DEPRECATION")
         super.onHandleAssist(data, structure, content)
-        // Handle assist data from the current app context
-        // This provides context about what the user is looking at
+        captureAssist(structure, content)
+    }
+
+    /**
+     * The screen's text (flattened view tree) and the page the foreground app reported. Only
+     * sizes are logged: the text is the user's screen and never goes to the log. An empty
+     * delivery is still recorded, so the ViewModel can tell "nothing arrived" from "not yet".
+     */
+    private fun captureAssist(structure: AssistStructure?, content: AssistContent?) {
+        val text = structure?.let { runCatching { AssistStructureReader.flatten(it) }.getOrNull() }
+            ?.takeIf { it.isNotBlank() }
+        val sourcePackage = structure?.let(AssistStructureReader::sourcePackage)
+        val webUri = runCatching { content?.webUri }.getOrNull()
+        Log.i(
+            TAG,
+            "assist structure=" + (if (structure == null) "none" else "${text?.length ?: 0} chars") +
+                " webUri=" + (webUri != null)
+        )
+        updateScreenContext { previous ->
+            previous.copy(
+                text = text ?: previous.text,
+                webUri = webUri ?: previous.webUri,
+                sourcePackage = sourcePackage ?: previous.sourcePackage
+            )
+        }
+    }
+
+    /** Downscales the screenshot the moment it arrives and keeps only the small copy. */
+    private fun captureScreenshot(screenshot: Bitmap?) {
+        val scaled = screenshot?.let { runCatching { AssistScreenshots.downscale(it) }.getOrNull() }
+        updateScreenContext { previous ->
+            if (scaled == null) return@updateScreenContext previous
+            previous.screenshot?.takeIf { it !== scaled }?.let { old ->
+                synchronized(old) { if (!old.isRecycled) old.recycle() }
+            }
+            previous.copy(screenshot = scaled)
+        }
     }
 
     @Deprecated("Deprecated in API level 30")
@@ -426,14 +476,13 @@ class MaterialChatVoiceInteractionSession(
     /**
      * Delivered after show() when the invocation carried SHOW_WITH_SCREENSHOT (the system
      * assist gesture and power-button invocation do) and Settings.Secure.ASSIST_SCREENSHOT_ENABLED
-     * is not 0 ("Use screenshot" under Default apps > Digital assistant app). The overlay shows
-     * it as the shrinking backdrop; a null or absent screenshot leaves the plain scrim.
+     * is not 0 ("Use screenshot" under Default apps > Digital assistant app). Null on a secure
+     * window or the lock screen.
      */
     override fun onHandleScreenshot(screenshot: Bitmap?) {
         super.onHandleScreenshot(screenshot)
-        // The shrinking backdrop is disabled, so the screenshot is not held (it is a full-screen
-        // bitmap). Kept as a hook for the planned press pulse.
-        Log.i(TAG, "assist screenshot=" + (screenshot?.let { "${it.width}x${it.height}" } ?: "none") + " (unused)")
+        Log.i(TAG, "assist screenshot=" + (screenshot?.let { "${it.width}x${it.height}" } ?: "none"))
+        captureScreenshot(screenshot)
     }
 
     private companion object {
