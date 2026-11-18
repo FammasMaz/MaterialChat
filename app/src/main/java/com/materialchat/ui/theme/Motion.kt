@@ -191,6 +191,35 @@ object ExpressiveMotion {
             dampingRatio = 0.7f,
             stiffness = 520f
         )
+
+        /**
+         * Press morph shared by every pressable control (buttons, chips, tiles, FAB,
+         * icon buttons): corner radius / scale / shape-morph progress on press and release.
+         * M3E fast spatial (0.6 / 800): settles in well under 200 ms so a tap feels
+         * immediate, with a visible but short overshoot on release.
+         */
+        fun <T> pressMorph(): SpringSpec<T> = spring(
+            dampingRatio = 0.6f,
+            stiffness = 800f
+        )
+
+        /**
+         * M3E fast spatial (ExpressiveMotionTokens.fastSpatialSpec): quick, small
+         * movements such as a toggle thumb, a checkbox mark, or a selection indicator.
+         */
+        fun <T> fast(): SpringSpec<T> = spring(
+            dampingRatio = 0.6f,
+            stiffness = 800f
+        )
+
+        /**
+         * M3E slow spatial (ExpressiveMotionTokens.slowSpatialSpec): screen- and
+         * sheet-scale movement where overshoot must stay gentle.
+         */
+        fun <T> slow(): SpringSpec<T> = spring(
+            dampingRatio = 0.8f,
+            stiffness = 200f
+        )
     }
 
     /**
@@ -252,6 +281,45 @@ object ExpressiveMotion {
             dampingRatio = 1.0f,
             stiffness = 500f
         )
+
+        /**
+         * M3E fast effects (ExpressiveMotionTokens.fastEffectsSpec): press tint,
+         * ripple-adjacent colour and alpha changes that must track the finger.
+         */
+        fun <T> fast(): SpringSpec<T> = spring(
+            dampingRatio = 1.0f,
+            stiffness = 3800f
+        )
+
+        /**
+         * M3E slow effects (ExpressiveMotionTokens.slowEffectsSpec): long cross-fades
+         * between screens or large content swaps.
+         */
+        fun <T> slow(): SpringSpec<T> = spring(
+            dampingRatio = 1.0f,
+            stiffness = 800f
+        )
+
+        /**
+         * Content-colour / container-tint change that accompanies [Spatial.pressMorph]
+         * so the fill and the shape of a pressed control settle together.
+         */
+        fun <T> pressTint(): SpringSpec<T> = spring(
+            dampingRatio = 1.0f,
+            stiffness = 1600f
+        )
+    }
+
+    /**
+     * Specs for the press state of any pressable control so every button, chip, tile and
+     * FAB in the app compresses and tints with the same physics.
+     */
+    object Press {
+        val Shape: SpringSpec<Dp> = Spatial.pressMorph()
+        val Progress: SpringSpec<Float> = Spatial.pressMorph()
+        val Scale: SpringSpec<Float> = Spatial.pressMorph()
+        val Tint: SpringSpec<Color> = Effects.pressTint()
+        val Alpha: SpringSpec<Float> = Effects.pressTint()
     }
 
     /**
