@@ -5,7 +5,7 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
-import com.materialchat.assistant.ui.AssistantContrast
+import com.materialchat.ui.theme.ThemeContrast
 import com.materialchat.data.local.preferences.AppPreferences
 import com.materialchat.ui.theme.MaterialChatThemePalettes
 import org.junit.Assert.assertEquals
@@ -98,7 +98,7 @@ class HomeSettingsContrastTest {
         for ((theme, pair) in failures) {
             val slot = HomeSettingsSlot.valueOf(pair.name)
             val resolved = HomeSettingsPalette.resolve(theme.scheme)
-            val ratio = AssistantContrast.contrastRatio(resolved[slot], resolved.fill(slot))
+            val ratio = ThemeContrast.contrastRatio(resolved[slot], resolved.fill(slot))
             assertTrue("${theme.name}: ${pair.name} still ${ratio.fmt()} after resolve", ratio >= slot.minimum)
         }
     }

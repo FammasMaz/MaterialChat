@@ -150,7 +150,7 @@ private fun AvailableBannerContent(
                     Text(
                         text = "Version ${update.versionName} • ${formatFileSize(update.assetSize)}",
                         style = MaterialTheme.typography.bodySmall,
-                        color = mutedContentOn(MaterialTheme.colorScheme.primaryContainer, MaterialTheme.colorScheme.onPrimaryContainer, 0.8f)
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
                     )
                 }
             }
@@ -232,7 +232,7 @@ private fun DownloadingBannerContent(
                     Text(
                         text = "Version ${update.versionName} • ${(progress * 100).toInt()}%",
                         style = MaterialTheme.typography.bodySmall,
-                        color = mutedContentOn(MaterialTheme.colorScheme.primaryContainer, MaterialTheme.colorScheme.onPrimaryContainer, 0.8f)
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
                     )
                 }
             }
@@ -253,7 +253,7 @@ private fun DownloadingBannerContent(
                 .fillMaxWidth()
                 .height(8.dp),
             color = MaterialTheme.colorScheme.primary,
-            trackColor = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.2f),
+            trackColor = ProgressIndicatorDefaults.linearTrackColor,
             stroke = WavyProgressIndicatorDefaults.linearIndicatorStroke,
             trackStroke = WavyProgressIndicatorDefaults.linearTrackStroke
         )
@@ -298,7 +298,7 @@ private fun ReadyToInstallBannerContent(
                     Text(
                         text = "Version ${update.versionName} downloaded",
                         style = MaterialTheme.typography.bodySmall,
-                        color = mutedContentOn(MaterialTheme.colorScheme.primaryContainer, MaterialTheme.colorScheme.onPrimaryContainer, 0.8f),
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )

@@ -175,9 +175,10 @@ fun SystemPromptField(
                 Text(
                     text = currentPrompt.ifEmpty { "No system prompt configured" },
                     style = MaterialTheme.typography.bodyMedium,
+                    // Placeholder is secondary text: onSurfaceVariant at full opacity (the
+                    // former 60% alpha measured 3.0-4.0:1 on every palette).
                     color = if (currentPrompt.isEmpty()) {
-                        // onSurfaceVariant at 60% measured 3.0-4.0:1 on every palette.
-                        rememberHomeSettingsPalette()[HomeSettingsSlot.SystemPromptPlaceholder]
+                        MaterialTheme.colorScheme.onSurfaceVariant
                     } else {
                         MaterialTheme.colorScheme.onSurface
                     },
@@ -288,7 +289,7 @@ private fun EditButton(
 
     val scale by animateFloatAsState(
         targetValue = if (isPressed) 0.9f else 1f,
-        animationSpec = ExpressiveMotion.Spatial.scale(),
+        animationSpec = ExpressiveMotion.Press.Scale,
         label = "editButtonScale"
     )
 

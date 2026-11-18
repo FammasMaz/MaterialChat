@@ -675,7 +675,7 @@ private fun TopBarShapeAction(
     val preferredShape = LocalMainButtonShape.current
     val scale by animateFloatAsState(
         targetValue = if (isPressed) 0.90f else 1f,
-        animationSpec = ExpressiveMotion.Spatial.scale(),
+        animationSpec = ExpressiveMotion.Press.Scale,
         label = "topBarActionScale"
     )
     val shape = expressiveControlShape(

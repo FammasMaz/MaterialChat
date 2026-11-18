@@ -134,7 +134,7 @@ fun ExpandableConversationGroup(
     // Leading tile rounds off while the parent row is pressed, like ConversationItem.
     val tileCorner by animateDpAsState(
         targetValue = if (parentPressed) ExpressiveShapes.RowTile.Pressed else ExpressiveShapes.RowTile.Resting,
-        animationSpec = ExpressiveMotion.Spatial.shapeMorph(),
+        animationSpec = ExpressiveMotion.Press.Shape,
         label = "parentTileCorner"
     )
     val tileShape = remember(tileCorner) { SquircleShape(tileCorner.coerceAtLeast(0.dp)) }

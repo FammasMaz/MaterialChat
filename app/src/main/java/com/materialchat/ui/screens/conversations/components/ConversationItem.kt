@@ -91,7 +91,7 @@ fun ConversationItem(
     // Scale animation - shared spatial spring from the theme motion tokens
     val scale by animateFloatAsState(
         targetValue = if (isPressed) 0.98f else 1f,
-        animationSpec = ExpressiveMotion.Spatial.listItemPress(),
+        animationSpec = ExpressiveMotion.Press.Scale,
         label = "scale"
     )
 
@@ -99,7 +99,7 @@ fun ConversationItem(
     // as a shape change on the row itself, not only a ripple.
     val tileCorner by animateDpAsState(
         targetValue = if (isPressed) ExpressiveShapes.RowTile.Pressed else ExpressiveShapes.RowTile.Resting,
-        animationSpec = ExpressiveMotion.Spatial.shapeMorph(),
+        animationSpec = ExpressiveMotion.Press.Shape,
         label = "tileCorner"
     )
     val tileShape = remember(tileCorner) { SquircleShape(tileCorner.coerceAtLeast(0.dp)) }
@@ -119,7 +119,7 @@ fun ConversationItem(
         } else {
             baseContainerColor
         },
-        animationSpec = ExpressiveMotion.Effects.color(),
+        animationSpec = ExpressiveMotion.Press.Tint,
         label = "backgroundColor"
     )
 

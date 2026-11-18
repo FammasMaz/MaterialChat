@@ -82,7 +82,7 @@ fun BranchConversationItem(
     // Press scale: same list-item press spring as ConversationItem
     val scale by animateFloatAsState(
         targetValue = if (isPressed) 0.98f else 1f,
-        animationSpec = ExpressiveMotion.Spatial.listItemPress(),
+        animationSpec = ExpressiveMotion.Press.Scale,
         label = "branchScale"
     )
 
@@ -90,7 +90,7 @@ fun BranchConversationItem(
     // Resting: medium (12dp), Pressed: small (8dp)
     val cornerRadius by animateDpAsState(
         targetValue = if (isPressed) 8.dp else 12.dp,
-        animationSpec = ExpressiveMotion.Spatial.shapeMorph(),
+        animationSpec = ExpressiveMotion.Press.Shape,
         label = "branchCornerRadius"
     )
 
@@ -102,7 +102,7 @@ fun BranchConversationItem(
         } else {
             MaterialTheme.colorScheme.surfaceContainerHigh
         },
-        animationSpec = ExpressiveMotion.Effects.color(),
+        animationSpec = ExpressiveMotion.Press.Tint,
         label = "branchBackgroundColor"
     )
 

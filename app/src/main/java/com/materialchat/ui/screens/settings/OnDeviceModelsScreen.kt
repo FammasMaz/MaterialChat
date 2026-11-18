@@ -271,7 +271,7 @@ private fun ModelDownloadGuideCard(onOpenLink: (String) -> Unit) {
                     "2. For Gemma: open the Gemma page, sign in to Hugging Face, accept the license, create a read token, paste it below, then download.\n" +
                     "3. Gemini Nano is different: Android AICore decides device support. Pixel 8 Pro may be unsupported for third-party Prompt API access even if Google apps use Gemini Nano.",
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.82f)
+                color = MaterialTheme.colorScheme.onSecondaryContainer
             )
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -431,7 +431,7 @@ private fun RuntimeMemoryStatusCard(models: List<LocalModelState>) {
                 },
                 style = MaterialTheme.typography.bodySmall,
                 color = if (mounted != null) {
-                    MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.78f)
+                    MaterialTheme.colorScheme.onTertiaryContainer
                 } else {
                     MaterialTheme.colorScheme.onSurfaceVariant
                 }

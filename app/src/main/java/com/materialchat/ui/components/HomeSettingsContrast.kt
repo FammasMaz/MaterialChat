@@ -5,8 +5,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
-import com.materialchat.assistant.ui.AssistantContrast
-import com.materialchat.assistant.ui.AssistantContrastPair
+import com.materialchat.ui.theme.ThemeContrast
+import com.materialchat.ui.theme.ThemeContrastPair
+import com.materialchat.ui.theme.readableOn
 
 /**
  * Every text/icon colour the home list and the settings screens draw, named, with the fill it
@@ -27,98 +28,100 @@ internal enum class HomeSettingsSlot(
     val alternates: (ColorScheme) -> List<Color> = { emptyList() }
 ) {
     // --- Home: conversation rows -------------------------------------------------------
-    RowTitle(AssistantContrast.BODY_TEXT, { it.surfaceContainer }, { it.onSurface }),
-    RowTitleArchived(AssistantContrast.BODY_TEXT, { it.surfaceContainerHigh }, { it.onSurface }),
-    RowTitlePressed(AssistantContrast.BODY_TEXT, { pressedRow(it) }, { it.onSurface }),
-    RowTitleStreaming(AssistantContrast.BODY_TEXT, { streamingRow(it) }, { it.onSurface }),
-    RowMeta(AssistantContrast.BODY_TEXT, { it.surfaceContainer }, { it.onSurfaceVariant }, { listOf(it.onSurface) }),
-    RowMetaArchived(AssistantContrast.BODY_TEXT, { it.surfaceContainerHigh }, { it.onSurfaceVariant }, { listOf(it.onSurface) }),
-    RowMetaPressed(AssistantContrast.BODY_TEXT, { pressedRow(it) }, { it.onSurfaceVariant }, { listOf(it.onSurface) }),
-    RowMetaStreaming(AssistantContrast.BODY_TEXT, { streamingRow(it) }, { it.onSurfaceVariant }, { listOf(it.onSurface) }),
-    RowActiveLabel(AssistantContrast.BODY_TEXT, { streamingRow(it) }, { it.primary }, { listOf(it.onPrimaryContainer, it.onSurface) }),
-    RowTileIcon(AssistantContrast.ICON, { it.primaryContainer }, { it.onPrimaryContainer }),
-    ProviderChip(AssistantContrast.BODY_TEXT, { it.primaryContainer }, { it.onPrimaryContainer }),
-    GroupTileIcon(AssistantContrast.ICON, { over(it.primaryContainer, 0.7f, it.surfaceContainer) }, { it.onPrimaryContainer }, { listOf(it.onSurface) }),
-    GroupProviderChip(AssistantContrast.BODY_TEXT, { over(it.primaryContainer, 0.7f, it.surfaceContainer) }, { it.onPrimaryContainer }, { listOf(it.onSurface) }),
-    ArchivedChip(AssistantContrast.BODY_TEXT, { it.secondaryContainer }, { it.onSecondaryContainer }),
-    BranchChip(AssistantContrast.BODY_TEXT, { over(it.secondaryContainer, 0.7f, it.surfaceContainer) }, { it.onSecondaryContainer }, { listOf(it.onSurface) }),
-    BranchRowTitle(AssistantContrast.BODY_TEXT, { it.surfaceContainerHigh }, { it.onSurface }),
-    BranchRowIcon(AssistantContrast.ICON, { it.surfaceContainerHigh }, { it.secondary }, { listOf(it.onSurfaceVariant, it.onSurface) }),
+    RowTitle(ThemeContrast.BODY_TEXT, { it.surfaceContainer }, { it.onSurface }),
+    RowTitleArchived(ThemeContrast.BODY_TEXT, { it.surfaceContainerHigh }, { it.onSurface }),
+    RowTitlePressed(ThemeContrast.BODY_TEXT, { pressedRow(it) }, { it.onSurface }),
+    RowTitleStreaming(ThemeContrast.BODY_TEXT, { streamingRow(it) }, { it.onSurface }),
+    RowMeta(ThemeContrast.BODY_TEXT, { it.surfaceContainer }, { it.onSurfaceVariant }, { listOf(it.onSurface) }),
+    RowMetaArchived(ThemeContrast.BODY_TEXT, { it.surfaceContainerHigh }, { it.onSurfaceVariant }, { listOf(it.onSurface) }),
+    RowMetaPressed(ThemeContrast.BODY_TEXT, { pressedRow(it) }, { it.onSurfaceVariant }, { listOf(it.onSurface) }),
+    RowMetaStreaming(ThemeContrast.BODY_TEXT, { streamingRow(it) }, { it.onSurfaceVariant }, { listOf(it.onSurface) }),
+    RowActiveLabel(ThemeContrast.BODY_TEXT, { streamingRow(it) }, { it.primary }, { listOf(it.onPrimaryContainer, it.onSurface) }),
+    RowTileIcon(ThemeContrast.ICON, { it.primaryContainer }, { it.onPrimaryContainer }),
+    ProviderChip(ThemeContrast.BODY_TEXT, { it.primaryContainer }, { it.onPrimaryContainer }),
+    GroupTileIcon(ThemeContrast.ICON, { over(it.primaryContainer, 0.7f, it.surfaceContainer) }, { it.onPrimaryContainer }, { listOf(it.onSurface) }),
+    GroupProviderChip(ThemeContrast.BODY_TEXT, { over(it.primaryContainer, 0.7f, it.surfaceContainer) }, { it.onPrimaryContainer }, { listOf(it.onSurface) }),
+    ArchivedChip(ThemeContrast.BODY_TEXT, { it.secondaryContainer }, { it.onSecondaryContainer }),
+    BranchChip(ThemeContrast.BODY_TEXT, { over(it.secondaryContainer, 0.7f, it.surfaceContainer) }, { it.onSecondaryContainer }, { listOf(it.onSurface) }),
+    BranchRowTitle(ThemeContrast.BODY_TEXT, { it.surfaceContainerHigh }, { it.onSurface }),
+    BranchRowIcon(ThemeContrast.ICON, { it.surfaceContainerHigh }, { it.secondary }, { listOf(it.onSurfaceVariant, it.onSurface) }),
 
     // --- Home: swipe actions at every drag fraction ---------------------------------------
-    SwipeDeleteText(AssistantContrast.BODY_TEXT, { it.errorContainer }, { it.onErrorContainer }),
-    SwipeDeleteIcon(AssistantContrast.ICON, { it.errorContainer }, { it.onErrorContainer }),
-    SwipeDeleteArmedText(AssistantContrast.BODY_TEXT, { it.error }, { it.onError }),
-    SwipeDeleteArmedIcon(AssistantContrast.ICON, { it.error }, { it.onError }),
-    SwipeArchiveText(AssistantContrast.BODY_TEXT, { it.secondaryContainer }, { it.onSecondaryContainer }),
-    SwipeArchiveIcon(AssistantContrast.ICON, { it.secondaryContainer }, { it.onSecondaryContainer }),
-    SwipeRestoreText(AssistantContrast.BODY_TEXT, { it.tertiaryContainer }, { it.onTertiaryContainer }),
-    SwipeRestoreIcon(AssistantContrast.ICON, { it.tertiaryContainer }, { it.onTertiaryContainer }),
-    SwipeEditText(AssistantContrast.BODY_TEXT, { it.primaryContainer }, { it.onPrimaryContainer }),
-    SwipeEditIcon(AssistantContrast.ICON, { it.primaryContainer }, { it.onPrimaryContainer }),
+    SwipeDeleteText(ThemeContrast.BODY_TEXT, { it.errorContainer }, { it.onErrorContainer }),
+    SwipeDeleteIcon(ThemeContrast.ICON, { it.errorContainer }, { it.onErrorContainer }),
+    SwipeDeleteArmedText(ThemeContrast.BODY_TEXT, { it.error }, { it.onError }),
+    SwipeDeleteArmedIcon(ThemeContrast.ICON, { it.error }, { it.onError }),
+    SwipeArchiveText(ThemeContrast.BODY_TEXT, { it.secondaryContainer }, { it.onSecondaryContainer }),
+    SwipeArchiveIcon(ThemeContrast.ICON, { it.secondaryContainer }, { it.onSecondaryContainer }),
+    SwipeRestoreText(ThemeContrast.BODY_TEXT, { it.tertiaryContainer }, { it.onTertiaryContainer }),
+    SwipeRestoreIcon(ThemeContrast.ICON, { it.tertiaryContainer }, { it.onTertiaryContainer }),
+    SwipeEditText(ThemeContrast.BODY_TEXT, { it.primaryContainer }, { it.onPrimaryContainer }),
+    SwipeEditIcon(ThemeContrast.ICON, { it.primaryContainer }, { it.onPrimaryContainer }),
 
     // --- Home: header, filters, empty state, fast scroll, dialogs, snackbar ---------------
-    Wordmark(AssistantContrast.ICON, { it.surfaceContainer }, { it.primary }, { listOf(it.onSurface) }),
-    StatusChipText(AssistantContrast.BODY_TEXT, { it.secondaryContainer }, { it.onSecondaryContainer }),
-    StatusChipDot(AssistantContrast.ICON, { it.secondaryContainer }, { it.primary }, { listOf(it.onSecondaryContainer) }),
-    TempChatAction(AssistantContrast.ICON, { it.tertiaryContainer }, { it.onTertiaryContainer }),
-    SearchAction(AssistantContrast.ICON, { it.surfaceContainerHighest }, { it.onSurfaceVariant }, { listOf(it.onSurface) }),
-    FilterChatsChecked(AssistantContrast.BODY_TEXT, { it.primaryContainer }, { it.onPrimaryContainer }),
-    FilterArchiveChecked(AssistantContrast.BODY_TEXT, { it.secondaryContainer }, { it.onSecondaryContainer }),
-    FilterUnchecked(AssistantContrast.BODY_TEXT, { it.surfaceContainer }, { it.onSurface }),
-    EmptyHeroPrimary(AssistantContrast.ICON, { it.primaryContainer }, { it.onPrimaryContainer }),
-    EmptyHeroSecondary(AssistantContrast.ICON, { it.secondaryContainer }, { it.onSecondaryContainer }),
-    EmptyHeadline(AssistantContrast.BODY_TEXT, { it.surfaceContainerLow }, { it.onSurface }),
-    EmptyBody(AssistantContrast.BODY_TEXT, { it.surfaceContainerLow }, { it.onSurfaceVariant }, { listOf(it.onSurface) }),
-    FastScrollThumb(AssistantContrast.ICON, { it.surfaceContainerLow }, { it.primary }, { listOf(it.onSurface) }),
-    FastScrollThumbIcon(AssistantContrast.ICON, { it.primary }, { it.onPrimary }),
-    FastScrollLabel(AssistantContrast.BODY_TEXT, { it.secondaryContainer }, { it.onSecondaryContainer }),
-    DialogBody(AssistantContrast.BODY_TEXT, { it.surfaceContainerHigh }, { it.onSurface }),
-    DialogLabel(AssistantContrast.BODY_TEXT, { it.surfaceContainerHigh }, { it.primary }, { listOf(it.onSurface) }),
-    DialogDestructive(AssistantContrast.BODY_TEXT, { it.surfaceContainerHigh }, { it.error }, { listOf(it.onErrorContainer, it.onSurface) }),
-    SnackbarBody(AssistantContrast.BODY_TEXT, { it.inverseSurface }, { it.inverseOnSurface }),
-    SnackbarAction(AssistantContrast.BODY_TEXT, { it.inverseSurface }, { it.inversePrimary }, { listOf(it.inverseOnSurface) }),
+    Wordmark(ThemeContrast.ICON, { it.surfaceContainer }, { it.primary }, { listOf(it.onSurface) }),
+    StatusChipText(ThemeContrast.BODY_TEXT, { it.secondaryContainer }, { it.onSecondaryContainer }),
+    StatusChipDot(ThemeContrast.ICON, { it.secondaryContainer }, { it.primary }, { listOf(it.onSecondaryContainer) }),
+    TempChatAction(ThemeContrast.ICON, { it.tertiaryContainer }, { it.onTertiaryContainer }),
+    SearchAction(ThemeContrast.ICON, { it.surfaceContainerHighest }, { it.onSurfaceVariant }, { listOf(it.onSurface) }),
+    FilterChatsChecked(ThemeContrast.BODY_TEXT, { it.primaryContainer }, { it.onPrimaryContainer }),
+    FilterArchiveChecked(ThemeContrast.BODY_TEXT, { it.secondaryContainer }, { it.onSecondaryContainer }),
+    FilterUnchecked(ThemeContrast.BODY_TEXT, { it.surfaceContainer }, { it.onSurface }),
+    EmptyHeroPrimary(ThemeContrast.ICON, { it.primaryContainer }, { it.onPrimaryContainer }),
+    EmptyHeroSecondary(ThemeContrast.ICON, { it.secondaryContainer }, { it.onSecondaryContainer }),
+    EmptyHeadline(ThemeContrast.BODY_TEXT, { it.surfaceContainerLow }, { it.onSurface }),
+    EmptyBody(ThemeContrast.BODY_TEXT, { it.surfaceContainerLow }, { it.onSurfaceVariant }, { listOf(it.onSurface) }),
+    FastScrollThumb(ThemeContrast.ICON, { it.surfaceContainerLow }, { it.primary }, { listOf(it.onSurface) }),
+    FastScrollThumbIcon(ThemeContrast.ICON, { it.primary }, { it.onPrimary }),
+    FastScrollLabel(ThemeContrast.BODY_TEXT, { it.secondaryContainer }, { it.onSecondaryContainer }),
+    DialogBody(ThemeContrast.BODY_TEXT, { it.surfaceContainerHigh }, { it.onSurface }),
+    DialogLabel(ThemeContrast.BODY_TEXT, { it.surfaceContainerHigh }, { it.primary }, { listOf(it.onSurface) }),
+    DialogDestructive(ThemeContrast.BODY_TEXT, { it.surfaceContainerHigh }, { it.error }, { listOf(it.onErrorContainer, it.onSurface) }),
+    SnackbarBody(ThemeContrast.BODY_TEXT, { it.inverseSurface }, { it.inverseOnSurface }),
+    SnackbarAction(ThemeContrast.BODY_TEXT, { it.inverseSurface }, { it.inversePrimary }, { listOf(it.inverseOnSurface) }),
 
     // --- Settings ----------------------------------------------------------------------
-    SectionTileIcon(AssistantContrast.ICON, { it.primaryContainer }, { it.onPrimaryContainer }),
-    SettingsRowTitle(AssistantContrast.BODY_TEXT, { it.surfaceContainerHigh }, { it.onSurface }),
-    SettingsRowSupporting(AssistantContrast.BODY_TEXT, { it.surfaceContainerHigh }, { it.onSurfaceVariant }, { listOf(it.onSurface) }),
-    SettingsRowChevron(AssistantContrast.ICON, { it.surfaceContainerHigh }, { it.onSurfaceVariant }, { listOf(it.onSurface) }),
-    SettingsRowLeadingIcon(AssistantContrast.ICON, { it.surfaceContainerHigh }, { it.primary }, { listOf(it.onSurface) }),
-    SettingsNavTileIcon(AssistantContrast.ICON, { it.surfaceContainerHighest }, { it.primary }, { listOf(it.onSurface) }),
-    SwitchOnThumb(AssistantContrast.ICON, { it.primary }, { it.onPrimary }),
-    SwitchOnThumbIcon(AssistantContrast.ICON, { it.onPrimary }, { it.primary }),
-    SwitchOffThumb(AssistantContrast.ICON, { it.surfaceVariant }, { it.onSurface }),
-    SwitchOffThumbIcon(AssistantContrast.ICON, { it.onSurface }, { it.surfaceVariant }),
-    SliderActiveTrackOnLow(AssistantContrast.ICON, { it.surfaceContainerLow }, { it.primary }, { listOf(it.onSurface) }),
-    SliderActiveTrackOnHigh(AssistantContrast.ICON, { it.surfaceContainerHigh }, { it.primary }, { listOf(it.onSurface) }),
+    SectionTileIcon(ThemeContrast.ICON, { it.primaryContainer }, { it.onPrimaryContainer }),
+    SettingsRowTitle(ThemeContrast.BODY_TEXT, { it.surfaceContainerHigh }, { it.onSurface }),
+    SettingsRowSupporting(ThemeContrast.BODY_TEXT, { it.surfaceContainerHigh }, { it.onSurfaceVariant }, { listOf(it.onSurface) }),
+    SettingsRowChevron(ThemeContrast.ICON, { it.surfaceContainerHigh }, { it.onSurfaceVariant }, { listOf(it.onSurface) }),
+    SettingsRowLeadingIcon(ThemeContrast.ICON, { it.surfaceContainerHigh }, { it.primary }, { listOf(it.onSurface) }),
+    SettingsNavTileIcon(ThemeContrast.ICON, { it.surfaceContainerHighest }, { it.primary }, { listOf(it.onSurface) }),
+    SwitchOnThumb(ThemeContrast.ICON, { it.primary }, { it.onPrimary }),
+    SwitchOnThumbIcon(ThemeContrast.ICON, { it.onPrimary }, { it.primary }),
+    SwitchOffThumb(ThemeContrast.ICON, { it.surfaceVariant }, { it.onSurface }),
+    SwitchOffThumbIcon(ThemeContrast.ICON, { it.onSurface }, { it.surfaceVariant }),
+    SliderActiveTrackOnLow(ThemeContrast.ICON, { it.surfaceContainerLow }, { it.primary }, { listOf(it.onSurface) }),
+    SliderActiveTrackOnHigh(ThemeContrast.ICON, { it.surfaceContainerHigh }, { it.primary }, { listOf(it.onSurface) }),
     // The slider's inactive track (surfaceContainerHighest on a surfaceContainerHigh row) is
     // deliberately not a slot: it measures 1.07:1 light / 1.17:1 dark on every palette, and no
     // M3 track role reaches 3:1 there. WCAG 1.4.11 covers the thumb and active track, which are
     // the SliderActiveTrack* slots above.
-    ProviderTitle(AssistantContrast.BODY_TEXT, { it.surfaceContainerHigh }, { it.onSurface }),
-    ProviderMeta(AssistantContrast.BODY_TEXT, { it.surfaceContainerHigh }, { it.onSurfaceVariant }, { listOf(it.onSurface) }),
-    ProviderTitleActive(AssistantContrast.BODY_TEXT, { it.primaryContainer }, { it.onSurface }, { listOf(it.onPrimaryContainer) }),
-    ProviderMetaActive(AssistantContrast.BODY_TEXT, { it.primaryContainer }, { it.onSurfaceVariant }, { listOf(it.onPrimaryContainer, it.onSurface) }),
-    ProviderCredentialError(AssistantContrast.BODY_TEXT, { it.surfaceContainerHigh }, { it.error }, { listOf(it.onErrorContainer, it.onSurface) }),
-    ProviderCredentialErrorActive(AssistantContrast.BODY_TEXT, { it.primaryContainer }, { it.error }, { listOf(it.onErrorContainer, it.onPrimaryContainer) }),
-    ProviderCredentialOk(AssistantContrast.ICON, { it.surfaceContainerHigh }, { it.primary }, { listOf(it.onSurface) }),
-    ProviderCredentialOkActive(AssistantContrast.ICON, { it.primaryContainer }, { it.primary }, { listOf(it.onPrimaryContainer) }),
-    ProviderTypeIcon(AssistantContrast.ICON, { it.secondaryContainer }, { it.onSecondaryContainer }),
-    ProviderActiveBadge(AssistantContrast.ICON, { it.onPrimaryContainer }, { it.primaryContainer }),
-    ProviderSplitButton(AssistantContrast.BODY_TEXT, { it.secondaryContainer }, { it.onSecondaryContainer }),
-    PremiumDescription(AssistantContrast.BODY_TEXT, { it.primaryContainer }, { it.onPrimaryContainer.copy(alpha = 0.78f) }, { listOf(it.onPrimaryContainer) }),
-    SecondaryCardDescription(AssistantContrast.BODY_TEXT, { it.secondaryContainer }, { it.onSecondaryContainer.copy(alpha = 0.78f) }, { listOf(it.onSecondaryContainer) }),
-    TertiaryCardDescription(AssistantContrast.BODY_TEXT, { it.tertiaryContainer }, { it.onTertiaryContainer.copy(alpha = 0.78f) }, { listOf(it.onTertiaryContainer) }),
-    SystemPromptPlaceholder(AssistantContrast.BODY_TEXT, { it.surfaceContainerLow }, { it.onSurfaceVariant.copy(alpha = 0.6f) }, { listOf(it.onSurfaceVariant, it.onSurface) }),
-    AssistantDefaultCardText(AssistantContrast.BODY_TEXT, { over(it.primaryContainer, 0.5f, it.surfaceContainerLow) }, { it.onSurface }),
-    SearchNativeNote(AssistantContrast.BODY_TEXT, { over(it.secondaryContainer, 0.58f, it.surfaceContainerHigh) }, { it.onSecondaryContainer }, { listOf(it.onSurface) }),
-    UpdateBannerMuted(AssistantContrast.BODY_TEXT, { it.primaryContainer }, { it.onPrimaryContainer.copy(alpha = 0.8f) }, { listOf(it.onPrimaryContainer) }),
-    MemoryMuted(AssistantContrast.BODY_TEXT, { it.secondaryContainer }, { it.onSecondaryContainer.copy(alpha = 0.66f) }, { listOf(it.onSecondaryContainer) });
+    ProviderTitle(ThemeContrast.BODY_TEXT, { it.surfaceContainerHigh }, { it.onSurface }),
+    ProviderMeta(ThemeContrast.BODY_TEXT, { it.surfaceContainerHigh }, { it.onSurfaceVariant }, { listOf(it.onSurface) }),
+    ProviderTitleActive(ThemeContrast.BODY_TEXT, { it.primaryContainer }, { it.onSurface }, { listOf(it.onPrimaryContainer) }),
+    ProviderMetaActive(ThemeContrast.BODY_TEXT, { it.primaryContainer }, { it.onSurfaceVariant }, { listOf(it.onPrimaryContainer, it.onSurface) }),
+    ProviderCredentialError(ThemeContrast.BODY_TEXT, { it.surfaceContainerHigh }, { it.error }, { listOf(it.onErrorContainer, it.onSurface) }),
+    ProviderCredentialErrorActive(ThemeContrast.BODY_TEXT, { it.primaryContainer }, { it.error }, { listOf(it.onErrorContainer, it.onPrimaryContainer) }),
+    ProviderCredentialOk(ThemeContrast.ICON, { it.surfaceContainerHigh }, { it.primary }, { listOf(it.onSurface) }),
+    ProviderCredentialOkActive(ThemeContrast.ICON, { it.primaryContainer }, { it.primary }, { listOf(it.onPrimaryContainer) }),
+    ProviderTypeIcon(ThemeContrast.ICON, { it.secondaryContainer }, { it.onSecondaryContainer }),
+    ProviderActiveBadge(ThemeContrast.ICON, { it.onPrimaryContainer }, { it.primaryContainer }),
+    ProviderSplitButton(ThemeContrast.BODY_TEXT, { it.secondaryContainer }, { it.onSecondaryContainer }),
+    // Supporting lines on a role container use that role's on* colour at full opacity: the
+    // theme audit bans alpha on on* text (78-80% measured 4.0-4.3:1 on the dark palettes).
+    PremiumDescription(ThemeContrast.BODY_TEXT, { it.primaryContainer }, { it.onPrimaryContainer }),
+    SecondaryCardDescription(ThemeContrast.BODY_TEXT, { it.secondaryContainer }, { it.onSecondaryContainer }),
+    TertiaryCardDescription(ThemeContrast.BODY_TEXT, { it.tertiaryContainer }, { it.onTertiaryContainer }),
+    SystemPromptPlaceholder(ThemeContrast.BODY_TEXT, { it.surfaceContainerLow }, { it.onSurfaceVariant }, { listOf(it.onSurface) }),
+    AssistantDefaultCardText(ThemeContrast.BODY_TEXT, { over(it.primaryContainer, 0.5f, it.surfaceContainerLow) }, { it.onSurface }),
+    SearchNativeNote(ThemeContrast.BODY_TEXT, { over(it.secondaryContainer, 0.58f, it.surfaceContainerHigh) }, { it.onSecondaryContainer }, { listOf(it.onSurface) }),
+    UpdateBannerMuted(ThemeContrast.BODY_TEXT, { it.primaryContainer }, { it.onPrimaryContainer }),
+    MemoryMuted(ThemeContrast.BODY_TEXT, { it.secondaryContainer }, { it.onSecondaryContainer });
 
     companion object {
         private fun over(top: Color, alpha: Float, under: Color): Color =
-            AssistantContrast.compositeOver(top.copy(alpha = alpha), under)
+            ThemeContrast.compositeOver(top.copy(alpha = alpha), under)
 
         /** ConversationItem pressed fill: onSurface at 8% over surfaceContainerHigh. */
         fun pressedRow(scheme: ColorScheme): Color = over(scheme.onSurface, 0.08f, scheme.surfaceContainerHigh)
@@ -139,8 +142,8 @@ internal class HomeSettingsPalette private constructor(
     /** The fill [slot]'s content sits on. */
     fun fill(slot: HomeSettingsSlot): Color = slot.fill(scheme)
 
-    fun pairs(): List<AssistantContrastPair> =
-        HomeSettingsSlot.values().map { AssistantContrastPair(it.name, it.fill(scheme), this[it], it.minimum) }
+    fun pairs(): List<ThemeContrastPair> =
+        HomeSettingsSlot.values().map { ThemeContrastPair(it.name, it.fill(scheme), this[it], it.minimum) }
 
     companion object {
         /** Each slot exactly as its call site reads the theme role: the baseline. */
@@ -152,10 +155,12 @@ internal class HomeSettingsPalette private constructor(
             HomeSettingsPalette(
                 scheme,
                 HomeSettingsSlot.values().associateWith { slot ->
-                    AssistantContrast.pick(
+                    // The theme's runtime guard: preferred role, then the alternates, then
+                    // onSurface / inverseOnSurface / white / black.
+                    scheme.readableOn(
                         fill = slot.fill(scheme),
-                        candidates = listOf(slot.preferred(scheme)) + slot.alternates(scheme),
-                        minimum = slot.minimum
+                        minimum = slot.minimum,
+                        preferred = listOf(slot.preferred(scheme)) + slot.alternates(scheme)
                     )
                 }
             )
@@ -168,19 +173,3 @@ internal fun rememberHomeSettingsPalette(): HomeSettingsPalette {
     val scheme = MaterialTheme.colorScheme
     return remember(scheme) { HomeSettingsPalette.resolve(scheme) }
 }
-
-/**
- * A muted secondary line on [fill]: [content] at [alpha] where that still reads at [minimum]
- * (WCAG AA body text by default), otherwise [content] at full opacity. Keeps supporting text
- * quieter than its headline without letting a dark container push it below AA.
- */
-internal fun mutedContentOn(
-    fill: Color,
-    content: Color,
-    alpha: Float,
-    minimum: Double = AssistantContrast.BODY_TEXT
-): Color = AssistantContrast.pick(fill, listOf(content.copy(alpha = alpha), content), minimum)
-
-/** [mutedContentOn] at the icon threshold (3:1). */
-internal fun mutedIconOn(fill: Color, content: Color, alpha: Float): Color =
-    mutedContentOn(fill, content, alpha, AssistantContrast.ICON)

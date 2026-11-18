@@ -172,7 +172,7 @@ fun ExpressiveFilledIconButton(
     val pressed by interactionSource.collectIsPressedAsState()
     val scale by animateFloatAsState(
         targetValue = if (pressed && enabled) 0.9f else 1f,
-        animationSpec = ExpressiveMotion.Spatial.scale(),
+        animationSpec = ExpressiveMotion.Press.Scale,
         label = "expressiveIconButtonScale"
     )
     FilledIconButton(
@@ -243,12 +243,12 @@ fun ExpressiveCardSurface(
     val pressed by interactionSource.collectIsPressedAsState()
     val scale by animateFloatAsState(
         targetValue = if (pressed) 0.975f else 1f,
-        animationSpec = ExpressiveMotion.Spatial.listItemPress(),
+        animationSpec = ExpressiveMotion.Press.Scale,
         label = "expressiveCardScale"
     )
     val color by animateColorAsState(
         targetValue = if (pressed) MaterialTheme.colorScheme.surfaceContainerHigh else containerColor,
-        animationSpec = ExpressiveMotion.Effects.color(),
+        animationSpec = ExpressiveMotion.Press.Tint,
         label = "expressiveCardColor"
     )
     ElevatedCard(

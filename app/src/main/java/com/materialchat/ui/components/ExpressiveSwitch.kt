@@ -50,7 +50,7 @@ fun ExpressiveSwitch(
     // Press compresses the icon on the spatial scale spring (overshoots on release).
     val iconScale by animateFloatAsState(
         targetValue = if (pressed) 0.78f else 1f,
-        animationSpec = ExpressiveMotion.Spatial.scale(),
+        animationSpec = ExpressiveMotion.Press.Scale,
         label = "expressiveSwitchIconScale"
     )
 

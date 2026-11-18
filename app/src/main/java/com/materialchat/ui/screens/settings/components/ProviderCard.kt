@@ -100,14 +100,14 @@ fun ProviderCard(
     // Press scale: same list-item press spring as conversation rows
     val scale by animateFloatAsState(
         targetValue = if (isPressed) 0.97f else 1f,
-        animationSpec = ExpressiveMotion.Spatial.listItemPress(),
+        animationSpec = ExpressiveMotion.Press.Scale,
         label = "cardScale"
     )
 
     // Pressed morph: the squircle rounds further on the shape-morph spring, paired with the scale.
     val cardRadius by animateDpAsState(
         targetValue = if (isPressed) 34.dp else 28.dp,
-        animationSpec = ExpressiveMotion.Spatial.shapeMorph(),
+        animationSpec = ExpressiveMotion.Press.Shape,
         label = "cardCorner"
     )
     val cardShape = SquircleShape(cardRadius)

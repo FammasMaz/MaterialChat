@@ -7,12 +7,10 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.EaseInOutCubic
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -62,6 +60,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.materialchat.ui.theme.ExpressiveMotion
+import com.materialchat.ui.theme.particles.rememberParticleMotionGate
 import com.materialchat.ui.theme.ExpressiveShapeToken
 import com.materialchat.ui.theme.expressiveControlShape
 import com.materialchat.domain.model.ReasoningEffort
@@ -92,10 +91,16 @@ fun M3ExpressiveLoadingIndicator(
     containerColor: Color = MaterialTheme.colorScheme.primaryContainer,
     size: Dp = 48.dp
 ) {
-    val infiniteTransition = rememberInfiniteTransition(label = "m3LoadingTransition")
+    // Continuous loop: only requests frames while the host motion gate allows it (window
+    // started, no power saver, animator scale > 0); otherwise a static soft-burst frame.
+    val infiniteTransition = if (rememberParticleMotionGate().motionAllowed) {
+        rememberInfiniteTransition(label = "m3LoadingTransition")
+    } else {
+        null
+    }
 
     // Slow rotation for the shape
-    val rotation by infiniteTransition.animateFloat(
+    val rotation = infiniteTransition?.animateFloat(
         initialValue = 0f,
         targetValue = 360f,
         animationSpec = infiniteRepeatable(
@@ -103,14 +108,14 @@ fun M3ExpressiveLoadingIndicator(
             repeatMode = RepeatMode.Restart
         ),
         label = "rotation"
-    )
+    )?.value ?: 0f
 
     // Shape morph progress: morphs between soft-burst and polygon shapes
     // 0.0 = soft-burst (12-point star/flower)
     // 1.0 = pentagon
     // 2.0 = hexagon
     // 3.0 = soft-burst again
-    val morphProgress by infiniteTransition.animateFloat(
+    val morphProgress = infiniteTransition?.animateFloat(
         initialValue = 0f,
         targetValue = 3f,
         animationSpec = infiniteRepeatable(
@@ -118,7 +123,7 @@ fun M3ExpressiveLoadingIndicator(
             repeatMode = RepeatMode.Restart
         ),
         label = "shapeMorph"
-    )
+    )?.value ?: 0f
 
     // Reusable scratch buffers for the morphing-shape draw path. The indicator
     // animates continuously at 60fps while visible (every AI response), so
@@ -280,9 +285,14 @@ fun M3ExpressiveCircularProgress(
     size: Dp = 48.dp,
     strokeWidth: Dp = 4.dp
 ) {
-    val infiniteTransition = rememberInfiniteTransition(label = "circularProgressTransition")
+    // Gated like every continuous decoration; a static arc is drawn when motion is off.
+    val infiniteTransition = if (rememberParticleMotionGate().motionAllowed) {
+        rememberInfiniteTransition(label = "circularProgressTransition")
+    } else {
+        null
+    }
 
-    val rotation by infiniteTransition.animateFloat(
+    val rotation = infiniteTransition?.animateFloat(
         initialValue = 0f,
         targetValue = 360f,
         animationSpec = infiniteRepeatable(
@@ -290,9 +300,9 @@ fun M3ExpressiveCircularProgress(
             repeatMode = RepeatMode.Restart
         ),
         label = "rotation"
-    )
+    )?.value ?: 0f
 
-    val sweepProgress by infiniteTransition.animateFloat(
+    val sweepProgress = infiniteTransition?.animateFloat(
         initialValue = 0f,
         targetValue = 1f,
         animationSpec = infiniteRepeatable(
@@ -300,7 +310,7 @@ fun M3ExpressiveCircularProgress(
             repeatMode = RepeatMode.Reverse
         ),
         label = "sweepProgress"
-    )
+    )?.value ?: 0.5f
 
     val sweepAngle = 30f + (240f * sweepProgress)
 
@@ -338,25 +348,26 @@ fun M3ExpressivePulsingDots(
     dotSize: Dp = 8.dp
 ) {
     val dots = remember { listOf(Animatable(0.4f), Animatable(0.4f), Animatable(0.4f)) }
+    val motionAllowed = rememberParticleMotionGate().motionAllowed
 
-    LaunchedEffect(Unit) {
+    // The pulse loop obeys the host motion gate: when motion is off the dots rest at their
+    // dim state instead of looping. Rise on the playful spatial spring, settle on the slow one.
+    LaunchedEffect(motionAllowed) {
+        if (!motionAllowed) {
+            dots.forEach { it.snapTo(0.4f) }
+            return@LaunchedEffect
+        }
         while (true) {
             dots.forEachIndexed { index, animatable ->
                 launch {
                     delay(index * 150L)
                     animatable.animateTo(
                         targetValue = 1f,
-                        animationSpec = spring(
-                            dampingRatio = Spring.DampingRatioMediumBouncy,
-                            stiffness = Spring.StiffnessMedium
-                        )
+                        animationSpec = ExpressiveMotion.Spatial.playful()
                     )
                     animatable.animateTo(
                         targetValue = 0.4f,
-                        animationSpec = spring(
-                            dampingRatio = Spring.DampingRatioMediumBouncy,
-                            stiffness = Spring.StiffnessLow
-                        )
+                        animationSpec = ExpressiveMotion.Spatial.slow()
                     )
                 }
             }
@@ -390,9 +401,14 @@ fun M3ExpressiveLinearProgress(
     trackColor: Color = MaterialTheme.colorScheme.surfaceContainerHighest,
     height: Dp = 4.dp
 ) {
-    val infiniteTransition = rememberInfiniteTransition(label = "linearProgressTransition")
+    // Gated like every continuous decoration; a centred static bar is drawn when motion is off.
+    val infiniteTransition = if (rememberParticleMotionGate().motionAllowed) {
+        rememberInfiniteTransition(label = "linearProgressTransition")
+    } else {
+        null
+    }
 
-    val position by infiniteTransition.animateFloat(
+    val position = infiniteTransition?.animateFloat(
         initialValue = -0.5f,
         targetValue = 1.5f,
         animationSpec = infiniteRepeatable(
@@ -400,9 +416,9 @@ fun M3ExpressiveLinearProgress(
             repeatMode = RepeatMode.Restart
         ),
         label = "position"
-    )
+    )?.value ?: 0.5f
 
-    val widthFraction by infiniteTransition.animateFloat(
+    val widthFraction = infiniteTransition?.animateFloat(
         initialValue = 0f,
         targetValue = 1f,
         animationSpec = infiniteRepeatable(
@@ -410,7 +426,7 @@ fun M3ExpressiveLinearProgress(
             repeatMode = RepeatMode.Reverse
         ),
         label = "width"
-    )
+    )?.value ?: 0.5f
 
     Canvas(modifier = modifier.height(height)) {
         val trackHeight = size.height
@@ -452,10 +468,7 @@ fun M3ExpressiveDeterminateProgress(
     LaunchedEffect(progress) {
         animatedProgress.animateTo(
             targetValue = progress.coerceIn(0f, 1f),
-            animationSpec = spring(
-                dampingRatio = Spring.DampingRatioMediumBouncy,
-                stiffness = Spring.StiffnessMediumLow
-            )
+            animationSpec = ExpressiveMotion.Spatial.default()
         )
     }
 
@@ -622,19 +635,13 @@ fun MorphingSendButton(
     // M3 Expressive spring-based alpha transitions
     val iconAlpha by animateFloatAsState(
         targetValue = if (isStreaming) 0f else 1f,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioNoBouncy,
-            stiffness = Spring.StiffnessMediumLow
-        ),
+        animationSpec = ExpressiveMotion.Effects.alpha(),
         label = "iconAlpha"
     )
 
     val shapeAlpha by animateFloatAsState(
         targetValue = if (isStreaming) 1f else 0f,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioNoBouncy,
-            stiffness = Spring.StiffnessMediumLow
-        ),
+        animationSpec = ExpressiveMotion.Effects.alpha(),
         label = "shapeAlpha"
     )
 

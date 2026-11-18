@@ -1,10 +1,8 @@
 package com.materialchat.ui.components
 
-import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
 import com.materialchat.ui.theme.ExpressiveMotion
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectDragGestures
@@ -250,7 +248,7 @@ fun ExpressiveFastScrollBar(
                             // Motion token models a 70ms tracker, so this stays explicit.
                             displayedProgress.animateTo(
                                 targetValue = stats.progress,
-                                animationSpec = tween(durationMillis = 70, easing = FastOutSlowInEasing)
+                                animationSpec = ExpressiveMotion.Effects.fast()
                             )
                         } else {
                             displayedProgress.snapTo(stats.progress)

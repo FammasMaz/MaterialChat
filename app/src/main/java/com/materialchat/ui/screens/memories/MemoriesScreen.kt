@@ -1,8 +1,6 @@
 package com.materialchat.ui.screens.memories
 
 import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.spring
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -59,8 +57,7 @@ import com.materialchat.ui.components.ExpressiveContentSurface
 import com.materialchat.ui.components.ExpressiveFilledIconButton
 import com.materialchat.ui.components.ExpressiveTopBarTitle
 import com.materialchat.ui.components.dialogEntrance
-import com.materialchat.ui.components.mutedContentOn
-import com.materialchat.ui.components.mutedIconOn
+import com.materialchat.ui.theme.ExpressiveMotion
 import com.materialchat.ui.theme.ExpressiveShapes
 import com.materialchat.ui.components.HapticPattern
 import com.materialchat.ui.components.rememberHapticFeedback
@@ -179,10 +176,7 @@ private fun MemoriesListContent(
         modifier = Modifier
             .fillMaxSize()
             .animateContentSize(
-                animationSpec = spring(
-                    dampingRatio = Spring.DampingRatioNoBouncy,
-                    stiffness = 520f
-                )
+                animationSpec = ExpressiveMotion.Spatial.contentSize()
             )
     ) {
         MemorySearchField(
@@ -209,9 +203,9 @@ private fun MemoriesListContent(
                         memory = memory,
                         onDelete = { onDeleteMemory(memory.id) },
                         modifier = Modifier.animateItem(
-                            fadeInSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = 520f),
-                            fadeOutSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = 520f),
-                            placementSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = 520f)
+                            fadeInSpec = ExpressiveMotion.ListItem.FadeIn,
+                            fadeOutSpec = ExpressiveMotion.ListItem.FadeOut,
+                            placementSpec = ExpressiveMotion.ListItem.Placement
                         )
                     )
                 }
@@ -292,7 +286,7 @@ private fun MemoryCard(
                 Text(
                     text = memory.kind.displayName,
                     style = MaterialTheme.typography.labelLarge,
-                    color = mutedContentOn(colors.container, colors.content, 0.78f)
+                    color = colors.content
                 )
                 Text(
                     text = memory.content,
@@ -303,7 +297,7 @@ private fun MemoryCard(
                     text = "Updated $date · recalled ${memory.recallCount}×",
                     style = MaterialTheme.typography.labelSmall,
                     // 66% dropped to 3.7-4.2:1 on every dark palette; resolved against the card.
-                    color = mutedContentOn(colors.container, colors.content, 0.66f),
+                    color = colors.content,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -312,7 +306,7 @@ private fun MemoryCard(
                 Icon(
                     imageVector = Icons.Outlined.Delete,
                     contentDescription = "Delete memory",
-                    tint = mutedIconOn(colors.container, colors.content, 0.78f)
+                    tint = colors.content
                 )
             }
         }
