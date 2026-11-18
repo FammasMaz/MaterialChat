@@ -448,7 +448,7 @@ private fun InputShapeButton(
     )
     val scale by animateFloatAsState(
         targetValue = if (isPressed) 0.90f else 1f,
-        animationSpec = ExpressiveMotion.Spatial.scale(),
+        animationSpec = ExpressiveMotion.Press.Scale,
         label = "inputShapeButtonScale"
     )
     val shape = expressiveControlShape(
@@ -604,13 +604,13 @@ private fun ImageActionPill(
     // Press morph: the item squares to 12dp on every corner and compresses slightly.
     val pressedCorner by animateDpAsState(
         targetValue = if (isPressed) 12.dp else 0.dp,
-        animationSpec = ExpressiveMotion.Spatial.shapeMorph(),
+        animationSpec = ExpressiveMotion.Press.Shape,
         label = "imageActionPillPressCorner"
     )
     val shape = if (isPressed || pressedCorner > 0.dp) RoundedCornerShape(12.dp) else restingShape
     val scale by animateFloatAsState(
         targetValue = if (isPressed) 0.96f else 1f,
-        animationSpec = ExpressiveMotion.Spatial.scale(),
+        animationSpec = ExpressiveMotion.Press.Scale,
         label = "imageActionPillScale"
     )
     Surface(
@@ -738,7 +738,7 @@ private fun ReasoningEffortSelector(
     )
     val buttonScale by animateFloatAsState(
         targetValue = if (isPressed) 0.9f else 1f,
-        animationSpec = ExpressiveMotion.Spatial.scale(),
+        animationSpec = ExpressiveMotion.Press.Scale,
         label = "reasoningButtonScale"
     )
     // M3 Expressive: Container color reflects reasoning effort intensity

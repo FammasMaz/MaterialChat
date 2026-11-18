@@ -3,9 +3,7 @@ package com.materialchat.ui.screens.chat.components
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.size
@@ -17,6 +15,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import com.materialchat.ui.theme.ExpressiveMotion
+import com.materialchat.ui.theme.particles.rememberParticleMotionGate
 import kotlinx.coroutines.launch
 import kotlin.math.cos
 import kotlin.math.sin
@@ -42,27 +42,28 @@ fun FusionAnimation(
 
     val convergence = remember { Animatable(0f) }
     val rotation = remember { Animatable(0f) }
+    // The orbit is continuous motion, so it honours the decoration motion gate (power saver,
+    // animator scale 0, stopped host); the convergence is a one-shot spring and still plays.
+    val motionGate = rememberParticleMotionGate()
 
-    LaunchedEffect(isActive) {
+    LaunchedEffect(isActive, motionGate.motionAllowed) {
         if (isActive) {
-            // Start rotation
-            launch {
-                rotation.animateTo(
-                    targetValue = 360f,
-                    animationSpec = infiniteRepeatable(
-                        animation = tween(durationMillis = 3000, easing = LinearEasing),
-                        repeatMode = RepeatMode.Restart
+            if (motionGate.motionAllowed) {
+                launch {
+                    rotation.animateTo(
+                        targetValue = 360f,
+                        animationSpec = infiniteRepeatable(
+                            animation = tween(durationMillis = 3000, easing = LinearEasing),
+                            repeatMode = RepeatMode.Restart
+                        )
                     )
-                )
+                }
             }
-            // Converge circles toward center
+            // Converge circles toward center on the M3E slow spatial spring.
             launch {
                 convergence.animateTo(
                     targetValue = 1f,
-                    animationSpec = spring(
-                        dampingRatio = Spring.DampingRatioLowBouncy,
-                        stiffness = Spring.StiffnessVeryLow
-                    )
+                    animationSpec = ExpressiveMotion.Spatial.slow()
                 )
             }
         } else {

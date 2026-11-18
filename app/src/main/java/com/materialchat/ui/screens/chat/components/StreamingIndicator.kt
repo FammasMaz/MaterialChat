@@ -3,12 +3,11 @@ package com.materialchat.ui.screens.chat.components
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.EaseInOutCubic
 import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.Easing
 import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -37,6 +36,8 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.materialchat.ui.theme.ExpressiveMotion
+import com.materialchat.ui.theme.particles.rememberParticleMotionGate
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.PI
@@ -78,29 +79,10 @@ fun M3StreamingShapeIndicator(
     containerColor: Color = MaterialTheme.colorScheme.primaryContainer,
     size: Dp = 24.dp
 ) {
-    val infiniteTransition = rememberInfiniteTransition(label = "streamingTransition")
-
-    // Rotation animation
-    val rotation by infiniteTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = 360f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 3000, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "rotation"
-    )
-
+    // Continuous motion honours the decoration motion gate (see gatedInfiniteFloat).
+    val rotation = gatedInfiniteFloat(0f, 360f, 3000, LinearEasing, rest = 0f, label = "streamingRotation")
     // Shape morph progress: soft-burst → pentagon → hexagon → soft-burst
-    val morphProgress by infiniteTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = 3f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 2400, easing = EaseInOutCubic),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "shapeMorph"
-    )
+    val morphProgress = gatedInfiniteFloat(0f, 3f, 2400, EaseInOutCubic, rest = 1f, label = "streamingMorph")
 
     val morphPath = remember { Path() }
     val morphVertices = remember { FloatArray(40) }
@@ -171,19 +153,14 @@ fun M3StreamingDots(
             dots.forEachIndexed { index, animatable ->
                 launch {
                     delay(index * 120L)
+                    // Rise on the default spatial spring, settle back on the slow one.
                     animatable.animateTo(
                         targetValue = 1f,
-                        animationSpec = spring(
-                            dampingRatio = Spring.DampingRatioMediumBouncy,
-                            stiffness = Spring.StiffnessMedium
-                        )
+                        animationSpec = ExpressiveMotion.Spatial.default()
                     )
                     animatable.animateTo(
                         targetValue = 0.3f,
-                        animationSpec = spring(
-                            dampingRatio = Spring.DampingRatioMediumBouncy,
-                            stiffness = Spring.StiffnessLow
-                        )
+                        animationSpec = ExpressiveMotion.Spatial.slow()
                     )
                 }
             }
@@ -322,49 +299,12 @@ fun M3TripleShapeIndicator(
     shapeSize: Dp = 20.dp,
     spacing: Dp = 6.dp
 ) {
-    val infiniteTransition = rememberInfiniteTransition(label = "tripleShapeTransition")
-
-    // Shared rotation
-    val rotation by infiniteTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = 360f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 3000, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "rotation"
-    )
-
-    // Three staggered morph animations
-    val morphProgress1 by infiniteTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = 3f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 2400, easing = EaseInOutCubic),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "shapeMorph1"
-    )
-
-    val morphProgress2 by infiniteTransition.animateFloat(
-        initialValue = 1f,  // Offset by 1/3 of cycle
-        targetValue = 4f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 2400, easing = EaseInOutCubic),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "shapeMorph2"
-    )
-
-    val morphProgress3 by infiniteTransition.animateFloat(
-        initialValue = 2f,  // Offset by 2/3 of cycle
-        targetValue = 5f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 2400, easing = EaseInOutCubic),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "shapeMorph3"
-    )
+    // Continuous motion honours the decoration motion gate (see gatedInfiniteFloat): with
+    // motion denied the three shapes hold staggered poses instead of running a frame loop.
+    val rotation = gatedInfiniteFloat(0f, 360f, 3000, LinearEasing, rest = 0f, label = "tripleRotation")
+    val morphProgress1 = gatedInfiniteFloat(0f, 3f, 2400, EaseInOutCubic, rest = 0f, label = "tripleMorph1")
+    val morphProgress2 = gatedInfiniteFloat(1f, 4f, 2400, EaseInOutCubic, rest = 1f, label = "tripleMorph2")
+    val morphProgress3 = gatedInfiniteFloat(2f, 5f, 2400, EaseInOutCubic, rest = 2f, label = "tripleMorph3")
 
     Row(
         modifier = modifier,
@@ -474,16 +414,8 @@ fun ShimmerSkeletonLines(
     lines: Int = 3,
     modifier: Modifier = Modifier
 ) {
-    val infiniteTransition = rememberInfiniteTransition(label = "shimmer")
-    val shimmerProgress by infiniteTransition.animateFloat(
-        initialValue = -1f,
-        targetValue = 2f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 1400, easing = EaseInOutCubic),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "shimmerProgress"
-    )
+    // Continuous motion honours the decoration motion gate: denied, the sweep rests mid-bar.
+    val shimmerProgress = gatedInfiniteFloat(-1f, 2f, 1400, EaseInOutCubic, rest = 0.5f, label = "shimmer")
 
     val barColor = color.copy(alpha = 0.12f)
     val highlightColor = color.copy(alpha = 0.35f)
@@ -515,4 +447,34 @@ fun ShimmerSkeletonLines(
             )
         }
     }
+}
+
+/**
+ * One restarting infinite-transition value for a streaming indicator, honouring the decoration
+ * motion gate ([rememberParticleMotionGate]): with motion denied (power saver, animator scale
+ * 0, stopped host) it returns [rest] and composes no frame loop. The tweens here are the one
+ * place a tween stays (continuous, linear-time indicators), per the theme audit.
+ */
+@Composable
+private fun gatedInfiniteFloat(
+    initialValue: Float,
+    targetValue: Float,
+    durationMillis: Int,
+    easing: Easing,
+    rest: Float,
+    label: String
+): Float {
+    val gate = rememberParticleMotionGate()
+    if (!gate.motionAllowed) return rest
+    val transition = rememberInfiniteTransition(label = label)
+    val value by transition.animateFloat(
+        initialValue = initialValue,
+        targetValue = targetValue,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = durationMillis, easing = easing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "${label}Value"
+    )
+    return value
 }

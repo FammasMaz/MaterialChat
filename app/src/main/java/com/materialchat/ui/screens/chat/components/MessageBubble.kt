@@ -106,7 +106,6 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
@@ -203,6 +202,7 @@ fun MessageBubble(
     var showUserContextMenu by remember { mutableStateOf(false) }
 
     val haptics = rememberHapticFeedback()
+    val palette = rememberChatSurfacePalette()
     val density = LocalDensity.current
     val coroutineScope = rememberCoroutineScope()
 
@@ -397,10 +397,9 @@ fun MessageBubble(
                             // Streaming responses retarget this animation many times per second.
                             // Use a critically-damped spring and top alignment so the bubble can
                             // keep morphing without vertically bobbing around its center.
-                            animationSpec = spring(
-                                dampingRatio = Spring.DampingRatioNoBouncy,
-                                stiffness = 520f
-                            ),
+                            // Shared slow-effects token: critically damped (never bobs) and stiff
+                            // enough that the bubble tracks word-by-word growth without lag.
+                            animationSpec = ExpressiveMotion.Effects.slow(),
                             alignment = if (isUser) Alignment.TopEnd else Alignment.TopStart
                         )
                         // Last-resort tap delivery for the memory chips and the thinking header,
@@ -599,7 +598,9 @@ fun MessageBubble(
                     Text(
                         text = message.modelName,
                         style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                        // Resolved against the list background (ChatSurfacePalette): the old
+                        // onSurfaceVariant at 0.5 read at 2.5:1 on every light palette.
+                        color = palette.metaLabel,
                         modifier = Modifier.padding(start = 4.dp, bottom = 2.dp)
                     )
                 }
@@ -729,6 +730,7 @@ private fun MessageContent(
     hapticsEnabled: Boolean = true
 ) {
     val displayContent = content.ifEmpty { "" }
+    val palette = rememberChatSurfacePalette()
     // Use chat-specific font size from user preferences (CompositionLocal)
     val chatFontSizeScale = com.materialchat.ui.theme.LocalChatFontSizeScale.current
     val bodyLarge = MaterialTheme.typography.bodyLarge
@@ -765,11 +767,12 @@ private fun MessageContent(
                         .clip(RoundedCornerShape(999.dp))
                         .background(textColor.copy(alpha = 0.4f))
                 )
+                // Upright (no italics anywhere in the app); tone resolved against the user
+                // bubble fill so the quote still reads at 4.5:1 on dark palettes.
                 Text(
                     text = quotedLines.joinToString("\n"),
                     style = MaterialTheme.typography.bodyMedium,
-                    color = textColor.copy(alpha = 0.65f),
-                    fontStyle = FontStyle.Italic,
+                    color = palette.userQuote,
                     maxLines = 3,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.padding(start = 8.dp)
@@ -1032,6 +1035,9 @@ private fun ThinkingSection(
     // Phase key: true = thinking-only (expanded), false = content arrived or done
     val isThinkingPhase = isStreaming && !hasContent
     val haptics = rememberHapticFeedback()
+    // Header tones resolved against the two header tints the strip can present (see
+    // ChatSurfacePalette); the preview line at 0.6 alpha fell under 4.5:1 everywhere.
+    val palette = rememberChatSurfacePalette()
 
     // alwaysShowThinking is part of the key: the preference is collected asynchronously and
     // can arrive after a past conversation's bubbles have already composed, and the user can
@@ -1101,9 +1107,8 @@ private fun ThinkingSection(
                 contentDescription = if (isExpanded) "Collapse thinking" else "Expand thinking",
                 modifier = Modifier
                     .size(18.dp)
-                    .alpha(0.75f)
                     .graphicsLayer { rotationZ = chevronRotation },
-                tint = textColor
+                tint = palette.thinkingChevron
             )
             Column(
                 modifier = Modifier
@@ -1113,7 +1118,7 @@ private fun ThinkingSection(
                 Text(
                     text = headerText,
                     style = MaterialTheme.typography.labelLarge,
-                    color = textColor.copy(alpha = 0.8f)
+                    color = palette.thinkingTitle
                 )
                 // Preview line crossfades (and folds) rather than popping when the block opens.
                 AnimatedVisibility(
@@ -1126,7 +1131,7 @@ private fun ThinkingSection(
                     Text(
                         text = previewLine,
                         style = MaterialTheme.typography.bodySmall,
-                        color = textColor.copy(alpha = 0.6f),
+                        color = palette.thinkingPreview,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -1146,7 +1151,7 @@ private fun ThinkingSection(
                 SmoothStreamingThinkingText(
                     rawText = thinkingContent,
                     isStreaming = isStreaming,
-                    textColor = textColor.copy(alpha = 0.7f),
+                    textColor = palette.thinkingBody,
                     style = MaterialTheme.typography.bodyMedium,
                     hapticsEnabled = hapticsEnabled,
                     modifier = Modifier.padding(start = 20.dp, top = 4.dp)
@@ -1180,6 +1185,7 @@ private fun ModelSiblingRow(
     val canGoNext = siblingInfo.currentIndex < siblingInfo.totalCount - 1
     val displayName = modelName ?: siblingInfo.siblings.getOrNull(siblingInfo.currentIndex)?.modelName ?: ""
     val haptics = rememberHapticFeedback()
+    val palette = rememberChatSurfacePalette()
 
     Row(
         modifier = Modifier.padding(start = 4.dp, bottom = 2.dp),
@@ -1199,7 +1205,7 @@ private fun ModelSiblingRow(
         Text(
             text = "$displayName (${siblingInfo.currentIndex + 1}/${siblingInfo.totalCount})",
             style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+            color = palette.metaLabel
         )
 
         ExpressiveFilledIconButton(
@@ -1328,17 +1334,20 @@ private fun MemoryIndicatorChip(
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
     val cornerRadius by animateDpAsState(
+        // One shape language with the action group under the bubble: 20dp outer corner at
+        // rest, 16dp (the thinking/code container radius) while its panel is open, and the
+        // group's 14dp pressed radius while pressed.
         targetValue = when {
-            isPressed -> 14.dp
-            expanded -> 18.dp
-            else -> 24.dp
+            isPressed -> MessageActionPressedCorner
+            expanded -> 16.dp
+            else -> MessageActionOuterCorner
         },
-        animationSpec = com.materialchat.ui.theme.ExpressiveMotion.Spatial.shapeMorph(),
+        animationSpec = ExpressiveMotion.Press.Shape,
         label = "memoryChipShape"
     )
     val scale by animateFloatAsState(
         targetValue = if (isPressed) 0.96f else 1f,
-        animationSpec = com.materialchat.ui.theme.ExpressiveMotion.Spatial.scale(),
+        animationSpec = ExpressiveMotion.Press.Scale,
         label = "memoryChipScale"
     )
 
@@ -1395,11 +1404,12 @@ private fun MemoryReferenceList(
     title: String,
     memories: List<MemoryReference>
 ) {
+    val palette = rememberChatSurfacePalette()
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Text(
             text = title,
             style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.72f)
+            color = palette.memoryPanelTitle
         )
         memories.take(3).forEach { memory ->
             Text(
@@ -1412,7 +1422,7 @@ private fun MemoryReferenceList(
             Text(
                 text = "+${memories.size - 3} more",
                 style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.72f)
+                color = palette.memoryPanelTitle
             )
         }
     }
@@ -1590,6 +1600,7 @@ private fun ImageGenerationLoadingCard(
     modelName: String?,
     modifier: Modifier = Modifier
 ) {
+    val palette = rememberChatSurfacePalette()
     Surface(
         modifier = modifier
             .fillMaxWidth()
@@ -1637,7 +1648,8 @@ private fun ImageGenerationLoadingCard(
                     Text(
                         text = modelName,
                         style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.72f),
+                        // Resolved against the tinted card fill; never an on* role at alpha.
+                        color = palette.imageLoadingMuted,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )

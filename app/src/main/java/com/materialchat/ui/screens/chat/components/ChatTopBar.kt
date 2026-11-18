@@ -10,7 +10,6 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateIntAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
@@ -85,6 +84,8 @@ import com.materialchat.ui.screens.chat.ContextWindowUsage
 import com.materialchat.ui.theme.CustomShapes
 import com.materialchat.ui.theme.ExpressiveMotion
 import com.materialchat.ui.theme.MaterialChatExpressiveTitleFontFamily
+import com.materialchat.ui.theme.readableMutedOn
+import com.materialchat.ui.theme.particles.rememberParticleMotionGate
 import com.materialchat.ui.util.ModelNameParser
 import kotlin.math.PI
 import kotlin.math.roundToInt
@@ -150,7 +151,8 @@ fun ChatTopBar(
             revealProgress.snapTo(0f)
             revealProgress.animateTo(
                 targetValue = 1f,
-                animationSpec = spring(dampingRatio = 0.7f, stiffness = 200f)
+                // Slow spatial token: the title is a screen-level element being revealed.
+                animationSpec = ExpressiveMotion.Spatial.screenSlide()
             )
         } else {
             revealProgress.snapTo(1f)
@@ -185,7 +187,8 @@ fun ChatTopBar(
         label = "chatHeaderContainer"
     )
     val contentColor = if (isEphemeral) scheme.onTertiaryContainer else scheme.onSurface
-    val mutedColor = if (isEphemeral) scheme.onTertiaryContainer.copy(alpha = 0.78f) else scheme.onSurfaceVariant
+    // Muted text on the ephemeral tertiary bar is resolved against that fill, never an on* role at alpha.
+    val mutedColor = if (isEphemeral) scheme.readableMutedOn(scheme.tertiaryContainer) else scheme.onSurfaceVariant
     val badges = resolveChatHeaderBadges(
         isEphemeral = isEphemeral,
         isArchived = isArchived,
@@ -441,16 +444,24 @@ internal fun ChatHeaderPulse(
     barSpacing: Dp = 2.dp,
     height: Dp = 14.dp
 ) {
-    val transition = rememberInfiniteTransition(label = "chatHeaderPulse")
-    val phase by transition.animateFloat(
-        initialValue = 0f,
-        targetValue = 2f * PI.toFloat(),
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 1400, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "chatHeaderPulsePhase"
-    )
+    // Continuous motion honours the decoration motion gate: with motion denied the bars hold
+    // one mid-amplitude pose so the streaming presence still shows, without a frame loop.
+    val motionGate = rememberParticleMotionGate()
+    val phase = if (motionGate.motionAllowed) {
+        val transition = rememberInfiniteTransition(label = "chatHeaderPulse")
+        val animated by transition.animateFloat(
+            initialValue = 0f,
+            targetValue = 2f * PI.toFloat(),
+            animationSpec = infiniteRepeatable(
+                animation = tween(durationMillis = 1400, easing = LinearEasing),
+                repeatMode = RepeatMode.Restart
+            ),
+            label = "chatHeaderPulsePhase"
+        )
+        animated
+    } else {
+        0f
+    }
     val totalWidth = barWidth * barCount + barSpacing * (barCount - 1)
     Canvas(modifier = modifier.width(totalWidth).height(height)) {
         val w = barWidth.toPx()
@@ -521,7 +532,7 @@ private fun HeaderStatusChip(
     val restingCorner = if (badge == ChatHeaderBadge.ContextCritical) 10.dp else 14.dp
     val corner by animateDpAsState(
         targetValue = if (isPressed) 8.dp else restingCorner,
-        animationSpec = ExpressiveMotion.Spatial.shapeMorph(),
+        animationSpec = ExpressiveMotion.Press.Shape,
         label = "headerChipCorner"
     )
     val chipShape = RoundedCornerShape(corner)

@@ -8,7 +8,6 @@ import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -46,6 +45,8 @@ import com.materialchat.R
 import com.materialchat.ui.components.HapticPattern
 import com.materialchat.ui.components.rememberHapticFeedback
 import com.materialchat.ui.theme.ExpressiveMotion
+import com.materialchat.ui.theme.MaterialChatMotion
+import com.materialchat.ui.theme.particles.rememberParticleMotionGate
 
 /** Resting corner of the scroll FAB (M3E small FAB: 16dp). */
 internal val ScrollFabRestingCorner: Dp = 16.dp
@@ -100,27 +101,35 @@ fun ScrollToBottomFab(
             animationSpec = ExpressiveMotion.Effects.alpha()
         ),
         exit = slideOutVertically(
-            animationSpec = spring(dampingRatio = 1.0f, stiffness = 500f),
+            animationSpec = ExpressiveMotion.Spatial.collapse(),
             targetOffsetY = { it }
         ) + scaleOut(
-            animationSpec = spring(dampingRatio = 1.0f, stiffness = 500f),
+            animationSpec = ExpressiveMotion.Spatial.collapse(),
             targetScale = 0.8f
         ) + fadeOut(
             animationSpec = ExpressiveMotion.Effects.alpha()
         )
     ) {
-        // Gentle bobbing on the arrow — suggests "scroll down"
+        // Gentle bobbing on the arrow — suggests "scroll down". Continuous motion, so it
+        // honours the decoration motion gate (power saver, animator scale 0, stopped host):
+        // the arrow then rests at its centre instead of running an infinite transition.
         val bobAmplitude = with(LocalDensity.current) { 2.dp.toPx() }
-        val infiniteTransition = rememberInfiniteTransition(label = "scroll_hint")
-        val bobOffset by infiniteTransition.animateFloat(
-            initialValue = -bobAmplitude,
-            targetValue = bobAmplitude,
-            animationSpec = infiniteRepeatable(
-                animation = tween(800),
-                repeatMode = RepeatMode.Reverse
-            ),
-            label = "bobOffset"
-        )
+        val motionGate = rememberParticleMotionGate()
+        val bobOffset = if (motionGate.motionAllowed) {
+            val infiniteTransition = rememberInfiniteTransition(label = "scroll_hint")
+            val animated by infiniteTransition.animateFloat(
+                initialValue = -bobAmplitude,
+                targetValue = bobAmplitude,
+                animationSpec = infiniteRepeatable(
+                    animation = tween(MaterialChatMotion.Durations.ExtraLong + MaterialChatMotion.Durations.Quick),
+                    repeatMode = RepeatMode.Reverse
+                ),
+                label = "bobOffset"
+            )
+            animated
+        } else {
+            0f
+        }
 
         // Shape morph on appearance: the FAB lands as a circle and settles into its small-FAB
         // corners on the spatial spring (the exit transition scales it back down).
@@ -133,7 +142,7 @@ fun ScrollToBottomFab(
         val pressed by interactionSource.collectIsPressedAsState()
         val pressCorner by animateDpAsState(
             targetValue = if (pressed) ScrollFabPressedCorner else ScrollFabRestingCorner,
-            animationSpec = ExpressiveMotion.Spatial.shapeMorph(),
+            animationSpec = ExpressiveMotion.Press.Shape,
             label = "scrollFabCorner"
         )
         val corner = if (pressed) pressCorner else maxOf(pressCorner, arrival.value)

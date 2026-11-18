@@ -1,7 +1,6 @@
 package com.materialchat.ui.screens.chat.components
 
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.spring
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -24,6 +23,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.materialchat.ui.theme.ExpressiveMotion
 
 /** Title shown on the working indicator. Bold and upright; never italic. */
 internal const val CHAT_WORKING_TITLE = "Thinking"
@@ -53,7 +53,7 @@ internal fun ChatWorkingIndicator(
 ) {
     val entrance = remember { Animatable(0.88f) }
     LaunchedEffect(Unit) {
-        entrance.animateTo(1f, spring(dampingRatio = 0.62f, stiffness = 300f))
+        entrance.animateTo(1f, ExpressiveMotion.Spatial.container())
     }
     val scheme = MaterialTheme.colorScheme
     Row(

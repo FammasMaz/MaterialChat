@@ -35,7 +35,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -265,14 +264,13 @@ private fun FusionModelCard(
                         Text(
                             text = formatDuration(response.durationMs),
                             style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     } else if (response.isStreaming && response.content.isNotEmpty()) {
                         Text(
                             text = "streaming...",
                             style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.7f),
-                            fontStyle = FontStyle.Italic
+                            color = MaterialTheme.colorScheme.tertiary
                         )
                     }
                 }
@@ -284,7 +282,7 @@ private fun FusionModelCard(
                     Text(
                         text = response.content,
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 3,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -292,8 +290,7 @@ private fun FusionModelCard(
                     Text(
                         text = "Generating...",
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        fontStyle = FontStyle.Italic
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }

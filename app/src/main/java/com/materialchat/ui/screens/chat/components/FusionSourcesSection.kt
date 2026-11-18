@@ -22,6 +22,8 @@ import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import com.materialchat.ui.theme.readableMutedOn
+import com.materialchat.ui.theme.readableOn
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -33,7 +35,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.materialchat.domain.model.FusionMetadata
@@ -79,36 +80,19 @@ fun FusionSourcesSection(
             Text(
                 text = "View individual responses (${fusionMetadata.sources.size})",
                 style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-                fontStyle = FontStyle.Italic
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
 
         // Expandable content
         AnimatedVisibility(
             visible = isExpanded,
-            enter = fadeIn(
-                animationSpec = spring(
-                    dampingRatio = Spring.DampingRatioNoBouncy,
-                    stiffness = Spring.StiffnessMediumLow
-                )
-            ) + expandVertically(
-                animationSpec = spring(
-                    dampingRatio = Spring.DampingRatioLowBouncy,
-                    stiffness = Spring.StiffnessMediumLow
-                )
-            ),
-            exit = fadeOut(
-                animationSpec = spring(
-                    dampingRatio = Spring.DampingRatioNoBouncy,
-                    stiffness = Spring.StiffnessMediumLow
-                )
-            ) + shrinkVertically(
-                animationSpec = spring(
-                    dampingRatio = Spring.DampingRatioNoBouncy,
-                    stiffness = Spring.StiffnessMediumLow
-                )
-            )
+            // Shared disclosure physics (ExpressiveMotion.Disclosure), same as every other
+            // expand/collapse in the bubble.
+            enter = fadeIn(animationSpec = com.materialchat.ui.theme.ExpressiveMotion.Disclosure.FadeIn) +
+                expandVertically(animationSpec = com.materialchat.ui.theme.ExpressiveMotion.Disclosure.Expand),
+            exit = fadeOut(animationSpec = com.materialchat.ui.theme.ExpressiveMotion.Disclosure.FadeOut) +
+                shrinkVertically(animationSpec = com.materialchat.ui.theme.ExpressiveMotion.Disclosure.Shrink)
         ) {
             Column(
                 modifier = Modifier.padding(start = 4.dp, top = 8.dp),
@@ -166,7 +150,7 @@ private fun SourceResponseCard(
                     Text(
                         text = formatSourceDuration(durationMs),
                         style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.55f)
+                        color = MaterialTheme.colorScheme.readableMutedOn(MaterialTheme.colorScheme.surfaceContainerHighest)
                     )
                 }
             }
@@ -176,7 +160,7 @@ private fun SourceResponseCard(
             // Response content
             MarkdownText(
                 markdown = content,
-                textColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.85f),
+                textColor = MaterialTheme.colorScheme.readableOn(MaterialTheme.colorScheme.surfaceContainerHighest),
                 style = MaterialTheme.typography.bodySmall
             )
         }

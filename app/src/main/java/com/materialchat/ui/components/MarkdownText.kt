@@ -59,7 +59,6 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.BaselineShift
 import androidx.compose.ui.text.style.TextAlign
@@ -412,14 +411,15 @@ private fun MarkdownContent(
                             modifier = Modifier
                                 .width(3.dp)
                                 .fillMaxHeight()
-                                .clip(RoundedCornerShape(1.5.dp))
+                                .clip(RoundedCornerShape(999.dp))
                                 .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.4f))
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         SelectionContainer(modifier = Modifier.weight(1f)) {
                             MarkdownInlineText(
                                 content = element.content,
-                                style = style.copy(fontStyle = FontStyle.Italic),
+                                // Upright: the accent bar carries the quote, no italic anywhere in chat.
+                                style = style,
                                 modifier = Modifier.fillMaxWidth()
                             )
                         }
@@ -590,7 +590,7 @@ private fun estimateInlineMathPlaceholder(
     val sample = inlineMathPreview(expression)
     val measuredWidthPx = textMeasurer.measure(
         text = sample,
-        style = style.copy(fontStyle = FontStyle.Italic, color = Color.Unspecified)
+        style = style.copy(color = Color.Unspecified)
     ).size.width
     val fontSize = style.fontSize.takeIf { it != TextUnit.Unspecified } ?: 16.sp
     val widthPx = measuredWidthPx.toFloat() * inlineMathWidthFactor(expression)
@@ -879,7 +879,8 @@ private fun MathBlockView(
             .fillMaxWidth()
             .padding(vertical = 4.dp)
             .clipToBounds()
-            .clip(RoundedCornerShape(8.dp))
+            // Same outer container as code blocks and tables: one shape language per block.
+            .clip(MarkdownBlockOuterShape)
             .background(backgroundColor.copy(alpha = 0.5f))
     ) {
         AndroidView(
@@ -929,7 +930,6 @@ private fun NativeMathBlockView(
     // Match bodyLarge (not monospace) so simple math never changes typeface mid-chat.
     val mathStyle = MaterialTheme.typography.bodyLarge.copy(
         color = textColor,
-        fontStyle = FontStyle.Italic,
         textAlign = TextAlign.Center
     )
 
@@ -937,7 +937,7 @@ private fun NativeMathBlockView(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 4.dp)
-            .clip(RoundedCornerShape(8.dp))
+            .clip(MarkdownBlockOuterShape)
             .background(backgroundColor.copy(alpha = 0.5f))
     ) {
         SelectionContainer(modifier = Modifier.align(Alignment.Center)) {
@@ -2305,7 +2305,8 @@ private fun AnnotatedString.Builder.parseInlineFormatting(
             // Italic (*text* or _text_) - group 4
             match.groupValues.getOrNull(4)?.isNotEmpty() == true -> {
                 val content = match.groupValues[4]
-                withStyle(SpanStyle(fontStyle = FontStyle.Italic, color = baseColor)) {
+                // Emphasis renders as a weight step, never italic (banned app-wide).
+                withStyle(SpanStyle(fontWeight = FontWeight.Medium, color = baseColor)) {
                     append(content)
                 }
             }
@@ -2392,7 +2393,6 @@ private fun AnnotatedString.Builder.appendInlineMathFallback(
 ) {
     withStyle(SpanStyle(
         fontFamily = FontFamily.Monospace,
-        fontStyle = FontStyle.Italic,
         background = linkColor.copy(alpha = 0.10f),
         color = baseColor
     )) {
@@ -2827,7 +2827,7 @@ private fun AnnotatedString.Builder.highlightLine(
 
     // Highlight comment
     if (comment.isNotEmpty()) {
-        withStyle(SpanStyle(color = commentColor, fontStyle = FontStyle.Italic)) {
+        withStyle(SpanStyle(color = commentColor)) {
             append(comment)
         }
     }

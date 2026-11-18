@@ -820,10 +820,9 @@ private fun ChatContent(
                 if (overflow > 0 && listState.canScrollForward) {
                     listState.animateScrollBy(
                         overflow.toFloat(),
-                        animationSpec = spring(
-                            dampingRatio = 1.0f,
-                            stiffness = 1400f
-                        )
+                        // Fast effects token: critically damped and the quickest to settle, so
+                        // the scroll session (which swallows bubble taps) is held open briefly.
+                        animationSpec = ExpressiveMotion.Effects.fast()
                     )
                 }
             }
@@ -1114,19 +1113,13 @@ internal fun MessageList(
                 },
                 modifier = Modifier
                     .animateItem(
-                        fadeInSpec = spring(
-                            dampingRatio = Spring.DampingRatioNoBouncy,
-                            stiffness = Spring.StiffnessMediumLow
-                        ),
+                        fadeInSpec = ExpressiveMotion.ListItem.FadeIn,
                         // The actively streaming bubble changes height constantly; placement
                         // animation fights the resize/auto-scroll and reads as vertical jitter.
                         placementSpec = if (messageItem.message.isStreaming) {
                             null
                         } else {
-                            spring(
-                                dampingRatio = Spring.DampingRatioNoBouncy,
-                                stiffness = Spring.StiffnessMediumLow
-                            )
+                            ExpressiveMotion.ListItem.Placement
                         },
                         fadeOutSpec = null // Instant removal to prevent ghost overlap during regeneration
                     )

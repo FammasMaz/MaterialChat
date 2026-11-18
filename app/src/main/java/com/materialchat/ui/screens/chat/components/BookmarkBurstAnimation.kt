@@ -61,10 +61,8 @@ fun BookmarkBurstAnimation(
                 scale.snapTo(0f)
                 scale.animateTo(
                     targetValue = 1f,
-                    animationSpec = spring(
-                        dampingRatio = 0.4f, // Very bouncy for hero moment
-                        stiffness = 350f
-                    )
+                    // Hero moment: the shared playful spatial token (visible overshoot).
+                    animationSpec = ExpressiveMotion.Spatial.playful()
                 )
             }
             launch {
