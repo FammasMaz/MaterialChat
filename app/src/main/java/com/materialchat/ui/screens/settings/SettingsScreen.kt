@@ -1668,9 +1668,9 @@ private fun ColorPaletteSelector(
                     )
                     Text(
                         text = if (dynamicColorEnabled) {
-                            "SeaGlass adds glass effects to Dynamic Color; other palettes are fallbacks"
+                            "Dynamic Color is on; palettes are used when it is unavailable"
                         } else {
-                            "Choose a Material 3 palette or SeaGlass frosted-glass appearance"
+                            "Choose a Material 3 palette"
                         },
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -1958,10 +1958,7 @@ private fun ShapePreviewDot(
 }
 
 private fun AppPreferences.ThemePalette.prettyName(): String {
-    return when (this) {
-        AppPreferences.ThemePalette.SEA_GLASS -> "SeaGlass"
-        else -> name.lowercase().replaceFirstChar { it.uppercase() }
-    }
+    return name.lowercase().replaceFirstChar { it.uppercase() }
 }
 
 private fun AppPreferences.ChatBubbleStyle.prettyName(): String {
