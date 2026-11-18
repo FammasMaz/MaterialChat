@@ -10,6 +10,11 @@ import com.materialchat.assistant.actions.DeviceActionOutcome
 import com.materialchat.assistant.attach.AssistantAttachMode
 import com.materialchat.assistant.attach.AssistantAttachmentInbox
 import com.materialchat.assistant.screen.ScreenContext
+import com.materialchat.assistant.screen.ScreenContextDecision
+import com.materialchat.assistant.screen.ScreenContextPolicy
+import com.materialchat.assistant.screen.ScreenContextPrompt
+import com.materialchat.assistant.screen.ScreenContextTrigger
+import com.materialchat.data.local.preferences.AssistantScreenContextSettings
 import com.materialchat.util.AttachmentLimits
 import java.time.LocalDateTime
 import androidx.lifecycle.viewModelScope
@@ -80,7 +85,13 @@ class AssistantViewModel(
     /** Where the attach activity leaves photos; the production instance unless a test supplies one. */
     private val attachmentInbox: AssistantAttachmentInbox = AssistantAttachmentInbox.shared,
     /** Deletes the file behind an attachment the user removed or that could not be taken. */
-    private val discardAttachment: (Attachment) -> Unit = {}
+    private val discardAttachment: (Attachment) -> Unit = {},
+    /**
+     * Writes the screen capture into the owned attachments directory (the session supplies
+     * [com.materialchat.assistant.screen.AssistScreenshots.writeAttachment] on IO); null when
+     * it could not be written.
+     */
+    private val writeScreenshot: suspend (android.graphics.Bitmap) -> Attachment? = { null }
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(AssistantUiState())
@@ -126,6 +137,22 @@ class AssistantViewModel(
 
     /** The overlay left for the picker or camera; the typed question survives the hide. */
     private var attachInProgress = false
+
+    /**
+     * The screen capture staged for the next question as a normal image attachment file, shown
+     * as the removable "Screen" chip; separate from the photos so it is labelled and never
+     * counts against the per-message photo limit. Written when the question is about the
+     * screen (or always, in that mode), consumed by the send, discarded otherwise.
+     */
+    private val _screenAttachment = MutableStateFlow<Attachment?>(null)
+    val screenAttachment: StateFlow<Attachment?> = _screenAttachment.asStateFlow()
+
+    /** The user removed the screen chip: this question goes without the screen, whatever asks. */
+    private var screenDeclined = false
+    private var screenStaging = false
+    /** The settings hint for a missing capture is shown once per invocation. */
+    private var screenUnavailableShown = false
+    @Volatile private var screenSettings = AssistantScreenContextSettings()
 
     /** The persistent conversation ID - created on first query */
     private var currentConversationId: String? = null
@@ -182,6 +209,13 @@ class AssistantViewModel(
             appPreferences.assistantTtsEnabled.collect { enabled ->
                 _uiState.update { it.copy(isTtsEnabled = enabled) }
                 if (!enabled) stopSpeaking()
+            }
+        }
+
+        viewModelScope.launch {
+            appPreferences.assistantScreenContextSettings.collect { settings ->
+                screenSettings = settings
+                reconsiderScreenStaging()
             }
         }
     }
@@ -248,6 +282,7 @@ class AssistantViewModel(
         // Photos that were never sent are not kept on disk.
         _pendingAttachments.value.forEach(discardAttachment)
         _pendingAttachments.value = emptyList()
+        unstageScreen()
         _messages.value = emptyList()
         _uiState.update {
             it.copy(
@@ -270,6 +305,7 @@ class AssistantViewModel(
     fun updateTextInput(text: String) {
         _uiState.update { it.copy(textInput = text) }
         lastActivityTimestamp = System.currentTimeMillis()
+        reconsiderScreenStaging()
     }
 
     /**
@@ -309,6 +345,8 @@ class AssistantViewModel(
                     is SpeechRecognitionResult.PartialResult -> {
                         _voiceState.value = VoiceState.Processing(result.text)
                         _uiState.update { it.copy(textInput = result.text) }
+                        // The chip appears while the user is still speaking about the screen.
+                        reconsiderScreenStaging()
                     }
                     is SpeechRecognitionResult.FinalResult -> {
                         _uiState.update { it.copy(textInput = result.text) }
@@ -346,6 +384,14 @@ class AssistantViewModel(
         speechStopped = false
         val trimmedQuery = query.trim()
         val attachments = _pendingAttachments.value
+        // Screen context for this question (see ScreenContextPolicy): decided now, on the final
+        // utterance, from the user's setting and whether the capture arrived. The staged chip, if
+        // any, is consumed by this turn either way.
+        val declinedForTurn = screenDeclined
+        screenDeclined = false
+        val screenPlan = screenDecision(asks = ScreenContextTrigger.matches(trimmedQuery), declined = declinedForTurn)
+        val stagedScreen = _screenAttachment.value
+        _screenAttachment.value = null
 
         // Add user message to the message list
         _messages.update { it + AssistantMessage(role = MessageRole.USER, content = trimmedQuery) }
@@ -358,10 +404,13 @@ class AssistantViewModel(
                 isLoading = true,
                 isStreaming = false,
                 error = null,
-                notice = null
+                notice = null,
+                screenContextUsed = false,
+                screenContextUnavailable = false
             )
         }
         _pendingAttachments.value = emptyList()
+        if (screenPlan == ScreenContextDecision.UNAVAILABLE) markScreenUnavailable()
         _voiceState.value = VoiceState.Thinking(trimmedQuery)
         lastActivityTimestamp = System.currentTimeMillis()
 
@@ -392,12 +441,14 @@ class AssistantViewModel(
                             // Another app is in front after a launch; the overlay hides.
                             if (!outcome.launchedActivity) speakActionResult(result, token)
                         }
+                        AssistantAction.ScreenContext -> Unit // never produced by the local parsers
                     }
+                    stagedScreen?.let(discardAttachment)
                     return@launch
                 }
                 coroutineScope {
                     val settings = appPreferences.assistantVoiceSettings.first().normalized()
-                    val chunker = StreamingSpeechChunker()
+                    var chunker = StreamingSpeechChunker()
                     lateinit var queue: AssistantSpeechQueue
                     queue = AssistantSpeechQueue(this, onDrained = {
                         // All queued speech finished: only now leave the speaking state.
@@ -447,6 +498,7 @@ class AssistantViewModel(
                         ?: if (settings.providerId == null) providerRepository.getActiveProvider() else null
                     if (provider == null) {
                         handleError("No active AI provider. Please configure one in Settings.")
+                        stagedScreen?.let(discardAttachment)
                         queue.finish()
                         return@coroutineScope
                     }
@@ -467,14 +519,41 @@ class AssistantViewModel(
                     val effectiveSystemPrompt = if (systemPrompt.isBlank()) notice else systemPrompt + "\n\n" + notice
                     val reasoningEffort = settings.reasoningEffort ?: appPreferences.reasoningEffort.first()
 
+                    // The screen capture, when this question is about it: the screenshot becomes
+                    // an attachment of this one message and the screen text goes into the system
+                    // prompt, so a text-only model still works. Otherwise the model is only told
+                    // a capture exists and may ask for it (one resend of the same turn).
+                    var screenUse: ScreenUse? = if (screenPlan == ScreenContextDecision.ATTACH) {
+                        prepareScreenUse(stagedScreen)
+                    } else {
+                        stagedScreen?.let(discardAttachment)
+                        null
+                    }
+                    currentCoroutineContext().ensureActive()
+                    if (token != turn) return@coroutineScope
+
                     // Create and save user message
                     val userMessage = Message(
                         conversationId = conversationId,
                         role = MessageRole.USER,
                         content = trimmedQuery,
-                        attachments = attachments
+                        attachments = attachments + listOfNotNull(screenUse?.attachment)
                     )
                     conversationRepository.addMessage(userMessage)
+
+                    var resend = true
+                    while (resend) {
+                    resend = false
+                    val turnSystemPrompt = screenUse.let { use ->
+                        when {
+                            use != null -> effectiveSystemPrompt + "\n\n" + use.promptBlock
+                            screenDecision(asks = true, declined = declinedForTurn) == ScreenContextDecision.ATTACH ->
+                                effectiveSystemPrompt + "\n\n" + ScreenContextPrompt.availabilityNotice()
+                            else -> effectiveSystemPrompt
+                        }
+                    }
+                    _uiState.update { it.copy(screenContextUsed = screenUse != null) }
+                    chunker = StreamingSpeechChunker()
 
                     // Get all messages for this conversation
                     val messages = conversationRepository.getMessages(conversationId)
@@ -485,7 +564,7 @@ class AssistantViewModel(
                         messages = messages,
                         model = model,
                         reasoningEffort = reasoningEffort,
-                        systemPrompt = effectiveSystemPrompt,
+                        systemPrompt = turnSystemPrompt,
                         ownerId = ASSISTANT_STREAM_OWNER
                     ).collect { state ->
                         currentCoroutineContext().ensureActive()
@@ -520,6 +599,32 @@ class AssistantViewModel(
                                 // whenever it failed or the model said nothing. A clock request
                                 // hands off to the clock app last, since that hides the overlay.
                                 val extraction = ActionDirectives.extract(state.finalContent, now())
+                                // The model asked for the screen it was not given: resend this
+                                // same turn with the capture attached, once, instead of
+                                // answering blind. When it cannot be given, say why.
+                                val screenRequested = extraction.actions.any { it is AssistantAction.ScreenContext }
+                                var screenFallback = ""
+                                if (screenRequested && screenUse == null) {
+                                    val allowed = screenDecision(asks = true, declined = declinedForTurn)
+                                    val use = if (allowed == ScreenContextDecision.ATTACH) prepareScreenUse(null) else null
+                                    if (use != null) {
+                                        screenUse = use
+                                        conversationRepository.updateMessage(
+                                            userMessage.copy(attachments = attachments + listOfNotNull(use.attachment))
+                                        )
+                                        // The directive-only interim reply never reaches the user.
+                                        _messages.update { list ->
+                                            val last = list.lastOrNull()
+                                            if (last != null && last.role == MessageRole.ASSISTANT && last.isStreaming) list.dropLast(1) else list
+                                        }
+                                        _uiState.update { it.copy(response = "", isLoading = true, isStreaming = false) }
+                                        _voiceState.value = VoiceState.Thinking(trimmedQuery)
+                                        resend = true
+                                        return@collect
+                                    }
+                                    screenFallback = ScreenContextPrompt.unavailableReply(screenSettings.mode)
+                                    if (allowed == ScreenContextDecision.UNAVAILABLE) markScreenUnavailable()
+                                }
                                 val spoken = extraction.text
                                 val outcomes = mutableListOf<DeviceActionOutcome>()
                                 var clockCommand: ClockCommand? = null
@@ -527,11 +632,14 @@ class AssistantViewModel(
                                     when (action) {
                                         is AssistantAction.Clock -> if (clockCommand == null) clockCommand = action.command
                                         is AssistantAction.Device -> outcomes += deviceActionHandler.perform(action.action)
+                                        AssistantAction.ScreenContext -> Unit
                                     }
                                 }
-                                val appended = outcomes
+                                val appended = (outcomes
                                     .filter { !it.succeeded || spoken.isBlank() }
-                                    .joinToString(" ") { it.message }
+                                    .map { it.message } + screenFallback)
+                                    .filter { it.isNotBlank() }
+                                    .joinToString(" ")
                                 val finalText = listOf(spoken.trim(), appended).filter { it.isNotBlank() }.joinToString(" ")
 
                                 if (!_uiState.value.isSpeaking) _voiceState.value = VoiceState.Complete(
@@ -595,6 +703,7 @@ class AssistantViewModel(
                             else -> {}
                         }
                     }
+                    } // while (resend)
                     queue.finish()
                 }
             } catch (cancelled: CancellationException) {
@@ -784,7 +893,89 @@ class AssistantViewModel(
     /** The session delivers each half of the capture as it arrives, and null when it hides. */
     fun onScreenContext(context: ScreenContext?) {
         _screenContext.value = context
+        if (context == null) {
+            // The invocation ended: nothing staged survives it, and the next one starts clean.
+            unstageScreen()
+            screenDeclined = false
+            screenUnavailableShown = false
+            _uiState.update { it.copy(screenContextUnavailable = false) }
+        } else {
+            reconsiderScreenStaging()
+        }
     }
+
+    /** The user removed the "Screen" chip: this question goes without the screen. */
+    fun removeScreenContext() {
+        screenDeclined = true
+        unstageScreen()
+    }
+
+    private fun screenDecision(asks: Boolean, declined: Boolean = screenDeclined): ScreenContextDecision {
+        val context = _screenContext.value
+        val usable = context != null && ScreenContextPolicy.usable(context, screenSettings)
+        return ScreenContextPolicy.decide(screenSettings.mode, asks, usable, declined)
+    }
+
+    /**
+     * Stages the screenshot as the "Screen" chip as soon as the question being typed or spoken
+     * refers to the screen (or at once in the always mode), so the user sees what is about to
+     * be sent and can remove it. Text needs no staging; it is read at send time.
+     */
+    private fun reconsiderScreenStaging() {
+        val context = _screenContext.value ?: return
+        val screenshot = context.screenshot ?: return
+        if (_screenAttachment.value != null || screenStaging || !screenSettings.includeScreenshot) return
+        val asks = ScreenContextTrigger.matches(_uiState.value.textInput)
+        if (screenDecision(asks) != ScreenContextDecision.ATTACH) return
+        screenStaging = true
+        viewModelScope.launch {
+            val written = try { writeScreenshot(screenshot) } finally { screenStaging = false }
+            if (written == null) return@launch
+            if (_screenContext.value === context && _screenAttachment.value == null && !screenDeclined) {
+                _screenAttachment.value = written
+            } else {
+                discardAttachment(written)
+            }
+        }
+    }
+
+    private fun unstageScreen() {
+        val staged = _screenAttachment.value ?: return
+        _screenAttachment.value = null
+        discardAttachment(staged)
+    }
+
+    private fun markScreenUnavailable() {
+        if (screenUnavailableShown) return
+        screenUnavailableShown = true
+        _uiState.update { it.copy(screenContextUnavailable = true) }
+    }
+
+    /** What goes out with this question: the attachment (staged or written now) and the prompt block. */
+    private suspend fun prepareScreenUse(staged: Attachment?): ScreenUse? {
+        val context = _screenContext.value
+        if (context == null) {
+            staged?.let(discardAttachment)
+            return null
+        }
+        val settings = screenSettings
+        val screenshot = context.screenshot
+        val attachment = when {
+            !settings.includeScreenshot || screenshot == null -> {
+                staged?.let(discardAttachment)
+                null
+            }
+            staged != null -> staged
+            else -> writeScreenshot(screenshot)
+        }
+        val text = context.text?.takeIf { settings.includeScreenText && it.isNotBlank() }
+        val webUri = context.webUri?.takeIf { settings.includeScreenText }
+        if (attachment == null && text == null && webUri == null) return null
+        val forPrompt = if (settings.includeScreenText) context else context.copy(webUri = null)
+        return ScreenUse(attachment, ScreenContextPrompt.contextBlock(forPrompt, attachment != null, text))
+    }
+
+    private class ScreenUse(val attachment: Attachment?, val promptBlock: String)
 
     /**
      * Add an image attachment.
@@ -878,7 +1069,11 @@ data class AssistantUiState(
     val isTtsAvailable: Boolean = false,
     val error: String? = null,
     /** Informational, non-error message (e.g. neural voice unavailable, Android voice used instead). */
-    val notice: String? = null
+    val notice: String? = null,
+    /** The current answer was produced with the screen capture (the "Using screen" marker). */
+    val screenContextUsed: Boolean = false,
+    /** The question wanted the screen but the platform delivered nothing: show how to enable it. */
+    val screenContextUnavailable: Boolean = false
 )
 
 /**

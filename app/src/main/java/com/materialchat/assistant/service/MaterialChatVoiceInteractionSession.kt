@@ -53,6 +53,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * Voice interaction session that handles individual assistant invocations.
@@ -283,7 +284,10 @@ class MaterialChatVoiceInteractionSession(
             generateConversationTitleUseCase = entryPoint.generateConversationTitleUseCase(),
             applicationScope = CoroutineScope(Dispatchers.IO + SupervisorJob()),
             deviceActionHandler = DeviceActionHandler(context.applicationContext, assistantLauncher()),
-            discardAttachment = { AttachmentImporter.discard(context.applicationContext, it) }
+            discardAttachment = { AttachmentImporter.discard(context.applicationContext, it) },
+            writeScreenshot = { bitmap ->
+                withContext(Dispatchers.IO) { AssistScreenshots.writeAttachment(context.applicationContext, bitmap) }
+            }
         ) } })[AssistantViewModel::class.java]
         if (pendingShow && overlayShown) {
             pendingShow = false
