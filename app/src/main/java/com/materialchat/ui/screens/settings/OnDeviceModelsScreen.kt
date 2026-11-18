@@ -1,8 +1,6 @@
 package com.materialchat.ui.screens.settings
 
 import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -67,6 +65,7 @@ import com.materialchat.ui.components.ExpressiveFilledIconButton
 import com.materialchat.ui.components.ExpressiveTopBarTitle
 import com.materialchat.ui.components.ExpressiveSnackbar
 import com.materialchat.ui.components.dialogEntrance
+import com.materialchat.ui.theme.ExpressiveMotion
 import com.materialchat.ui.theme.ExpressiveShapes
 import com.materialchat.ui.theme.CustomShapes
 import kotlinx.coroutines.launch
@@ -144,12 +143,7 @@ fun OnDeviceModelsScreen(
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
-                    .animateContentSize(
-                        animationSpec = spring(
-                            dampingRatio = Spring.DampingRatioMediumBouncy,
-                            stiffness = Spring.StiffnessMediumLow
-                        )
-                    ),
+                    .animateContentSize(animationSpec = ExpressiveMotion.Spatial.contentSize()),
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {

@@ -100,7 +100,6 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -526,7 +525,7 @@ private fun ConversationsTopBar(
                     val anim = remember(delayMs, stiffness) { Animatable(0f) }
                     LaunchedEffect(anim, delayMs, stiffness) {
                         delay(delayMs)
-                        anim.animateTo(1f, spring(dampingRatio = 0.5f, stiffness = stiffness))
+                        anim.animateTo(1f, ExpressiveMotion.Spatial.playful())
                     }
                     return anim
                 }
@@ -586,7 +585,7 @@ private fun ConversationsTopBar(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    // NBSP gives the italic final glyph room before the animated clip.
+                    // NBSP keeps the final glyph clear of the animated clip edge.
                     text = "material\u00A0",
                     modifier = Modifier
                         .clipToBounds()
@@ -595,7 +594,6 @@ private fun ConversationsTopBar(
                     style = MaterialTheme.typography.headlineLarge,
                     color = MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.Bold,
-                    fontStyle = FontStyle.Italic,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )

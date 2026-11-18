@@ -58,6 +58,8 @@ import com.materialchat.ui.components.ExpressiveButtonStyle
 import com.materialchat.ui.components.ExpressiveContentSurface
 import com.materialchat.ui.components.ExpressiveFilledIconButton
 import com.materialchat.ui.components.ExpressiveTopBarTitle
+import com.materialchat.ui.components.dialogEntrance
+import com.materialchat.ui.theme.ExpressiveShapes
 import com.materialchat.ui.components.HapticPattern
 import com.materialchat.ui.components.rememberHapticFeedback
 import java.text.DateFormat
@@ -125,6 +127,7 @@ fun MemoriesScreen(
     if (showDeleteAllDialog) {
         AlertDialog(
             onDismissRequest = { showDeleteAllDialog = false },
+            modifier = Modifier.dialogEntrance(),
             icon = { Icon(Icons.Outlined.Delete, contentDescription = null) },
             title = { Text("Delete all memories?") },
             text = { Text("This removes every saved memory from this device. Chat history stays intact.") },
@@ -144,7 +147,7 @@ fun MemoriesScreen(
                     Text("Cancel")
                 }
             },
-            shape = RoundedCornerShape(28.dp),
+            shape = ExpressiveShapes.Dialog,
             containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
         )
     }

@@ -2,9 +2,7 @@ package com.materialchat.ui.screens.settings.components
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -58,6 +56,7 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.materialchat.ui.theme.CustomShapes
+import com.materialchat.ui.theme.ExpressiveMotion
 
 /**
  * System prompt field component for settings screen.
@@ -93,12 +92,7 @@ fun SystemPromptField(
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .animateContentSize(
-                animationSpec = spring(
-                    dampingRatio = Spring.DampingRatioMediumBouncy,
-                    stiffness = Spring.StiffnessMediumLow
-                )
-            ),
+            .animateContentSize(animationSpec = ExpressiveMotion.Spatial.contentSize()),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerLow
         ),
@@ -151,18 +145,10 @@ fun SystemPromptField(
                 // Edit/Save/Cancel buttons
                 AnimatedVisibility(
                     visible = !isEditing,
-                    enter = fadeIn(
-                        animationSpec = spring(dampingRatio = 1.0f, stiffness = 500f)
-                    ) + scaleIn(
-                        animationSpec = spring(dampingRatio = 0.7f, stiffness = 500f),
-                        initialScale = 0.8f
-                    ),
-                    exit = fadeOut(
-                        animationSpec = spring(dampingRatio = 1.0f, stiffness = 500f)
-                    ) + scaleOut(
-                        animationSpec = spring(dampingRatio = 1.0f, stiffness = 500f),
-                        targetScale = 0.8f
-                    )
+                    enter = fadeIn(animationSpec = ExpressiveMotion.Effects.reveal()) +
+                        scaleIn(animationSpec = ExpressiveMotion.Spatial.scale(), initialScale = 0.8f),
+                    exit = fadeOut(animationSpec = ExpressiveMotion.Effects.reveal()) +
+                        scaleOut(animationSpec = ExpressiveMotion.Effects.reveal(), targetScale = 0.8f)
                 ) {
                     EditButton(
                         onClick = {
@@ -178,16 +164,10 @@ fun SystemPromptField(
             // Content: either display or edit mode
             AnimatedVisibility(
                 visible = !isEditing,
-                enter = fadeIn(
-                    animationSpec = spring(dampingRatio = 1.0f, stiffness = 500f)
-                ) + expandVertically(
-                    animationSpec = spring(dampingRatio = 0.7f, stiffness = 500f)
-                ),
-                exit = fadeOut(
-                    animationSpec = spring(dampingRatio = 1.0f, stiffness = 500f)
-                ) + shrinkVertically(
-                    animationSpec = spring(dampingRatio = 1.0f, stiffness = 500f)
-                )
+                enter = fadeIn(animationSpec = ExpressiveMotion.Disclosure.FadeIn) +
+                    expandVertically(animationSpec = ExpressiveMotion.Disclosure.Expand),
+                exit = fadeOut(animationSpec = ExpressiveMotion.Disclosure.FadeOut) +
+                    shrinkVertically(animationSpec = ExpressiveMotion.Disclosure.Shrink)
             ) {
                 // Display mode
                 Text(
@@ -205,13 +185,10 @@ fun SystemPromptField(
 
             AnimatedVisibility(
                 visible = isEditing,
-                enter = fadeIn() + expandVertically(
-                    animationSpec = spring(
-                        dampingRatio = Spring.DampingRatioMediumBouncy,
-                        stiffness = Spring.StiffnessMediumLow
-                    )
-                ),
-                exit = fadeOut() + shrinkVertically()
+                enter = fadeIn(animationSpec = ExpressiveMotion.Disclosure.FadeIn) +
+                    expandVertically(animationSpec = ExpressiveMotion.Disclosure.Expand),
+                exit = fadeOut(animationSpec = ExpressiveMotion.Disclosure.FadeOut) +
+                    shrinkVertically(animationSpec = ExpressiveMotion.Disclosure.Shrink)
             ) {
                 // Edit mode
                 Column {
@@ -308,10 +285,7 @@ private fun EditButton(
 
     val scale by animateFloatAsState(
         targetValue = if (isPressed) 0.9f else 1f,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessMedium
-        ),
+        animationSpec = ExpressiveMotion.Spatial.scale(),
         label = "editButtonScale"
     )
 

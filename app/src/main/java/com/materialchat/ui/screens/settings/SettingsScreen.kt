@@ -71,7 +71,6 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.OutlinedTextField
@@ -714,12 +713,9 @@ private fun SettingsContent(
     ) {
         Surface(
             modifier = Modifier.fillMaxSize(),
-            shape = RoundedCornerShape(
-                topStart = 28.dp,
-                topEnd = 28.dp,
-                bottomStart = 0.dp,
-                bottomEnd = 0.dp
-            ),
+            // Same screen contour as the home list, so the two surfaces round into
+            // their top bars identically.
+            shape = ExpressiveShapes.ScreenContainer,
             color = MaterialTheme.colorScheme.surfaceContainerLow
         ) {
         when (uiState) {

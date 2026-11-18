@@ -1,9 +1,7 @@
 package com.materialchat.ui.components
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.Arrangement
@@ -43,6 +41,7 @@ import androidx.compose.ui.unit.dp
 import com.materialchat.domain.model.AppUpdate
 import com.materialchat.domain.model.UpdateState
 import com.materialchat.domain.model.shouldShowBanner
+import com.materialchat.ui.theme.ExpressiveMotion
 
 /**
  * Non-blocking update banner that slides in from the top.
@@ -62,19 +61,15 @@ fun UpdateBanner(
 ) {
     AnimatedVisibility(
         visible = state.shouldShowBanner,
+        // Enter on the container spring (light overshoot), leave critically damped so the
+        // banner never re-enters past the status bar on its way out.
         enter = slideInVertically(
             initialOffsetY = { -it },
-            animationSpec = spring(
-                dampingRatio = Spring.DampingRatioMediumBouncy,
-                stiffness = Spring.StiffnessMediumLow
-            )
+            animationSpec = ExpressiveMotion.Spatial.container()
         ),
         exit = slideOutVertically(
             targetOffsetY = { -it },
-            animationSpec = spring(
-                dampingRatio = Spring.DampingRatioNoBouncy,
-                stiffness = Spring.StiffnessMedium
-            )
+            animationSpec = ExpressiveMotion.Spatial.collapse()
         ),
         modifier = modifier
     ) {
