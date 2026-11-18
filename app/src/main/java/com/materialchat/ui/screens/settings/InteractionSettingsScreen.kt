@@ -57,7 +57,7 @@ fun InteractionSettingsScreen(
             TopAppBar(
                 title = {
                     ExpressiveTopBarTitle(
-                        title = "Interaction & Motion",
+                        title = "Interaction & motion",
                         subtitle = "Haptics, shape, and expressive button feel"
                     )
                 },

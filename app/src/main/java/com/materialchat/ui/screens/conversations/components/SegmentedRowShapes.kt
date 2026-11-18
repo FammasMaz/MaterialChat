@@ -57,7 +57,7 @@ fun pressMorphShape(
 ): Shape {
     val progress by animateFloatAsState(
         targetValue = if (isPressed) 1f else 0f,
-        animationSpec = ExpressiveMotion.Spatial.shapeMorph(),
+        animationSpec = ExpressiveMotion.Press.Progress,
         label = "rowPressMorph"
     )
     val fraction = progress.coerceIn(0f, 1f)

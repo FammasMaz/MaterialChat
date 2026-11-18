@@ -1,8 +1,6 @@
 package com.materialchat.ui.screens.settings
 
 import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -67,6 +65,7 @@ import com.materialchat.ui.components.ExpressiveFilledIconButton
 import com.materialchat.ui.components.ExpressiveTopBarTitle
 import com.materialchat.ui.components.ExpressiveSnackbar
 import com.materialchat.ui.components.dialogEntrance
+import com.materialchat.ui.theme.ExpressiveMotion
 import com.materialchat.ui.theme.ExpressiveShapes
 import com.materialchat.ui.theme.CustomShapes
 import kotlinx.coroutines.launch
@@ -144,12 +143,7 @@ fun OnDeviceModelsScreen(
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
-                    .animateContentSize(
-                        animationSpec = spring(
-                            dampingRatio = Spring.DampingRatioMediumBouncy,
-                            stiffness = Spring.StiffnessMediumLow
-                        )
-                    ),
+                    .animateContentSize(animationSpec = ExpressiveMotion.Spatial.contentSize()),
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
@@ -277,7 +271,7 @@ private fun ModelDownloadGuideCard(onOpenLink: (String) -> Unit) {
                     "2. For Gemma: open the Gemma page, sign in to Hugging Face, accept the license, create a read token, paste it below, then download.\n" +
                     "3. Gemini Nano is different: Android AICore decides device support. Pixel 8 Pro may be unsupported for third-party Prompt API access even if Google apps use Gemini Nano.",
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.82f)
+                color = MaterialTheme.colorScheme.onSecondaryContainer
             )
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -437,7 +431,7 @@ private fun RuntimeMemoryStatusCard(models: List<LocalModelState>) {
                 },
                 style = MaterialTheme.typography.bodySmall,
                 color = if (mounted != null) {
-                    MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.78f)
+                    MaterialTheme.colorScheme.onTertiaryContainer
                 } else {
                     MaterialTheme.colorScheme.onSurfaceVariant
                 }

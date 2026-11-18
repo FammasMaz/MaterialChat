@@ -61,6 +61,8 @@ import com.materialchat.ui.components.rememberHapticFeedback
 import com.materialchat.ui.screens.settings.ProviderUiItem
 import com.materialchat.ui.theme.CustomShapes
 import com.materialchat.ui.theme.ExpressiveMotion
+import com.materialchat.ui.components.HomeSettingsSlot
+import com.materialchat.ui.components.rememberHomeSettingsPalette
 import com.materialchat.ui.theme.ExpressiveShapes
 
 /**
@@ -98,14 +100,14 @@ fun ProviderCard(
     // Press scale: same list-item press spring as conversation rows
     val scale by animateFloatAsState(
         targetValue = if (isPressed) 0.97f else 1f,
-        animationSpec = ExpressiveMotion.Spatial.listItemPress(),
+        animationSpec = ExpressiveMotion.Press.Scale,
         label = "cardScale"
     )
 
     // Pressed morph: the squircle rounds further on the shape-morph spring, paired with the scale.
     val cardRadius by animateDpAsState(
         targetValue = if (isPressed) 34.dp else 28.dp,
-        animationSpec = ExpressiveMotion.Spatial.shapeMorph(),
+        animationSpec = ExpressiveMotion.Press.Shape,
         label = "cardCorner"
     )
     val cardShape = SquircleShape(cardRadius)
@@ -203,7 +205,7 @@ fun ProviderCard(
             // API key / native OAuth credential status
             if (provider.type.requiresStoredCredential) {
                 Spacer(modifier = Modifier.height(4.dp))
-                ApiKeyStatusIndicator(hasApiKey = providerItem.hasApiKey)
+                ApiKeyStatusIndicator(hasApiKey = providerItem.hasApiKey, isActive = provider.isActive)
             }
 
             Spacer(modifier = Modifier.height(12.dp))
@@ -231,7 +233,7 @@ fun ProviderCard(
                                     if (provider.isActive) onTestConnection() else onActivate()
                                 }
                             ) {
-                                Text(text = if (provider.isActive) "Test" else "Set Active")
+                                Text(text = if (provider.isActive) "Test" else "Set active")
                             }
                         },
                         trailingButton = {
@@ -341,8 +343,22 @@ private fun ActiveIndicator(
 @Composable
 private fun ApiKeyStatusIndicator(
     hasApiKey: Boolean,
+    isActive: Boolean,
     modifier: Modifier = Modifier
 ) {
+    // The active card sits on primaryContainer, where `error` fell to 4.45:1 on dark VIOLET;
+    // every colour here is resolved against the card fill it is actually on.
+    val palette = rememberHomeSettingsPalette()
+    val iconColor = if (hasApiKey) {
+        palette[if (isActive) HomeSettingsSlot.ProviderCredentialOkActive else HomeSettingsSlot.ProviderCredentialOk]
+    } else {
+        palette[if (isActive) HomeSettingsSlot.ProviderCredentialErrorActive else HomeSettingsSlot.ProviderCredentialError]
+    }
+    val textColor = if (hasApiKey) {
+        palette[if (isActive) HomeSettingsSlot.ProviderMetaActive else HomeSettingsSlot.ProviderMeta]
+    } else {
+        iconColor
+    }
     Row(
         modifier = modifier,
         verticalAlignment = Alignment.CenterVertically,
@@ -351,21 +367,13 @@ private fun ApiKeyStatusIndicator(
         Icon(
             imageVector = if (hasApiKey) Icons.Outlined.Key else Icons.Outlined.KeyOff,
             contentDescription = null,
-            tint = if (hasApiKey) {
-                MaterialTheme.colorScheme.primary
-            } else {
-                MaterialTheme.colorScheme.error
-            },
+            tint = iconColor,
             modifier = Modifier.size(14.dp)
         )
         Text(
             text = if (hasApiKey) "Credential configured" else "No credential",
             style = MaterialTheme.typography.labelSmall,
-            color = if (hasApiKey) {
-                MaterialTheme.colorScheme.onSurfaceVariant
-            } else {
-                MaterialTheme.colorScheme.error
-            }
+            color = textColor
         )
     }
 }

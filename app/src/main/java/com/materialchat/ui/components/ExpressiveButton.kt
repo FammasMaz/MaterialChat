@@ -85,7 +85,7 @@ fun ExpressiveButton(
     // Animate scale on press with M3 Expressive SPATIAL spring (bouncy)
     val scale by animateFloatAsState(
         targetValue = if (isPressed) 0.95f else 1f,
-        animationSpec = ExpressiveMotion.Spatial.scale(),
+        animationSpec = ExpressiveMotion.Press.Scale,
         label = "buttonScale"
     )
 
@@ -93,7 +93,7 @@ fun ExpressiveButton(
     // M3 Expressive: round buttons become less rounded when pressed.
     val cornerRadius by animateDpAsState(
         targetValue = if (isPressed) 16.dp else 28.dp,
-        animationSpec = ExpressiveMotion.Spatial.shapeMorph(),
+        animationSpec = ExpressiveMotion.Press.Shape,
         label = "cornerRadius"
     )
 
@@ -249,14 +249,14 @@ fun ExpressiveIconButton(
     // Animate scale on press with M3 Expressive SPATIAL spring
     val scale by animateFloatAsState(
         targetValue = if (isPressed) 0.9f else 1f,
-        animationSpec = ExpressiveMotion.Spatial.scale(),
+        animationSpec = ExpressiveMotion.Press.Scale,
         label = "iconButtonScale"
     )
 
     // Animate corner radius on press with SPATIAL spring (squircle → softer circle)
     val cornerRadius by animateDpAsState(
         targetValue = if (isPressed) size / 2.4f else size / 3f,
-        animationSpec = ExpressiveMotion.Spatial.shapeMorph(),
+        animationSpec = ExpressiveMotion.Press.Shape,
         label = "iconButtonCornerRadius"
     )
 
@@ -267,7 +267,7 @@ fun ExpressiveIconButton(
         } else {
             containerColor
         },
-        animationSpec = ExpressiveMotion.Effects.color(),
+        animationSpec = ExpressiveMotion.Press.Tint,
         label = "iconButtonContainerColor"
     )
 
@@ -326,7 +326,7 @@ fun ExpressiveActionButton(
     // M3 Expressive SPATIAL spring for scale
     val scale by animateFloatAsState(
         targetValue = if (isPressed) 0.85f else 1f,
-        animationSpec = ExpressiveMotion.Spatial.scale(),
+        animationSpec = ExpressiveMotion.Press.Scale,
         label = "actionButtonScale"
     )
 
@@ -334,7 +334,7 @@ fun ExpressiveActionButton(
     // Rounded action buttons become less rounded when pressed.
     val cornerRadius by animateDpAsState(
         targetValue = if (isPressed) 12.dp else 18.dp,
-        animationSpec = ExpressiveMotion.Spatial.shapeMorph(),
+        animationSpec = ExpressiveMotion.Press.Shape,
         label = "actionButtonCornerRadius"
     )
 
@@ -403,7 +403,7 @@ fun ExpressiveFab(
     // FAB: 56dp container uses 16dp corners (normal) → 20dp corners (pressed - "squish" effect)
     val cornerRadius by animateDpAsState(
         targetValue = if (isPressed) 20.dp else 16.dp,
-        animationSpec = ExpressiveMotion.Spatial.shapeMorph(),
+        animationSpec = ExpressiveMotion.Press.Shape,
         label = "fabCornerRadius"
     )
 
@@ -513,7 +513,7 @@ fun AnimatedExtendedFab(
     // FAB: 56dp container uses 16dp corners (normal) → 12dp corners (pressed)
     val cornerRadius by animateDpAsState(
         targetValue = if (isPressed) 12.dp else 16.dp,
-        animationSpec = ExpressiveMotion.Spatial.shapeMorph(),
+        animationSpec = ExpressiveMotion.Press.Shape,
         label = "fabCornerRadius"
     )
 

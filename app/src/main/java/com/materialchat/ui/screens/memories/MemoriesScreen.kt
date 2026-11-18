@@ -1,8 +1,6 @@
 package com.materialchat.ui.screens.memories
 
 import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.spring
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -58,6 +56,9 @@ import com.materialchat.ui.components.ExpressiveButtonStyle
 import com.materialchat.ui.components.ExpressiveContentSurface
 import com.materialchat.ui.components.ExpressiveFilledIconButton
 import com.materialchat.ui.components.ExpressiveTopBarTitle
+import com.materialchat.ui.components.dialogEntrance
+import com.materialchat.ui.theme.ExpressiveMotion
+import com.materialchat.ui.theme.ExpressiveShapes
 import com.materialchat.ui.components.HapticPattern
 import com.materialchat.ui.components.rememberHapticFeedback
 import java.text.DateFormat
@@ -125,6 +126,7 @@ fun MemoriesScreen(
     if (showDeleteAllDialog) {
         AlertDialog(
             onDismissRequest = { showDeleteAllDialog = false },
+            modifier = Modifier.dialogEntrance(),
             icon = { Icon(Icons.Outlined.Delete, contentDescription = null) },
             title = { Text("Delete all memories?") },
             text = { Text("This removes every saved memory from this device. Chat history stays intact.") },
@@ -144,7 +146,7 @@ fun MemoriesScreen(
                     Text("Cancel")
                 }
             },
-            shape = RoundedCornerShape(28.dp),
+            shape = ExpressiveShapes.Dialog,
             containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
         )
     }
@@ -174,10 +176,7 @@ private fun MemoriesListContent(
         modifier = Modifier
             .fillMaxSize()
             .animateContentSize(
-                animationSpec = spring(
-                    dampingRatio = Spring.DampingRatioNoBouncy,
-                    stiffness = 520f
-                )
+                animationSpec = ExpressiveMotion.Spatial.contentSize()
             )
     ) {
         MemorySearchField(
@@ -204,9 +203,9 @@ private fun MemoriesListContent(
                         memory = memory,
                         onDelete = { onDeleteMemory(memory.id) },
                         modifier = Modifier.animateItem(
-                            fadeInSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = 520f),
-                            fadeOutSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = 520f),
-                            placementSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = 520f)
+                            fadeInSpec = ExpressiveMotion.ListItem.FadeIn,
+                            fadeOutSpec = ExpressiveMotion.ListItem.FadeOut,
+                            placementSpec = ExpressiveMotion.ListItem.Placement
                         )
                     )
                 }
@@ -287,7 +286,7 @@ private fun MemoryCard(
                 Text(
                     text = memory.kind.displayName,
                     style = MaterialTheme.typography.labelLarge,
-                    color = colors.content.copy(alpha = 0.78f)
+                    color = colors.content
                 )
                 Text(
                     text = memory.content,
@@ -297,7 +296,8 @@ private fun MemoryCard(
                 Text(
                     text = "Updated $date · recalled ${memory.recallCount}×",
                     style = MaterialTheme.typography.labelSmall,
-                    color = colors.content.copy(alpha = 0.66f),
+                    // 66% dropped to 3.7-4.2:1 on every dark palette; resolved against the card.
+                    color = colors.content,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -306,7 +306,7 @@ private fun MemoryCard(
                 Icon(
                     imageVector = Icons.Outlined.Delete,
                     contentDescription = "Delete memory",
-                    tint = colors.content.copy(alpha = 0.78f)
+                    tint = colors.content
                 )
             }
         }

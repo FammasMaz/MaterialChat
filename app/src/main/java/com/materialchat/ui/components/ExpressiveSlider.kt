@@ -60,7 +60,7 @@ fun ExpressiveSlider(
     val active = isDragged || isPressed
     val thumbHeight by animateDpAsState(
         targetValue = if (active) ThumbActiveHeight else ThumbRestingHeight,
-        animationSpec = ExpressiveMotion.Spatial.shapeMorph(),
+        animationSpec = ExpressiveMotion.Press.Shape,
         label = "sliderThumbHeight"
     )
 

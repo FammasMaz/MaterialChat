@@ -27,7 +27,6 @@ import androidx.compose.material.icons.outlined.Memory
 import androidx.compose.material.icons.outlined.Psychology
 import androidx.compose.material.icons.outlined.Title
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ElevatedCard
@@ -229,7 +228,7 @@ private fun AssignmentHeroCard(recommendation: String) {
             Text(
                 text = recommendation,
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.88f)
+                color = MaterialTheme.colorScheme.onPrimaryContainer
             )
         }
     }
@@ -481,7 +480,7 @@ private fun TaskAssignmentCard(
                         color = if (enabled) {
                             MaterialTheme.colorScheme.onSurface
                         } else {
-                            MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                            MaterialTheme.colorScheme.onSurfaceVariant
                         }
                     )
                     Icon(
@@ -573,7 +572,7 @@ private fun TaskAssignmentCard(
                         color = if (enabled) {
                             MaterialTheme.colorScheme.onSurface
                         } else {
-                            MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                            MaterialTheme.colorScheme.onSurfaceVariant
                         }
                     )
                 }

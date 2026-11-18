@@ -100,7 +100,6 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -128,6 +127,8 @@ import com.materialchat.ui.screens.search.components.SearchResultItem
 import com.materialchat.ui.theme.CustomShapes
 import com.materialchat.ui.theme.particles.rememberParticleMotionGate
 import com.materialchat.ui.theme.ExpressiveMotion
+import com.materialchat.ui.components.HomeSettingsSlot
+import com.materialchat.ui.components.rememberHomeSettingsPalette
 import com.materialchat.ui.theme.ExpressiveShapes
 import com.materialchat.ui.theme.ExpressiveShapeToken
 import com.materialchat.ui.theme.LocalMainButtonShape
@@ -333,7 +334,7 @@ fun ConversationsScreen(
             },
             modifier = Modifier.dialogEntrance(),
             shape = ExpressiveShapes.Dialog,
-            title = { Text("Edit Title") },
+            title = { Text("Edit title") },
             text = {
                 Column {
                     OutlinedTextField(
@@ -526,7 +527,7 @@ private fun ConversationsTopBar(
                     val anim = remember(delayMs, stiffness) { Animatable(0f) }
                     LaunchedEffect(anim, delayMs, stiffness) {
                         delay(delayMs)
-                        anim.animateTo(1f, spring(dampingRatio = 0.5f, stiffness = stiffness))
+                        anim.animateTo(1f, ExpressiveMotion.Spatial.playful())
                     }
                     return anim
                 }
@@ -586,7 +587,7 @@ private fun ConversationsTopBar(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    // NBSP gives the italic final glyph room before the animated clip.
+                    // NBSP keeps the final glyph clear of the animated clip edge.
                     text = "material\u00A0",
                     modifier = Modifier
                         .clipToBounds()
@@ -595,7 +596,6 @@ private fun ConversationsTopBar(
                     style = MaterialTheme.typography.headlineLarge,
                     color = MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.Bold,
-                    fontStyle = FontStyle.Italic,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -675,7 +675,7 @@ private fun TopBarShapeAction(
     val preferredShape = LocalMainButtonShape.current
     val scale by animateFloatAsState(
         targetValue = if (isPressed) 0.90f else 1f,
-        animationSpec = ExpressiveMotion.Spatial.scale(),
+        animationSpec = ExpressiveMotion.Press.Scale,
         label = "topBarActionScale"
     )
     val shape = expressiveControlShape(
@@ -903,7 +903,8 @@ private fun MetadataRow(label: String, value: String) {
         Text(
             text = label,
             style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.primary
+            // Resolved against the dialog container: primary reads 4.1:1 on light VIOLET/CITRUS.
+            color = rememberHomeSettingsPalette()[HomeSettingsSlot.DialogLabel]
         )
         Text(
             text = value,
