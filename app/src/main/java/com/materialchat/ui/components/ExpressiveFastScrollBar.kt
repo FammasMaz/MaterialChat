@@ -4,8 +4,8 @@ import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import com.materialchat.ui.theme.ExpressiveMotion
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -108,24 +108,25 @@ fun ExpressiveFastScrollBar(
     }
     if (!canScroll) return
 
+    // Handle width is a spatial change (shared default spring); the icon fade and the
+    // squiggle amplitude are effects, so they use the no-overshoot reveal spring.
     val animatedWidth by animateDpAsState(
         targetValue = if (isPressed || isDragging) expandedWidth else thickness,
-        animationSpec = tween(durationMillis = 180, easing = FastOutSlowInEasing),
+        animationSpec = ExpressiveMotion.Spatial.default(),
         label = "fastScrollWidth"
     )
     val iconAlpha by animateFloatAsState(
         targetValue = if (isPressed || isDragging) 1f else 0f,
-        animationSpec = tween(durationMillis = 180, easing = FastOutSlowInEasing),
+        animationSpec = ExpressiveMotion.Effects.reveal(),
         label = "fastScrollIconAlpha"
     )
     val squiggleAmount by animateFloatAsState(
         // Only wave during free scroll/fling. While the user is touching the bar
         // (pressed or dragging) the handle smoothly settles into a solid grip.
+        // The wave phase itself is driven by scroll distance (see scrollDrivenPhase),
+        // not by a frame clock, so it needs no decoration motion gate: no scroll, no motion.
         targetValue = if (!isDragging && !isPressed && listState.isScrollInProgress) 1f else 0f,
-        animationSpec = spring(
-            dampingRatio = 1f,
-            stiffness = 500f
-        ),
+        animationSpec = ExpressiveMotion.Effects.reveal(),
         label = "fastScrollSquiggle"
     )
     var scrollDrivenPhase by remember { mutableFloatStateOf(0f) }
@@ -244,6 +245,9 @@ fun ExpressiveFastScrollBar(
                             estimatedStepPx >= coarseJumpThresholdPx &&
                             handleDeltaPx >= smoothJumpMinDistancePx
                         if (shouldSmooth) {
+                            // Tracking smoothing between coarse list steps, not a UI transition:
+                            // a sub-frame-budget tween keeps the handle glued to the list. No
+                            // Motion token models a 70ms tracker, so this stays explicit.
                             displayedProgress.animateTo(
                                 targetValue = stats.progress,
                                 animationSpec = tween(durationMillis = 70, easing = FastOutSlowInEasing)
@@ -277,19 +281,20 @@ fun ExpressiveFastScrollBar(
             if (!activeDragLabel.isNullOrBlank()) retainedDragLabel = activeDragLabel
         }
 
+        // Date bubble: fades on the effects spring, scales/slides on the menu-open spatial spring.
         val labelAlpha by animateFloatAsState(
             targetValue = if (showDragLabel) 1f else 0f,
-            animationSpec = tween(durationMillis = 180, easing = FastOutSlowInEasing),
+            animationSpec = ExpressiveMotion.Effects.reveal(),
             label = "fastScrollLabelAlpha"
         )
         val labelScale by animateFloatAsState(
             targetValue = if (showDragLabel) 1f else 0.82f,
-            animationSpec = tween(durationMillis = 180, easing = FastOutSlowInEasing),
+            animationSpec = ExpressiveMotion.Spatial.menuOpen(),
             label = "fastScrollLabelScale"
         )
         val labelSlide by animateDpAsState(
             targetValue = if (showDragLabel) 0.dp else 8.dp,
-            animationSpec = tween(durationMillis = 180, easing = FastOutSlowInEasing),
+            animationSpec = ExpressiveMotion.Spatial.menuOpen(),
             label = "fastScrollLabelSlide"
         )
         val indicatorPath = remember { Path() }

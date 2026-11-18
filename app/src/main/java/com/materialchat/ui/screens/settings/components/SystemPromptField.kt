@@ -57,6 +57,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.materialchat.ui.theme.CustomShapes
 import com.materialchat.ui.theme.ExpressiveMotion
+import com.materialchat.ui.components.HomeSettingsSlot
+import com.materialchat.ui.components.rememberHomeSettingsPalette
 
 /**
  * System prompt field component for settings screen.
@@ -174,7 +176,8 @@ fun SystemPromptField(
                     text = currentPrompt.ifEmpty { "No system prompt configured" },
                     style = MaterialTheme.typography.bodyMedium,
                     color = if (currentPrompt.isEmpty()) {
-                        MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                        // onSurfaceVariant at 60% measured 3.0-4.0:1 on every palette.
+                        rememberHomeSettingsPalette()[HomeSettingsSlot.SystemPromptPlaceholder]
                     } else {
                         MaterialTheme.colorScheme.onSurface
                     },

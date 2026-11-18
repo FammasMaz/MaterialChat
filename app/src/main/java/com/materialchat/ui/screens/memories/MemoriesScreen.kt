@@ -59,6 +59,8 @@ import com.materialchat.ui.components.ExpressiveContentSurface
 import com.materialchat.ui.components.ExpressiveFilledIconButton
 import com.materialchat.ui.components.ExpressiveTopBarTitle
 import com.materialchat.ui.components.dialogEntrance
+import com.materialchat.ui.components.mutedContentOn
+import com.materialchat.ui.components.mutedIconOn
 import com.materialchat.ui.theme.ExpressiveShapes
 import com.materialchat.ui.components.HapticPattern
 import com.materialchat.ui.components.rememberHapticFeedback
@@ -290,7 +292,7 @@ private fun MemoryCard(
                 Text(
                     text = memory.kind.displayName,
                     style = MaterialTheme.typography.labelLarge,
-                    color = colors.content.copy(alpha = 0.78f)
+                    color = mutedContentOn(colors.container, colors.content, 0.78f)
                 )
                 Text(
                     text = memory.content,
@@ -300,7 +302,8 @@ private fun MemoryCard(
                 Text(
                     text = "Updated $date · recalled ${memory.recallCount}×",
                     style = MaterialTheme.typography.labelSmall,
-                    color = colors.content.copy(alpha = 0.66f),
+                    // 66% dropped to 3.7-4.2:1 on every dark palette; resolved against the card.
+                    color = mutedContentOn(colors.container, colors.content, 0.66f),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -309,7 +312,7 @@ private fun MemoryCard(
                 Icon(
                     imageVector = Icons.Outlined.Delete,
                     contentDescription = "Delete memory",
-                    tint = colors.content.copy(alpha = 0.78f)
+                    tint = mutedIconOn(colors.container, colors.content, 0.78f)
                 )
             }
         }

@@ -150,7 +150,7 @@ private fun AvailableBannerContent(
                     Text(
                         text = "Version ${update.versionName} • ${formatFileSize(update.assetSize)}",
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+                        color = mutedContentOn(MaterialTheme.colorScheme.primaryContainer, MaterialTheme.colorScheme.onPrimaryContainer, 0.8f)
                     )
                 }
             }
@@ -232,7 +232,7 @@ private fun DownloadingBannerContent(
                     Text(
                         text = "Version ${update.versionName} • ${(progress * 100).toInt()}%",
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+                        color = mutedContentOn(MaterialTheme.colorScheme.primaryContainer, MaterialTheme.colorScheme.onPrimaryContainer, 0.8f)
                     )
                 }
             }
@@ -298,7 +298,7 @@ private fun ReadyToInstallBannerContent(
                     Text(
                         text = "Version ${update.versionName} downloaded",
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f),
+                        color = mutedContentOn(MaterialTheme.colorScheme.primaryContainer, MaterialTheme.colorScheme.onPrimaryContainer, 0.8f),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )

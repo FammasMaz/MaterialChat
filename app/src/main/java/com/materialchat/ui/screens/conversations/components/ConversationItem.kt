@@ -42,6 +42,8 @@ import androidx.compose.ui.unit.dp
 import com.materialchat.ui.screens.conversations.ConversationUiItem
 import com.materialchat.ui.theme.CustomShapes
 import com.materialchat.ui.theme.ExpressiveMotion
+import com.materialchat.ui.components.HomeSettingsSlot
+import com.materialchat.ui.components.rememberHomeSettingsPalette
 import com.materialchat.ui.theme.ExpressiveShapes
 import com.materialchat.ui.theme.SquircleShape
 
@@ -273,7 +275,9 @@ private fun ActiveConversationIndicator() {
         Text(
             text = "Active",
             style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.primary
+            // Resolved against the streaming row fill: primary alone dropped to 4.3:1 on the
+            // light VIOLET/CITRUS palettes.
+            color = rememberHomeSettingsPalette()[HomeSettingsSlot.RowActiveLabel]
         )
     }
 }

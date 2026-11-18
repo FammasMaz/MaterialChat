@@ -41,6 +41,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.materialchat.ui.screens.conversations.ConversationUiItem
 import com.materialchat.ui.theme.ExpressiveMotion
+import com.materialchat.ui.components.HomeSettingsSlot
+import com.materialchat.ui.components.rememberHomeSettingsPalette
 
 /**
  * M3 Expressive branch conversation item displayed under its parent conversation.
@@ -146,7 +148,9 @@ fun BranchConversationItem(
                 Icon(
                     imageVector = Icons.Filled.CallSplit,
                     contentDescription = "Branch",
-                    tint = MaterialTheme.colorScheme.secondary,
+                    // Resolved against the branch row fill: COSMIC light's secondary is the
+                    // same tone as surfaceContainerHigh (1.0:1).
+                    tint = rememberHomeSettingsPalette()[HomeSettingsSlot.BranchRowIcon],
                     modifier = Modifier
                         .size(24.dp)
                         .rotate(90f)

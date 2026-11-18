@@ -88,6 +88,7 @@ import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import com.materialchat.ui.components.ExpressiveButton
 import com.materialchat.ui.components.ExpressiveTopBarTitle
+import com.materialchat.ui.components.mutedContentOn
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
@@ -98,7 +99,6 @@ import com.materialchat.ui.components.ExpressiveSwitch
 import com.materialchat.ui.components.ExpressiveSlider
 import com.materialchat.ui.components.ExpressiveSnackbar
 import com.materialchat.ui.components.dialogEntrance
-import com.materialchat.ui.components.M3ExpressiveCircularProgress
 import androidx.compose.material3.Text
 import com.materialchat.ui.components.ExpressiveButtonStyle
 import androidx.compose.material3.TopAppBarDefaults
@@ -1428,7 +1428,7 @@ private fun PremiumStatusCard(
                     text = description,
                     style = MaterialTheme.typography.bodySmall,
                     color = if (premiumState.isAdFree) {
-                        MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.78f)
+                        mutedContentOn(MaterialTheme.colorScheme.primaryContainer, MaterialTheme.colorScheme.onPrimaryContainer, 0.78f)
                     } else {
                         MaterialTheme.colorScheme.onSurfaceVariant
                     }
@@ -1483,7 +1483,7 @@ private fun RemoveAdsCard(
                     Text(
                         text = "One-time Google Play purchase for this Play Store build.",
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.78f)
+                        color = mutedContentOn(MaterialTheme.colorScheme.secondaryContainer, MaterialTheme.colorScheme.onSecondaryContainer, 0.78f)
                     )
                 }
             }
@@ -1541,7 +1541,7 @@ private fun RewardedPremiumCard(
                     Text(
                         text = "Watch one rewarded video to hide ads for 24 hours.",
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.78f)
+                        color = mutedContentOn(MaterialTheme.colorScheme.tertiaryContainer, MaterialTheme.colorScheme.onTertiaryContainer, 0.78f)
                     )
                 }
             }

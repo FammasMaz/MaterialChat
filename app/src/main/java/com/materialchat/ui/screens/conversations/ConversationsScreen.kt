@@ -127,6 +127,8 @@ import com.materialchat.ui.screens.search.components.SearchResultItem
 import com.materialchat.ui.theme.CustomShapes
 import com.materialchat.ui.theme.particles.rememberParticleMotionGate
 import com.materialchat.ui.theme.ExpressiveMotion
+import com.materialchat.ui.components.HomeSettingsSlot
+import com.materialchat.ui.components.rememberHomeSettingsPalette
 import com.materialchat.ui.theme.ExpressiveShapes
 import com.materialchat.ui.theme.ExpressiveShapeToken
 import com.materialchat.ui.theme.LocalMainButtonShape
@@ -901,7 +903,8 @@ private fun MetadataRow(label: String, value: String) {
         Text(
             text = label,
             style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.primary
+            // Resolved against the dialog container: primary reads 4.1:1 on light VIOLET/CITRUS.
+            color = rememberHomeSettingsPalette()[HomeSettingsSlot.DialogLabel]
         )
         Text(
             text = value,

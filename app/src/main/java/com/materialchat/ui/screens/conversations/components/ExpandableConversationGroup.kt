@@ -49,7 +49,9 @@ import com.materialchat.domain.model.Conversation
 import com.materialchat.ui.screens.conversations.ConversationUiItem
 import com.materialchat.ui.screens.conversations.ConversationGroupUiItem
 import com.materialchat.ui.components.HapticPattern
+import com.materialchat.ui.components.HomeSettingsSlot
 import com.materialchat.ui.components.rememberHapticFeedback
+import com.materialchat.ui.components.rememberHomeSettingsPalette
 import com.materialchat.ui.theme.ExpressiveMotion
 import com.materialchat.ui.theme.ExpressiveShapes
 import com.materialchat.ui.theme.SquircleShape
@@ -414,6 +416,9 @@ fun ExpandableConversationGroup(
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun GroupActiveIndicator() {
+    // Label colour resolved against the streaming row fill (primary fails 4.5:1 on some light
+    // palettes once primaryContainer is blended under it); the indicator keeps primary at 3:1.
+    val palette = rememberHomeSettingsPalette()
     Row(
         horizontalArrangement = Arrangement.spacedBy(6.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -425,7 +430,7 @@ private fun GroupActiveIndicator() {
         Text(
             text = "Active",
             style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.primary
+            color = palette[HomeSettingsSlot.RowActiveLabel]
         )
     }
 }
