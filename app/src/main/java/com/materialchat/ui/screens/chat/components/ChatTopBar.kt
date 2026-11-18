@@ -78,9 +78,9 @@ import com.materialchat.domain.model.AiModel
 import com.materialchat.ui.components.ExpressiveFilledIconButton
 import com.materialchat.ui.components.HapticPattern
 import com.materialchat.ui.components.rememberHapticFeedback
-import com.materialchat.ui.components.seaglass.DropdownMenu
-import com.materialchat.ui.components.seaglass.DropdownMenuItem
-import com.materialchat.ui.components.seaglass.Surface
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Surface
 import com.materialchat.ui.screens.chat.ContextWindowUsage
 import com.materialchat.ui.theme.CustomShapes
 import com.materialchat.ui.theme.ExpressiveMotion

@@ -17,7 +17,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.materialchat.ui.components.seaglass.Snackbar
+import androidx.compose.material3.Snackbar
 import com.materialchat.ui.theme.ShapeMorphing
 import com.materialchat.ui.theme.SquircleShape
 

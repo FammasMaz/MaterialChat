@@ -203,13 +203,9 @@ fun MaterialChatTheme(
             colorScheme = colorScheme,
             typography = MaterialChatTypography,
             shapes = MaterialChatShapes,
-            motionScheme = MotionScheme.expressive()
-        ) {
-            com.materialchat.ui.components.seaglass.SeaGlassAppearance(
-                enabled = themePalette == AppPreferences.ThemePalette.SEA_GLASS,
-                content = content
-            )
-        }
+            motionScheme = MotionScheme.expressive(),
+            content = content
+        )
     }
 }
 
@@ -252,8 +248,6 @@ private fun selectColorScheme(
                 dynamicLightColorScheme(context)
             }
         }
-        // SeaGlass optics are applied separately to this scheme, so dynamic wallpaper
-        // colors remain usable while the glass appearance is selected.
         // Use selected static Material 3 palette
         else -> MaterialChatThemePalettes.colorScheme(themePalette, darkTheme)
     }

@@ -2,7 +2,6 @@ package com.materialchat.assistant.ui
 
 import androidx.compose.material3.ColorScheme
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.lerp
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.pow
@@ -12,7 +11,7 @@ import kotlin.math.pow
  *
  * The assistant paints several of its own fills (the feathered pill, the accent-tinted answer
  * surface, the thinking tone) and runs under every theme the app can produce: light or dark,
- * static palette or wallpaper-dynamic, pitch black or not, opaque or Sea Glass. A content colour
+ * static palette or wallpaper-dynamic, pitch black or not. A content colour
  * taken from a theme role alone (`onSurface` because "this is a surface") is only right while
  * the fill really is that role's surface. Here every text and icon colour is chosen against the
  * colour(s) the fill can actually present: the preferred Material role is kept whenever it meets
@@ -31,12 +30,6 @@ internal object AssistantContrast {
 
     /** The window scrim drawn under every assistant surface (AssistantOverlay, `Color.Black` at 0.42). */
     const val SCRIM_ALPHA = 0.42f
-
-    /**
-     * How much of the backdrop a Sea Glass container shows through (SeaGlassAppearance's
-     * `transparency = 0.72f`): the glass is modelled as the tint at 28% over the backdrop.
-     */
-    const val GLASS_TRANSPARENCY = 0.72f
 
     /** WCAG relative luminance of [color] taken as opaque sRGB. */
     fun relativeLuminance(color: Color): Double {
@@ -108,38 +101,14 @@ internal data class AssistantContrastPair(
 }
 
 /**
- * How the assistant's containers reach the screen.
- *
- * Opaque: a `Surface` paints its colour, so the fill IS the container colour. Sea Glass: the
- * shared `Surface` wrapper makes every container transparent and draws glass tinted with the
- * container colour (a transparent container is tinted with `surfaceContainer`), so what the text
- * sits on is the tint blended with whatever is behind the window. That backdrop is the theme's
- * own ambient background (SeaGlassAppearance paints it under the content), either plain or
- * darkened by the assistant's 42% scrim; both extremes are modelled so a content colour has to
- * read against the lightest and the darkest fill the glass can show.
+ * The colours a painted container can present. A `Surface` paints its colour, so the fill IS the
+ * container colour; a translucent container is composited over the pill's own surface.
  */
-internal enum class AssistantSurfaceMode { Opaque, SeaGlass }
-
-/** The colours a painted container can present, for the given [mode]. */
-internal fun assistantFills(container: Color, scheme: ColorScheme, mode: AssistantSurfaceMode): List<Color> =
-    when (mode) {
-        AssistantSurfaceMode.Opaque -> listOf(
-            if (container.alpha >= 1f) container
-            else AssistantContrast.compositeOver(container, scheme.surfaceContainerHigh)
-        )
-        AssistantSurfaceMode.SeaGlass -> {
-            val tint = if (container.alpha == 0f) scheme.surfaceContainer
-            else AssistantContrast.compositeOver(container, scheme.background)
-            val ambient = scheme.background
-            val scrimmed = AssistantContrast.compositeOver(
-                Color.Black.copy(alpha = AssistantContrast.SCRIM_ALPHA), ambient
-            )
-            listOf(
-                lerp(tint, ambient, AssistantContrast.GLASS_TRANSPARENCY),
-                lerp(tint, scrimmed, AssistantContrast.GLASS_TRANSPARENCY)
-            )
-        }
-    }
+internal fun assistantFills(container: Color, scheme: ColorScheme): List<Color> =
+    listOf(
+        if (container.alpha >= 1f) container
+        else AssistantContrast.compositeOver(container, scheme.surfaceContainerHigh)
+    )
 
 /** A tonal container, the content colour resolved against it, and the fills it was checked on. */
 internal data class AssistantTonal(val container: Color, val content: Color, val fills: List<Color>)
@@ -165,8 +134,8 @@ internal data class AssistantContentColors(
     val fill: Color get() = container
 
     companion object {
-        fun on(container: Color, scheme: ColorScheme, mode: AssistantSurfaceMode): AssistantContentColors {
-            val fills = assistantFills(container, scheme, mode)
+        fun on(container: Color, scheme: ColorScheme): AssistantContentColors {
+            val fills = assistantFills(container, scheme)
             val body = AssistantContrast.pick(
                 fills, listOf(scheme.onSurface, scheme.inverseOnSurface), AssistantContrast.BODY_TEXT
             )
@@ -198,12 +167,11 @@ internal data class AssistantContentColors(
 
 /**
  * Every fill the assistant window paints and the content colour resolved for each, from one
- * [ColorScheme] and surface [mode]. The overlay reads colours from here instead of from theme
+ * [ColorScheme]. The overlay reads colours from here instead of from theme
  * roles; [pairs] lists the same values for the contrast test, so the test and the UI cannot
  * drift apart.
  */
 internal data class AssistantSurfacePalette(
-    val mode: AssistantSurfaceMode,
     /** The 76dp pill: its feathered fill (or opaque surface) and the text/icons on it. */
     val pill: AssistantContentColors,
     /** The answer surface above the pill. */
@@ -270,13 +238,10 @@ internal data class AssistantSurfacePalette(
     }
 
     companion object {
-        fun resolve(scheme: ColorScheme, mode: AssistantSurfaceMode = AssistantSurfaceMode.Opaque): AssistantSurfacePalette {
-            // Tonal containers are painted as plain backgrounds or Material buttons, never through
-            // the glass Surface wrapper (buttons keep their own fill under Sea Glass; see
-            // SeaGlassMaterialComponents.glassColors, which only clears container colours of the
-            // wrapped components the assistant does not use), so they are opaque in every mode.
+        fun resolve(scheme: ColorScheme): AssistantSurfacePalette {
+            // Tonal containers are painted as plain backgrounds or Material buttons, so they are opaque.
             fun tonal(container: Color, preferred: Color, minimum: Double, over: Color? = null): AssistantTonal {
-                val fills = if (over == null) assistantFills(container, scheme, AssistantSurfaceMode.Opaque)
+                val fills = if (over == null) assistantFills(container, scheme)
                 else listOf(AssistantContrast.compositeOver(container, over))
                 return AssistantTonal(
                     container,
@@ -284,8 +249,8 @@ internal data class AssistantSurfacePalette(
                     fills
                 )
             }
-            val pill = AssistantContentColors.on(AssistantColors.pillFill(scheme), scheme, mode)
-            val answer = AssistantContentColors.on(AssistantColors.answerSurface(scheme), scheme, mode)
+            val pill = AssistantContentColors.on(AssistantColors.pillFill(scheme), scheme)
+            val answer = AssistantContentColors.on(AssistantColors.answerSurface(scheme), scheme)
             val glyphs = AssistantPhase.values().associateWith { phase ->
                 val container = AssistantColors.glyphContainer(scheme, phase)
                 when (phase) {
@@ -297,30 +262,29 @@ internal data class AssistantSurfacePalette(
                 }
             }
             return AssistantSurfacePalette(
-                mode = mode,
                 pill = pill,
                 answer = answer,
-                thinking = AssistantContentColors.on(AssistantColors.thinkingSurface(scheme), scheme, mode),
-                toolbar = AssistantContentColors.on(AssistantColors.toolbarSurface(scheme), scheme, mode),
-                notice = AssistantContentColors.on(scheme.surfaceContainerHigh, scheme, mode),
-                // The error notice and the question bubble are glass Surfaces too.
+                thinking = AssistantContentColors.on(AssistantColors.thinkingSurface(scheme), scheme),
+                toolbar = AssistantContentColors.on(AssistantColors.toolbarSurface(scheme), scheme),
+                notice = AssistantContentColors.on(scheme.surfaceContainerHigh, scheme),
+                // The error notice and the question bubble are painted Surfaces too.
                 errorNotice = AssistantTonal(
                     scheme.errorContainer,
                     AssistantContrast.pick(
-                        assistantFills(scheme.errorContainer, scheme, mode),
+                        assistantFills(scheme.errorContainer, scheme),
                         listOf(scheme.onErrorContainer, scheme.error, scheme.onSurface, scheme.inverseOnSurface),
                         AssistantContrast.BODY_TEXT
                     ),
-                    assistantFills(scheme.errorContainer, scheme, mode)
+                    assistantFills(scheme.errorContainer, scheme)
                 ),
                 query = AssistantTonal(
                     AssistantColors.querySurface(scheme),
                     AssistantContrast.pick(
-                        assistantFills(AssistantColors.querySurface(scheme), scheme, mode),
+                        assistantFills(AssistantColors.querySurface(scheme), scheme),
                         listOf(scheme.onPrimaryContainer, scheme.onSurface, scheme.inverseOnSurface),
                         AssistantContrast.BODY_TEXT
                     ),
-                    assistantFills(AssistantColors.querySurface(scheme), scheme, mode)
+                    assistantFills(AssistantColors.querySurface(scheme), scheme)
                 ),
                 chip = tonal(scheme.secondaryContainer, scheme.onSecondaryContainer, AssistantContrast.BODY_TEXT),
                 continueChip = tonal(

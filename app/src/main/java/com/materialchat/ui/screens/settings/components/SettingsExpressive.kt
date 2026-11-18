@@ -46,7 +46,7 @@ import androidx.graphics.shapes.RoundedPolygon
 import androidx.graphics.shapes.rectangle
 import androidx.graphics.shapes.toPath
 import com.materialchat.ui.components.ExpressiveSwitch
-import com.materialchat.ui.components.seaglass.Surface
+import androidx.compose.material3.Surface
 import com.materialchat.ui.theme.ExpressiveShapes
 import com.materialchat.ui.theme.MaterialChatExpressiveTitleFontFamily
 
