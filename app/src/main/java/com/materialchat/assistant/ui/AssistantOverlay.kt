@@ -1542,13 +1542,24 @@ private fun AssistantAttachRevealContent(
  * pair. Open in app, Take photo, Attach photo and Open assistant settings all draw this, so
  * every labelled action on the answer surface and inside the opened pill reads as one family.
  *
- * W7: deliberately the raw M3 [FilledTonalButton], not the shared `ExpressiveButton` (W6 audit
- * F9). `ExpressiveButton` fixes a 56dp minimum height, a 28dp inset, a 28 -> 16dp round press
- * morph, 20dp icons and the theme's tonal pair, and takes no shape, colour or height; this chip
- * is the 40dp chip capsule ([AssistantSizes.ChipHeight]), draws the contrast-resolved chip pair,
- * takes a per-position connected shape for the attach pair, and presses on the M3 Expressive
- * `ButtonShapes` morph (the library's own, not a hand-rolled corner). What it shares with
- * `ExpressiveButton` is the click haptic, so a chip tap feels like every other button tap.
+ * W8 (theme row A1, re-weighed now that `ExpressiveButton` takes `colors`, `size = Chip` and a
+ * fixed `shape`): still the raw M3 [FilledTonalButton]. The migration would change three things,
+ * each a regression here rather than a nicety:
+ * - Width. `ButtonContent` separates icon and label with a fixed 8dp spacer and draws the 18dp
+ *   `ExpressiveSizes.Chip.Icon`; this chip draws [AssistantSpacing.Gap] (6dp) and the 16dp
+ *   [AssistantSizes.ChipIcon] (ruling). `AssistantAnswerToolbar` measures the labelled Open in
+ *   app chip from exactly those tokens (`ChipInset * 2 + ChipIcon + Gap + label`) to decide
+ *   whether the label fits beside the icon group or folds into it; a chip drawn 4dp wider than
+ *   it is measured would pass the fit check and then be clipped by its own capsule at the
+ *   360dp / font scale 1.3 boundary the check exists for.
+ * - Press. A fixed `shape` on `ExpressiveButton` animates only the scale dip; this chip presses
+ *   on the library's `ButtonShapes` morph to [AssistantShapes.ConnectedPressed] (12dp), the same
+ *   corner the toolbar's icon group and the chrome buttons press to, so the attach pair and the
+ *   group read as one family under the thumb.
+ * - Height. `ExpressiveButton` sets a 40dp minimum; the chip is exactly 40dp, which is what the
+ *   measured-width fit and the opened pill's height budget (W4) assume.
+ * What it shares with `ExpressiveButton` is the click haptic, so a chip tap feels like every
+ * other button tap.
  */
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable

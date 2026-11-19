@@ -1,9 +1,14 @@
 package com.materialchat.assistant.ui
 
+import com.materialchat.assistant.voice.GeminiTtsException
 import com.materialchat.assistant.voice.GeminiTtsFailure
+import com.materialchat.assistant.voice.SherpaModelState
+import com.materialchat.assistant.voice.SherpaTtsModel
 import com.materialchat.assistant.voice.SpeechRecognitionErrors
 import com.materialchat.assistant.voice.VoiceCopy
 import com.materialchat.assistant.voice.VoiceState
+import com.materialchat.assistant.voice.sherpaFallbackMessage
+import com.materialchat.ui.theme.CopyRules
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -207,6 +212,68 @@ class AssistantCopyTest {
         val fallback = VoiceCopy.fallingBack(VoiceCopy.neuralLoadFailed("Supertonic (fast)"))
         assertTrue(fallback, fallback.startsWith("Supertonic (fast) could not be loaded."))
         assertTrue(fallback, fallback.endsWith(VoiceCopy.USING_ANDROID_VOICE))
+    }
+
+    @Test fun everyLineOfTheWindowClearsTheThemesCopyPredicates() {
+        // W8 part 3: the assistant's own rule tests above stay (they also ban "retry" and
+        // "exception"); the theme's predicates are the app-wide floor every line clears as well,
+        // so a line that passes here cannot fail the theme's scanner.
+        for (notice in AssistantCopy.NOTICES + AssistantCopy.VOICE_NOTICES) {
+            assertTrue(notice, CopyRules.isNotice(notice))
+        }
+        for (phrase in AssistantCopy.PHRASES + AssistantNoticeAction.values().map { it.label }) {
+            assertTrue(phrase, CopyRules.isPhrase(phrase))
+        }
+        for (code in 1..9) assertTrue(CopyRules.isNotice(SpeechRecognitionErrors.getErrorMessage(code)))
+        // The two shared class lines are the theme's constants (A2), not copies of them.
+        assertEquals(CopyRules.NO_CONNECTION, AssistantCopy.NO_CONNECTION)
+        assertEquals(CopyRules.RATE_LIMITED, AssistantCopy.RATE_LIMITED)
+    }
+
+    @Test fun everyGeminiAndNeuralFailureMapsToATypedNotice() {
+        // W8 part 3: beyond the sampled bodies, every HTTP status Gemini speech can answer with
+        // lands on one of the fixed diagnostics, all of which are in the rule-tested list.
+        for (code in listOf(400, 401, 403, 404, 408, 429, 500, 502, 503, 529)) {
+            val failure = GeminiTtsFailure.fromHttp(code)
+            assertTrue("$code", failure.diagnostic in AssistantCopy.VOICE_NOTICES)
+        }
+        assertEquals(GeminiTtsFailure.AUTHENTICATION, GeminiTtsFailure.fromHttp(401))
+        assertEquals(GeminiTtsFailure.PERMISSION, GeminiTtsFailure.fromHttp(403))
+        assertEquals(GeminiTtsFailure.MODEL_UNAVAILABLE, GeminiTtsFailure.fromHttp(404))
+        for (code in listOf(400, 408, 500, 502, 503, 529)) assertEquals(GeminiTtsFailure.TRANSPORT, GeminiTtsFailure.fromHttp(code))
+        // A 429 body: a quota detail with a zero limit names the missing project quota; anything
+        // else, including garbage and a body carrying a secret, is the plain rate limit.
+        val zeroQuota = """{"error":{"details":[{"@type":"type.googleapis.com/google.rpc.QuotaFailure","violations":[{"quotaValue":"0"}]}]}}"""
+        assertEquals(GeminiTtsFailure.NO_QUOTA, GeminiTtsFailure.fromQuotaResponse(zeroQuota.toByteArray()))
+        for (body in listOf("{}", "not json", "", """{"error":{"message":"Resource exhausted: sk-live-123"}}""")) {
+            val failure = GeminiTtsFailure.fromQuotaResponse(body.toByteArray())
+            assertEquals(body, GeminiTtsFailure.QUOTA, failure)
+            assertFalse(failure.diagnostic.contains("sk-live"))
+        }
+        for (failure in GeminiTtsFailure.entries) {
+            assertTrue(CopyRules.isNotice(GeminiTtsException(failure).message!!))
+        }
+        // The neural voice: every install failure the store can report reaches the pill wrapped
+        // as the fallback notice (reason first, the Android voice last) and is still a notice.
+        val model = SherpaTtsModel.SUPERTONIC
+        for (reason in listOf(
+            VoiceCopy.DOWNLOAD_INCOMPLETE, VoiceCopy.CHECKSUM_MISMATCH, VoiceCopy.MOVE_FAILED,
+            VoiceCopy.INSTALL_FAILED, VoiceCopy.INSTALL_FAILED_UNEXPECTED, VoiceCopy.NO_INTERNET,
+            VoiceCopy.DOWNLOAD_FAILED, VoiceCopy.notEnoughStorage("80 MB"), VoiceCopy.packageMissing("tts.json")
+        )) {
+            val fallback = sherpaFallbackMessage(SherpaModelState.Failed(reason), model)!!
+            assertTrue(fallback, CopyRules.isNotice(fallback))
+            assertTrue(fallback, fallback.startsWith(model.label))
+            assertTrue(fallback, fallback.endsWith(VoiceCopy.USING_ANDROID_VOICE))
+            assertTrue(fallback, CopyRules.isNotice(VoiceCopy.fallingBack(fallback)))
+        }
+        for (state in listOf(
+            SherpaModelState.NotDownloaded,
+            SherpaModelState.Downloading(0L, 1L, SherpaModelState.Downloading.Stage.DOWNLOADING)
+        )) {
+            assertTrue(CopyRules.isNotice(sherpaFallbackMessage(state, model)!!))
+        }
+        assertEquals(null, sherpaFallbackMessage(SherpaModelState.Installed, model))
     }
 
     @Test fun theManagersInternalClientDiagnosticsNeverReachThePill() {

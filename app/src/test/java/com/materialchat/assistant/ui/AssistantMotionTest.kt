@@ -1,5 +1,6 @@
 package com.materialchat.assistant.ui
 
+import com.materialchat.ui.components.ExpressiveChipDefaults
 import com.materialchat.ui.theme.ExpressiveMotion
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -22,6 +23,13 @@ class AssistantMotionTest {
     @Test fun theExitWindowIsTheDocumented320Ms() {
         assertEquals(320L, exitWindowMillis)
         assertEquals(0L, AssistantExitMotion.durationMillis(0f))
+    }
+
+    @Test fun thePressMorphLandsOnTheChipFamilysPressedRadius() {
+        // W8 (theme row A3): the theme's chip wrappers, the chat memory chip and every assistant
+        // chip, grouped action and chrome button press to the one 12dp corner.
+        assertEquals(ExpressiveChipDefaults.PressedRadius, AssistantShapes.ConnectedPressedCorner)
+        assertTrue(AssistantShapes.ConnectedPressedCorner < AssistantShapes.GlyphRoundCorner)
     }
 
     @Test fun entrancesArriveOnTheSharedContainerSpring() {
