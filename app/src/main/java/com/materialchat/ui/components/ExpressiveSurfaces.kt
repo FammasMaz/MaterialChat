@@ -35,11 +35,14 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import com.materialchat.ui.screens.conversations.EmptyStateAccent
 import com.materialchat.ui.theme.CustomShapes
@@ -131,11 +134,15 @@ fun ExpressiveTopBarTitle(
         animationSpec = ExpressiveMotion.Spatial.container(),
         label = "expressiveTopBarTitleScale"
     )
+    // W6: the collapse scale pivots on the title's START edge, which is the right edge under
+    // RTL (same defect the home masthead had, ConversationsScreen.kt:499). Pure function so the
+    // JVM test can pin both directions.
+    val origin = expressiveTitleTransformOrigin(LocalLayoutDirection.current)
     Column(
         modifier = modifier.graphicsLayer {
             scaleX = scale
             scaleY = scale
-            transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0f, 0.5f)
+            transformOrigin = origin
         },
         verticalArrangement = Arrangement.spacedBy(3.dp)
     ) {
@@ -160,6 +167,13 @@ fun ExpressiveTopBarTitle(
         }
     }
 }
+
+/**
+ * Pivot for [ExpressiveTopBarTitle]'s collapse scale: the title's start edge at mid height,
+ * so the text shrinks toward the edge it is anchored to in both layout directions.
+ */
+internal fun expressiveTitleTransformOrigin(direction: LayoutDirection): TransformOrigin =
+    TransformOrigin(pivotFractionX = if (direction == LayoutDirection.Rtl) 1f else 0f, pivotFractionY = 0.5f)
 
 @Composable
 fun ExpressiveFilledIconButton(

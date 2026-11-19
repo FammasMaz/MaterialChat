@@ -8,6 +8,7 @@ import androidx.compose.ui.graphics.lerp
 import com.materialchat.assistant.ui.AssistantContrast
 import com.materialchat.assistant.ui.AssistantSurfacePalette
 import com.materialchat.data.local.preferences.AppPreferences
+import com.materialchat.ui.components.HomeSettingsContrastSlots
 import com.materialchat.ui.components.HomeSettingsPalette
 import com.materialchat.ui.components.HomeSettingsSlot
 import com.materialchat.ui.screens.chat.components.ChatSurfacePalette
@@ -154,9 +155,18 @@ class ThemeContrastTest {
             if (ThemeContrast.contrastRatio(s.error, s.surfaceContainerHigh) >= ThemeContrast.BODY_TEXT) {
                 assertEquals(theme.name, s.error, destructive)
             }
-            val home = HomeSettingsPalette.resolve(s)
-            assertEquals(theme.name, home[HomeSettingsSlot.DialogLabel], action)
-            assertEquals(theme.name, home[HomeSettingsSlot.DialogDestructive], destructive)
+            // W6: the home/settings surface resolves the same two dialog colours, checked by
+            // value through its slot set (not by the Snackbar*/Dialog* slot names, which the
+            // home-settings owner may delete now that componentContrastPairs() gates them).
+            val home = HomeSettingsContrastSlots.resolve(s).slots
+            assertTrue(
+                "${theme.name}: home-settings has no body-text slot drawing $action on surfaceContainerHigh (dialog label)",
+                home.any { it.fill == s.surfaceContainerHigh && it.content == action && it.minimum == ThemeContrast.BODY_TEXT }
+            )
+            assertTrue(
+                "${theme.name}: home-settings has no body-text slot drawing $destructive on surfaceContainerHigh (dialog destructive)",
+                home.any { it.fill == s.surfaceContainerHigh && it.content == destructive && it.minimum == ThemeContrast.BODY_TEXT }
+            )
         }
         assertEquals(setOf("VIOLET light", "CITRUS light"), fallbacks.toSet())
         // Dynamic-like schemes: the resolved colour still reads even though the roles are the system's.
