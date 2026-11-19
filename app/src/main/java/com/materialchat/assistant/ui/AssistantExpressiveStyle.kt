@@ -117,6 +117,45 @@ internal object AssistantShapes {
     val GlyphSquareCorner: Dp = 12.dp
 }
 
+/**
+ * The one vertical and horizontal scale of the assistant window. Every padding and gap in the
+ * pill, the opened pill, the answer surface, the thinking surface, the notice surface and the
+ * chips is one of these steps, so the surfaces share a rhythm instead of each carrying its own
+ * numbers. The pill's 76dp row and [AssistantKeyboardSpacing.GAP_DP] are geometry contracts and
+ * stay literal.
+ */
+internal object AssistantSpacing {
+    /** Title over its status line; the Screen chip's trailing edge before its remove target. */
+    val Hairline: Dp = 2.dp
+
+    /** The toolbar's inner inset and the answer text's own inset inside the surface. */
+    val Tight: Dp = 4.dp
+
+    /** Icon to label inside a chip or marker. */
+    val Gap: Dp = 6.dp
+
+    /** Between siblings: stacked surfaces in the sheet, messages, the parts of the Screen chip. */
+    val Between: Dp = 8.dp
+
+    /** Between the pill's controls; between a notice's glyph and its message. */
+    val Row: Dp = 10.dp
+
+    /** Inner vertical inset of the small surfaces (notice, thinking, question bubble) and the sheet's side inset. */
+    val Inset: Dp = 12.dp
+
+    /** Horizontal inset of a 40dp chip and of the notice surface. */
+    val ChipInset: Dp = 14.dp
+
+    /** The question bubble's side inset; the opened pill's top inset above a thumbnail row (its remove badge overhangs 12dp). */
+    val Block: Dp = 16.dp
+
+    /** The pill row's leading inset and the opened region's side insets. */
+    val PillInset: Dp = 18.dp
+
+    /** The answer surface's inner inset. */
+    val SurfaceInset: Dp = 20.dp
+}
+
 internal object AssistantTypography {
     /** The live transcript while capturing: large and heavy so the recognised words lead. */
     fun transcript(typography: Typography): TextStyle =
@@ -142,7 +181,10 @@ internal object AssistantTypography {
     fun action(typography: Typography): TextStyle =
         typography.labelLarge.copy(fontWeight = FontWeight.Bold)
 
-    /** Notices and errors. */
+    /**
+     * The one secondary body style: notices, errors, the Using-screen marker and the thinking
+     * surface's status line. The answer is the only other body style in the window.
+     */
     fun notice(typography: Typography): TextStyle =
         typography.bodyMedium.copy(fontWeight = FontWeight.Medium)
 
@@ -150,9 +192,8 @@ internal object AssistantTypography {
     fun thinkingTitle(typography: Typography): TextStyle =
         typography.titleSmall.copy(fontWeight = FontWeight.Bold, letterSpacing = 0.1.sp)
 
-    /** The thinking surface's status line: regular weight under the bold header. */
-    fun thinkingStatus(typography: Typography): TextStyle =
-        typography.bodyMedium.copy(fontWeight = FontWeight.Normal)
+    /** The thinking surface's status line: the same secondary style every other status line uses. */
+    fun thinkingStatus(typography: Typography): TextStyle = notice(typography)
 }
 
 /** The pill's phase. The leading glyph, its container and the state line all follow it. */

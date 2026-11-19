@@ -674,7 +674,7 @@ internal fun AssistantOverlayContent(
         modifier = modifier
             .fillMaxWidth()
             .padding(
-                horizontal = 12.dp,
+                horizontal = AssistantSpacing.Inset,
                 vertical = AssistantKeyboardSpacing.GAP_DP.dp
             )
             .heightIn(max = 600.dp)
@@ -694,7 +694,7 @@ internal fun AssistantOverlayContent(
                 .fillMaxWidth()
                 .semantics { testTagsAsResourceId = true }
                 .testTag("assistant_sheet"),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            verticalArrangement = Arrangement.spacedBy(AssistantSpacing.Between)
         ) {
             // Response surface above the pill: latest exchange, action row, close.
             // The answer surface rises out of the pill: a weighty spring settle with a slight
@@ -812,9 +812,9 @@ internal fun AssistantOverlayContent(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(76.dp)
-                        .padding(start = 18.dp, end = 10.dp),
+                        .padding(start = AssistantSpacing.PillInset, end = AssistantSpacing.Row),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    horizontalArrangement = Arrangement.spacedBy(AssistantSpacing.Row)
                 ) {
                     // Leading state glyph inside its own 40dp container. The container is the
                     // state signal beyond colour alone: transparent at rest, it fills with the
@@ -1225,8 +1225,8 @@ private fun AssistantResponseSurface(
             modifier = Modifier
                 .fillMaxWidth()
                 .animateContentSize(animationSpec = AssistantMotion.contentSize())
-                .padding(start = 20.dp, end = 20.dp, top = 22.dp, bottom = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+                .padding(start = AssistantSpacing.SurfaceInset, end = AssistantSpacing.SurfaceInset, top = AssistantSpacing.SurfaceInset, bottom = AssistantSpacing.Inset),
+            verticalArrangement = Arrangement.spacedBy(AssistantSpacing.Inset)
         ) {
             AssistantResponseCard(
                 messages = messages,
@@ -1241,7 +1241,7 @@ private fun AssistantResponseSurface(
                 // The user must be able to tell that screen data went out with this question.
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    horizontalArrangement = Arrangement.spacedBy(AssistantSpacing.Gap),
                     modifier = Modifier.testTag("assistant_screen_used")
                 ) {
                     // 16dp: the same icon size the chips and the Screen chip use.
@@ -1300,7 +1300,7 @@ private fun AssistantAnswerToolbar(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(start = 8.dp, end = 4.dp, top = 4.dp, bottom = 4.dp),
+                .padding(start = AssistantSpacing.Between, end = AssistantSpacing.Tight, top = AssistantSpacing.Tight, bottom = AssistantSpacing.Tight),
             verticalAlignment = Alignment.CenterVertically
         ) {
             if (showOpenInApp) {
@@ -1390,7 +1390,7 @@ private fun AssistantAttachRevealContent(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(top = 14.dp, start = 18.dp, end = 18.dp)
+                            .padding(top = AssistantSpacing.Inset, start = AssistantSpacing.PillInset, end = AssistantSpacing.PillInset)
                     ) {
                         AssistantScreenChip(attachment = screenAttachment, onRemove = onRemoveScreenContext)
                     }
@@ -1403,7 +1403,7 @@ private fun AssistantAttachRevealContent(
                         onRemoveAttachment = onRemoveAttachment,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(top = 16.dp, start = 18.dp, end = 18.dp)
+                            .padding(top = AssistantSpacing.Block, start = AssistantSpacing.PillInset, end = AssistantSpacing.PillInset)
                             .testTag("assistant_attachments")
                     )
                 }
@@ -1419,7 +1419,7 @@ private fun AssistantAttachRevealContent(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(top = 14.dp, start = 18.dp, end = 10.dp),
+                    .padding(top = AssistantSpacing.Inset, start = AssistantSpacing.PillInset, end = AssistantSpacing.Row),
                 // The two actions are one connected pair: 2dp join, outer corners only on
                 // the group's outside edges, press morph to 12dp. Same row, same 40dp height.
                 horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween, Alignment.End),
@@ -1465,11 +1465,11 @@ private fun AssistantActionChip(
             containerColor = palette.chip.container,
             contentColor = palette.chip.content
         ),
-        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
+        contentPadding = PaddingValues(horizontal = AssistantSpacing.ChipInset, vertical = AssistantSpacing.Gap),
         modifier = modifier.height(40.dp)
     ) {
         Icon(imageVector = icon, contentDescription = null, modifier = Modifier.size(16.dp))
-        Spacer(Modifier.size(6.dp))
+        Spacer(Modifier.size(AssistantSpacing.Gap))
         Text(label, style = AssistantTypography.action(MaterialTheme.typography))
     }
 }
@@ -1492,9 +1492,9 @@ private fun AssistantScreenChip(attachment: Attachment, onRemove: () -> Unit) {
             .testTag("assistant_screen_chip")
     ) {
         Row(
-            modifier = Modifier.padding(start = 6.dp, end = 2.dp),
+            modifier = Modifier.padding(start = AssistantSpacing.Gap, end = AssistantSpacing.Hairline),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+            horizontalArrangement = Arrangement.spacedBy(AssistantSpacing.Between)
         ) {
             coil.compose.AsyncImage(
                 model = coil.request.ImageRequest.Builder(LocalContext.current).data(attachment.uri).build(),
@@ -1585,12 +1585,12 @@ private fun AssistantNoticeSurface(
         tonalElevation = 2.dp
     ) {
         Column(
-            modifier = Modifier.padding(start = 14.dp, end = 14.dp, top = 12.dp, bottom = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
+            modifier = Modifier.padding(start = AssistantSpacing.ChipInset, end = AssistantSpacing.ChipInset, top = AssistantSpacing.Inset, bottom = AssistantSpacing.Inset),
+            verticalArrangement = Arrangement.spacedBy(AssistantSpacing.Row)
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                horizontalArrangement = Arrangement.spacedBy(AssistantSpacing.Row)
             ) {
                 Icon(
                     imageVector = if (notice.isError) Icons.Outlined.ErrorOutline else Icons.Outlined.Info,
@@ -1662,9 +1662,9 @@ private fun AssistantNoticeActionChip(
         modifier = modifier.height(40.dp)
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 14.dp),
+            modifier = Modifier.padding(horizontal = AssistantSpacing.ChipInset),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
+            horizontalArrangement = Arrangement.spacedBy(AssistantSpacing.Gap)
         ) {
             Icon(imageVector = icon, contentDescription = null, modifier = Modifier.size(16.dp), tint = content)
             Text(label, style = AssistantTypography.action(MaterialTheme.typography), color = content)

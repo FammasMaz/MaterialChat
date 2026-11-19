@@ -34,6 +34,7 @@ import com.materialchat.assistant.ui.AssistantCopy
 import com.materialchat.assistant.ui.AssistantMessage
 import com.materialchat.assistant.ui.AssistantMotion
 import com.materialchat.assistant.ui.AssistantShapes
+import com.materialchat.assistant.ui.AssistantSpacing
 import com.materialchat.assistant.ui.AssistantTypography
 import com.materialchat.assistant.ui.rememberAssistantSurfacePalette
 import com.materialchat.domain.model.MessageRole
@@ -109,7 +110,7 @@ fun AssistantResponseCard(
 
     Column(
         modifier = modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+        verticalArrangement = Arrangement.spacedBy(AssistantSpacing.Between)
     ) {
         // Message list with auto-scroll
         LazyColumn(
@@ -117,7 +118,7 @@ fun AssistantResponseCard(
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f, fill = false),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            verticalArrangement = Arrangement.spacedBy(AssistantSpacing.Between)
         ) {
             itemsIndexed(
                 items = messages,
@@ -175,7 +176,7 @@ private fun UserQueryBubble(query: String) {
                 text = query,
                 style = AssistantTypography.query(MaterialTheme.typography),
                 color = palette.query.content,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
+                modifier = Modifier.padding(horizontal = AssistantSpacing.Block, vertical = AssistantSpacing.Inset)
             )
         }
     }
@@ -195,9 +196,9 @@ private fun AssistantBubble(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 4.dp, vertical = 4.dp)
+            .padding(horizontal = AssistantSpacing.Tight, vertical = AssistantSpacing.Tight)
             .animateContentSize(animationSpec = AssistantMotion.contentSize()),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+        verticalArrangement = Arrangement.spacedBy(AssistantSpacing.Between)
     ) {
         if (response.isNotEmpty()) {
             MarkdownText(
@@ -240,7 +241,7 @@ private fun AssistantThinkingSurface() {
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Start) {
         Surface(
             modifier = Modifier
-                .padding(start = 4.dp, top = 4.dp, bottom = 4.dp)
+                .padding(start = AssistantSpacing.Tight, top = AssistantSpacing.Tight, bottom = AssistantSpacing.Tight)
                 .graphicsLayer {
                     scaleX = entrance.value
                     scaleY = entrance.value
@@ -252,8 +253,8 @@ private fun AssistantThinkingSurface() {
             tonalElevation = 2.dp
         ) {
             Column(
-                modifier = Modifier.padding(start = 16.dp, end = 20.dp, top = 12.dp, bottom = 12.dp),
-                verticalArrangement = Arrangement.spacedBy(2.dp)
+                modifier = Modifier.padding(start = AssistantSpacing.Block, end = AssistantSpacing.SurfaceInset, top = AssistantSpacing.Inset, bottom = AssistantSpacing.Inset),
+                verticalArrangement = Arrangement.spacedBy(AssistantSpacing.Hairline)
             ) {
                 Text(
                     text = AssistantCopy.THINKING_TITLE,
@@ -290,9 +291,9 @@ private fun ContinueInAppButton(onClick: () -> Unit) {
             modifier = Modifier.height(40.dp)
         ) {
             Row(
-                modifier = Modifier.padding(horizontal = 14.dp),
+                modifier = Modifier.padding(horizontal = AssistantSpacing.ChipInset),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                horizontalArrangement = Arrangement.spacedBy(AssistantSpacing.Gap)
             ) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.OpenInNew,
