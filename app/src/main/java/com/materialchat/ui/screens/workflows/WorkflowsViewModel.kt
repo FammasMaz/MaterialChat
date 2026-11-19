@@ -6,8 +6,11 @@ import com.materialchat.domain.usecase.ManageWorkflowsUseCase
 import com.materialchat.ui.components.LoadError
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.emitAll
@@ -28,6 +31,10 @@ class WorkflowsViewModel @Inject constructor(
 
     private val _uiState = MutableStateFlow<WorkflowsUiState>(WorkflowsUiState.Loading)
     val uiState: StateFlow<WorkflowsUiState> = _uiState.asStateFlow()
+
+    /** Failures of best-effort actions (delete) that the list state cannot carry. */
+    private val _events = MutableSharedFlow<WorkflowsEvent>(extraBufferCapacity = 4)
+    val events: SharedFlow<WorkflowsEvent> = _events.asSharedFlow()
 
     private var observeJob: Job? = null
 
@@ -77,7 +84,8 @@ class WorkflowsViewModel @Inject constructor(
             try {
                 manageWorkflowsUseCase.delete(id)
             } catch (_: Exception) {
-                // Deletion is best-effort
+                // The list keeps showing the workflow; tell the user instead of failing silently.
+                _events.emit(WorkflowsEvent.ShowSnackbar("Could not delete workflow"))
             }
         }
     }
