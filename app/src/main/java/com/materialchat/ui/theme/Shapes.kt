@@ -255,6 +255,16 @@ object ExpressiveShapes {
     val Badge = RoundedCornerShape(8.dp)
 
     /**
+     * The header strip of a content block inside a bubble (a markdown table's header row,
+     * `MarkdownText`): the [Badge] radius (8dp) on the two BOTTOM corners only, square on top
+     * where the strip meets the block's own top edge. One-sided so the strip reads as the inner
+     * header of the 28 -> 16 -> 8dp ladder ([Card] -> [ContentBlock] -> this) rather than a
+     * badge floating inside the block. Plain round corner like [Badge]: 8dp is too small for
+     * G2 smoothing to read. W8 part 5; `ShapeTokensTest` pins the four corners.
+     */
+    val ContentBlockHeader = RoundedCornerShape(topStart = 0.dp, topEnd = 0.dp, bottomEnd = 8.dp, bottomStart = 8.dp)
+
+    /**
      * The radii record of the three non-expressive bubble families chat draws
      * (`MessageBubble.bubbleShapeFor`, `AppPreferences.ChatBubbleStyle.ROUNDED / COMPACT /
      * GEOMETRIC`), so the chat bubble and the settings bubble-style preview read one table
@@ -361,7 +371,8 @@ val MaterialChatShapes = Shapes(
  * Uses larger radii (28dp) for the M3 Expressive friendly feel.
  *
  * Decision (W5 theme, audit F2): the bubble family stays on circular corners, and so does the
- * chat composer ([CustomShapes.MessageInputContainer], 28dp round). Bubbles are user-selectable
+ * chat composer (`ComposerSendButton.ComposerFieldRadius`, 28dp round; the former
+ * `CustomShapes.MessageInputContainer` token was deleted in W8 with zero consumers). Bubbles are user-selectable
  * geometry (`AppPreferences.ChatBubbleStyle`), and the composer sits directly under the last
  * bubble, so the two must share one corner class; the squircle tokens are for the cards and
  * blocks *inside* a bubble (28 -> 16 -> 8 ladder). Changing both at once is a chat decision.
@@ -459,10 +470,9 @@ object CustomShapes {
      */
     val ButtonPressed = RoundedCornerShape(12.dp)
 
-    /**
-     * Shape for the message input field container - matches FAB for consistency.
-     */
-    val MessageInputContainer = RoundedCornerShape(28.dp)
+    // `MessageInputContainer` (28dp round) was removed in W8 part 4: zero consumers after W7
+    // (chat draws `ComposerFieldRadius`, arena draws `ExpressiveShapes.Card`); the only hits
+    // were KDoc mentions.
 
     /**
      * Shape for conversation list items - rounded like Google Messages.

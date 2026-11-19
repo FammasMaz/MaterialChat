@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -27,6 +28,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -64,7 +66,21 @@ import com.materialchat.ui.components.rememberHapticFeedback
  * @param style The visual style of the button.
  * @param contentColor Label/icon colour for [ExpressiveButtonStyle.Text] only (dialog actions
  * pass the theme-resolved `dialogActionColor()` / `dialogDestructiveColor()`); null keeps the
- * M3 default. Ignored by the filled styles, whose container decides their content colour.
+ * M3 default. Ignored by the filled styles, whose container decides their content colour
+ * (use [colors] for those).
+ * @param colors Optional container/content pair for [ExpressiveButtonStyle.Filled] and
+ * [ExpressiveButtonStyle.FilledTonal] (W8 part 2). Null keeps the M3 defaults
+ * (primary/onPrimary, secondaryContainer/onSecondaryContainer). [ExpressiveButtonColors.tertiary]
+ * is the tertiary filled pair (the fusion Start button); a surface that resolves its own pair
+ * (the assistant's contrast-resolved chip pair) passes it directly. The pair is the caller's
+ * responsibility to keep readable: every role pair the helpers return is in the theme contrast
+ * gate (`standardContrastPairs`), a hand-built pair is not. Ignored by Outlined and Text.
+ * @param size Height, inset and glyph size as one preset ([ExpressiveButtonSize.Default]: the
+ * 56dp / 28dp / 20dp labelled button every current site draws; [ExpressiveButtonSize.Chip]: the
+ * 40dp chip class from `ExpressiveSizes.Chip`). A surface may build its own instance.
+ * @param shape Optional fixed container shape. Null (the default) keeps the 28 -> 16dp round
+ * press morph; a non-null shape is drawn as given (a chip capsule, a per-position connected
+ * shape) and only the scale dip animates on press.
  */
 @Composable
 fun ExpressiveButton(
@@ -75,7 +91,10 @@ fun ExpressiveButton(
     leadingIcon: ImageVector? = null,
     trailingIcon: ImageVector? = null,
     style: ExpressiveButtonStyle = ExpressiveButtonStyle.Filled,
-    contentColor: Color? = null
+    contentColor: Color? = null,
+    colors: ExpressiveButtonColors? = null,
+    size: ExpressiveButtonSize = ExpressiveButtonSize.Default,
+    shape: Shape? = null
 ) {
     val haptics = rememberHapticFeedback()
     val interactionSource = remember { MutableInteractionSource() }
@@ -103,23 +122,29 @@ fun ExpressiveButton(
         label = "cornerRadius"
     )
 
-    val shape = RoundedCornerShape(cornerRadius)
-    val expressivePadding = remember { PaddingValues(horizontal = 28.dp, vertical = 0.dp) }
+    val containerShape = shape ?: RoundedCornerShape(cornerRadius)
+    val expressivePadding = remember(size) { PaddingValues(horizontal = size.inset, vertical = 0.dp) }
 
     when (style) {
         ExpressiveButtonStyle.Filled -> {
             Button(
                 onClick = clickWithHaptics,
-                modifier = modifier.defaultMinSize(minHeight = 56.dp).scale(scale),
+                modifier = modifier.defaultMinSize(minHeight = size.minHeight).scale(scale),
                 enabled = enabled,
-                shape = shape,
+                shape = containerShape,
+                colors = if (colors != null) {
+                    ButtonDefaults.buttonColors(containerColor = colors.container, contentColor = colors.content)
+                } else {
+                    ButtonDefaults.buttonColors()
+                },
                 interactionSource = interactionSource,
                 contentPadding = expressivePadding
             ) {
                 ButtonContent(
                     text = text,
                     leadingIcon = leadingIcon,
-                    trailingIcon = trailingIcon
+                    trailingIcon = trailingIcon,
+                    iconSize = size.icon
                 )
             }
         }
@@ -127,16 +152,22 @@ fun ExpressiveButton(
         ExpressiveButtonStyle.FilledTonal -> {
             FilledTonalButton(
                 onClick = clickWithHaptics,
-                modifier = modifier.defaultMinSize(minHeight = 56.dp).scale(scale),
+                modifier = modifier.defaultMinSize(minHeight = size.minHeight).scale(scale),
                 enabled = enabled,
-                shape = shape,
+                shape = containerShape,
+                colors = if (colors != null) {
+                    ButtonDefaults.filledTonalButtonColors(containerColor = colors.container, contentColor = colors.content)
+                } else {
+                    ButtonDefaults.filledTonalButtonColors()
+                },
                 interactionSource = interactionSource,
                 contentPadding = expressivePadding
             ) {
                 ButtonContent(
                     text = text,
                     leadingIcon = leadingIcon,
-                    trailingIcon = trailingIcon
+                    trailingIcon = trailingIcon,
+                    iconSize = size.icon
                 )
             }
         }
@@ -144,16 +175,17 @@ fun ExpressiveButton(
         ExpressiveButtonStyle.Outlined -> {
             OutlinedButton(
                 onClick = clickWithHaptics,
-                modifier = modifier.defaultMinSize(minHeight = 56.dp).scale(scale),
+                modifier = modifier.defaultMinSize(minHeight = size.minHeight).scale(scale),
                 enabled = enabled,
-                shape = shape,
+                shape = containerShape,
                 interactionSource = interactionSource,
                 contentPadding = expressivePadding
             ) {
                 ButtonContent(
                     text = text,
                     leadingIcon = leadingIcon,
-                    trailingIcon = trailingIcon
+                    trailingIcon = trailingIcon,
+                    iconSize = size.icon
                 )
             }
         }
@@ -161,24 +193,83 @@ fun ExpressiveButton(
         ExpressiveButtonStyle.Text -> {
             TextButton(
                 onClick = clickWithHaptics,
-                modifier = modifier.defaultMinSize(minHeight = 56.dp).scale(scale),
+                modifier = modifier.defaultMinSize(minHeight = size.minHeight).scale(scale),
                 enabled = enabled,
-                shape = shape,
+                shape = containerShape,
                 colors = if (contentColor != null) {
                     ButtonDefaults.textButtonColors(contentColor = contentColor)
                 } else {
                     ButtonDefaults.textButtonColors()
                 },
                 interactionSource = interactionSource,
-                contentPadding = PaddingValues(horizontal = 24.dp, vertical = 0.dp)
+                contentPadding = PaddingValues(horizontal = size.textInset, vertical = 0.dp)
             ) {
                 ButtonContent(
                     text = text,
                     leadingIcon = leadingIcon,
-                    trailingIcon = trailingIcon
+                    trailingIcon = trailingIcon,
+                    iconSize = size.icon
                 )
             }
         }
+    }
+}
+
+/**
+ * A container/content pair for a filled [ExpressiveButton] (W8 part 2). Plain data so the JVM
+ * contrast test can build one from any `ColorScheme`; the composable helpers read the theme.
+ */
+@Immutable
+data class ExpressiveButtonColors(val container: Color, val content: Color) {
+    companion object {
+        /** The tertiary filled pair (`tertiary` / `onTertiary`) of [scheme]; in the theme contrast gate. */
+        fun tertiary(scheme: ColorScheme): ExpressiveButtonColors =
+            ExpressiveButtonColors(container = scheme.tertiary, content = scheme.onTertiary)
+
+        /** The tertiary tonal pair (`tertiaryContainer` / `onTertiaryContainer`) of [scheme]; in the gate. */
+        fun tertiaryTonal(scheme: ColorScheme): ExpressiveButtonColors =
+            ExpressiveButtonColors(container = scheme.tertiaryContainer, content = scheme.onTertiaryContainer)
+
+        /** [tertiary] of the current `MaterialTheme.colorScheme`. */
+        @Composable
+        fun tertiary(): ExpressiveButtonColors = tertiary(MaterialTheme.colorScheme)
+
+        /** [tertiaryTonal] of the current `MaterialTheme.colorScheme`. */
+        @Composable
+        fun tertiaryTonal(): ExpressiveButtonColors = tertiaryTonal(MaterialTheme.colorScheme)
+    }
+}
+
+/**
+ * The size class of an [ExpressiveButton]: minimum height, horizontal inset of the filled /
+ * tonal / outlined styles, the smaller inset of the text style, and the glyph size (W8 part 2).
+ *
+ * @property minHeight Minimum container height.
+ * @property inset Horizontal content padding of the filled, tonal and outlined styles.
+ * @property textInset Horizontal content padding of [ExpressiveButtonStyle.Text].
+ * @property icon Size of the leading / trailing glyph.
+ */
+@Immutable
+data class ExpressiveButtonSize(
+    val minHeight: Dp,
+    val inset: Dp,
+    val textInset: Dp,
+    val icon: Dp
+) {
+    companion object {
+        /** The labelled button every current site draws: 56dp tall, 28dp inset (24 for text), 20dp glyph. */
+        val Default = ExpressiveButtonSize(minHeight = 56.dp, inset = 28.dp, textInset = 24.dp, icon = ExpressiveSizes.Icon)
+
+        /**
+         * The chip class (`ExpressiveSizes.Chip`): 40dp tall, 14dp inset, 18dp glyph. Pair with
+         * `shape = ExpressiveShapes.Chip` for a labelled action chip.
+         */
+        val Chip = ExpressiveButtonSize(
+            minHeight = ExpressiveSizes.Chip.Height,
+            inset = ExpressiveSizes.Chip.Inset,
+            textInset = ExpressiveSizes.Chip.Inset,
+            icon = ExpressiveSizes.Chip.Icon
+        )
     }
 }
 
@@ -189,13 +280,14 @@ fun ExpressiveButton(
 private fun ButtonContent(
     text: String,
     leadingIcon: ImageVector?,
-    trailingIcon: ImageVector?
+    trailingIcon: ImageVector?,
+    iconSize: Dp = ExpressiveSizes.Icon
 ) {
     if (leadingIcon != null) {
         Icon(
             imageVector = leadingIcon,
             contentDescription = null,
-            modifier = Modifier.size(ExpressiveSizes.Icon)
+            modifier = Modifier.size(iconSize)
         )
         Spacer(modifier = Modifier.width(8.dp))
     }
@@ -211,7 +303,7 @@ private fun ButtonContent(
         Icon(
             imageVector = trailingIcon,
             contentDescription = null,
-            modifier = Modifier.size(ExpressiveSizes.Icon)
+            modifier = Modifier.size(iconSize)
         )
     }
 }

@@ -31,6 +31,25 @@ object CopyRules {
     /** The generic error notice (a sentence pair: what happened, what to do). */
     const val REQUEST_FAILED = "Something went wrong. Try again."
 
+    /**
+     * HTTP 429 / quota exhaustion: waiting is the right move. The one line chat
+     * (`ChatErrorCopy.RATE_LIMITED`) and the assistant (`AssistantCopy.RATE_LIMITED`) share
+     * (W8 part 1); both alias it so the two notices cannot drift apart.
+     */
+    const val RATE_LIMITED = "The model is busy right now. Wait a moment and try again."
+
+    /**
+     * An `IOException` anywhere in the cause chain: no network. Shared by chat
+     * (`ChatErrorCopy.NO_CONNECTION`) and the assistant (`AssistantCopy.NO_CONNECTION`).
+     */
+    const val NO_CONNECTION = "No connection. Check your network and try again."
+
+    /**
+     * The share-failure snackbar line, `failureLine("share")`: chat's share sheet and any
+     * other share action show this and never the exception text (W6 audit #2).
+     */
+    const val COULD_NOT_SHARE = "Could not share"
+
     /** The verb a failure line opens with. */
     const val FAILURE_VERB = "Could not"
 

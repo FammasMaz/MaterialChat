@@ -1,65 +1,35 @@
 package com.materialchat.ui.components
 
-import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Send
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.Icon
 import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.rotate
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.materialchat.ui.theme.ExpressiveMotion
 import com.materialchat.ui.theme.MaterialChatMotion
 import com.materialchat.ui.theme.particles.rememberParticleMotionGate
-import com.materialchat.ui.theme.ExpressiveShapeToken
-import com.materialchat.ui.theme.expressiveControlShape
 import com.materialchat.ui.theme.ExpressiveSizes
-import com.materialchat.domain.model.ReasoningEffort
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.PI
@@ -276,6 +246,11 @@ private fun lerp(start: Float, end: Float, fraction: Float): Float {
 // `ExpressiveTypingIndicator`, `ExpressiveCircularProgress`, `ExpressiveSpinningArc`,
 // `ExpressiveLoadingWithText`, `ExpressiveInlineLoading`, `ExpressiveFullscreenLoading`), also
 // zero callers. Indeterminate arcs are the stock M3 `LoadingIndicator` / `CircularWavyProgressIndicator`.
+// W8 part 4: `M3ExpressiveDeterminateProgress`, `M3ExpressiveLoadingWithText`,
+// `M3ExpressiveFullscreenLoading` and `MorphingSendButton` (with its private
+// `calculateMorphParams` / `drawMorphingShapeFilled`) had zero callers in main, androidTest,
+// scripts/ and .github/ (word-exact grep) and were deleted. Chat's send control is
+// `ComposerSendButton`; a determinate bar is the stock M3 `LinearProgressIndicator`.
 
 /**
  * M3 Expressive Pulsing Dots Indicator with spring-based animation.
@@ -331,75 +306,6 @@ fun M3ExpressivePulsingDots(
 }
 
 /**
- * M3 Expressive Determinate Linear Progress.
- */
-@Composable
-fun M3ExpressiveDeterminateProgress(
-    progress: Float,
-    modifier: Modifier = Modifier,
-    color: Color = MaterialTheme.colorScheme.primary,
-    trackColor: Color = MaterialTheme.colorScheme.surfaceContainerHighest,
-    height: Dp = 4.dp
-) {
-    val animatedProgress = remember { Animatable(0f) }
-
-    LaunchedEffect(progress) {
-        animatedProgress.animateTo(
-            targetValue = progress.coerceIn(0f, 1f),
-            animationSpec = ExpressiveMotion.Spatial.default()
-        )
-    }
-
-    Canvas(modifier = modifier.height(height)) {
-        val trackHeight = size.height
-        val cornerRadius = trackHeight / 2
-
-        drawRoundRect(
-            color = trackColor,
-            cornerRadius = androidx.compose.ui.geometry.CornerRadius(cornerRadius)
-        )
-
-        if (animatedProgress.value > 0f) {
-            drawRoundRect(
-                color = color,
-                size = androidx.compose.ui.geometry.Size(
-                    width = size.width * animatedProgress.value,
-                    height = trackHeight
-                ),
-                cornerRadius = androidx.compose.ui.geometry.CornerRadius(cornerRadius)
-            )
-        }
-    }
-}
-
-/**
- * M3 Expressive Loading with Text.
- */
-@Composable
-fun M3ExpressiveLoadingWithText(
-    text: String,
-    modifier: Modifier = Modifier,
-    color: Color = MaterialTheme.colorScheme.primary
-) {
-    Column(
-        modifier = modifier,
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        M3ExpressiveLoadingIndicator(
-            color = color,
-            size = ExpressiveSizes.IndicatorHero
-        )
-        Spacer(modifier = Modifier.height(16.dp))
-        Text(
-            text = text,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-    }
-}
-
-/**
  * M3 Expressive Inline Loading (for buttons).
  */
 @Composable
@@ -413,319 +319,3 @@ fun M3ExpressiveInlineLoading(
         dotSize = 6.dp
     )
 }
-
-/**
- * M3 Expressive Fullscreen Loading.
- */
-@Composable
-fun M3ExpressiveFullscreenLoading(
-    modifier: Modifier = Modifier,
-    color: Color = MaterialTheme.colorScheme.primary
-) {
-    Box(
-        modifier = modifier,
-        contentAlignment = Alignment.Center
-    ) {
-        M3ExpressiveLoadingIndicator(
-            color = color,
-            size = 64.dp
-        )
-    }
-}
-
-/**
- * M3 Expressive Morphing Send Button.
- *
- * A send button that morphs into an animated loading indicator when streaming.
- * Follows Material 3 Expressive design guidelines with:
- * - Shape morphing animation (soft-burst → pentagon → hexagon → circle)
- * - Slow rotation during loading
- * - Container pulse for "breathing" effect
- * - Spring-based transitions between states
- * - Haptic feedback integration
- * - Reasoning effort-aware colors (indicator color changes based on thinking intensity)
- *
- * States:
- * - IDLE: Disabled, grayed out send icon
- * - READY: Enabled, colored send icon
- * - LOADING: Animated shape-morphing indicator
- * - STOP: Error container with close icon (during loading, tap to cancel)
- *
- * @param isStreaming Whether the AI is currently streaming a response
- * @param canSend Whether the send action is available
- * @param onSend Callback when send button is tapped
- * @param onCancel Callback when stop button is tapped during streaming
- * @param modifier Modifier for the button
- * @param size Size of the button (default 48.dp for M3 touch target)
- * @param reasoningEffort Current reasoning effort level (affects indicator color)
- */
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
-@Composable
-fun MorphingSendButton(
-    isStreaming: Boolean,
-    canSend: Boolean,
-    onSend: () -> Unit,
-    onCancel: () -> Unit,
-    modifier: Modifier = Modifier,
-    size: Dp = ExpressiveSizes.Target,
-    reasoningEffort: ReasoningEffort = ReasoningEffort.HIGH
-) {
-    val interactionSource = remember { MutableInteractionSource() }
-    val isPressed by interactionSource.collectIsPressedAsState()
-
-    // Container color animation (Effects spring - no overshoot)
-    // Use errorContainer during streaming to signal "stop" action
-    val containerColor = when {
-        isStreaming -> MaterialTheme.colorScheme.errorContainer
-        canSend -> MaterialTheme.colorScheme.primaryContainer
-        else -> MaterialTheme.colorScheme.surfaceContainerHigh
-    }
-
-    // Content color: changes based on reasoning effort during streaming
-    // Higher effort = more intense color to indicate deeper thinking
-    val contentColor = when {
-        isStreaming -> MaterialTheme.colorScheme.onErrorContainer
-        canSend -> MaterialTheme.colorScheme.onPrimaryContainer
-        else -> MaterialTheme.colorScheme.onSurfaceVariant
-    }
-
-    // Indicator color based on reasoning effort level
-    // This provides visual feedback about thinking intensity
-    val indicatorColor = when (reasoningEffort) {
-        ReasoningEffort.NONE -> MaterialTheme.colorScheme.onSurfaceVariant
-        ReasoningEffort.LOW -> MaterialTheme.colorScheme.tertiary
-        ReasoningEffort.MEDIUM -> MaterialTheme.colorScheme.secondary
-        ReasoningEffort.HIGH -> MaterialTheme.colorScheme.primary
-        ReasoningEffort.XHIGH -> MaterialTheme.colorScheme.error
-        ReasoningEffort.MAX -> MaterialTheme.colorScheme.error
-    }
-
-    // Indicator size varies slightly based on effort (more effort = slightly larger)
-    val indicatorSize = when (reasoningEffort) {
-        ReasoningEffort.NONE -> 20.dp
-        ReasoningEffort.LOW -> 22.dp
-        ReasoningEffort.MEDIUM -> 24.dp
-        ReasoningEffort.HIGH -> 26.dp
-        ReasoningEffort.XHIGH -> 28.dp
-        ReasoningEffort.MAX -> 30.dp
-    }
-
-    // M3 Expressive spring-based alpha transitions
-    val iconAlpha by animateFloatAsState(
-        targetValue = if (isStreaming) 0f else 1f,
-        animationSpec = ExpressiveMotion.Effects.alpha(),
-        label = "iconAlpha"
-    )
-
-    val shapeAlpha by animateFloatAsState(
-        targetValue = if (isStreaming) 1f else 0f,
-        animationSpec = ExpressiveMotion.Effects.alpha(),
-        label = "shapeAlpha"
-    )
-
-    // M3 Expressive scale animation for icon/shape transitions (spatial spring with bounce)
-    val iconScale by animateFloatAsState(
-        targetValue = if (isStreaming) 0.6f else 1f,
-        animationSpec = ExpressiveMotion.Spatial.scale(),
-        label = "iconScale"
-    )
-
-    val shapeScale by animateFloatAsState(
-        targetValue = if (isStreaming) 1f else 0.6f,
-        animationSpec = ExpressiveMotion.Spatial.default(),
-        label = "shapeScale"
-    )
-
-    // Press scale + shape family animation (Spatial spring - with bounce)
-    val pressScale by animateFloatAsState(
-        targetValue = if (isPressed) 0.92f else 1f,
-        animationSpec = ExpressiveMotion.Spatial.scale(),
-        label = "pressScale"
-    )
-    val buttonShape = expressiveControlShape(
-        token = when {
-            isStreaming -> ExpressiveShapeToken.Flower
-            canSend -> ExpressiveShapeToken.SoftBurst
-            else -> ExpressiveShapeToken.Cookie
-        },
-        pressed = isPressed,
-        startAngle = when {
-            isStreaming -> 12
-            canSend -> 18
-            else -> 45
-        }
-    )
-
-    // Accessibility description
-    val semanticsDescription = when {
-        isStreaming -> "Loading, tap to stop"
-        canSend -> "Send message"
-        else -> "Send message, disabled"
-    }
-
-    // Apply press scale
-    val combinedScale = pressScale
-
-    Surface(
-        onClick = {
-            if (isStreaming) {
-                onCancel()
-            } else if (canSend) {
-                onSend()
-            }
-        },
-        modifier = modifier
-            .size(size)
-            .graphicsLayer {
-                scaleX = combinedScale
-                scaleY = combinedScale
-            }
-            .semantics { contentDescription = semanticsDescription },
-        shape = buttonShape,
-        color = containerColor,
-        enabled = canSend || isStreaming,
-        interactionSource = interactionSource
-    ) {
-        // Use Box with fixed size for consistent centering
-        Box(
-            contentAlignment = Alignment.Center,
-            modifier = Modifier.fillMaxSize()
-        ) {
-            // Both icon and shape use graphicsLayer for transforms - no layout changes
-            // This ensures perfectly smooth M3 Expressive spring transitions
-
-            // Official M3 Expressive LoadingIndicator (visible when streaming)
-            // Color and size change based on reasoning effort level
-            @OptIn(ExperimentalMaterial3ExpressiveApi::class)
-            Box(
-                modifier = Modifier
-                    .size(indicatorSize)
-                    .graphicsLayer {
-                        alpha = shapeAlpha
-                        scaleX = shapeScale
-                        scaleY = shapeScale
-                    },
-                contentAlignment = Alignment.Center
-            ) {
-                LoadingIndicator(
-                    modifier = Modifier.fillMaxSize(),
-                    color = indicatorColor
-                )
-            }
-
-            // Send icon (visible when not streaming)
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.Send,
-                contentDescription = null,
-                tint = contentColor,
-                modifier = Modifier
-                    .size(24.dp)
-                    .graphicsLayer {
-                        alpha = iconAlpha
-                        scaleX = iconScale
-                        scaleY = iconScale
-                    }
-            )
-        }
-    }
-}
-
-/**
- * Calculate morph parameters for the shape animation.
- * Progress goes through: soft-burst → pentagon → hexagon → circle → soft-burst
- */
-private fun calculateMorphParams(progress: Float): Pair<Float, Float> {
-    return when {
-        progress < 1f -> {
-            // Soft-burst (10 points, star) → Pentagon (5 points, solid)
-            val t = progress
-            val points = lerp(10f, 5f, t)
-            val innerRatio = lerp(0.55f, 1f, t)
-            Pair(points, innerRatio)
-        }
-        progress < 2f -> {
-            // Pentagon → Hexagon
-            val t = progress - 1f
-            val points = lerp(5f, 6f, t)
-            Pair(points, 1f)
-        }
-        progress < 3f -> {
-            // Hexagon → Circle (many points)
-            val t = progress - 2f
-            val points = lerp(6f, 24f, t)
-            Pair(points, 1f)
-        }
-        else -> {
-            // Circle → Soft-burst
-            val t = progress - 3f
-            val points = lerp(24f, 10f, t)
-            val innerRatio = lerp(1f, 0.55f, t)
-            Pair(points, innerRatio)
-        }
-    }
-}
-
-/**
- * Draws a filled morphing shape with smooth M3 Expressive cubic bezier curves.
- * Uses high smoothing factors for soft, rounded corners as per M3 design guidelines.
- */
-private fun DrawScope.drawMorphingShapeFilled(
-    centerX: Float,
-    centerY: Float,
-    outerRadius: Float,
-    innerRadiusRatio: Float,
-    points: Int,
-    color: Color
-) {
-    val path = Path()
-    val innerRadius = outerRadius * innerRadiusRatio
-
-    val isStarShape = innerRadiusRatio < 0.99f
-    val totalPoints = if (isStarShape) points * 2 else points
-    val angleStep = (2 * PI / totalPoints).toFloat()
-
-    // Calculate all vertex positions
-    val vertices = mutableListOf<Pair<Float, Float>>()
-    for (i in 0 until totalPoints) {
-        val angle = (i * angleStep) - (PI / 2).toFloat()
-        val r = if (isStarShape && i % 2 == 1) innerRadius else outerRadius
-        val x = centerX + r * cos(angle)
-        val y = centerY + r * sin(angle)
-        vertices.add(Pair(x, y))
-    }
-
-    // M3 Expressive: Use high smoothing for soft, rounded corners
-    // Higher values = rounder, softer shapes (0.75-0.85 is ideal for M3)
-    val smoothing = if (isStarShape) 0.75f else 0.8f
-
-    // Calculate midpoints for smooth curve starting
-    val firstMidX = (vertices[0].first + vertices[1].first) / 2
-    val firstMidY = (vertices[0].second + vertices[1].second) / 2
-    path.moveTo(firstMidX, firstMidY)
-
-    // Draw smooth curves using cubic bezier for M3 Expressive soft curves
-    for (i in vertices.indices) {
-        val current = vertices[(i + 1) % vertices.size]
-        val next = vertices[(i + 2) % vertices.size]
-
-        // Current midpoint (where we are)
-        val currentMidX = (vertices[i].first + current.first) / 2
-        val currentMidY = (vertices[i].second + current.second) / 2
-
-        // Next midpoint (where we're going)
-        val nextMidX = (current.first + next.first) / 2
-        val nextMidY = (current.second + next.second) / 2
-
-        // Control points - lerp between midpoint and vertex for smoothness
-        val cp1x = lerp(currentMidX, current.first, smoothing)
-        val cp1y = lerp(currentMidY, current.second, smoothing)
-        val cp2x = lerp(nextMidX, current.first, smoothing)
-        val cp2y = lerp(nextMidY, current.second, smoothing)
-
-        path.cubicTo(cp1x, cp1y, cp2x, cp2y, nextMidX, nextMidY)
-    }
-
-    path.close()
-    drawPath(path = path, color = color)
-}
-
