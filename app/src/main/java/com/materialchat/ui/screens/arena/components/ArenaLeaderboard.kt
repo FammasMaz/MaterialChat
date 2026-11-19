@@ -1,8 +1,6 @@
 package com.materialchat.ui.screens.arena.components
 
 import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.spring
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -15,7 +13,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.EmojiEvents
@@ -44,6 +41,8 @@ import com.materialchat.ui.components.ExpressiveFilledIconButton
 import com.materialchat.ui.components.ExpressiveTopBarTitle
 import com.materialchat.ui.components.HapticPattern
 import com.materialchat.ui.components.rememberHapticFeedback
+import com.materialchat.ui.theme.ExpressiveMotion
+import com.materialchat.ui.theme.ExpressiveShapes
 
 /**
  * Leaderboard screen showing all model ELO ratings ranked.
@@ -132,22 +131,11 @@ fun ArenaLeaderboard(
                         rating = rating,
                         modifier = Modifier
                             .animateItem(
-                                fadeInSpec = spring(
-                                    dampingRatio = Spring.DampingRatioNoBouncy,
-                                    stiffness = Spring.StiffnessMediumLow
-                                ),
-                                fadeOutSpec = spring(
-                                    dampingRatio = Spring.DampingRatioNoBouncy,
-                                    stiffness = Spring.StiffnessMediumLow
-                                )
+                                fadeInSpec = ExpressiveMotion.ListItem.FadeIn,
+                                fadeOutSpec = ExpressiveMotion.ListItem.FadeOut
                             )
                             .fillMaxWidth()
-                            .animateContentSize(
-                                animationSpec = spring(
-                                    dampingRatio = 0.7f,
-                                    stiffness = 300f
-                                )
-                            )
+                            .animateContentSize(animationSpec = ExpressiveMotion.Spatial.contentSize())
                     )
                 }
             }
@@ -175,7 +163,7 @@ private fun LeaderboardItem(
     }
 
     Surface(
-        shape = RoundedCornerShape(28.dp),
+        shape = ExpressiveShapes.Card,
         color = containerColor,
         contentColor = contentColor,
         modifier = modifier
@@ -188,7 +176,7 @@ private fun LeaderboardItem(
         ) {
             // Rank badge
             Surface(
-                shape = RoundedCornerShape(16.dp),
+                shape = ExpressiveShapes.MenuSelection,
                 color = contentColor.copy(alpha = 0.15f),
                 modifier = Modifier
             ) {

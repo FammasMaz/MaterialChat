@@ -15,6 +15,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.materialchat.ui.theme.ExpressiveShapes
 
 /**
  * A Material 3 Expressive stat card for displaying a single metric.
@@ -47,7 +48,7 @@ fun StatCard(
     )
 
     Surface(
-        shape = RoundedCornerShape(24.dp),
+        shape = ExpressiveShapes.Card,
         color = MaterialTheme.colorScheme.surfaceContainerHigh,
         modifier = modifier
     ) {

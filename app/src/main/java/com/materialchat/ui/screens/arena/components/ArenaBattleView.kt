@@ -24,7 +24,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -46,6 +45,7 @@ import com.materialchat.ui.screens.arena.ContenderUi
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlin.random.Random
+import com.materialchat.ui.theme.ExpressiveShapes
 
 /**
  * Blind N-model battle pager: one full-screen card per contender, swipeable.
@@ -135,7 +135,7 @@ private fun BattleCard(
     accentOnContainer: androidx.compose.ui.graphics.Color
 ) {
     Surface(
-        shape = RoundedCornerShape(24.dp),
+        shape = ExpressiveShapes.Card,
         color = accentContainer,
         contentColor = accentOnContainer,
         tonalElevation = 0.dp,

@@ -1,8 +1,6 @@
 package com.materialchat.ui.screens.workflows
 
 import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.spring
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -53,6 +51,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.materialchat.domain.model.WorkflowStatus
 import com.materialchat.ui.components.ExpressiveContentSurface
+import com.materialchat.ui.components.dialogEntrance
 import com.materialchat.ui.components.ExpressiveFilledIconButton
 import com.materialchat.ui.components.ExpressiveTopBarTitle
 import com.materialchat.ui.components.HapticPattern
@@ -61,6 +60,7 @@ import com.materialchat.ui.components.MarkdownText
 import com.materialchat.ui.screens.workflows.components.StepProgressIndicator
 import com.materialchat.ui.screens.workflows.components.StepResultCard
 import com.materialchat.ui.theme.ExpressiveMotion
+import com.materialchat.ui.theme.ExpressiveShapes
 
 /**
  * Workflow Execution screen.
@@ -170,7 +170,8 @@ private fun WorkflowInputDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        shape = RoundedCornerShape(24.dp),
+        modifier = Modifier.dialogEntrance(),
+        shape = ExpressiveShapes.Dialog,
         containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
         title = {
             Text(
@@ -197,7 +198,7 @@ private fun WorkflowInputDialog(
                     minLines = 3,
                     maxLines = 6,
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(16.dp),
+                    shape = ExpressiveShapes.MenuSelection,
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = MaterialTheme.colorScheme.primary,
                         unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
@@ -308,20 +309,10 @@ private fun ExecutionContent(
     val execution = uiState.execution ?: return
     val completedSteps = execution.stepResults.keys
 
-    // Shared spring specs — without this, every item rebuilt two SpringSpec
-    // instances on each recomposition during streaming.
-    val itemFadeIn = remember {
-        spring<Float>(
-            dampingRatio = Spring.DampingRatioNoBouncy,
-            stiffness = Spring.StiffnessMediumLow
-        )
-    }
-    val itemFadeOut = remember {
-        spring<Float>(
-            dampingRatio = Spring.DampingRatioNoBouncy,
-            stiffness = Spring.StiffnessMediumLow
-        )
-    }
+    // Shared list-item fade physics: the theme's ListItem tokens are singletons, so no
+    // SpringSpec is rebuilt per item on streaming recompositions.
+    val itemFadeIn = ExpressiveMotion.ListItem.FadeIn
+    val itemFadeOut = ExpressiveMotion.ListItem.FadeOut
 
     // Cache the sorted view so streaming recompositions don't re-sort every frame.
     val sortedStepResults = remember(execution.stepResults) {
@@ -345,14 +336,8 @@ private fun ExecutionContent(
                 currentStep = execution.currentStepIndex,
                 completedSteps = completedSteps,
                 modifier = Modifier.animateItem(
-                    fadeInSpec = spring(
-                        dampingRatio = Spring.DampingRatioNoBouncy,
-                        stiffness = Spring.StiffnessMediumLow
-                    ),
-                    fadeOutSpec = spring(
-                        dampingRatio = Spring.DampingRatioNoBouncy,
-                        stiffness = Spring.StiffnessMediumLow
-                    )
+                    fadeInSpec = ExpressiveMotion.ListItem.FadeIn,
+                    fadeOutSpec = ExpressiveMotion.ListItem.FadeOut
                 )
             )
         }
@@ -362,14 +347,8 @@ private fun ExecutionContent(
             WorkflowStatus.COMPLETED -> {
                 item(key = "status_completed") {
                     Box(modifier = Modifier.animateItem(
-                        fadeInSpec = spring(
-                            dampingRatio = Spring.DampingRatioNoBouncy,
-                            stiffness = Spring.StiffnessMediumLow
-                        ),
-                        fadeOutSpec = spring(
-                            dampingRatio = Spring.DampingRatioNoBouncy,
-                            stiffness = Spring.StiffnessMediumLow
-                        )
+                        fadeInSpec = ExpressiveMotion.ListItem.FadeIn,
+                        fadeOutSpec = ExpressiveMotion.ListItem.FadeOut
                     )) {
                         StatusBanner(
                             text = "Workflow completed",
@@ -382,14 +361,8 @@ private fun ExecutionContent(
             WorkflowStatus.FAILED -> {
                 item(key = "status_failed") {
                     Box(modifier = Modifier.animateItem(
-                        fadeInSpec = spring(
-                            dampingRatio = Spring.DampingRatioNoBouncy,
-                            stiffness = Spring.StiffnessMediumLow
-                        ),
-                        fadeOutSpec = spring(
-                            dampingRatio = Spring.DampingRatioNoBouncy,
-                            stiffness = Spring.StiffnessMediumLow
-                        )
+                        fadeInSpec = ExpressiveMotion.ListItem.FadeIn,
+                        fadeOutSpec = ExpressiveMotion.ListItem.FadeOut
                     )) {
                         StatusBanner(
                             text = "Failed: ${execution.error ?: "Unknown error"}",
@@ -402,14 +375,8 @@ private fun ExecutionContent(
             WorkflowStatus.CANCELLED -> {
                 item(key = "status_cancelled") {
                     Box(modifier = Modifier.animateItem(
-                        fadeInSpec = spring(
-                            dampingRatio = Spring.DampingRatioNoBouncy,
-                            stiffness = Spring.StiffnessMediumLow
-                        ),
-                        fadeOutSpec = spring(
-                            dampingRatio = Spring.DampingRatioNoBouncy,
-                            stiffness = Spring.StiffnessMediumLow
-                        )
+                        fadeInSpec = ExpressiveMotion.ListItem.FadeIn,
+                        fadeOutSpec = ExpressiveMotion.ListItem.FadeOut
                     )) {
                         StatusBanner(
                             text = "Workflow cancelled",
@@ -430,14 +397,8 @@ private fun ExecutionContent(
                     stepNumber = stepIndex + 1,
                     content = content,
                     modifier = Modifier.animateItem(
-                        fadeInSpec = spring(
-                            dampingRatio = Spring.DampingRatioNoBouncy,
-                            stiffness = Spring.StiffnessMediumLow
-                        ),
-                        fadeOutSpec = spring(
-                            dampingRatio = Spring.DampingRatioNoBouncy,
-                            stiffness = Spring.StiffnessMediumLow
-                        )
+                        fadeInSpec = ExpressiveMotion.ListItem.FadeIn,
+                        fadeOutSpec = ExpressiveMotion.ListItem.FadeOut
                     ),
                     initiallyExpanded = stepIndex == sortedStepResults.keys.last()
                 )
@@ -450,14 +411,8 @@ private fun ExecutionContent(
         ) {
             item(key = "streaming") {
                 Box(modifier = Modifier.animateItem(
-                    fadeInSpec = spring(
-                        dampingRatio = Spring.DampingRatioNoBouncy,
-                        stiffness = Spring.StiffnessMediumLow
-                    ),
-                    fadeOutSpec = spring(
-                        dampingRatio = Spring.DampingRatioNoBouncy,
-                        stiffness = Spring.StiffnessMediumLow
-                    )
+                    fadeInSpec = ExpressiveMotion.ListItem.FadeIn,
+                    fadeOutSpec = ExpressiveMotion.ListItem.FadeOut
                 )) {
                     CurrentStepStreamingCard(
                         stepNumber = execution.currentStepIndex + 1,
@@ -473,14 +428,8 @@ private fun ExecutionContent(
         ) {
             item(key = "loading_step") {
                 Box(modifier = Modifier.animateItem(
-                    fadeInSpec = spring(
-                        dampingRatio = Spring.DampingRatioNoBouncy,
-                        stiffness = Spring.StiffnessMediumLow
-                    ),
-                    fadeOutSpec = spring(
-                        dampingRatio = Spring.DampingRatioNoBouncy,
-                        stiffness = Spring.StiffnessMediumLow
-                    )
+                    fadeInSpec = ExpressiveMotion.ListItem.FadeIn,
+                    fadeOutSpec = ExpressiveMotion.ListItem.FadeOut
                 )) {
                     CurrentStepLoadingCard(
                         stepNumber = execution.currentStepIndex + 1
@@ -502,7 +451,7 @@ private fun StatusBanner(
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(18.dp),
+        shape = ExpressiveShapes.Tile,
         color = containerColor
     ) {
         Text(
@@ -527,7 +476,7 @@ private fun CurrentStepStreamingCard(
         modifier = Modifier
             .fillMaxWidth()
             .animateContentSize(animationSpec = ExpressiveMotion.Spatial.container()),
-        shape = RoundedCornerShape(20.dp),
+        shape = ExpressiveShapes.DisclosurePanel,
         color = MaterialTheme.colorScheme.surfaceContainerHigh,
         tonalElevation = 1.dp
     ) {
@@ -581,7 +530,7 @@ private fun CurrentStepStreamingCard(
 private fun CurrentStepLoadingCard(stepNumber: Int) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp),
+        shape = ExpressiveShapes.DisclosurePanel,
         color = MaterialTheme.colorScheme.surfaceContainerHigh,
         tonalElevation = 1.dp
     ) {

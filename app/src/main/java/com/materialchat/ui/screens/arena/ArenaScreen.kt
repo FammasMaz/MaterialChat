@@ -2,7 +2,6 @@ package com.materialchat.ui.screens.arena
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.core.spring
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
@@ -17,7 +16,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -56,6 +54,8 @@ import com.materialchat.ui.components.ExpressiveFilledIconButton
 import com.materialchat.ui.components.ExpressiveTopBarTitle
 import com.materialchat.ui.components.HapticPattern
 import com.materialchat.ui.components.rememberHapticFeedback
+import com.materialchat.ui.theme.ExpressiveMotion
+import com.materialchat.ui.theme.ExpressiveShapes
 
 /**
  * Main Arena screen composable.
@@ -145,12 +145,7 @@ fun ArenaScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(top = innerPadding.calculateTopPadding()),
-            shape = RoundedCornerShape(
-                topStart = 28.dp,
-                topEnd = 28.dp,
-                bottomStart = 0.dp,
-                bottomEnd = 0.dp
-            ),
+            shape = ExpressiveShapes.ScreenContainer,
             color = MaterialTheme.colorScheme.surfaceContainerLow
         ) {
         when (val state = uiState) {
@@ -228,12 +223,7 @@ private fun ArenaReadyContent(
             .imePadding()
             .padding(horizontal = 16.dp)
             .verticalScroll(rememberScrollState())
-            .animateContentSize(
-                animationSpec = spring(
-                    dampingRatio = 0.7f,
-                    stiffness = 300f
-                )
-            ),
+            .animateContentSize(animationSpec = ExpressiveMotion.Spatial.contentSize()),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Spacer(modifier = Modifier.height(4.dp))
@@ -263,10 +253,8 @@ private fun ArenaReadyContent(
         // Battle view (visible when battle has started)
         AnimatedVisibility(
             visible = state.battleId != null || state.isBattleRunning,
-            enter = fadeIn(
-                animationSpec = spring(dampingRatio = 1.0f, stiffness = 300f)
-            ) + slideInVertically(
-                animationSpec = spring(dampingRatio = 0.7f, stiffness = 300f),
+            enter = fadeIn(animationSpec = ExpressiveMotion.Effects.reveal()) + slideInVertically(
+                animationSpec = ExpressiveMotion.Spatial.container(),
                 initialOffsetY = { it / 4 }
             ),
             exit = fadeOut() + slideOutVertically()
@@ -282,10 +270,8 @@ private fun ArenaReadyContent(
         // Voting bar (visible when battle is complete and not yet voted)
         AnimatedVisibility(
             visible = state.isBattleComplete,
-            enter = fadeIn(
-                animationSpec = spring(dampingRatio = 1.0f, stiffness = 300f)
-            ) + slideInVertically(
-                animationSpec = spring(dampingRatio = 0.7f, stiffness = 300f),
+            enter = fadeIn(animationSpec = ExpressiveMotion.Effects.reveal()) + slideInVertically(
+                animationSpec = ExpressiveMotion.Spatial.container(),
                 initialOffsetY = { it / 2 }
             ),
             exit = fadeOut()
@@ -300,10 +286,8 @@ private fun ArenaReadyContent(
                 // New battle button after voting
                 AnimatedVisibility(
                     visible = state.voted,
-                    enter = fadeIn(
-                        animationSpec = spring(dampingRatio = 1.0f, stiffness = 500f)
-                    ) + slideInVertically(
-                        animationSpec = spring(dampingRatio = 0.7f, stiffness = 500f),
+                    enter = fadeIn(animationSpec = ExpressiveMotion.Effects.reveal()) + slideInVertically(
+                animationSpec = ExpressiveMotion.Spatial.container(),
                         initialOffsetY = { it / 4 }
                     )
                 ) {

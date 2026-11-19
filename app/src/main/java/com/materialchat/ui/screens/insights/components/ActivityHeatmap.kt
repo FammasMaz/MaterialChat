@@ -30,6 +30,7 @@ import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
+import com.materialchat.ui.theme.ExpressiveShapes
 
 /**
  * GitHub-style activity heatmap showing daily message activity.
@@ -63,7 +64,7 @@ fun ActivityHeatmap(
     val surfaceVariant = MaterialTheme.colorScheme.surfaceContainerLowest
 
     Surface(
-        shape = RoundedCornerShape(24.dp),
+        shape = ExpressiveShapes.Card,
         color = MaterialTheme.colorScheme.surfaceContainerHigh,
         modifier = modifier
     ) {

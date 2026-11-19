@@ -4,7 +4,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.LoadingIndicator
@@ -22,6 +21,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.materialchat.ui.screens.mindmap.components.MindMapCanvas
 import com.materialchat.ui.screens.mindmap.components.MindMapTopBar
+import com.materialchat.ui.theme.ExpressiveShapes
 
 /**
  * Full-screen Mind Map (Branch Visualizer) screen.
@@ -53,12 +53,7 @@ fun MindMapScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(top = innerPadding.calculateTopPadding()),
-            shape = RoundedCornerShape(
-                topStart = 28.dp,
-                topEnd = 28.dp,
-                bottomStart = 0.dp,
-                bottomEnd = 0.dp
-            ),
+            shape = ExpressiveShapes.ScreenContainer,
             color = MaterialTheme.colorScheme.surfaceContainerLow
         ) {
             when (val state = uiState) {

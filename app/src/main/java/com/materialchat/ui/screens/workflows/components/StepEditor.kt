@@ -23,6 +23,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.materialchat.ui.theme.ExpressiveShapes
 
 /**
  * Editor row for a single workflow step.
@@ -48,7 +49,7 @@ fun StepEditor(
 ) {
     Surface(
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp),
+        shape = ExpressiveShapes.DisclosurePanel,
         color = MaterialTheme.colorScheme.surfaceContainerHigh,
         tonalElevation = 1.dp
     ) {
@@ -112,7 +113,7 @@ fun StepEditor(
                 placeholder = { Text("Enter prompt for this step...") },
                 minLines = 3,
                 maxLines = 8,
-                shape = RoundedCornerShape(16.dp),
+                shape = ExpressiveShapes.MenuSelection,
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = MaterialTheme.colorScheme.primary,
                     unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant

@@ -1,11 +1,8 @@
 package com.materialchat.ui.screens.workflows.components
 
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -31,6 +28,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.materialchat.ui.theme.ExpressiveMotion
+import com.materialchat.ui.theme.particles.rememberParticleMotionGate
 
 /**
  * Horizontal step progress indicator for workflow execution.
@@ -62,17 +60,20 @@ fun StepProgressIndicator(
     val onSurfaceVariantColor = MaterialTheme.colorScheme.onSurfaceVariant
     val outlineColor = MaterialTheme.colorScheme.outline
 
-    // Pulsing animation for the current step
-    val infiniteTransition = rememberInfiniteTransition(label = "stepPulse")
-    val pulseAlpha by infiniteTransition.animateFloat(
-        initialValue = 0.6f,
-        targetValue = 1.0f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(800),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "pulseAlpha"
-    )
+    // Pulse of the current step. Continuous, so it obeys the host motion gate like every
+    // other decoration; when motion is off the current step is drawn fully opaque.
+    val pulseAlpha = if (rememberParticleMotionGate().motionAllowed) {
+        val infiniteTransition = rememberInfiniteTransition(label = "stepPulse")
+        val pulse by infiniteTransition.animateFloat(
+            initialValue = 0.6f,
+            targetValue = 1.0f,
+            animationSpec = ExpressiveMotion.Spatial.bob(),
+            label = "pulseAlpha"
+        )
+        pulse
+    } else {
+        1f
+    }
 
     Row(
         modifier = modifier

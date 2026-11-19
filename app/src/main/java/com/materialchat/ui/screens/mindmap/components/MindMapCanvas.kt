@@ -35,6 +35,8 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.materialchat.domain.model.ConversationTreeNode
+import com.materialchat.ui.theme.MaterialChatMotion
+import com.materialchat.ui.theme.particles.rememberParticleMotionGate
 import kotlin.math.max
 
 // ---------------------------------------------------------------------------
@@ -121,17 +123,23 @@ fun MindMapCanvas(
     var tooltipNode by remember { mutableStateOf<ConversationTreeNode?>(null) }
     var tooltipOffset by remember { mutableStateOf(IntOffset.Zero) }
 
-    // Pulsing glow for current conversation node
-    val infiniteTransition = rememberInfiniteTransition(label = "currentNodePulse")
-    val glowAlpha by infiniteTransition.animateFloat(
-        initialValue = 0.3f,
-        targetValue = 0.7f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 1200, easing = LinearEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "glowAlpha"
-    )
+    // Pulsing glow for the current conversation node. Continuous, so it obeys the host motion
+    // gate like every other decoration; when motion is off the glow rests at its midpoint.
+    val glowAlpha = if (rememberParticleMotionGate().motionAllowed) {
+        val infiniteTransition = rememberInfiniteTransition(label = "currentNodePulse")
+        val pulse by infiniteTransition.animateFloat(
+            initialValue = 0.3f,
+            targetValue = 0.7f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(durationMillis = MaterialChatMotion.Durations.StreamingIndicator, easing = LinearEasing),
+                repeatMode = RepeatMode.Reverse
+            ),
+            label = "glowAlpha"
+        )
+        pulse
+    } else {
+        0.5f
+    }
 
     // M3 color tokens
     val primaryColor = MaterialTheme.colorScheme.primary
