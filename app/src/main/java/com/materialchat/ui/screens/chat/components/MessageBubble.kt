@@ -36,6 +36,7 @@ import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -107,6 +108,7 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
@@ -585,7 +587,12 @@ fun MessageBubble(
             }
 
             // Action buttons, model label, and sibling navigation (below the bubble)
-            if (isAssistant && !message.isStreaming && (displayContent.isNotEmpty() || message.hasAttachments)) {
+            // A reply that holds anything (content, attachments, or only the thinking a Stop
+            // left behind) and is not errored gets the action row; an errored reply gets the
+            // Try again control below instead (isErroredReply, W8 chat part 4).
+            if (isAssistant && !message.isStreaming && !messageItem.isErrored &&
+                (displayContent.isNotEmpty() || message.hasAttachments || !displayThinkingContent.isNullOrEmpty())
+            ) {
                 Spacer(modifier = Modifier.height(4.dp))
 
                 // Sibling navigation row (model label + arrows)
@@ -1736,7 +1743,10 @@ private fun RetryButton(onRetry: () -> Unit) {
 
 /**
  * Inline editing content for user messages.
- * Shows a text field with Cancel and Save & Submit buttons.
+ * Shows a text field with Cancel and Save & Submit buttons. The row never wraps: when the two
+ * labelled buttons would not fit the bubble's content width (font scale 1.3 on a 360dp
+ * screen), the submit label shortens to [EditRowCopy.SAVE_SHORT] — orchestrator ruling, W8
+ * chat part 3, decided by [editRowSaveLabel] from the measured label widths.
  */
 @Composable
 private fun EditingContent(
@@ -1772,14 +1782,32 @@ private fun EditingContent(
             }
         )
         Spacer(modifier = Modifier.height(8.dp))
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.End,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            ExpressiveButton(onClick = { onCancelEdit() }, text = "Cancel", style = ExpressiveButtonStyle.Text)
-            Spacer(modifier = Modifier.size(8.dp))
-            ExpressiveButton(onClick = { onSubmitEdit() }, text = "Save & Submit", style = ExpressiveButtonStyle.FilledTonal)
+        val textMeasurer = rememberTextMeasurer()
+        val labelStyle = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold)
+        val density = LocalDensity.current
+        BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+            // Measured from the style ButtonContent draws (labelLarge Bold, at the current font
+            // scale), like the assistant toolbar measures its chip label.
+            val cancelLabelWidth = with(density) {
+                textMeasurer.measure(EditRowCopy.CANCEL, labelStyle, maxLines = 1).size.width.toDp()
+            }
+            val fullSaveLabelWidth = with(density) {
+                textMeasurer.measure(EditRowCopy.SAVE_FULL, labelStyle, maxLines = 1).size.width.toDp()
+            }
+            val saveLabel = editRowSaveLabel(
+                rowWidth = maxWidth,
+                cancelLabelWidth = cancelLabelWidth,
+                fullSaveLabelWidth = fullSaveLabelWidth
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                ExpressiveButton(onClick = { onCancelEdit() }, text = EditRowCopy.CANCEL, style = ExpressiveButtonStyle.Text)
+                Spacer(modifier = Modifier.size(EditRowGap))
+                ExpressiveButton(onClick = { onSubmitEdit() }, text = saveLabel, style = ExpressiveButtonStyle.FilledTonal)
+            }
         }
     }
 }
