@@ -99,6 +99,7 @@ import com.materialchat.ui.components.rememberHapticFeedback
 import com.materialchat.ui.navigation.LocalAnimatedVisibilityScope
 import com.materialchat.ui.navigation.LocalSharedTransitionScope
 import com.materialchat.ui.navigation.SHARED_ELEMENT_FAB_TO_INPUT
+import com.materialchat.ui.theme.CustomShapes
 import com.materialchat.ui.theme.ExpressiveMotion
 import com.materialchat.ui.theme.ExpressiveShapeToken
 import com.materialchat.ui.theme.LocalChatButtonShape
@@ -377,7 +378,7 @@ fun MessageInput(
                         ) {
                             if (inputText.isEmpty()) {
                                 Text(
-                                    text = "Ask anything...",
+                                    text = "Ask anything",
                                     style = MaterialTheme.typography.bodyLarge,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -596,7 +597,7 @@ private fun ImageActionPill(
     containerColor: androidx.compose.ui.graphics.Color,
     contentColor: androidx.compose.ui.graphics.Color,
     onClick: () -> Unit,
-    restingShape: Shape = RoundedCornerShape(999.dp)
+    restingShape: Shape = CustomShapes.Pill
 ) {
     val haptics = rememberHapticFeedback()
     val interactionSource = remember { MutableInteractionSource() }
@@ -741,14 +742,19 @@ private fun ReasoningEffortSelector(
         animationSpec = ExpressiveMotion.Press.Scale,
         label = "reasoningButtonScale"
     )
-    // M3 Expressive: Container color reflects reasoning effort intensity
-    val baseContainerColor = when (selectedEffort) {
-        ReasoningEffort.NONE -> MaterialTheme.colorScheme.surfaceContainerHigh
-        ReasoningEffort.LOW -> MaterialTheme.colorScheme.tertiaryContainer
-        ReasoningEffort.MEDIUM -> MaterialTheme.colorScheme.secondaryContainer
-        ReasoningEffort.HIGH -> MaterialTheme.colorScheme.primaryContainer
-        ReasoningEffort.XHIGH -> MaterialTheme.colorScheme.primaryContainer
-        ReasoningEffort.MAX -> MaterialTheme.colorScheme.primaryContainer
+    // M3 Expressive: Container color reflects reasoning effort intensity. While the selector
+    // is disabled (a reply is streaming) it drops to the same neutral fill as the plus button,
+    // so the stop button is the only accented control in the composer row (ChatContrastTest).
+    val baseContainerColor = when {
+        !enabled -> MaterialTheme.colorScheme.surfaceContainerHigh
+        else -> when (selectedEffort) {
+            ReasoningEffort.NONE -> MaterialTheme.colorScheme.surfaceContainerHigh
+            ReasoningEffort.LOW -> MaterialTheme.colorScheme.tertiaryContainer
+            ReasoningEffort.MEDIUM -> MaterialTheme.colorScheme.secondaryContainer
+            ReasoningEffort.HIGH -> MaterialTheme.colorScheme.primaryContainer
+            ReasoningEffort.XHIGH -> MaterialTheme.colorScheme.primaryContainer
+            ReasoningEffort.MAX -> MaterialTheme.colorScheme.primaryContainer
+        }
     }
     val containerColor by animateColorAsState(
         targetValue = if (isPressed) {
@@ -760,13 +766,16 @@ private fun ReasoningEffortSelector(
         label = "reasoningButtonColor"
     )
     // Content color matches container style
-    val contentColor = when (selectedEffort) {
-        ReasoningEffort.NONE -> MaterialTheme.colorScheme.onSurfaceVariant
-        ReasoningEffort.LOW -> MaterialTheme.colorScheme.onTertiaryContainer
-        ReasoningEffort.MEDIUM -> MaterialTheme.colorScheme.onSecondaryContainer
-        ReasoningEffort.HIGH -> MaterialTheme.colorScheme.onPrimaryContainer
-        ReasoningEffort.XHIGH -> MaterialTheme.colorScheme.onPrimaryContainer
-        ReasoningEffort.MAX -> MaterialTheme.colorScheme.onPrimaryContainer
+    val contentColor = when {
+        !enabled -> MaterialTheme.colorScheme.onSurfaceVariant
+        else -> when (selectedEffort) {
+            ReasoningEffort.NONE -> MaterialTheme.colorScheme.onSurfaceVariant
+            ReasoningEffort.LOW -> MaterialTheme.colorScheme.onTertiaryContainer
+            ReasoningEffort.MEDIUM -> MaterialTheme.colorScheme.onSecondaryContainer
+            ReasoningEffort.HIGH -> MaterialTheme.colorScheme.onPrimaryContainer
+            ReasoningEffort.XHIGH -> MaterialTheme.colorScheme.onPrimaryContainer
+            ReasoningEffort.MAX -> MaterialTheme.colorScheme.onPrimaryContainer
+        }
     }
 
     Box(modifier = modifier) {
@@ -881,7 +890,7 @@ private fun ReasoningOptionPill(
     // M3 Expressive: Use tonal differentiation without shadows
     Surface(
         onClick = { haptics.perform(HapticPattern.CLICK); onClick() },
-        shape = RoundedCornerShape(999.dp),
+        shape = CustomShapes.Pill,
         color = containerColor,
         contentColor = contentColor,
         modifier = modifier

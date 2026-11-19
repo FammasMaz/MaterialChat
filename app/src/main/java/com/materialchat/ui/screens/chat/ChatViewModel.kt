@@ -327,7 +327,7 @@ class ChatViewModel @Inject constructor(
                             val base = latest ?: ChatUiState.Success(
                                 conversationId = observedId,
                                 conversationTitle = conversation.title,
-                                providerName = "Unknown Provider",
+                                providerName = "Unknown provider",
                                 modelName = conversation.modelName,
                                 messages = emptyList(),
                                 hapticsEnabled = currentHapticsEnabled,
@@ -347,7 +347,7 @@ class ChatViewModel @Inject constructor(
                                 isEphemeral = conversation.isEphemeral,
                                 isArchived = conversation.isArchived,
                                 providerName = providers.find { it.id == conversation.providerId }?.name
-                                    ?: "Unknown Provider",
+                                    ?: "Unknown provider",
                                 messages = messageItems,
                                 availableModels = if (modelsMatchProvider) base.availableModels else emptyList(),
                                 isLoadingModels = modelsMatchProvider && base.isLoadingModels,

@@ -300,7 +300,7 @@ fun ChatTopBar(
                         )
                         if (hasBranches) {
                             DropdownMenuItem(
-                                text = { Text("Mind Map") },
+                                text = { Text("Mind map") },
                                 onClick = {
                                     haptics.perform(HapticPattern.CLICK)
                                     showMenu = false

@@ -1,7 +1,8 @@
 package com.materialchat.ui.screens.chat.components
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -27,11 +28,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -41,7 +38,9 @@ import androidx.compose.ui.unit.dp
 import com.materialchat.domain.model.FusionIndividualResponse
 import com.materialchat.domain.model.FusionResult
 import com.materialchat.ui.theme.ExpressiveMotion
-import kotlinx.coroutines.delay
+import com.materialchat.ui.theme.ExpressiveShapes
+import com.materialchat.ui.theme.MaterialChatMotion
+import com.materialchat.ui.theme.particles.rememberParticleMotionGate
 
 /**
  * Real-time fusion progress view showing parallel model streams.
@@ -60,6 +59,7 @@ fun FusionProgressView(
     isFusionRunning: Boolean,
     modifier: Modifier = Modifier
 ) {
+    val palette = rememberChatSurfacePalette()
     AnimatedVisibility(
         visible = isFusionRunning,
         enter = expandVertically(
@@ -77,8 +77,8 @@ fun FusionProgressView(
             modifier = modifier
                 .fillMaxWidth()
                 .padding(horizontal = 8.dp, vertical = 4.dp),
-            shape = RoundedCornerShape(24.dp),
-            color = MaterialTheme.colorScheme.surfaceContainerHigh
+            shape = ExpressiveShapes.Card,
+            color = palette.fusionPanel.fill
         ) {
             Column(
                 modifier = Modifier
@@ -101,13 +101,13 @@ fun FusionProgressView(
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
                             text = when {
-                                fusionResult?.isSynthesizing == true -> "Synthesizing best response..."
-                                fusionResult?.individualResponses?.any { it.isStreaming } == true -> "Querying models in parallel..."
+                                fusionResult?.isSynthesizing == true -> "Synthesizing best response\u2026"
+                                fusionResult?.individualResponses?.any { it.isStreaming } == true -> "Querying models in parallel\u2026"
                                 fusionResult?.individualResponses?.isNotEmpty() == true -> "All models responded"
-                                else -> "Starting fusion..."
+                                else -> "Starting fusion\u2026"
                             },
                             style = MaterialTheme.typography.titleSmall,
-                            color = MaterialTheme.colorScheme.tertiary,
+                            color = palette.fusionPanelAccent,
                             fontWeight = FontWeight.SemiBold
                         )
 
@@ -117,7 +117,7 @@ fun FusionProgressView(
                             Text(
                                 text = "$completedCount / $totalCount models complete",
                                 style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                color = palette.fusionPanelMuted
                             )
                         }
                     }
@@ -160,7 +160,7 @@ fun FusionProgressView(
                         Text(
                             text = fusionResult.synthesizedResponse,
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurface,
+                            color = palette.fusionPanel.content,
                             maxLines = 6,
                             overflow = TextOverflow.Ellipsis
                         )
@@ -181,36 +181,30 @@ private fun FusionModelCard(
     response: FusionIndividualResponse,
     modifier: Modifier = Modifier
 ) {
-    // Pulsing alpha for streaming indicator
-    val pulseAlpha = if (response.isStreaming) {
-        var alpha by remember { mutableFloatStateOf(1f) }
-        LaunchedEffect(Unit) {
-            while (true) {
-                alpha = 0.4f
-                delay(500)
-                alpha = 1f
-                delay(500)
-            }
-        }
-        alpha
+    val palette = rememberChatSurfacePalette()
+    val card = if (response.isStreaming) palette.fusionCardStreaming else palette.fusionCardDone
+    val accent = if (response.isStreaming) palette.fusionCardStreamingAccent else palette.fusionCardDoneAccent
+
+    // The streaming dot breathes on the shared bob spec (half period = Durations.Long) and only
+    // while the decoration motion gate allows continuous animation; otherwise it holds solid.
+    val motionGate = rememberParticleMotionGate()
+    val pulseAlpha = if (response.isStreaming && motionGate.motionAllowed) {
+        val transition = rememberInfiniteTransition(label = "fusionCardPulse")
+        val animated by transition.animateFloat(
+            initialValue = 1f,
+            targetValue = 0.4f,
+            animationSpec = ExpressiveMotion.Spatial.bob(MaterialChatMotion.Durations.Long),
+            label = "fusionCardPulseAlpha"
+        )
+        animated
     } else {
         1f
     }
 
-    val animatedAlpha by animateFloatAsState(
-        targetValue = pulseAlpha,
-        animationSpec = ExpressiveMotion.Effects.alpha(),
-        label = "modelCardPulse"
-    )
-
     Surface(
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        color = if (response.isStreaming) {
-            MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.25f)
-        } else {
-            MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.5f)
-        }
+        shape = ExpressiveShapes.ContentBlock,
+        color = card.fill
     ) {
         Row(
             modifier = Modifier.padding(10.dp),
@@ -221,12 +215,8 @@ private fun FusionModelCard(
                 modifier = Modifier
                     .padding(top = 5.dp)
                     .size(8.dp)
-                    .alpha(if (response.isStreaming) animatedAlpha else 1f)
-                    .background(
-                        color = if (response.isStreaming) MaterialTheme.colorScheme.tertiary
-                        else MaterialTheme.colorScheme.primary,
-                        shape = CircleShape
-                    )
+                    .alpha(pulseAlpha)
+                    .background(color = accent, shape = CircleShape)
             )
 
             Spacer(modifier = Modifier.width(10.dp))
@@ -264,13 +254,13 @@ private fun FusionModelCard(
                         Text(
                             text = formatDuration(response.durationMs),
                             style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = card.content
                         )
                     } else if (response.isStreaming && response.content.isNotEmpty()) {
                         Text(
-                            text = "streaming...",
+                            text = "Streaming\u2026",
                             style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.tertiary
+                            color = accent
                         )
                     }
                 }
@@ -282,15 +272,15 @@ private fun FusionModelCard(
                     Text(
                         text = response.content,
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = card.content,
                         maxLines = 3,
                         overflow = TextOverflow.Ellipsis
                     )
                 } else if (response.isStreaming) {
                     Text(
-                        text = "Generating...",
+                        text = "Generating\u2026",
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = card.content
                     )
                 }
             }

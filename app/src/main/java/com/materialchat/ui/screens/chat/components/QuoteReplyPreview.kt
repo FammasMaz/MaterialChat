@@ -33,6 +33,7 @@ import androidx.compose.ui.unit.dp
 import com.materialchat.ui.components.HapticPattern
 import com.materialchat.ui.components.rememberHapticFeedback
 import com.materialchat.ui.theme.ExpressiveMotion
+import com.materialchat.ui.theme.ExpressiveShapes
 
 /**
  * Quote reply preview shown above the message input when the user swipes
@@ -80,7 +81,7 @@ fun QuoteReplyPreview(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 8.dp, vertical = 4.dp),
-            shape = RoundedCornerShape(20.dp),
+            shape = ExpressiveShapes.DisclosurePanel,
             color = MaterialTheme.colorScheme.surfaceContainerHigh
         ) {
             Row(

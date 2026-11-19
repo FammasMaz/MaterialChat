@@ -36,7 +36,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.materialchat.domain.model.AiModel
-import com.materialchat.ui.screens.settings.components.SettingsSheetShape
+import com.materialchat.ui.components.SheetGutter
+import com.materialchat.ui.components.SheetHeader
 import com.materialchat.ui.theme.CustomShapes
 import com.materialchat.ui.theme.ExpressiveMotion
 import com.materialchat.ui.theme.ExpressiveShapes
@@ -80,20 +81,20 @@ fun FusionModelSelector(
             sheetState = sheetState,
             // Same sheet family as settings: top-only squircle, low container tier, default
             // drag handle, headline title with a close affordance.
-            shape = SettingsSheetShape,
+            shape = ExpressiveShapes.BottomSheet,
             containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
             contentColor = MaterialTheme.colorScheme.onSurface
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = ChatSheetGutter)
+                    .padding(horizontal = SheetGutter)
                     .padding(bottom = 32.dp)
                     .animateContentSize(
                         animationSpec = ExpressiveMotion.Spatial.contentSize()
                     )
             ) {
-                ChatSheetHeader(title = "Response fusion", onClose = onDismiss)
+                SheetHeader(title = "Response fusion", onClose = onDismiss)
 
                 Text(
                     text = "Select 2-3 models to query in parallel, then pick a judge to synthesize the best response.",
@@ -112,7 +113,7 @@ fun FusionModelSelector(
 
                 if (isLoading && models.isEmpty()) {
                     Text(
-                        text = "Loading models...",
+                        text = "Loading models\u2026",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(vertical = 16.dp)
@@ -172,7 +173,7 @@ fun FusionModelSelector(
                     Spacer(modifier = Modifier.height(16.dp))
 
                     Text(
-                        text = "Judge Model",
+                        text = "Judge model",
                         style = MaterialTheme.typography.titleSmall,
                         color = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.padding(bottom = 8.dp)
@@ -254,7 +255,7 @@ fun FusionModelSelector(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "Start Fusion",
+                        text = "Start fusion",
                         style = MaterialTheme.typography.labelLarge
                     )
                 }

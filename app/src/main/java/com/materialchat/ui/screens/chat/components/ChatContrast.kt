@@ -187,7 +187,26 @@ internal data class ChatSurfacePalette(
      * colour that reads on it, and the translucent control chip (content at 0.14 over the scrim).
      */
     val imageViewerScrim: ChatTonal,
-    val imageViewerChip: ChatTonal
+    val imageViewerChip: ChatTonal,
+    /** The fusion progress panel above the composer (surfaceContainerHigh) and its body text. */
+    val fusionPanel: ChatTonal,
+    /** Secondary line on the fusion panel ("n / m models complete"). */
+    val fusionPanelMuted: Color,
+    /** The fusion status line (tertiary accent) on the panel. */
+    val fusionPanelAccent: Color,
+    /** A per-model fusion card while streaming: tertiaryContainer at 0.25 over the panel. */
+    val fusionCardStreaming: ChatTonal,
+    /** The streaming dot and "streaming…" label on the streaming card. */
+    val fusionCardStreamingAccent: Color,
+    /** A per-model fusion card once done: surfaceContainerHighest at 0.5 over the panel. */
+    val fusionCardDone: ChatTonal,
+    /** The done dot on the finished card. */
+    val fusionCardDoneAccent: Color,
+    /** The conversation-load error screen (on the scaffold's surfaceContainer): title and body. */
+    val screenError: ChatTonal,
+    val screenErrorMuted: Color,
+    /** The reasoning selector while streaming: the same neutral fill as the plus button. */
+    val reasoningDisabled: ChatTonal
 ) {
     /** Every container/content pair with its required ratio, one per fill the container can present. */
     fun pairs(): List<AssistantContrastPair> = buildList {
@@ -271,6 +290,16 @@ internal data class ChatSurfacePalette(
         text("plus menu create", plusMenuCreate)
         icon("image viewer scrim", imageViewerScrim)
         icon("image viewer chip", imageViewerChip)
+        text("fusion panel", fusionPanel)
+        add("fusion panel muted", fusionPanel.fill, fusionPanelMuted, ChatContrast.BODY_TEXT)
+        add("fusion panel accent", fusionPanel.fill, fusionPanelAccent, ChatContrast.BODY_TEXT)
+        text("fusion card streaming", fusionCardStreaming)
+        add("fusion card streaming accent", fusionCardStreaming.fill, fusionCardStreamingAccent, ChatContrast.BODY_TEXT)
+        text("fusion card done", fusionCardDone)
+        add("fusion card done accent", fusionCardDone.fill, fusionCardDoneAccent, ChatContrast.ICON)
+        text("screen error title", screenError)
+        add("screen error body", screenError.fill, screenErrorMuted, ChatContrast.BODY_TEXT)
+        icon("reasoning disabled", reasoningDisabled)
     }
 
     companion object {
@@ -327,6 +356,11 @@ internal data class ChatSurfacePalette(
                 scrimFill, listOf(scheme.inverseOnSurface, scheme.onSurface, scheme.inverseSurface), icon
             )
             val imageViewerChipFill = ChatContrast.over(imageViewerContent.copy(alpha = 0.14f), scrimFill)
+            // FusionProgressView: the panel is surfaceContainerHigh; each model card is a
+            // translucent tint over it, so its text is resolved on the composited colour.
+            val fusionPanelFill = scheme.surfaceContainerHigh
+            val fusionStreamingFill = ChatContrast.over(scheme.tertiaryContainer.copy(alpha = 0.25f), fusionPanelFill)
+            val fusionDoneFill = ChatContrast.over(scheme.surfaceContainerHighest.copy(alpha = 0.5f), fusionPanelFill)
 
             val chips = ChatHeaderBadge.values().associateWith { badge ->
                 when (badge) {
@@ -419,7 +453,23 @@ internal data class ChatSurfacePalette(
                 plusMenuAttach = tonal(scheme.tertiaryContainer, scheme.onTertiaryContainer, body),
                 plusMenuCreate = tonal(scheme.primaryContainer, scheme.onPrimaryContainer, body),
                 imageViewerScrim = ChatTonal(scrimFill, imageViewerContent),
-                imageViewerChip = ChatTonal(imageViewerChipFill, imageViewerContent)
+                imageViewerChip = ChatTonal(imageViewerChipFill, imageViewerContent),
+                fusionPanel = tonal(fusionPanelFill, scheme.onSurface, body),
+                fusionPanelMuted = ChatContrast.pick(fusionPanelFill, listOf(scheme.onSurfaceVariant) + onSurfaceOrInverse, body),
+                fusionPanelAccent = ChatContrast.pick(
+                    fusionPanelFill, listOf(scheme.tertiary, scheme.onTertiaryContainer) + onSurfaceOrInverse, body
+                ),
+                fusionCardStreaming = tonal(fusionStreamingFill, scheme.onSurfaceVariant, body),
+                fusionCardStreamingAccent = ChatContrast.pick(
+                    fusionStreamingFill, listOf(scheme.tertiary, scheme.onTertiaryContainer) + onSurfaceOrInverse, body
+                ),
+                fusionCardDone = tonal(fusionDoneFill, scheme.onSurfaceVariant, body),
+                fusionCardDoneAccent = ChatContrast.pick(
+                    fusionDoneFill, listOf(scheme.primary, scheme.onPrimaryContainer) + onSurfaceOrInverse, icon
+                ),
+                screenError = tonal(scheme.surfaceContainer, scheme.error, body),
+                screenErrorMuted = ChatContrast.pick(scheme.surfaceContainer, listOf(scheme.onSurfaceVariant) + onSurfaceOrInverse, body),
+                reasoningDisabled = tonal(scheme.surfaceContainerHigh, scheme.onSurfaceVariant, icon)
             )
         }
     }

@@ -40,7 +40,8 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.materialchat.domain.model.AiModel
-import com.materialchat.ui.screens.settings.components.SettingsSheetShape
+import com.materialchat.ui.components.SheetGutter
+import com.materialchat.ui.components.SheetHeader
 import com.materialchat.ui.theme.ExpressiveMotion
 import com.materialchat.ui.theme.ExpressiveShapes
 import com.materialchat.ui.theme.SquircleShape
@@ -72,20 +73,20 @@ fun RedoModelPickerSheet(
             sheetState = sheetState,
             // Same sheet family as settings: top-only squircle, low container tier, default
             // drag handle, headline title with a close affordance.
-            shape = SettingsSheetShape,
+            shape = ExpressiveShapes.BottomSheet,
             containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
             contentColor = MaterialTheme.colorScheme.onSurface
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = ChatSheetGutter)
+                    .padding(horizontal = SheetGutter)
                     .padding(bottom = 32.dp)
                     .animateContentSize(
                         animationSpec = ExpressiveMotion.Spatial.contentSize()
                     )
             ) {
-                ChatSheetHeader(title = "Redo with model", onClose = onDismiss)
+                SheetHeader(title = "Redo with model", onClose = onDismiss)
 
                 Text(
                     text = "Choose a model to regenerate this response",
@@ -107,7 +108,7 @@ fun RedoModelPickerSheet(
                         )
                         Spacer(modifier = Modifier.width(12.dp))
                         Text(
-                            text = "Loading models...",
+                            text = "Loading models\u2026",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )

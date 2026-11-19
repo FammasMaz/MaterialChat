@@ -88,7 +88,10 @@ class ChatContrastTest {
             "code block", "code keyword", "code string", "code comment", "code number", "code chip", "inline code",
             "table header", "table body", "table alternate", "working badge", "empty card", "empty tile",
             "image action chip", "image loading card", "attachment remove", "plus menu create",
-            "image viewer scrim", "image viewer chip"
+            "image viewer scrim", "image viewer chip",
+            "fusion panel", "fusion panel muted", "fusion panel accent", "fusion card streaming",
+            "fusion card streaming accent", "fusion card done", "fusion card done accent",
+            "screen error title", "screen error body", "reasoning disabled"
         )) assertTrue("missing pair $expected in $names", expected in names)
     }
 
@@ -126,6 +129,27 @@ class ChatContrastTest {
                     add("${theme.name} / $family: idle fill on backdrop ${idleOnBackdrop.fmt()} < ${ThemeContrast.TIER_STEP}")
                 }
                 if (idleVsReady < ChatContrast.ICON) add("${theme.name} / $family: idle vs ready fill ${idleVsReady.fmt()} < 3.0")
+            }
+        }
+        assertTrue(failures.joinToString("\n"), failures.isEmpty())
+    }
+
+    @Test fun streamingComposerDemotesEveryControlButStop() {
+        // While a reply streams the composer row must read as one group with a single accented
+        // control: the stop button. The plus button and the reasoning selector drop to the same
+        // neutral fill (the idle send fill), and the stop fill is a different colour from it.
+        val failures = buildList {
+            for (theme in themes) for (family in families) {
+                val p = ChatSurfacePalette.resolve(theme.scheme, family)
+                if (p.reasoningDisabled.fill != p.composerAttachStreaming.fill) {
+                    add("${theme.name} / $family: reasoning disabled fill differs from the plus button's streaming fill")
+                }
+                if (p.composerAttachStreaming.fill != p.sendIdle.fill) {
+                    add("${theme.name} / $family: plus streaming fill differs from the idle send fill")
+                }
+                if (p.sendStreaming.fill == p.composerAttachStreaming.fill) {
+                    add("${theme.name} / $family: stop fill is the neutral fill")
+                }
             }
         }
         assertTrue(failures.joinToString("\n"), failures.isEmpty())
