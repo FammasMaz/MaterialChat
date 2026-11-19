@@ -4,14 +4,11 @@ import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.EaseInOutCubic
-import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
@@ -47,12 +44,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.semantics.contentDescription
@@ -109,7 +103,7 @@ fun M3ExpressiveLoadingIndicator(
         initialValue = 0f,
         targetValue = 360f,
         animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = MaterialChatMotion.Durations.Indicator.MorphRotation, easing = LinearEasing),
+            animation = MaterialChatMotion.Tweens.linear(MaterialChatMotion.Durations.Indicator.MorphRotation),
             repeatMode = RepeatMode.Restart
         ),
         label = "rotation"
@@ -124,7 +118,7 @@ fun M3ExpressiveLoadingIndicator(
         initialValue = 0f,
         targetValue = 3f,
         animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = MaterialChatMotion.Durations.Indicator.MorphShape, easing = EaseInOutCubic),
+            animation = MaterialChatMotion.Tweens.easeInOut(MaterialChatMotion.Durations.Indicator.MorphShape),
             repeatMode = RepeatMode.Restart
         ),
         label = "shapeMorph"
@@ -276,72 +270,12 @@ private fun lerp(start: Float, end: Float, fraction: Float): Float {
     return start + (end - start) * fraction.coerceIn(0f, 1f)
 }
 
-/**
- * Material 3 Expressive Circular Progress Indicator.
- *
- * Enhanced circular progress with spring-based arc animation.
- * Uses M3 Expressive motion principles.
- */
-@Composable
-fun M3ExpressiveCircularProgress(
-    modifier: Modifier = Modifier,
-    color: Color = MaterialTheme.colorScheme.primary,
-    trackColor: Color = MaterialTheme.colorScheme.surfaceContainerHighest,
-    size: Dp = ExpressiveSizes.IndicatorHero,
-    strokeWidth: Dp = 4.dp
-) {
-    // Gated like every continuous decoration; a static arc is drawn when motion is off.
-    val infiniteTransition = if (rememberParticleMotionGate().motionAllowed) {
-        rememberInfiniteTransition(label = "circularProgressTransition")
-    } else {
-        null
-    }
-
-    val rotation = infiniteTransition?.animateFloat(
-        initialValue = 0f,
-        targetValue = 360f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = MaterialChatMotion.Durations.Indicator.ArcRotation, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "rotation"
-    )?.value ?: 0f
-
-    val sweepProgress = infiniteTransition?.animateFloat(
-        initialValue = 0f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = MaterialChatMotion.Durations.Indicator.ArcSweep, easing = EaseInOutCubic),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "sweepProgress"
-    )?.value ?: 0.5f
-
-    val sweepAngle = 30f + (240f * sweepProgress)
-
-    Canvas(modifier = modifier.size(size)) {
-        val stroke = strokeWidth.toPx()
-        val arcSize = this.size.width - stroke
-
-        drawCircle(
-            color = trackColor,
-            radius = arcSize / 2,
-            style = Stroke(width = stroke, cap = StrokeCap.Round)
-        )
-
-        rotate(rotation) {
-            drawArc(
-                color = color,
-                startAngle = -90f,
-                sweepAngle = sweepAngle,
-                useCenter = false,
-                topLeft = Offset(stroke / 2, stroke / 2),
-                size = androidx.compose.ui.geometry.Size(arcSize, arcSize),
-                style = Stroke(width = stroke, cap = StrokeCap.Round)
-            )
-        }
-    }
-}
+// W7 (audit F14): `M3ExpressiveCircularProgress` (the spinning arc) and
+// `M3ExpressiveLinearProgress` (the indeterminate bar) had zero callers and were deleted, with
+// the legacy alias block (`ExpressiveLoadingIndicator`, `ExpressivePulsingIndicator`,
+// `ExpressiveTypingIndicator`, `ExpressiveCircularProgress`, `ExpressiveSpinningArc`,
+// `ExpressiveLoadingWithText`, `ExpressiveInlineLoading`, `ExpressiveFullscreenLoading`), also
+// zero callers. Indeterminate arcs are the stock M3 `LoadingIndicator` / `CircularWavyProgressIndicator`.
 
 /**
  * M3 Expressive Pulsing Dots Indicator with spring-based animation.
@@ -393,67 +327,6 @@ fun M3ExpressivePulsingDots(
                 )
             }
         }
-    }
-}
-
-/**
- * M3 Expressive Linear Progress Indicator (indeterminate).
- */
-@Composable
-fun M3ExpressiveLinearProgress(
-    modifier: Modifier = Modifier,
-    color: Color = MaterialTheme.colorScheme.primary,
-    trackColor: Color = MaterialTheme.colorScheme.surfaceContainerHighest,
-    height: Dp = 4.dp
-) {
-    // Gated like every continuous decoration; a centred static bar is drawn when motion is off.
-    val infiniteTransition = if (rememberParticleMotionGate().motionAllowed) {
-        rememberInfiniteTransition(label = "linearProgressTransition")
-    } else {
-        null
-    }
-
-    val position = infiniteTransition?.animateFloat(
-        initialValue = -0.5f,
-        targetValue = 1.5f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = MaterialChatMotion.Durations.Indicator.LinearPass, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "position"
-    )?.value ?: 0.5f
-
-    val widthFraction = infiniteTransition?.animateFloat(
-        initialValue = 0f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = MaterialChatMotion.Durations.Indicator.LinearWidth, easing = EaseInOutCubic),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "width"
-    )?.value ?: 0.5f
-
-    Canvas(modifier = modifier.height(height)) {
-        val trackHeight = size.height
-        val cornerRadius = trackHeight / 2
-
-        drawRoundRect(
-            color = trackColor,
-            cornerRadius = androidx.compose.ui.geometry.CornerRadius(cornerRadius)
-        )
-
-        val barWidth = size.width * (0.2f + 0.3f * widthFraction)
-        val barStart = (size.width * position - barWidth / 2).coerceIn(0f, size.width - barWidth)
-
-        drawRoundRect(
-            color = color,
-            topLeft = Offset(barStart, 0f),
-            size = androidx.compose.ui.geometry.Size(
-                width = barWidth.coerceAtMost(size.width - barStart),
-                height = trackHeight
-            ),
-            cornerRadius = androidx.compose.ui.geometry.CornerRadius(cornerRadius)
-        )
     }
 }
 
@@ -856,60 +729,3 @@ private fun DrawScope.drawMorphingShapeFilled(
     drawPath(path = path, color = color)
 }
 
-// Legacy compatibility aliases
-@Composable
-fun ExpressiveLoadingIndicator(
-    modifier: Modifier = Modifier,
-    color: Color = MaterialTheme.colorScheme.onSurfaceVariant,
-    dotSize: Dp = 8.dp,
-    amplitude: Dp = 6.dp
-) = M3ExpressivePulsingDots(modifier, color, dotSize)
-
-@Composable
-fun ExpressivePulsingIndicator(
-    modifier: Modifier = Modifier,
-    color: Color = MaterialTheme.colorScheme.onSurfaceVariant,
-    dotSize: Dp = 8.dp
-) = M3ExpressivePulsingDots(modifier, color, dotSize)
-
-@Composable
-fun ExpressiveTypingIndicator(
-    modifier: Modifier = Modifier,
-    color: Color = MaterialTheme.colorScheme.onSurfaceVariant,
-    dotSize: Dp = 6.dp
-) = M3ExpressivePulsingDots(modifier, color, dotSize)
-
-@Composable
-fun ExpressiveCircularProgress(
-    modifier: Modifier = Modifier,
-    color: Color = MaterialTheme.colorScheme.primary,
-    strokeWidth: Dp = 3.dp,
-    size: Dp = 24.dp
-) = M3ExpressiveCircularProgress(modifier, color, size = size, strokeWidth = strokeWidth)
-
-@Composable
-fun ExpressiveSpinningArc(
-    modifier: Modifier = Modifier,
-    color: Color = MaterialTheme.colorScheme.primary,
-    size: Dp = 32.dp,
-    strokeWidth: Dp = 3.dp
-) = M3ExpressiveCircularProgress(modifier, color, size = size, strokeWidth = strokeWidth)
-
-@Composable
-fun ExpressiveLoadingWithText(
-    text: String,
-    modifier: Modifier = Modifier,
-    color: Color = MaterialTheme.colorScheme.onSurfaceVariant
-) = M3ExpressiveLoadingWithText(text, modifier, color)
-
-@Composable
-fun ExpressiveInlineLoading(
-    modifier: Modifier = Modifier,
-    color: Color = MaterialTheme.colorScheme.onSurfaceVariant
-) = M3ExpressiveInlineLoading(modifier, color)
-
-@Composable
-fun ExpressiveFullscreenLoading(
-    modifier: Modifier = Modifier,
-    color: Color = MaterialTheme.colorScheme.primary
-) = M3ExpressiveFullscreenLoading(modifier, color)
