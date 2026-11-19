@@ -1,8 +1,7 @@
 package com.materialchat.ui.components
 
 import androidx.compose.ui.unit.dp
-import com.materialchat.assistant.ui.AssistantCopy
-import com.materialchat.ui.screens.chat.components.ChatErrorCopy
+import com.materialchat.ui.theme.CopyRules
 import com.materialchat.ui.theme.ExpressiveShapes
 import com.materialchat.ui.theme.SquircleShape
 import org.junit.Assert.assertEquals
@@ -12,15 +11,15 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * The error verb is "Try again" app-wide (W5 orchestrator ruling); every owner's copy constant
- * must equal the shared one so the three surfaces cannot drift back to "Retry".
+ * The error verb is "Try again" app-wide (W5 orchestrator ruling). The component copy aliases
+ * the theme's `CopyRules`; the chat / assistant equality pins moved to `CopyRulesTest` (W7).
  */
 class ErrorContentCopyTest {
 
     @Test fun tryAgainIsTheOneRetryVerb() {
         assertEquals("Try again", ErrorContentCopy.TRY_AGAIN)
-        assertEquals(ErrorContentCopy.TRY_AGAIN, ChatErrorCopy.TRY_AGAIN)
-        assertEquals(ErrorContentCopy.TRY_AGAIN, AssistantCopy.AFTER_ERROR)
+        assertEquals(CopyRules.TRY_AGAIN, ErrorContentCopy.TRY_AGAIN)
+        assertEquals(CopyRules.GENERIC_HEADLINE, ErrorContentCopy.GENERIC_HEADLINE)
     }
 
     @Test fun copyFollowsTheNoticeRules() {
