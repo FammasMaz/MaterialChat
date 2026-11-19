@@ -8,6 +8,7 @@ import androidx.compose.ui.graphics.lerp
 import com.materialchat.assistant.ui.AssistantContrastPair
 import com.materialchat.data.local.preferences.AppPreferences
 import com.materialchat.ui.theme.MaterialChatThemePalettes
+import com.materialchat.ui.theme.ThemeContrast
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -103,6 +104,31 @@ class ChatContrastTest {
             assertEquals(scheme.onSurfaceVariant, palette.actionStandard.content)
             assertEquals(scheme.onPrimary, palette.sendReady.content)
         }
+    }
+
+    @Test fun composerSendStatesStayDistinctOnEveryPalette() {
+        // The disabled (idle) send button must read as its own control on the composer backdrop
+        // (surfaceContainerLow, the chat content surface) and never be mistaken for Ready: the
+        // glyph reaches 3:1 on the idle fill (gated with every other pair above), the idle fill
+        // is a visible tier above the backdrop (the theme's own TIER_STEP), and the idle and
+        // ready fills differ at 3:1. The tier step is asserted on the shipped palettes only: the
+        // dynamic-like seeds here are a synthetic ramp (plain lerps to white/black) flatter than
+        // Material You's tonal palette, so their surfaceContainerHigh/Low step is 1.07-1.10 and
+        // says nothing about a real wallpaper scheme.
+        val shipped = AppPreferences.ThemePalette.values().map { it.toString() }
+        val failures = buildList {
+            for (theme in themes) for (family in families) {
+                val p = ChatSurfacePalette.resolve(theme.scheme, family)
+                val idleOnBackdrop = ChatContrast.ratio(p.sendIdle.fill, p.listBackground)
+                val idleVsReady = ChatContrast.ratio(p.sendIdle.fill, p.sendReady.fill)
+                val isShipped = shipped.any { theme.name.startsWith("$it ") }
+                if (isShipped && idleOnBackdrop < ThemeContrast.TIER_STEP) {
+                    add("${theme.name} / $family: idle fill on backdrop ${idleOnBackdrop.fmt()} < ${ThemeContrast.TIER_STEP}")
+                }
+                if (idleVsReady < ChatContrast.ICON) add("${theme.name} / $family: idle vs ready fill ${idleVsReady.fmt()} < 3.0")
+            }
+        }
+        assertTrue(failures.joinToString("\n"), failures.isEmpty())
     }
 
     /**
