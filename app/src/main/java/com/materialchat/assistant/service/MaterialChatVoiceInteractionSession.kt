@@ -431,10 +431,10 @@ class MaterialChatVoiceInteractionSession(
     }
 
     /**
-     * The provider rejected the key (401/403): open the app on its settings. The action is
-     * delivered to MainActivity exactly like OPEN_CHAT; until MainActivity routes it to the
-     * Settings screen the app opens on its start destination, which still holds the settings
-     * tab (see REPORT.md, "Needs another owner").
+     * The provider rejected the key (401/403): open the app on its Settings screen. The action
+     * is delivered to MainActivity exactly like OPEN_CHAT; MainActivity routes
+     * [MainActivity.ACTION_OPEN_SETTINGS] to the Settings destination (also on onNewIntent),
+     * so the notice's "Open settings" chip lands where it says. No extras.
      */
     private fun openSettings() {
         val intent = Intent(context, MainActivity::class.java).apply {
@@ -517,7 +517,7 @@ class MaterialChatVoiceInteractionSession(
 
     private companion object {
         const val TAG = "MaterialChatAssistant"
-        /** MainActivity action that routes straight to the Settings screen (see openSettings). */
-        const val ACTION_OPEN_SETTINGS = "com.materialchat.OPEN_SETTINGS"
+        /** MainActivity's own action (W5: one definition, the one MainActivity routes). */
+        const val ACTION_OPEN_SETTINGS = MainActivity.ACTION_OPEN_SETTINGS
     }
 }
