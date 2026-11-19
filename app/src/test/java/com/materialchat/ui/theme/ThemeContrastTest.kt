@@ -8,6 +8,9 @@ import androidx.compose.ui.graphics.lerp
 import com.materialchat.assistant.ui.AssistantContrast
 import com.materialchat.assistant.ui.AssistantSurfacePalette
 import com.materialchat.data.local.preferences.AppPreferences
+import com.materialchat.ui.components.HomeSettingsPalette
+import com.materialchat.ui.components.HomeSettingsSlot
+import com.materialchat.ui.screens.chat.components.ChatSurfacePalette
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -297,6 +300,71 @@ class ThemeContrastTest {
             }
         }
         assertTrue("${failures.size} assistant pair(s) below threshold:\n" + failures.joinToString("\n"), failures.isEmpty())
+    }
+
+    @Test fun chatSurfacePaletteReadsOnEveryFillInEveryThemeAndBubbleFamily() {
+        // Mirror of the assistant assertion for the chat screen: ChatSurfacePalette (read-only,
+        // public API of chat/components/ChatContrast.kt) resolves every bubble, header, composer,
+        // code-block and fusion-card colour against the fill it is painted on. Every reported
+        // pair must meet its own threshold on all 39 appearances, crossed with every bubble family.
+        val families = AppPreferences.ChatBubbleStyle.values().toList()
+        assertTrue(families.size >= 4)
+        val failures = buildList {
+            for (theme in themes) for (family in families) {
+                val palette = ChatSurfacePalette.resolve(theme.scheme, family)
+                val pairs = palette.pairs()
+                assertTrue("${theme.name} / $family", pairs.size >= 80)
+                for (pair in pairs) {
+                    assertTrue(pair.name, pair.minimum == ThemeContrast.BODY_TEXT || pair.minimum == ThemeContrast.ICON)
+                    if (!pair.passes) add("${theme.name} / $family: ${pair.name} ${pair.ratio.fmt()} < ${pair.minimum}")
+                }
+                // The resolved outputs hold the pick semantics, not only the pair list.
+                assertTrue(theme.name, ThemeContrast.contrastRatio(palette.userBubble.content, palette.userBubble.fill) >= ThemeContrast.BODY_TEXT)
+                assertTrue(theme.name, ThemeContrast.contrastRatio(palette.assistantBubble.content, palette.assistantBubble.fill) >= ThemeContrast.BODY_TEXT)
+                assertTrue(theme.name, ThemeContrast.contrastRatio(palette.composerText, palette.composerFieldFills) >= ThemeContrast.BODY_TEXT)
+                assertTrue(theme.name, ThemeContrast.contrastRatio(palette.thinkingTitle, palette.thinkingHeaderFills) >= ThemeContrast.BODY_TEXT)
+                assertTrue(theme.name, ThemeContrast.contrastRatio(palette.sendReady.content, palette.sendReady.fill) >= ThemeContrast.ICON)
+                // Body text keeps the theme role whenever that role reads (no needless repaint).
+                val assistantFill = palette.assistantBubble.fill
+                if (ThemeContrast.contrastRatio(theme.scheme.onSurface, assistantFill) >= ThemeContrast.BODY_TEXT) {
+                    assertEquals(theme.name, theme.scheme.onSurface, palette.assistantBubble.content)
+                }
+            }
+        }
+        assertTrue("${failures.size} chat pair(s) below threshold:\n" + failures.joinToString("\n"), failures.isEmpty())
+    }
+
+    @Test fun homeSettingsPaletteReadsOnEveryFillInEveryTheme() {
+        // Mirror of the assistant assertion for the home list and the settings screens:
+        // HomeSettingsPalette (read-only, public API of ui/components/HomeSettingsContrast.kt)
+        // resolves one colour per slot through the theme's own readableOn guard. Every slot must
+        // meet its own threshold on all 39 appearances, and the resolved palette must never be
+        // worse than the drawn (role-by-name) baseline for any slot.
+        val slots = HomeSettingsSlot.values()
+        assertTrue(slots.size >= 60)
+        val failures = buildList {
+            for (theme in themes) {
+                val resolved = HomeSettingsPalette.resolve(theme.scheme)
+                val drawn = HomeSettingsPalette.drawn(theme.scheme)
+                val pairs = resolved.pairs()
+                assertEquals(theme.name, slots.size, pairs.size)
+                for (pair in pairs) {
+                    assertTrue(pair.name, pair.minimum == ThemeContrast.BODY_TEXT || pair.minimum == ThemeContrast.ICON)
+                    if (!pair.passes) add("${theme.name}: ${pair.name} ${pair.ratio.fmt()} < ${pair.minimum}")
+                }
+                for (slot in slots) {
+                    val fill = resolved.fill(slot)
+                    assertEquals(theme.name, slot.fill(theme.scheme), fill)
+                    val resolvedRatio = ThemeContrast.contrastRatio(resolved[slot], fill)
+                    val drawnRatio = ThemeContrast.contrastRatio(drawn[slot], fill)
+                    // Keep the role the call site reads whenever it already reads; otherwise the
+                    // fallback must be an improvement, never a regression.
+                    if (drawnRatio >= slot.minimum) assertEquals("${theme.name}: ${slot.name}", drawn[slot], resolved[slot])
+                    else assertTrue("${theme.name}: ${slot.name} ${resolvedRatio.fmt()} <= drawn ${drawnRatio.fmt()}", resolvedRatio > drawnRatio)
+                }
+            }
+        }
+        assertTrue("${failures.size} home/settings slot(s) below threshold:\n" + failures.joinToString("\n"), failures.isEmpty())
     }
 
     @Test fun printContrastTable() {
