@@ -13,6 +13,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import com.materialchat.ui.theme.particles.rememberParticleMotionGate
 
 /**
  * A physical device orientation snapshot, low-pass filtered and clamped,
@@ -41,6 +42,9 @@ data class TiltPose(
  * - Sampling starts immediately if the lifecycle is already RESUMED — adding
  *   an observer does NOT replay past events, so waiting for ON_RESUME would
  *   never fire for a screen entered while the app is foregrounded.
+ * - The sensor is held only while [SensorMotionGate.shouldSample] says so: RESUMED
+ *   and the decoration motion gate open. Under animator scale 0, battery saver or
+ *   a stopped host the listener is unregistered and the pose rests at neutral.
  * - Raw sensor data is exponential-smoothed so surfaces glide instead of jitter.
  * - Output is clamped to +/- [maxDegrees] with a small dead zone so hand tremor
  *   does not move the UI.
@@ -50,8 +54,9 @@ fun rememberDeviceTilt(maxDegrees: Float = 12f): State<TiltPose> {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val pose = remember { mutableStateOf(TiltPose.Neutral) }
+    val motionAllowed = rememberParticleMotionGate().motionAllowed
 
-    DisposableEffect(context, lifecycleOwner, maxDegrees) {
+    DisposableEffect(context, lifecycleOwner, maxDegrees, motionAllowed) {
         val sensorManager =
             context.getSystemService(android.content.Context.SENSOR_SERVICE) as? SensorManager
         val rotationVector = sensorManager?.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR)
@@ -124,26 +129,29 @@ fun rememberDeviceTilt(maxDegrees: Float = 12f): State<TiltPose> {
             override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) = Unit
         }
 
+        var registered = false
+
         fun register() {
+            if (registered) return
+            registered = true
             sensorManager?.registerListener(listener, primarySensor, SensorManager.SENSOR_DELAY_UI)
         }
 
         fun unregister() {
+            if (!registered) return
+            registered = false
             sensorManager?.unregisterListener(listener)
             pose.value = TiltPose.Neutral
         }
 
+        fun apply(sample: Boolean) = if (sample) register() else unregister()
+
         // CRITICAL: addObserver does not replay past lifecycle events. If we are
-        // composed while already resumed (the normal case), start sampling now.
-        if (lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) {
-            register()
-        }
+        // composed while already resumed (the normal case), decide from the current
+        // state now; the gate value is an effect key, so a gate flip re-runs this.
+        apply(SensorMotionGate.shouldSample(lifecycleOwner.lifecycle.currentState, motionAllowed))
         val observer = LifecycleEventObserver { _, event ->
-            when (event) {
-                Lifecycle.Event.ON_RESUME -> register()
-                Lifecycle.Event.ON_PAUSE -> unregister()
-                else -> Unit
-            }
+            apply(SensorMotionGate.shouldSample(event, motionAllowed))
         }
         lifecycleOwner.lifecycle.addObserver(observer)
 

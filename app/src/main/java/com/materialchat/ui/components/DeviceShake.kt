@@ -15,6 +15,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import com.materialchat.ui.theme.particles.rememberParticleMotionGate
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -26,6 +27,10 @@ import kotlinx.coroutines.launch
  *
  * Pairs well with [rememberDeviceTilt]: tilt for gentle parallax, shake
  * for bursts.
+ *
+ * The accelerometer is held only while [SensorMotionGate.shouldSample] allows it
+ * (host RESUMED and the decoration motion gate open); otherwise the listener is
+ * unregistered and the energy rests at zero.
  */
 @Composable
 fun rememberShakeEnergy(spikeThreshold: Float = 4.5f): State<Float> {
@@ -33,8 +38,9 @@ fun rememberShakeEnergy(spikeThreshold: Float = 4.5f): State<Float> {
     val lifecycleOwner = LocalLifecycleOwner.current
     val energy = remember { mutableStateOf(0f) }
     val scope = rememberCoroutineScope()
+    val motionAllowed = rememberParticleMotionGate().motionAllowed
 
-    DisposableEffect(context, lifecycleOwner, spikeThreshold, scope) {
+    DisposableEffect(context, lifecycleOwner, spikeThreshold, scope, motionAllowed) {
         val sensorManager =
             context.getSystemService(android.content.Context.SENSOR_SERVICE) as? SensorManager
         val accelerometer = sensorManager?.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
@@ -61,27 +67,32 @@ fun rememberShakeEnergy(spikeThreshold: Float = 4.5f): State<Float> {
             override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) = Unit
         }
 
+        var registered = false
+
         fun register() {
+            if (registered) return
             accelerometer?.let {
+                registered = true
                 sensorManager?.registerListener(listener, it, SensorManager.SENSOR_DELAY_GAME)
             }
         }
 
-        val observer = LifecycleEventObserver { _, event ->
-            when (event) {
-                Lifecycle.Event.ON_RESUME -> register()
-                Lifecycle.Event.ON_PAUSE -> {
-                    sensorManager?.unregisterListener(listener)
-                    energy.value = 0f
-                }
-                else -> Unit
-            }
+        fun unregister() {
+            if (!registered) return
+            registered = false
+            sensorManager?.unregisterListener(listener)
+            energy.value = 0f
         }
 
-        // Register immediately if already resumed — observers do not replay events.
-        if (lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) {
-            register()
+        fun apply(sample: Boolean) = if (sample) register() else unregister()
+
+        val observer = LifecycleEventObserver { _, event ->
+            apply(SensorMotionGate.shouldSample(event, motionAllowed))
         }
+
+        // Decide from the current state now — observers do not replay events. The gate
+        // value is an effect key, so a gate flip re-runs this block.
+        apply(SensorMotionGate.shouldSample(lifecycleOwner.lifecycle.currentState, motionAllowed))
         lifecycleOwner.lifecycle.addObserver(observer)
 
         // Frame-paced drain loop bleeds energy back to zero smoothly. While there is nothing to
@@ -103,7 +114,7 @@ fun rememberShakeEnergy(spikeThreshold: Float = 4.5f): State<Float> {
         onDispose {
             drainJob.cancel()
             lifecycleOwner.lifecycle.removeObserver(observer)
-            sensorManager?.unregisterListener(listener)
+            unregister()
         }
     }
 
