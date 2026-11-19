@@ -137,6 +137,35 @@ class ChatCopyRulingsTest {
         )
     }
 
+    /**
+     * W8 part 1: the share chooser's catch at `ChatScreen.kt` is in the scanned set and carries
+     * no exception text; its line is the theme's shared `COULD_NOT_SHARE`. The scanner above
+     * already walks every file under `ui/screens/chat`, so this pins that the screen file is part of it and
+     * that the old `"Failed to share: …"` literal cannot return anywhere under chat ownership.
+     */
+    @Test
+    fun `the chat screen is scanned and no Failed-to literal survives under chat ownership`() {
+        val files = uiFiles()
+        val screen = files.firstOrNull { it.name == "ChatScreen.kt" }
+        assertNotNull("ChatScreen.kt must be in the scanned chat ownership set", screen)
+        val screenHits = screen!!.readLines().mapIndexedNotNull { index, line ->
+            if (isComment(line)) null
+            else line.substringBefore(" // ").takeIf {
+                exceptionTextInTemplate.containsMatchIn(it) || exceptionTextAsFallback.containsMatchIn(it)
+            }?.let { "${index + 1} ${it.trim()}" }
+        }
+        assertEquals("exception text in ChatScreen.kt:\n${screenHits.joinToString("\n")}", emptyList<String>(), screenHits)
+        // UI files only: `data/remote` builds exception / event messages the view model
+        // classifies before display (see uiFiles), so its "Failed to …" strings are inputs.
+        val banned = files.flatMap { file ->
+            literals(file).filter { (_, text) -> CopyRules.BANNED_FAILURE_VERBS.any { text.startsWith(it) } }
+                .map { (line, text) -> "${file.name}:$line \"$text\"" }
+        }
+        assertEquals("banned failure verb in chat copy; use the Could not family:\n${banned.joinToString("\n")}", emptyList<String>(), banned)
+        assertEquals(CopyRules.COULD_NOT_SHARE, ChatErrorCopy.COULD_NOT_SHARE)
+        assertEquals(CopyRules.failureLine("share"), ChatErrorCopy.COULD_NOT_SHARE)
+    }
+
     @Test
     fun `failed-action snackbar lines are one phrase in the Could not family`() {
         val lines = listOf(
