@@ -45,6 +45,26 @@ class MotionTokensTest {
         assertEquals(RepeatMode.Reverse, bob.repeatMode)
     }
 
+    @Test fun headerPulseIsTheChatTopBarLinearRestartLoop() {
+        // ChatTopBar: tween(1400, LinearEasing), RepeatMode.Restart -> decorativeSpin(HeaderPulse).
+        assertEquals(1_400, MaterialChatMotion.Durations.HeaderPulse)
+        val pulse = ExpressiveMotion.Spatial.decorativeSpin(MaterialChatMotion.Durations.HeaderPulse)
+        val tween = pulse.animation as TweenSpec<Float>
+        assertEquals(1_400, tween.durationMillis)
+        assertEquals(LinearEasing, tween.easing)
+        assertEquals(RepeatMode.Restart, pulse.repeatMode)
+    }
+
+    @Test fun pulseIsTheFusionCardBreathHalfPeriod() {
+        // FusionProgressView: bob(Durations.Long) today, a 1 s reversing breath -> bob(Pulse).
+        assertEquals(500, MaterialChatMotion.Durations.Pulse)
+        assertEquals(MaterialChatMotion.Durations.Long, MaterialChatMotion.Durations.Pulse)
+        val breath = ExpressiveMotion.Spatial.bob(MaterialChatMotion.Durations.Pulse)
+        assertEquals(500, (breath.animation as TweenSpec<Float>).durationMillis)
+        assertEquals(1_000, 2 * MaterialChatMotion.Durations.Pulse)
+        assertEquals(RepeatMode.Reverse, breath.repeatMode)
+    }
+
     @Test fun indicatorCyclesMatchTheLoadingIndicatorAndTheM3CircularSpec() {
         // ExpressiveLoadingIndicator's private IndicatorCycle, lifted here value for value.
         val i = MaterialChatMotion.Durations.Indicator

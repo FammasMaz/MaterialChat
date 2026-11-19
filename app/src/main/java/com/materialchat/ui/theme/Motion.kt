@@ -586,6 +586,21 @@ object MaterialChatMotion {
          */
         const val Bob = ExtraLong + Quick
 
+        /**
+         * Period of the standard masthead's pulse strip (`ChatTopBar`): one linear restart
+         * loop per period. Drawn with [ExpressiveMotion.Spatial.decorativeSpin] (HeaderPulse);
+         * continuous, so gated like every other ornament loop.
+         */
+        const val HeaderPulse = 1_400
+
+        /**
+         * Half period of a breathing pulse (the fusion card's streaming dot): a 1 s reversing
+         * cycle drawn with [ExpressiveMotion.Spatial.bob] (Pulse). Value-equal to [Long] but a
+         * token of its own, so a breath is named as a breath rather than reusing a transition
+         * length that may later be retuned.
+         */
+        const val Pulse = 500
+
         /** Period of a foreground decorative spin (home banner gear). */
         const val DecorativeSpin = 16_000
 
