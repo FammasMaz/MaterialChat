@@ -926,7 +926,7 @@ class AssistantViewModel(
      * by the chat delegate (W4); until it lands this is the one place the assistant reads it, so
      * the switch is a one-line change here and the copy mapping is already tested for both paths.
      */
-    private fun streamingErrorStatus(@Suppress("UNUSED_PARAMETER") state: StreamingState.Error): Int? = null
+    private fun streamingErrorStatus(state: StreamingState.Error): Int? = state.httpStatus
 
     /** The session delivers each half of the capture as it arrives, and null when it hides. */
     fun onScreenContext(context: ScreenContext?) {
