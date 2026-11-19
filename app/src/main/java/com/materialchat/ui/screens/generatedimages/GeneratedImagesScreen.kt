@@ -18,7 +18,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Download
@@ -56,6 +55,7 @@ import com.materialchat.domain.model.GeneratedImage
 import com.materialchat.ui.components.ExpressiveContentSurface
 import com.materialchat.ui.components.ExpressiveEmptyState
 import com.materialchat.ui.theme.ExpressiveShapes
+import com.materialchat.ui.theme.CustomShapes
 import com.materialchat.ui.components.ExpressiveFilledIconButton
 import com.materialchat.ui.components.ExpressiveTopBarTitle
 import com.materialchat.ui.components.HapticPattern
@@ -273,7 +273,7 @@ private fun ImageActionButton(
             haptics.perform(HapticPattern.CLICK)
             onClick()
         },
-        shape = RoundedCornerShape(999.dp),
+        shape = CustomShapes.Pill,
         color = MaterialTheme.colorScheme.secondaryContainer,
         contentColor = MaterialTheme.colorScheme.onSecondaryContainer
     ) {

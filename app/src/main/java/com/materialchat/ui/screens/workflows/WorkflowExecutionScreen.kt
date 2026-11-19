@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Cancel
@@ -489,7 +488,7 @@ private fun CurrentStepStreamingCard(
             ) {
                 // Step badge
                 Surface(
-                    shape = RoundedCornerShape(8.dp),
+                    shape = ExpressiveShapes.Badge,
                     color = MaterialTheme.colorScheme.tertiary,
                     modifier = Modifier.defaultMinSize(minWidth = 26.dp, minHeight = 26.dp)
                 ) {
@@ -541,7 +540,7 @@ private fun CurrentStepLoadingCard(stepNumber: Int) {
         ) {
             // Step badge
             Surface(
-                shape = RoundedCornerShape(8.dp),
+                shape = ExpressiveShapes.Badge,
                 color = MaterialTheme.colorScheme.tertiary,
                 modifier = Modifier.defaultMinSize(minWidth = 26.dp, minHeight = 26.dp)
             ) {

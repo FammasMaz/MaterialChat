@@ -1683,7 +1683,7 @@ private fun ColorPaletteSelector(
                             haptics.perform(HapticPattern.CLICK)
                             onPaletteSelected(palette)
                         },
-                        shape = RoundedCornerShape(if (selected) 28.dp else 20.dp),
+                        shape = if (selected) ExpressiveShapes.Card else ExpressiveShapes.DisclosurePanel,
                         color = if (selected) MaterialTheme.colorScheme.primaryContainer
                             else MaterialTheme.colorScheme.surfaceContainerHigh,
                         contentColor = if (selected) MaterialTheme.colorScheme.onPrimaryContainer
@@ -1784,7 +1784,7 @@ private fun ChatBubbleStyleSelector(
                             haptics.perform(HapticPattern.MORPH_TRANSITION)
                             onStyleSelected(style)
                         },
-                        shape = RoundedCornerShape(if (selected) 28.dp else 20.dp),
+                        shape = if (selected) ExpressiveShapes.Card else ExpressiveShapes.DisclosurePanel,
                         color = if (selected) MaterialTheme.colorScheme.secondaryContainer
                             else MaterialTheme.colorScheme.surfaceContainerHigh,
                         contentColor = if (selected) MaterialTheme.colorScheme.onSecondaryContainer
@@ -1889,7 +1889,7 @@ private fun ControlShapeStyleSelector(
                             haptics.perform(HapticPattern.MORPH_TRANSITION)
                             onStyleSelected(style)
                         },
-                        shape = RoundedCornerShape(if (selected) 28.dp else 20.dp),
+                        shape = if (selected) ExpressiveShapes.Card else ExpressiveShapes.DisclosurePanel,
                         color = if (selected) MaterialTheme.colorScheme.primaryContainer
                             else MaterialTheme.colorScheme.surfaceContainerHigh,
                         contentColor = if (selected) MaterialTheme.colorScheme.onPrimaryContainer

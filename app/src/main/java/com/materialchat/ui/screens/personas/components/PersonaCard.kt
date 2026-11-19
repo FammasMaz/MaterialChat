@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import com.materialchat.ui.theme.ExpressiveShapes
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.Card
@@ -193,7 +194,7 @@ fun PersonaCard(
                                 containerColor = accentColor.copy(alpha = 0.4f),
                                 labelColor = MaterialTheme.colorScheme.onSurface
                             ),
-                            shape = RoundedCornerShape(8.dp),
+                            shape = ExpressiveShapes.Badge,
                             border = null
                         )
                     }

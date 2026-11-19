@@ -60,7 +60,7 @@ import kotlin.math.abs
 import kotlin.math.PI
 import kotlin.math.roundToInt
 import kotlin.math.sin
-import com.materialchat.ui.theme.CustomShapes
+import com.materialchat.ui.theme.ExpressiveShapes
 
 private data class FastScrollMetrics(
     val progress: Float,
@@ -480,7 +480,7 @@ fun ExpressiveFastScrollBar(
                             scaleX = labelScale
                             scaleY = labelScale
                         },
-                    shape = CustomShapes.Snackbar,
+                    shape = ExpressiveShapes.DisclosurePanel,
                     color = MaterialTheme.colorScheme.secondaryContainer,
                     contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
                     tonalElevation = 6.dp,
