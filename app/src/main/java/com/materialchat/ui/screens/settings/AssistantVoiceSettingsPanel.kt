@@ -23,6 +23,7 @@ import com.materialchat.ui.components.ExpressiveSlider
 import com.materialchat.ui.components.dialogEntrance
 import com.materialchat.ui.theme.ExpressiveShapes
 import com.materialchat.ui.theme.dialogActionColor
+import com.materialchat.ui.theme.dialogDestructiveColor
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
@@ -119,7 +120,8 @@ fun AssistantVoiceSettingsPanel(viewModel: AssistantVoiceSettingsViewModel = hil
                     ExpressiveButton(
                         onClick = { viewModel.loadModels(draft.providerId) },
                         text = if (modelPicker.error != null) "Retry models" else "Refresh models",
-                        style = ExpressiveButtonStyle.Text
+                        style = ExpressiveButtonStyle.Text,
+                        contentColor = MaterialTheme.colorScheme.dialogActionColor()
                     )
                 }
                 VoiceChoice("Reasoning", draft.reasoningEffort?.displayName ?: "Inherit",
@@ -206,7 +208,7 @@ fun AssistantVoiceSettingsPanel(viewModel: AssistantVoiceSettingsViewModel = hil
                         enabled = !voicesLoading && !previewing,
                         modifier = Modifier.fillMaxWidth()
                     )
-                    if (previewing) ExpressiveButton(onClick = viewModel::stopPreview, text = "Stop preview", style = ExpressiveButtonStyle.Text)
+                    if (previewing) ExpressiveButton(onClick = viewModel::stopPreview, text = "Stop preview", style = ExpressiveButtonStyle.Text, contentColor = MaterialTheme.colorScheme.dialogActionColor())
                     previewMessage?.let { VoiceHelp(it) }
                     VoiceHelp("Blank voice and language use engine defaults. Availability depends on the installed Android speech engine")
                 } else if (draft.backend == AssistantSpeechBackend.SHERPA) {
@@ -236,11 +238,11 @@ fun AssistantVoiceSettingsPanel(viewModel: AssistantVoiceSettingsViewModel = hil
                                 LinearWavyProgressIndicator(modifier = Modifier.fillMaxWidth())
                                 VoiceHelp(if (state.stage == SherpaModelState.Downloading.Stage.VERIFYING) "Verifying download\u2026" else "Installing\u2026")
                             }
-                            ExpressiveButton(onClick = { viewModel.cancelSherpa(model) }, text = "Cancel download", style = ExpressiveButtonStyle.Text)
+                            ExpressiveButton(onClick = { viewModel.cancelSherpa(model) }, text = "Cancel download", style = ExpressiveButtonStyle.Text, contentColor = MaterialTheme.colorScheme.dialogActionColor())
                         }
                         SherpaModelState.Installed -> {
                             VoiceHelp("Installed and verified (${formatModelBytes(model.downloadBytes)} in app storage)")
-                            ExpressiveButton(onClick = { viewModel.deleteSherpa(model) }, text = "Delete model", style = ExpressiveButtonStyle.Text)
+                            ExpressiveButton(onClick = { viewModel.deleteSherpa(model) }, text = "Delete model", style = ExpressiveButtonStyle.Text, contentColor = MaterialTheme.colorScheme.dialogDestructiveColor())
                         }
                         is SherpaModelState.Failed -> {
                             VoiceHelp(state.message)
@@ -261,7 +263,7 @@ fun AssistantVoiceSettingsPanel(viewModel: AssistantVoiceSettingsViewModel = hil
                         enabled = state.isInstalled && !previewing,
                         modifier = Modifier.fillMaxWidth()
                     )
-                    if (previewing) ExpressiveButton(onClick = viewModel::stopPreview, text = "Stop preview", style = ExpressiveButtonStyle.Text)
+                    if (previewing) ExpressiveButton(onClick = viewModel::stopPreview, text = "Stop preview", style = ExpressiveButtonStyle.Text, contentColor = MaterialTheme.colorScheme.dialogActionColor())
                     previewMessage?.let { VoiceHelp(it) }
                 } else {
                     VoiceHelp("Gemini sends response text to Google. These are backend-compatible choices, not a live availability check. Account access, availability and billing depend on Google")
@@ -277,7 +279,7 @@ fun AssistantVoiceSettingsPanel(viewModel: AssistantVoiceSettingsViewModel = hil
                     OutlinedTextField(key, { key = it; removeKey = false },
                         label = { Text("Optional Gemini TTS API key") }, singleLine = true,
                         visualTransformation = PasswordVisualTransformation(), modifier = Modifier.fillMaxWidth())
-                    ExpressiveButton(onClick = { key = ""; removeKey = true }, text = "Remove stored key on save", style = ExpressiveButtonStyle.Text)
+                    ExpressiveButton(onClick = { key = ""; removeKey = true }, text = "Remove stored key on save", style = ExpressiveButtonStyle.Text, contentColor = MaterialTheme.colorScheme.dialogDestructiveColor())
                     if (removeKey) VoiceHelp("Stored key will be removed")
                 }
                 message?.let { VoiceHelp(it) }
