@@ -119,7 +119,8 @@ fun AssistantScreenContextSettingsPanel(viewModel: AssistantScreenContextSetting
             }
         }
         Text(
-            text = "Android shares the screen with the assistant only while \u201cUse screenshot\u201d and \u201cUse text from screen\u201d are on for MaterialChat under Settings \u203a Apps \u203a Default apps \u203a Digital assistant app. Private (secure) screens and the lock screen are never shared.",
+            // The supporting-text style of every settings row; sentence case, no trailing period.
+            text = "Android shares the screen with the assistant only while \u201cUse screenshot\u201d and \u201cUse text from screen\u201d are on for MaterialChat under Settings \u203a Apps \u203a Default apps \u203a Digital assistant app. Private (secure) screens and the lock screen are never shared",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )

@@ -2,9 +2,7 @@ package com.materialchat.assistant.ui
 
 import androidx.compose.material3.ColorScheme
 import androidx.compose.ui.graphics.Color
-import kotlin.math.max
-import kotlin.math.min
-import kotlin.math.pow
+import com.materialchat.ui.theme.ThemeContrast
 
 /**
  * WCAG 2.x contrast for the assistant window.
@@ -19,74 +17,48 @@ import kotlin.math.pow
  * pure white or black close the list so a readable colour always exists (for any opaque fill the
  * better of white/black is >= 4.58:1).
  *
- * Pure Kotlin: no composition, no Android, so the JVM test can enumerate themes.
+ * The arithmetic lives in the theme foundation ([ThemeContrast]); every member here delegates to
+ * it under the assistant's historical names so the palette, its callers and the 39-theme test
+ * keep reading as they did. Pure Kotlin: no composition, no Android.
  */
 internal object AssistantContrast {
     /** WCAG AA for body-sized text. */
-    const val BODY_TEXT = 4.5
+    const val BODY_TEXT = ThemeContrast.BODY_TEXT
 
     /** WCAG AA for icons, graphical objects and large text. */
-    const val ICON = 3.0
+    const val ICON = ThemeContrast.ICON
 
     /** The window scrim drawn under every assistant surface (AssistantOverlay: the theme's `scrim` role at 0.42). */
     const val SCRIM_ALPHA = 0.42f
 
     /** WCAG relative luminance of [color] taken as opaque sRGB. */
-    fun relativeLuminance(color: Color): Double {
-        val c = opaque(color)
-        return 0.2126 * linear(c.red) + 0.7152 * linear(c.green) + 0.0722 * linear(c.blue)
-    }
+    fun relativeLuminance(color: Color): Double = ThemeContrast.relativeLuminance(color)
 
     /** Source-over composite of a translucent [foreground] on an opaque [background]. */
-    fun compositeOver(foreground: Color, background: Color): Color {
-        val a = foreground.alpha
-        if (a >= 1f) return foreground
-        val bg = opaque(background)
-        return Color(
-            red = foreground.red * a + bg.red * (1f - a),
-            green = foreground.green * a + bg.green * (1f - a),
-            blue = foreground.blue * a + bg.blue * (1f - a),
-            alpha = 1f
-        )
-    }
+    fun compositeOver(foreground: Color, background: Color): Color =
+        ThemeContrast.compositeOver(foreground, background)
 
     /**
      * Contrast ratio (1..21) between [foreground] drawn on [background]. A translucent foreground
      * is composited first; the background is taken as opaque (it is a painted fill).
      */
-    fun contrastRatio(foreground: Color, background: Color): Double {
-        val bg = opaque(background)
-        val fg = compositeOver(foreground, bg)
-        val l1 = relativeLuminance(fg)
-        val l2 = relativeLuminance(bg)
-        return (max(l1, l2) + 0.05) / (min(l1, l2) + 0.05)
-    }
+    fun contrastRatio(foreground: Color, background: Color): Double =
+        ThemeContrast.contrastRatio(foreground, background)
 
     /** The lowest ratio [foreground] reaches against any of [fills]. */
     fun contrastRatio(foreground: Color, fills: List<Color>): Double =
-        fills.minOf { contrastRatio(foreground, it) }
+        ThemeContrast.contrastRatio(foreground, fills)
 
     /**
      * The first of [candidates] (in order of preference, pure white and black appended) that
      * reaches [minimum] against every one of [fills]; if none does, the candidate whose worst
-     * ratio is highest.
+     * ratio is highest. The theme token with the same list semantics.
      */
-    fun pick(fills: List<Color>, candidates: List<Color>, minimum: Double): Color {
-        require(fills.isNotEmpty()) { "a content colour needs at least one fill" }
-        val all = candidates + listOf(Color.White, Color.Black)
-        all.firstOrNull { contrastRatio(it, fills) >= minimum }?.let { return it }
-        return all.maxByOrNull { contrastRatio(it, fills) } ?: Color.Black
-    }
+    fun pick(fills: List<Color>, candidates: List<Color>, minimum: Double): Color =
+        ThemeContrast.pick(fills, candidates, minimum)
 
     fun pick(fill: Color, candidates: List<Color>, minimum: Double): Color =
-        pick(listOf(fill), candidates, minimum)
-
-    private fun opaque(color: Color): Color = if (color.alpha >= 1f) color else color.copy(alpha = 1f)
-
-    private fun linear(channel: Float): Double {
-        val v = channel.toDouble().coerceIn(0.0, 1.0)
-        return if (v <= 0.04045) v / 12.92 else ((v + 0.055) / 1.055).pow(2.4)
-    }
+        ThemeContrast.pick(fill, candidates, minimum)
 }
 
 /** One container/content pair the assistant draws, with the ratio it must reach. */
@@ -251,6 +223,14 @@ internal data class AssistantSurfacePalette(
             add(AssistantContrastPair(n, fill, answer.muted, AssistantContrast.ICON))
         }
         tonal("attachment remove", attachmentRemove, AssistantContrast.ICON)
+        // W2: a notice's action chip is outlined in the notice's own content colour on the
+        // notice's own fill (label at body size, the 1dp border as a graphical object), so it
+        // adds no fill; these pairs name the chip so a regression on either surface names itself.
+        notice.fills.forEachIndexed { i, fill ->
+            val n = if (notice.fills.size == 1) "notice action" else "notice action[$i]"
+            add(AssistantContrastPair(n, fill, notice.muted, AssistantContrast.BODY_TEXT))
+        }
+        tonal("error notice action", errorNotice, AssistantContrast.BODY_TEXT)
         for ((phase, glyph) in glyphs) tonal("glyph $phase", glyph, AssistantContrast.ICON)
     }
 

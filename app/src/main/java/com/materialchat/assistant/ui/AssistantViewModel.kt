@@ -20,6 +20,7 @@ import java.time.LocalDateTime
 import androidx.lifecycle.viewModelScope
 import com.materialchat.assistant.voice.AudioAmplitudeData
 import com.materialchat.assistant.voice.RecognitionOptions
+import com.materialchat.assistant.voice.SpeechRecognitionErrors
 import com.materialchat.assistant.voice.SpeechRecognitionManager
 import com.materialchat.assistant.voice.SpeechRecognitionResult
 import com.materialchat.assistant.voice.TextToSpeechManager
@@ -316,7 +317,9 @@ class AssistantViewModel(
         cancelStreaming()
         val token = ++recognition
         if (!speechRecognitionManager.isAvailable()) {
-            _voiceState.value = VoiceState.Error("Speech recognition is not available on this device")
+            _voiceState.value = VoiceState.Error(
+                AssistantCopy.RECOGNIZER_UNAVAILABLE, SpeechRecognitionErrors.ERROR_CLIENT
+            )
             return
         }
 
@@ -353,7 +356,12 @@ class AssistantViewModel(
                         sendQuery(result.text)
                     }
                     is SpeechRecognitionResult.Error -> {
-                        _voiceState.value = VoiceState.Error(result.message, result.errorCode)
+                        // The window shows the copy system's phrase for the code, never the
+                        // recognizer's own wording.
+                        _voiceState.value = VoiceState.Error(
+                            AssistantCopy.recognitionError(result.errorCode, result.message),
+                            result.errorCode
+                        )
                     }
                 }
             }
@@ -497,7 +505,7 @@ class AssistantViewModel(
                     val provider = settings.providerId?.let { providerRepository.getProvider(it) }
                         ?: if (settings.providerId == null) providerRepository.getActiveProvider() else null
                     if (provider == null) {
-                        handleError("No active AI provider. Add one in Settings.")
+                        handleError(AssistantCopy.NO_PROVIDER)
                         stagedScreen?.let(discardAttachment)
                         queue.finish()
                         return@coroutineScope
@@ -687,7 +695,9 @@ class AssistantViewModel(
                             }
                             is StreamingState.Error -> {
                                 queue.cancel()
-                                handleError(state.error.message ?: "Something went wrong. Try again.")
+                                // Never the exception's own text: the copy system names
+                                // connectivity and keeps everything else generic.
+                                handleError(AssistantCopy.requestFailure(state.error))
                             }
                             is StreamingState.Cancelled -> {
                                 queue.cancel()
@@ -709,7 +719,7 @@ class AssistantViewModel(
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (e: Exception) {
-                if (token == turn) handleError("Assistant request failed. Check provider and voice settings.")
+                if (token == turn) handleError(AssistantCopy.requestFailure(e))
             }
         }
     }
@@ -827,6 +837,21 @@ class AssistantViewModel(
         } catch (_: Exception) {
             // Silent failure - title generation is non-critical
         }
+    }
+
+    /**
+     * Re-sends the question a failed request interrupted (the notice's "Try again"). The
+     * question's own bubble is reused rather than repeated; photos and the screen capture were
+     * consumed by the first attempt and do not go out again.
+     */
+    fun retryLastQuery() {
+        val question = _uiState.value.userQuery
+        if (question.isBlank()) return
+        _messages.update { list ->
+            val last = list.lastOrNull()
+            if (last != null && last.role == MessageRole.USER && last.content == question) list.dropLast(1) else list
+        }
+        sendQuery(question)
     }
 
     /**

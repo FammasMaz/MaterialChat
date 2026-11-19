@@ -105,8 +105,24 @@ class AssistantContrastTest {
             // remove buttons. The thinking surface's two lines are "thinking body"/"thinking muted".
             "screen chip", "screen chip remove", "screen used marker", "screen settings button",
             "toolbar action", "attachment remove",
+            // W2: the notice's outlined action chip on both notice fills.
+            "notice action", "error notice action",
             "glyph Idle", "glyph Capturing", "glyph Thinking", "glyph Speaking"
         )) assertTrue("missing pair $expected in $names", expected in names)
+    }
+
+    @Test fun noticeActionChipReadsOnBothNoticeFillsInEveryTheme() {
+        // The chip is outlined in the notice's resolved content colour: its label must read at
+        // body size on the plain notice fill and on the error container in all 39 appearances.
+        val failures = buildList {
+            for (theme in themes) {
+                val pairs = AssistantSurfacePalette.resolve(theme.scheme).pairs()
+                    .filter { it.name.startsWith("notice action") || it.name.startsWith("error notice action") }
+                assertEquals("${theme.name}: both notice fills must be enumerated", 2, pairs.size)
+                for (pair in pairs) if (!pair.passes) add("${theme.name}: ${pair.name} ${pair.ratio.fmt()} < ${pair.minimum}")
+            }
+        }
+        assertTrue("${failures.size} notice action pair(s) below WCAG AA:\n" + failures.joinToString("\n"), failures.isEmpty())
     }
 
     @Test fun surfacesAddedIn2410ReadInEveryTheme() {
