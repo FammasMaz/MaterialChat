@@ -28,6 +28,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -579,7 +580,9 @@ private fun ConversationsTopBar(
             // Title row - aligned to bottom left with fixed padding
             Row(
                 modifier = Modifier
-                    .height(44.dp) // Same height as icon buttons for alignment
+                    // Matches the 44dp icon buttons at font scale 1.0 but may grow: headlineLarge
+                    // is a 40sp line (52dp at scale 1.3) and the wordmark clips to its bounds.
+                    .heightIn(min = 44.dp)
                     .align(Alignment.BottomStart)
                     .padding(bottom = baseBottomPadding)
                     .graphicsLayer {

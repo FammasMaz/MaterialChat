@@ -123,7 +123,19 @@ internal enum class HomeSettingsSlot(
     // (ImageViewerDialog is owned by the chat pass and gated in ChatContrastTest.)
     // Insights stat cards: label and value text on the surfaceContainerHigh card.
     StatCardLabel(ThemeContrast.BODY_TEXT, { it.surfaceContainerHigh }, { it.onSurfaceVariant }, { listOf(it.onSurface) }),
-    StatCardValue(ThemeContrast.BODY_TEXT, { it.surfaceContainerHigh }, { it.onSurface });
+    StatCardValue(ThemeContrast.BODY_TEXT, { it.surfaceContainerHigh }, { it.onSurface }),
+
+    // --- Full-screen error state (LoadErrorContent on HomeEmptyState) ---------------------
+    // Home, settings, bookmarks and workflow execution draw it inside ExpressiveContentSurface
+    // (surfaceContainerLow); Persona Studio draws it straight on the scaffold (surfaceContainer).
+    ErrorHeadline(ThemeContrast.BODY_TEXT, { it.surfaceContainerLow }, { it.onSurface }),
+    ErrorBody(ThemeContrast.BODY_TEXT, { it.surfaceContainerLow }, { it.onSurfaceVariant }, { listOf(it.onSurface) }),
+    ErrorHeadlineOnContainer(ThemeContrast.BODY_TEXT, { it.surfaceContainer }, { it.onSurface }),
+    ErrorBodyOnContainer(ThemeContrast.BODY_TEXT, { it.surfaceContainer }, { it.onSurfaceVariant }, { listOf(it.onSurface) }),
+    ErrorHeroIcon(ThemeContrast.ICON, { it.secondaryContainer }, { it.onSecondaryContainer }),
+    ErrorPrimaryAction(ThemeContrast.BODY_TEXT, { it.primary }, { it.onPrimary }, { listOf(it.onPrimaryContainer) }),
+    ErrorSecondaryAction(ThemeContrast.BODY_TEXT, { it.surfaceContainerLow }, { it.primary }, { listOf(it.onSurface) }),
+    ErrorSecondaryActionOnContainer(ThemeContrast.BODY_TEXT, { it.surfaceContainer }, { it.primary }, { listOf(it.onSurface) });
 
     companion object {
         private fun over(top: Color, alpha: Float, under: Color): Color =
