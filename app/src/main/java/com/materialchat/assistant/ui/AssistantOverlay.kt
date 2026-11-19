@@ -716,8 +716,10 @@ internal fun AssistantOverlayContent(
             verticalArrangement = Arrangement.spacedBy(AssistantSpacing.Between)
         ) {
             // Response surface above the pill: latest exchange, action row, close.
-            // The answer surface rises out of the pill: a weighty spring settle with a slight
-            // scale-up, anchored to its bottom edge where the pill is.
+            // The answer surface rises out of the pill on the shared container spring with a
+            // slight scale-up, anchored to its bottom edge where the pill is; it sinks back on the
+            // sheet's own critically damped exit curve, so a surface dismissed while the window is
+            // leaving is gone inside AssistantExitMotion's window (M3: overshoot on arrival only).
             AnimatedVisibility(
                 visible = hasResponse,
                 enter = fadeIn(animationSpec = AssistantMotion.effect()) +
@@ -732,11 +734,11 @@ internal fun AssistantOverlayContent(
                     ),
                 exit = fadeOut(animationSpec = AssistantMotion.effect()) +
                     slideOutVertically(
-                        animationSpec = AssistantMotion.surfaceReveal(),
+                        animationSpec = AssistantMotion.exit(),
                         targetOffsetY = { it / 2 }
                     ) +
                     scaleOut(
-                        animationSpec = AssistantMotion.surfaceReveal(),
+                        animationSpec = AssistantMotion.exit(),
                         targetScale = 0.92f,
                         transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0.5f, 1f)
                     ),

@@ -39,12 +39,17 @@ internal object AssistantMotion {
     fun <T> stateSwitch(): SpringSpec<T> = ExpressiveMotion.Spatial.fast()
 
     /**
-     * The answer surface rising out of the pill or sinking back (slide + scale): the shared default
-     * spatial token. Height disclosures (the opened pill's regions growing or folding) do not use
-     * this: they draw [ExpressiveMotion.Disclosure.Expand] / [ExpressiveMotion.Disclosure.Shrink]
-     * directly, like every other disclosure in the app (W5).
+     * The answer surface rising out of the pill and the thinking surface growing from its corner
+     * (slide + scale entrances): the shared M3 Expressive container spatial token, the spring every
+     * container transform in the app arrives on (W7: was the default spatial token, the one
+     * assistant entrance off the app-wide container spring). Arrival may overshoot a little; the
+     * surfaces never leave on this spring, they leave on [exit] (its 0.6 damping would still be
+     * moving past [AssistantExitMotion]'s window, see AssistantMotionTest). Height disclosures
+     * (the opened pill's regions growing or folding) do not use this: they draw
+     * [ExpressiveMotion.Disclosure.Expand] / [ExpressiveMotion.Disclosure.Shrink] directly, like
+     * every other disclosure in the app (W5).
      */
-    fun <T> surfaceReveal(): SpringSpec<T> = ExpressiveMotion.Spatial.default()
+    fun <T> surfaceReveal(): SpringSpec<T> = container()
 
     /** Sheet entrance: the shared M3 Expressive container spatial token. */
     fun <T> container(): SpringSpec<T> = ExpressiveMotion.Spatial.container()

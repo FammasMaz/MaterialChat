@@ -235,8 +235,9 @@ private fun AssistantBubble(
  */
 @Composable
 private fun AssistantThinkingSurface() {
-    // One spring on appearance, anchored at the corner that points at the pill. A spring, not a
-    // delay: the composition owns no timers (see AssistantOverlay's keep-awake contract).
+    // One spring on appearance (the shared container token, the same spring the answer surface
+    // arrives on), anchored at the corner that points at the pill. A spring, not a delay: the
+    // composition owns no timers (see AssistantOverlay's keep-awake contract).
     val entrance = remember { Animatable(0.88f) }
     LaunchedEffect(Unit) { entrance.animateTo(1f, AssistantMotion.surfaceReveal()) }
     val palette = rememberAssistantSurfacePalette()
