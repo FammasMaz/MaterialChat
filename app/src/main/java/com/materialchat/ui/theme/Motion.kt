@@ -605,6 +605,15 @@ object MaterialChatMotion {
          */
         const val Pulse = 500
 
+        /**
+         * Period of the fusion animation's orbit (`FusionAnimation`): one linear 0 -> 360 turn
+         * per period on [ExpressiveMotion.Spatial.decorativeSpin]. Value-equal to
+         * [Indicator.MorphShape] (3 s), which the consumer reused for want of a name; a token of
+         * its own so the orbit can be retuned without moving the loading indicator's shape cycle.
+         * Continuous, so gated like every other ornament loop.
+         */
+        const val FusionOrbit = 3_000
+
         /** Period of a foreground decorative spin (home banner gear). */
         const val DecorativeSpin = 16_000
 
