@@ -159,7 +159,7 @@ private fun SettingsMotionCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                Column {
+                Column(modifier = Modifier.weight(1f)) {
                     Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                     Text(description, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }

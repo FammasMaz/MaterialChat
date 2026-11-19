@@ -520,7 +520,7 @@ private fun DrawScope.drawNode(
         drawText(fullTitle, textX, textY, textPaint)
 
         // Message count badge (bottom-right area)
-        badgePaint.color = textColor.copy(alpha = 0.7f).toArgb()
+        badgePaint.color = textColor.toArgb()
         badgePaint.textSize = badgeTextSize
         val badgeText = "${node.messageCount} msgs"
         val badgeWidth = badgePaint.measureText(badgeText)

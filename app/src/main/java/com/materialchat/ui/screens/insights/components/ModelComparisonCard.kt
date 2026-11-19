@@ -69,7 +69,7 @@ fun ModelComparisonCard(
                 .padding(20.dp)
         ) {
             Text(
-                text = "Model Comparison",
+                text = "Model comparison",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.onSurface

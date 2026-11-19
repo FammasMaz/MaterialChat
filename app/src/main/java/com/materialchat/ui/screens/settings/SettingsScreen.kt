@@ -124,6 +124,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -1229,7 +1230,7 @@ private fun SuccessContent(
         item {
             SettingsSectionHeader(
                 title = if (BuildConfig.EXTERNAL_UPDATES_ENABLED) {
-                    "About & Updates"
+                    "About & updates"
                 } else {
                     "About"
                 },
@@ -1264,7 +1265,7 @@ private fun AddProviderButton(onClick: () -> Unit) {
     ExpressiveButton(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
-        text = "Add Provider",
+        text = "Add provider",
         leadingIcon = Icons.Default.Add,
         style = ExpressiveButtonStyle.Outlined
     )
@@ -1298,7 +1299,7 @@ private fun BackupRestoreSection(
                 Spacer(modifier = Modifier.width(12.dp))
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "Encrypted Backup & Restore",
+                        text = "Encrypted backup & restore",
                         style = MaterialTheme.typography.titleSmall,
                         color = MaterialTheme.colorScheme.onSurface
                     )
@@ -1492,8 +1493,8 @@ private fun RemoveAdsCard(
                 enabled = premiumState.billingReady && !premiumState.isPurchaseInProgress,
                 text = when {
                     premiumState.isPurchaseInProgress -> "Opening purchase..."
-                    premiumState.removeAdsPrice != null -> "Remove Ads • ${premiumState.removeAdsPrice}"
-                    premiumState.billingReady -> "Remove Ads"
+                    premiumState.removeAdsPrice != null -> "Remove ads • ${premiumState.removeAdsPrice}"
+                    premiumState.billingReady -> "Remove ads"
                     else -> "Loading price..."
                 },
                 style = ExpressiveButtonStyle.Filled,
@@ -1551,7 +1552,7 @@ private fun RewardedPremiumCard(
                 text = when {
                     premiumState.isRewardedAdLoading -> "Loading ad..."
                     premiumState.rewardedAdReady && premiumState.hasRewardedPremium -> "Extend by 24 hours"
-                    premiumState.rewardedAdReady -> "Watch Ad"
+                    premiumState.rewardedAdReady -> "Watch ad"
                     else -> "Ad loading..."
                 },
                 style = ExpressiveButtonStyle.FilledTonal,
@@ -1650,7 +1651,7 @@ private fun ColorPaletteSelector(
                     modifier = Modifier.size(24.dp)
                 )
                 Spacer(modifier = Modifier.width(12.dp))
-                Column {
+                Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = "Material palette & appearance",
                         style = MaterialTheme.typography.titleSmall,
@@ -1658,7 +1659,7 @@ private fun ColorPaletteSelector(
                     )
                     Text(
                         text = if (dynamicColorEnabled) {
-                            "Dynamic Color is on; palettes are used when it is unavailable"
+                            "Dynamic color is on; palettes are used when it is unavailable"
                         } else {
                             "Choose a Material 3 palette"
                         },
@@ -1756,7 +1757,7 @@ private fun ChatBubbleStyleSelector(
                     modifier = Modifier.size(24.dp)
                 )
                 Spacer(modifier = Modifier.width(12.dp))
-                Column {
+                Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = "Chat bubble shape",
                         style = MaterialTheme.typography.titleSmall,
@@ -1820,7 +1821,8 @@ private fun ChatBubbleStyleSelector(
                             Text(
                                 text = style.prettyName(),
                                 style = MaterialTheme.typography.labelLarge,
-                                maxLines = 1
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
                             )
                         }
                     }
@@ -1860,7 +1862,7 @@ private fun ControlShapeStyleSelector(
                     modifier = Modifier.size(24.dp)
                 )
                 Spacer(modifier = Modifier.width(12.dp))
-                Column {
+                Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = "Control shape intensity",
                         style = MaterialTheme.typography.titleSmall,
@@ -1916,7 +1918,8 @@ private fun ControlShapeStyleSelector(
                             Text(
                                 text = style.prettyName(),
                                 style = MaterialTheme.typography.labelLarge,
-                                maxLines = 1
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
                             )
                         }
                     }
@@ -2013,9 +2016,9 @@ private fun FontSizeSelector(
                     modifier = Modifier.size(24.dp)
                 )
                 Spacer(modifier = Modifier.width(12.dp))
-                Column {
+                Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "Chat Font Size",
+                        text = "Chat font size",
                         style = MaterialTheme.typography.titleSmall,
                         color = MaterialTheme.colorScheme.onSurface
                     )
@@ -2140,7 +2143,7 @@ private fun AiGeneratedTitlesToggle(
                 Spacer(modifier = Modifier.width(12.dp))
                 Column {
                     Text(
-                        text = "AI-Generated Titles",
+                        text = "AI-generated titles",
                         style = MaterialTheme.typography.titleSmall,
                         color = MaterialTheme.colorScheme.onSurface
                     )
@@ -2192,7 +2195,7 @@ private fun PreferOnDeviceTitleModelToggle(
                 Spacer(modifier = Modifier.width(12.dp))
                 Column {
                     Text(
-                        text = "Native Title Generation",
+                        text = "Native title generation",
                         style = MaterialTheme.typography.titleSmall,
                         color = MaterialTheme.colorScheme.onSurface
                     )
@@ -2292,7 +2295,7 @@ private fun TitleGenerationModelField(
                 Spacer(modifier = Modifier.width(12.dp))
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "Title Generation Model",
+                        text = "Title generation model",
                         style = MaterialTheme.typography.titleSmall,
                         color = MaterialTheme.colorScheme.onSurface
                     )
@@ -2537,7 +2540,7 @@ private fun DefaultImageGenerationModelField(
                 Spacer(modifier = Modifier.width(12.dp))
                 Column {
                     Text(
-                        text = "Default Image Model",
+                        text = "Default image model",
                         style = MaterialTheme.typography.titleSmall,
                         color = MaterialTheme.colorScheme.onSurface
                     )
@@ -2641,7 +2644,7 @@ private fun DefaultImageOutputFormatField(
                 Spacer(modifier = Modifier.width(12.dp))
                 Column {
                     Text(
-                        text = "Image Output Format",
+                        text = "Image output format",
                         style = MaterialTheme.typography.titleSmall,
                         color = MaterialTheme.colorScheme.onSurface
                     )
@@ -2792,7 +2795,7 @@ private fun DeleteProviderDialog(
         shape = ExpressiveShapes.Dialog,
         title = {
             Text(
-                text = "Delete Provider",
+                text = "Delete provider",
                 style = MaterialTheme.typography.headlineSmall
             )
         },
@@ -2994,7 +2997,7 @@ private fun AboutSection(
                             modifier = Modifier.size(24.dp)
                         )
                         Spacer(modifier = Modifier.width(12.dp))
-                        Column {
+                        Column(modifier = Modifier.weight(1f)) {
                             Text(
                                 text = "Check for updates",
                                 style = MaterialTheme.typography.titleSmall,
@@ -3075,7 +3078,7 @@ private fun AboutSection(
                         ) {
                             com.materialchat.ui.components.ExpressiveButton(
                                 onClick = onInstallUpdate,
-                                text = "Install Now",
+                                text = "Install now",
                                 style = com.materialchat.ui.components.ExpressiveButtonStyle.Outlined
                             )
                         }
@@ -3220,7 +3223,7 @@ private fun AssistantSection(
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = "Set as Default Assistant",
+                            text = "Set as default assistant",
                             style = MaterialTheme.typography.titleSmall,
                             color = MaterialTheme.colorScheme.onSurface
                         )
@@ -3291,7 +3294,7 @@ private fun WebSearchSection(
                     Spacer(modifier = Modifier.width(12.dp))
                     Column {
                         Text(
-                            text = "Web Search",
+                            text = "Web search",
                             style = MaterialTheme.typography.titleSmall,
                             color = MaterialTheme.colorScheme.onSurface
                         )
@@ -3315,7 +3318,7 @@ private fun WebSearchSection(
 
                 // Provider selection
                 Text(
-                    text = "Search Provider",
+                    text = "Search provider",
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(bottom = 8.dp)
@@ -3344,8 +3347,8 @@ private fun WebSearchSection(
                             onValueChange = { apiKeyText = it },
                             label = {
                                 Text(
-                                    if (exaApiKeyConfigured) "Exa API Key (configured)"
-                                    else "Exa API Key"
+                                    if (exaApiKeyConfigured) "Exa API key (configured)"
+                                    else "Exa API key"
                                 )
                             },
                             placeholder = { Text("Enter your Exa API key") },
@@ -3360,7 +3363,7 @@ private fun WebSearchSection(
                                     onExaApiKeyChange(apiKeyText)
                                     apiKeyText = ""
                                 },
-                                text = "Save API Key",
+                                text = "Save API key",
                                 style = ExpressiveButtonStyle.FilledTonal
                             )
                         }
@@ -3373,7 +3376,7 @@ private fun WebSearchSection(
                                 urlText = it
                                 onSearxngBaseUrlChange(it)
                             },
-                            label = { Text("SearXNG Base URL") },
+                            label = { Text("SearXNG base URL") },
                             placeholder = { Text("https://searx.be") },
                             modifier = Modifier.fillMaxWidth(),
                             singleLine = true,
@@ -3403,7 +3406,7 @@ private fun WebSearchSection(
                     val maxResultsHaptics = rememberHapticFeedback()
                     var lastMaxResults by remember { mutableStateOf(-1) }
                     Text(
-                        text = "Max Results: $webSearchMaxResults",
+                        text = "Max results: $webSearchMaxResults",
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

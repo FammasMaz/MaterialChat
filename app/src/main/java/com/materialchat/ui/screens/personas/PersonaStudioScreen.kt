@@ -118,7 +118,7 @@ fun PersonaStudioScreen(
                 icon = Icons.Filled.Add,
                 contentDescription = "Create",
                 expanded = true,
-                text = "New Persona"
+                text = "New persona"
             )
         },
         snackbarHost = {
@@ -253,7 +253,7 @@ private fun PersonaStudioErrorContent(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        ExpressiveButton(onClick = { onNavigateBack() }, text = "Go Back", style = ExpressiveButtonStyle.Text)
+        ExpressiveButton(onClick = { onNavigateBack() }, text = "Go back", style = ExpressiveButtonStyle.Text)
     }
 }
 
@@ -278,7 +278,7 @@ private fun PersonaOnboardingCard() {
                 modifier = Modifier.size(24.dp)
             )
             Text(
-                text = "How to use Personas",
+                text = "How to use personas",
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.onSecondaryContainer

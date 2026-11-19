@@ -13,6 +13,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.text.style.TextOverflow
 import com.materialchat.ui.theme.CustomShapes
 
 /**
@@ -46,7 +47,8 @@ fun ConversationStarterChips(
                     Text(
                         text = starter,
                         style = MaterialTheme.typography.bodySmall,
-                        maxLines = 2
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
                     )
                 },
                 shape = CustomShapes.Pill,

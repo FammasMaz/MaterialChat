@@ -88,7 +88,7 @@ fun ArenaModelPicker(
                     text = "${selectedContenders.size} in the ring" +
                             if (selectedContenders.size < 2) " — pick at least 2" else "",
                     style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(vertical = 10.dp)
                 )
             }
@@ -113,7 +113,7 @@ fun ArenaModelPicker(
             Text(
                 text = "Loading models…",
                 style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(top = 10.dp)
             )
         }

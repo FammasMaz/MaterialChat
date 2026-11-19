@@ -168,7 +168,7 @@ private fun BookmarksErrorContent(
         )
         Spacer(modifier = Modifier.height(16.dp))
         ExpressiveButton(onClick = { onRetry() }, text = "Retry", style = ExpressiveButtonStyle.Text)
-        ExpressiveButton(onClick = { onNavigateBack() }, text = "Go Back", style = ExpressiveButtonStyle.Text)
+        ExpressiveButton(onClick = { onNavigateBack() }, text = "Go back", style = ExpressiveButtonStyle.Text)
     }
 }
 

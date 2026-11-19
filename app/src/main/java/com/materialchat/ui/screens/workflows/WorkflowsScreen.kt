@@ -102,7 +102,7 @@ fun WorkflowsScreen(
                 icon = Icons.Filled.Add,
                 contentDescription = "Create",
                 expanded = true,
-                text = "New Workflow"
+                text = "New workflow"
             )
         }
     ) { paddingValues ->

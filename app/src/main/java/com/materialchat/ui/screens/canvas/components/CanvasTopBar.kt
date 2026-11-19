@@ -25,7 +25,7 @@ import com.materialchat.ui.screens.canvas.CanvasViewMode
  *
  * Displays:
  * - Back navigation button
- * - Title indicating the artifact type (e.g., "HTML Preview", "Mermaid Diagram")
+ * - Title indicating the artifact type (e.g., "HTML preview", "Mermaid diagram")
  * - Toggle button to switch between Preview and Code view modes
  * - Share button to share the raw artifact code
  * - Copy button to copy the raw artifact code to the clipboard
@@ -55,10 +55,10 @@ fun CanvasTopBar(
 ) {
     val haptics = rememberHapticFeedback()
     val title = when (artifactType) {
-        ArtifactType.HTML -> "HTML Preview"
-        ArtifactType.MERMAID -> "Mermaid Diagram"
-        ArtifactType.SVG -> "SVG Preview"
-        ArtifactType.LATEX -> "LaTeX Math"
+        ArtifactType.HTML -> "HTML preview"
+        ArtifactType.MERMAID -> "Mermaid diagram"
+        ArtifactType.SVG -> "SVG preview"
+        ArtifactType.LATEX -> "LaTeX math"
     }
 
     val toggleIcon = when (viewMode) {

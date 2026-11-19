@@ -586,7 +586,7 @@ private fun OnDeviceModelCard(
                     else -> {
                         ExpressiveButton(
                             onClick = onDownload,
-                            text = if (isAicore) "Download / Check" else "Download",
+                            text = if (isAicore) "Download / check" else "Download",
                             style = ExpressiveButtonStyle.FilledTonal,
                             enabled = !isBusy && state.availability != LocalModelAvailability.DOWNLOADING
                         )

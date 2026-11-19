@@ -201,13 +201,13 @@ private fun InsightsContent(
             modifier = Modifier.fillMaxWidth()
         ) {
             StatCard(
-                label = "Avg Thinking",
+                label = "Avg thinking",
                 value = data.avgThinkingDuration?.let { (it / 1000).toInt() } ?: 0,
                 subtitle = "seconds",
                 modifier = Modifier.weight(1f)
             )
             StatCard(
-                label = "Avg Response",
+                label = "Avg response",
                 value = data.avgTotalDuration?.let { (it / 1000).toInt() } ?: 0,
                 subtitle = "seconds",
                 modifier = Modifier.weight(1f)

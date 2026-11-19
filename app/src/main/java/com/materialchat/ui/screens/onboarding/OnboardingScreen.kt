@@ -52,6 +52,11 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.fadeIn
+import androidx.compose.foundation.layout.heightIn
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.materialchat.ui.components.M3ExpressiveInlineLoading
@@ -144,7 +149,13 @@ private fun OnboardingContent(
                     onSignIn = onSignInWithCodex
                 )
 
-                AnimatedVisibility(visible = uiState.error != null) {
+                AnimatedVisibility(
+                    visible = uiState.error != null,
+                    enter = fadeIn(animationSpec = ExpressiveMotion.Disclosure.FadeIn) +
+                        expandVertically(animationSpec = ExpressiveMotion.Disclosure.Expand),
+                    exit = fadeOut(animationSpec = ExpressiveMotion.Disclosure.FadeOut) +
+                        shrinkVertically(animationSpec = ExpressiveMotion.Disclosure.Shrink)
+                ) {
                     AssistiveMessageCard(
                         icon = Icons.Outlined.ErrorOutline,
                         title = "Sign-in needs another try",
@@ -171,7 +182,7 @@ private fun OnboardingContent(
 
                 ProviderOptionCard(
                     icon = Icons.Outlined.Computer,
-                    title = "Continue with Local Ollama",
+                    title = "Continue with local Ollama",
                     subtitle = "Use the local template now and configure the server later.",
                     onClick = onContinueWithOllama,
                     containerColor = MaterialTheme.colorScheme.surfaceContainerLow
@@ -181,7 +192,7 @@ private fun OnboardingContent(
                     onClick = onSkip,
                     modifier = Modifier
                         .align(Alignment.CenterHorizontally)
-                        .height(48.dp),
+                        .heightIn(min = 48.dp),
                     shape = CustomShapes.Button
                 ) {
                     Icon(
@@ -317,7 +328,7 @@ private fun CodexHeroCard(
                 enabled = !isSigningIn,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(72.dp),
+                    .heightIn(min = 72.dp),
                 shape = CircleShape,
                 colors = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.primary,
@@ -367,7 +378,7 @@ private fun ProviderOptionCard(
         onClick = onClick,
         modifier = Modifier
             .fillMaxWidth()
-            .height(88.dp),
+            .heightIn(min = 88.dp),
         shape = ExpressiveShapes.Card,
         colors = CardDefaults.cardColors(containerColor = containerColor),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)

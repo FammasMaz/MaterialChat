@@ -62,6 +62,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.layout.heightIn
 import com.materialchat.ui.components.ExpressiveTopBarTitle
 import com.materialchat.ui.components.HapticPattern
 import com.materialchat.ui.components.rememberDeviceTilt
@@ -255,7 +256,7 @@ private fun ArenaHeroCard(onClick: () -> Unit) {
         ),
         modifier = Modifier
             .fillMaxWidth()
-            .height(196.dp)
+            .heightIn(min = 196.dp)
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
@@ -332,7 +333,7 @@ private fun ArenaHeroCard(onClick: () -> Unit) {
                     text = "Compare models head-to-head and vote on the better answer.",
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Medium,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.82f),
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.fillMaxWidth(0.62f)
@@ -372,7 +373,7 @@ private fun StaggeredFeatureCard(index: Int, feature: ExploreFeature) {
 
     AnimatedVisibility(
         visible = alpha.value > 0f,
-        enter = fadeIn() + slideInVertically { it / 8 }
+        enter = fadeIn(animationSpec = ExpressiveMotion.Disclosure.FadeIn) + slideInVertically(animationSpec = ExpressiveMotion.Spatial.container()) { it / 8 }
     ) {
         ExploreFeatureCard(
             feature = feature,
@@ -407,7 +408,7 @@ private fun ExploreFeatureCard(feature: ExploreFeature, modifier: Modifier = Mod
         elevation = CardDefaults.elevatedCardElevation(defaultElevation = if (feature.isWide) 3.dp else 1.dp),
         modifier = modifier
             .fillMaxWidth()
-            .height(if (feature.isWide) 144.dp else 156.dp)
+            .heightIn(min = if (feature.isWide) 144.dp else 156.dp)
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale

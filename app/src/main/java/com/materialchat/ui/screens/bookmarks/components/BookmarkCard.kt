@@ -136,7 +136,7 @@ fun BookmarkCard(
                 Text(
                     text = bookmark.note,
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -180,7 +180,7 @@ fun BookmarkCard(
                     text = bookmark.category.displayName,
                     style = MaterialTheme.typography.labelSmall,
                     fontWeight = FontWeight.Medium,
-                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f)
+                    color = MaterialTheme.colorScheme.primary
                 )
 
                 // Action buttons
@@ -198,7 +198,7 @@ fun BookmarkCard(
                             imageVector = Icons.AutoMirrored.Outlined.OpenInNew,
                             contentDescription = "Go to conversation",
                             modifier = Modifier.size(18.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                     IconButton(
@@ -212,7 +212,7 @@ fun BookmarkCard(
                             imageVector = Icons.Default.Delete,
                             contentDescription = "Delete bookmark",
                             modifier = Modifier.size(18.dp),
-                            tint = MaterialTheme.colorScheme.error.copy(alpha = 0.7f)
+                            tint = MaterialTheme.colorScheme.error
                         )
                     }
                 }

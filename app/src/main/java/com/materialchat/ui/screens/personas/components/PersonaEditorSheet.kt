@@ -84,7 +84,7 @@ fun PersonaEditorSheet(
         ) {
             // Title
             Text(
-                text = if (isEditing) "Edit Persona" else "Create Persona",
+                text = if (isEditing) "Edit persona" else "Create persona",
                 style = MaterialTheme.typography.headlineSmall,
                 color = MaterialTheme.colorScheme.onSurface
             )
@@ -133,7 +133,7 @@ fun PersonaEditorSheet(
             OutlinedTextField(
                 value = systemPrompt,
                 onValueChange = { systemPrompt = it },
-                label = { Text("System Prompt") },
+                label = { Text("System prompt") },
                 minLines = 3,
                 maxLines = 6,
                 shape = MaterialTheme.shapes.medium,
@@ -146,7 +146,7 @@ fun PersonaEditorSheet(
             OutlinedTextField(
                 value = tagsText,
                 onValueChange = { tagsText = it },
-                label = { Text("Expertise Tags (comma-separated)") },
+                label = { Text("Expertise tags (comma-separated)") },
                 singleLine = true,
                 shape = MaterialTheme.shapes.medium,
                 modifier = Modifier.fillMaxWidth()
@@ -186,7 +186,7 @@ fun PersonaEditorSheet(
             OutlinedTextField(
                 value = startersText,
                 onValueChange = { startersText = it },
-                label = { Text("Conversation Starters (one per line)") },
+                label = { Text("Conversation starters (one per line)") },
                 minLines = 3,
                 maxLines = 5,
                 shape = MaterialTheme.shapes.medium,

@@ -257,7 +257,7 @@ private fun ArenaReadyContent(
                 animationSpec = ExpressiveMotion.Spatial.container(),
                 initialOffsetY = { it / 4 }
             ),
-            exit = fadeOut() + slideOutVertically()
+            exit = fadeOut(animationSpec = ExpressiveMotion.Disclosure.FadeOut) + slideOutVertically(animationSpec = ExpressiveMotion.Spatial.container())
         ) {
             ArenaBattleView(
                 contenders = state.contenders,
@@ -274,7 +274,7 @@ private fun ArenaReadyContent(
                 animationSpec = ExpressiveMotion.Spatial.container(),
                 initialOffsetY = { it / 2 }
             ),
-            exit = fadeOut()
+            exit = fadeOut(animationSpec = ExpressiveMotion.Disclosure.FadeOut)
         ) {
             Column {
                 ArenaVotingBar(
@@ -293,7 +293,7 @@ private fun ArenaReadyContent(
                 ) {
                     ExpressiveButton(
                         onClick = { onNewBattle() },
-                        text = "New Battle",
+                        text = "New battle",
                         leadingIcon = Icons.Filled.Add,
                         style = ExpressiveButtonStyle.FilledTonal,
                         modifier = Modifier

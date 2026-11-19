@@ -180,7 +180,7 @@ private fun AddProviderSheetContent(
     ) {
         // Header
         SheetHeader(
-            title = if (isEditing) "Edit Provider" else "Add Provider",
+            title = if (isEditing) "Edit provider" else "Add provider",
             onClose = onDismiss
         )
 
@@ -190,7 +190,7 @@ private fun AddProviderSheetContent(
         FormTextField(
             value = formState.name,
             onValueChange = { onFieldChange(it, null, null, null, null) },
-            label = "Provider Name",
+            label = "Provider name",
             placeholder = "e.g., OpenAI, Ollama Local",
             leadingIcon = Icons.Outlined.TextFields,
             error = formState.nameError,
@@ -242,7 +242,7 @@ private fun AddProviderSheetContent(
         FormTextField(
             value = formState.defaultModel,
             onValueChange = { onFieldChange(null, null, null, it, null) },
-            label = "Default Model",
+            label = "Default model",
             placeholder = when (formState.type) {
                 ProviderType.OPENAI_COMPATIBLE -> "gpt-4o"
                 ProviderType.OLLAMA_NATIVE -> "llama3.2"
@@ -275,7 +275,7 @@ private fun AddProviderSheetContent(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = "Available Models",
+                text = "Available models",
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -325,8 +325,8 @@ private fun AddProviderSheetContent(
                     onValueChange = { onFieldChange(null, null, null, null, it) },
                     label = when {
                         isEditing && formState.hasExistingKey ->
-                            "API Key (leave blank to keep existing)"
-                        else -> "API Key"
+                            "API key (leave blank to keep existing)"
+                        else -> "API key"
                     },
                     placeholder = "sk-...",
                     leadingIcon = Icons.Outlined.Key,
@@ -405,7 +405,7 @@ private fun ProviderTypeSelector(
 ) {
     Column {
         Text(
-            text = "Provider Type",
+            text = "Provider type",
             style = MaterialTheme.typography.labelLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -545,8 +545,8 @@ private fun SaveButton(
         Text(
             text = when {
                 isSaving -> "Saving..."
-                isEditing -> "Update Provider"
-                else -> "Add Provider"
+                isEditing -> "Update provider"
+                else -> "Add provider"
             }
         )
     }

@@ -86,7 +86,7 @@ fun AddBookmarkSheet(
         ) {
             // Title
             Text(
-                text = "Add Bookmark",
+                text = "Add bookmark",
                 style = MaterialTheme.typography.titleLarge,
                 color = MaterialTheme.colorScheme.onSurface
             )
@@ -263,7 +263,7 @@ fun AddBookmarkSheet(
                         note.ifBlank { null }
                     )
                 },
-                text = "Save Bookmark",
+                text = "Save bookmark",
                 style = ExpressiveButtonStyle.Filled,
                 modifier = Modifier.fillMaxWidth()
             )

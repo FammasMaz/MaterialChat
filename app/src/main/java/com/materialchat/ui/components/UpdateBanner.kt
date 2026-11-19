@@ -42,6 +42,7 @@ import com.materialchat.domain.model.AppUpdate
 import com.materialchat.domain.model.UpdateState
 import com.materialchat.domain.model.shouldShowBanner
 import com.materialchat.ui.theme.ExpressiveMotion
+import com.materialchat.ui.theme.particles.rememberParticleMotionGate
 
 /**
  * Non-blocking update banner that slides in from the top.
@@ -246,6 +247,9 @@ private fun DownloadingBannerContent(
 
         Spacer(modifier = Modifier.height(12.dp))
 
+        // Decoration motion gate: the wave flattens to a plain bar (amplitude 0) while
+        // motion is disallowed; progress itself still updates.
+        val motionAllowed = rememberParticleMotionGate().motionAllowed
         @OptIn(ExperimentalMaterial3ExpressiveApi::class)
         LinearWavyProgressIndicator(
             progress = { animatedProgress },
@@ -255,7 +259,10 @@ private fun DownloadingBannerContent(
             color = MaterialTheme.colorScheme.primary,
             trackColor = ProgressIndicatorDefaults.linearTrackColor,
             stroke = WavyProgressIndicatorDefaults.linearIndicatorStroke,
-            trackStroke = WavyProgressIndicatorDefaults.linearTrackStroke
+            trackStroke = WavyProgressIndicatorDefaults.linearTrackStroke,
+            amplitude = { fraction ->
+                if (motionAllowed) WavyProgressIndicatorDefaults.indicatorAmplitude(fraction) else 0f
+            }
         )
     }
 }
@@ -331,7 +338,7 @@ private fun ReadyToInstallBannerContent(
 
             ExpressiveButton(
                 onClick = onInstall,
-                text = "Install Now",
+                text = "Install now",
                 leadingIcon = Icons.Default.SystemUpdate,
                 style = ExpressiveButtonStyle.Filled
             )

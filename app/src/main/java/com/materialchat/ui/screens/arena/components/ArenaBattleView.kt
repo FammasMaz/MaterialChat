@@ -42,6 +42,7 @@ import kotlinx.coroutines.isActive
 import kotlin.random.Random
 import com.materialchat.ui.theme.ExpressiveMotion
 import com.materialchat.ui.theme.ExpressiveShapes
+import com.materialchat.ui.theme.particles.rememberParticleMotionGate
 
 /**
  * Blind N-model battle pager: one full-screen card per contender, swipeable.
@@ -109,7 +110,7 @@ fun ArenaBattleView(
         Text(
             text = "Swipe for other responses →",
             style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier
                 .fillMaxWidth()
                 .alpha(if (pagerState.pageCount > 1) 1f else 0f),
@@ -173,7 +174,7 @@ private fun BattleCard(
                             Text(
                                 text = "was ${contender.codename}",
                                 style = MaterialTheme.typography.labelSmall,
-                                color = accentOnContainer.copy(alpha = 0.65f)
+                                color = accentOnContainer
                             )
                         }
                     }
@@ -220,7 +221,10 @@ private fun scrambleWhileStreaming(
     var display by remember(contender.slot) {
         mutableStateOf(contender.codename)
     }
-    val animating = !revealed &&
+    // Decoration motion gate: no codename scramble while motion is disallowed; the
+    // card shows its stable codename instead.
+    val motionAllowed = rememberParticleMotionGate().motionAllowed
+    val animating = !revealed && motionAllowed &&
             (contender.streamState is StreamingState.Streaming ||
                     contender.streamState is StreamingState.Starting)
 

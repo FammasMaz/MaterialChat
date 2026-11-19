@@ -55,7 +55,7 @@ fun ArenaPromptInput(
             onValueChange = onPromptChanged,
             modifier = Modifier.weight(1f),
             placeholder = {
-                Text("Enter a prompt for both models...")
+                Text("Enter a prompt for the models…")
             },
             enabled = enabled,
             shape = CustomShapes.MessageInputContainer,

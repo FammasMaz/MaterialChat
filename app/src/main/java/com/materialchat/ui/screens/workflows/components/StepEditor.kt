@@ -96,7 +96,7 @@ fun StepEditor(
                             imageVector = Icons.Default.Delete,
                             contentDescription = "Delete step $stepNumber",
                             modifier = Modifier.size(20.dp),
-                            tint = MaterialTheme.colorScheme.error.copy(alpha = 0.7f)
+                            tint = MaterialTheme.colorScheme.error
                         )
                     }
                 }
@@ -109,7 +109,7 @@ fun StepEditor(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(top = 8.dp),
-                label = { Text("Prompt Template") },
+                label = { Text("Prompt template") },
                 placeholder = { Text("Enter prompt for this step...") },
                 minLines = 3,
                 maxLines = 8,
@@ -131,8 +131,7 @@ fun StepEditor(
                     }
                 },
                 style = MaterialTheme.typography.labelSmall,
-                fontSize = 11.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(top = 4.dp, start = 4.dp)
             )
         }

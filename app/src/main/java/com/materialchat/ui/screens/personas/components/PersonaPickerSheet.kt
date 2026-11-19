@@ -73,7 +73,7 @@ fun PersonaPickerSheet(
         ) {
             // Title
             Text(
-                text = "Choose a Persona",
+                text = "Choose a persona",
                 style = MaterialTheme.typography.headlineSmall,
                 color = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp)
@@ -111,7 +111,7 @@ fun PersonaPickerSheet(
                     Spacer(modifier = Modifier.width(12.dp))
                     Column {
                         Text(
-                            text = "No Persona",
+                            text = "No persona",
                             style = MaterialTheme.typography.titleSmall,
                             color = MaterialTheme.colorScheme.onSurface
                         )

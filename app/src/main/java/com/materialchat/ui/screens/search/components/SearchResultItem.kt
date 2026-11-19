@@ -142,7 +142,7 @@ fun SearchResultItem(
                         text = when (item.matchType) {
                             MatchType.TITLE -> "Title"
                             MatchType.CONTENT -> "Content"
-                            MatchType.BOTH -> "Title & Content"
+                            MatchType.BOTH -> "Title & content"
                         },
                         style = MaterialTheme.typography.labelSmall,
                         color = when (item.matchType) {

@@ -47,6 +47,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.materialchat.domain.model.WorkflowStatus
@@ -276,7 +277,7 @@ private fun ExecutionErrorContent(
             textAlign = TextAlign.Center
         )
         Spacer(modifier = Modifier.height(16.dp))
-        ExpressiveButton(onClick = { onNavigateBack() }, text = "Go Back", style = ExpressiveButtonStyle.Text)
+        ExpressiveButton(onClick = { onNavigateBack() }, text = "Go back", style = ExpressiveButtonStyle.Text)
     }
 }
 
@@ -490,7 +491,7 @@ private fun CurrentStepStreamingCard(
                 Surface(
                     shape = RoundedCornerShape(8.dp),
                     color = MaterialTheme.colorScheme.tertiary,
-                    modifier = Modifier.size(26.dp)
+                    modifier = Modifier.defaultMinSize(minWidth = 26.dp, minHeight = 26.dp)
                 ) {
                     Text(
                         text = "$stepNumber",
@@ -505,7 +506,7 @@ private fun CurrentStepStreamingCard(
                 Spacer(modifier = Modifier.width(10.dp))
 
                 Text(
-                    text = "Step $stepNumber — Running...",
+                    text = "Step $stepNumber — running…",
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onSurface
@@ -542,7 +543,7 @@ private fun CurrentStepLoadingCard(stepNumber: Int) {
             Surface(
                 shape = RoundedCornerShape(8.dp),
                 color = MaterialTheme.colorScheme.tertiary,
-                modifier = Modifier.size(26.dp)
+                modifier = Modifier.defaultMinSize(minWidth = 26.dp, minHeight = 26.dp)
             ) {
                 Text(
                     text = "$stepNumber",
@@ -557,7 +558,7 @@ private fun CurrentStepLoadingCard(stepNumber: Int) {
             Spacer(modifier = Modifier.width(10.dp))
 
             Text(
-                text = "Step $stepNumber — Waiting for response...",
+                text = "Step $stepNumber — waiting for response…",
                 style = MaterialTheme.typography.titleSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.weight(1f)

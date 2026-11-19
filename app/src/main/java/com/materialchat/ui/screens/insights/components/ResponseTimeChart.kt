@@ -68,7 +68,7 @@ fun ResponseTimeChart(
                 .padding(20.dp)
         ) {
             Text(
-                text = "Response Times",
+                text = "Response times",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.onSurface

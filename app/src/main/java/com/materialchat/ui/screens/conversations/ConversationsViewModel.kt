@@ -464,7 +464,7 @@ class ConversationsViewModel @Inject constructor(
 
         return ConversationUiItem(
             conversation = this,
-            providerName = provider?.name ?: "Unknown Provider",
+            providerName = provider?.name ?: "Unknown provider",
             relativeTime = relativeTime,
             messagePreview = null, // Message preview could be added later if needed
             isStreaming = id in streamingConversationIds

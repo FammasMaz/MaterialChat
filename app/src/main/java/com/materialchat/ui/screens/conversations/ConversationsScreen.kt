@@ -235,7 +235,7 @@ fun ConversationsScreen(
             AnimatedContent(
                 targetState = isSearchActive,
                 transitionSpec = {
-                    fadeIn() + slideInVertically() togetherWith fadeOut() + slideOutVertically()
+                    fadeIn(animationSpec = ExpressiveMotion.Disclosure.FadeIn) + slideInVertically(animationSpec = ExpressiveMotion.Spatial.container()) togetherWith fadeOut(animationSpec = ExpressiveMotion.Disclosure.FadeOut) + slideOutVertically(animationSpec = ExpressiveMotion.Spatial.container())
                 },
                 label = "topBarTransition"
             ) { searchActive ->
@@ -1038,7 +1038,7 @@ private fun EmptyContent(
         action = if (hasActiveProvider) {
             EmptyStateAction(stringResource(R.string.home_empty_action_start_chat), onCreateConversation)
         } else {
-            EmptyStateAction("Go to Settings", onNavigateToSettings)
+            EmptyStateAction("Go to settings", onNavigateToSettings)
         },
         modifier = modifier
     )
@@ -1066,7 +1066,7 @@ private fun FilteredEmptyContent(
             label = stringResource(R.string.home_empty_action_start_chat),
             onClick = onCreateConversation
         )
-        else -> EmptyStateAction(label = "Go to Settings", onClick = onNavigateToSettings)
+        else -> EmptyStateAction(label = "Go to settings", onClick = onNavigateToSettings)
     }
 
     HomeEmptyState(
@@ -1422,7 +1422,7 @@ private fun SearchResultsList(
             start = 16.dp,
             end = 16.dp,
             top = 16.dp,
-            bottom = 88.dp
+            bottom = listBottomClearance()
         ),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {

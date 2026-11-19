@@ -73,7 +73,7 @@ fun WorkflowBuilderScreen(
             TopAppBar(
                 title = {
                     ExpressiveTopBarTitle(
-                        title = if (uiState.isEditing) "Edit Workflow" else "New Workflow",
+                        title = if (uiState.isEditing) "Edit workflow" else "New workflow",
                         subtitle = "Build a repeatable chain"
                     )
                 },
@@ -122,8 +122,8 @@ fun WorkflowBuilderScreen(
             OutlinedTextField(
                 value = uiState.name,
                 onValueChange = { viewModel.updateName(it) },
-                label = { Text("Workflow Name") },
-                placeholder = { Text("e.g., Research & Summarize") },
+                label = { Text("Workflow name") },
+                placeholder = { Text("e.g., Research and summarize") },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
                 shape = ExpressiveShapes.Tile,
@@ -180,7 +180,7 @@ fun WorkflowBuilderScreen(
             // Add step button
             ExpressiveButton(
                 onClick = { viewModel.addStep() },
-                text = "Add Step",
+                text = "Add step",
                 leadingIcon = Icons.Default.Add,
                 style = ExpressiveButtonStyle.FilledTonal,
                 modifier = Modifier.fillMaxWidth()

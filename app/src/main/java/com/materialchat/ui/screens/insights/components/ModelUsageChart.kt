@@ -84,7 +84,7 @@ fun ModelUsageChart(
                 .padding(20.dp)
         ) {
             Text(
-                text = "Model Usage",
+                text = "Model usage",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.onSurface

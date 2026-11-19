@@ -43,6 +43,8 @@ import com.materialchat.ui.components.HapticPattern
 import com.materialchat.ui.components.rememberHapticFeedback
 import com.materialchat.ui.theme.ExpressiveMotion
 import com.materialchat.ui.theme.ExpressiveShapes
+import com.materialchat.ui.theme.particles.rememberParticleMotionGate
+import androidx.compose.material3.WavyProgressIndicatorDefaults
 
 /**
  * Leaderboard screen showing all model ELO ratings ranked.
@@ -68,7 +70,7 @@ fun ArenaLeaderboard(
                 title = {
                     ExpressiveTopBarTitle(
                         title = "Arena Leaderboard",
-                        subtitle = "ELO ratings and battle history"
+                        subtitle = "Elo ratings and battle history"
                     )
                 },
                 navigationIcon = {
@@ -96,7 +98,7 @@ fun ArenaLeaderboard(
                 Icon(
                     imageVector = Icons.Filled.EmojiEvents,
                     contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier
                         .height(64.dp)
                         .width(64.dp)
@@ -111,7 +113,7 @@ fun ArenaLeaderboard(
                 Text(
                     text = "Run some arena battles to see rankings",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         } else {
@@ -211,6 +213,8 @@ private fun LeaderboardItem(
                     StatLabel(label = "Total", value = "${rating.totalBattles}")
                 }
 
+                // Decoration motion gate: flat bar (amplitude 0) while motion is disallowed.
+                val motionAllowed = rememberParticleMotionGate().motionAllowed
                 if (rating.totalBattles > 0) {
                     Spacer(modifier = Modifier.height(6.dp))
                     @OptIn(ExperimentalMaterial3ExpressiveApi::class)
@@ -220,7 +224,10 @@ private fun LeaderboardItem(
                             .fillMaxWidth()
                             .height(8.dp),
                         color = contentColor.copy(alpha = 0.6f),
-                        trackColor = contentColor.copy(alpha = 0.12f)
+                        trackColor = contentColor.copy(alpha = 0.12f),
+                        amplitude = { fraction ->
+                            if (motionAllowed) WavyProgressIndicatorDefaults.indicatorAmplitude(fraction) else 0f
+                        }
                     )
                 }
             }
@@ -235,9 +242,9 @@ private fun LeaderboardItem(
                     fontWeight = FontWeight.Bold
                 )
                 Text(
-                    text = "ELO",
+                    text = "Elo",
                     style = MaterialTheme.typography.labelSmall,
-                    color = contentColor.copy(alpha = 0.7f)
+                    color = contentColor
                 )
             }
         }
