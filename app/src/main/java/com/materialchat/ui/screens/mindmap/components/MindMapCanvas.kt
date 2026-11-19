@@ -34,6 +34,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.materialchat.domain.model.ConversationTreeNode
 import com.materialchat.ui.theme.MaterialChatMotion
 import com.materialchat.ui.theme.particles.rememberParticleMotionGate
@@ -155,11 +156,13 @@ fun MindMapCanvas(
     val glowExpandPx = with(density) { 6.dp.toPx() }
     val outlineWidthPx = with(density) { 3.dp.toPx() }
     val textXPadPx = with(density) { 12.dp.toPx() }
-    val textYOffsetPx = with(density) { 2.dp.toPx() }
-    val titleTextSizePx = with(density) { 13.dp.toPx() }
-    val badgeTextSizePx = with(density) { 10.dp.toPx() }
+    val textYOffsetPx = with(density) { MindMapLabelLayout.TITLE_BASELINE_LIFT_DP.dp.toPx() }
+    // Labels are sp, not dp: the native canvas does not see the user's font scale on its own.
+    val titleTextSizePx = with(density) { MindMapLabelLayout.TITLE_SP.sp.toPx() }
+    val badgeTextSizePx = with(density) { MindMapLabelLayout.BADGE_SP.sp.toPx() }
     val badgePadEndPx = with(density) { 10.dp.toPx() }
-    val badgePadBottomPx = with(density) { 8.dp.toPx() }
+    val badgePadBottomPx = with(density) { MindMapLabelLayout.BADGE_PAD_BOTTOM_DP.dp.toPx() }
+    val maxTitleWidthPx = nodeWidthPx - textXPadPx * 2
 
     // Reusable Paint/Path objects — without this, every frame allocated one Path
     // per edge and two Paints per node (2N+E allocations/frame).
@@ -188,6 +191,22 @@ fun MindMapCanvas(
 
     val flatNodes = remember(layoutRoot) { flattenLayout(layoutRoot) }
     val edges = remember(layoutRoot) { collectEdges(layoutRoot, nodeHeightPx) }
+
+    // Titles are fitted to the node width once per tree / text size, not per frame: the
+    // measured width (not a character count) decides the cut, so font scale is honoured.
+    val fittedTitles = remember(flatNodes, titleTextSizePx, typeface, maxTitleWidthPx) {
+        textPaint.textSize = titleTextSizePx
+        textPaint.typeface = typeface
+        flatNodes.associate { layoutNode ->
+            val node = layoutNode.node
+            val iconPrefix = if (!node.icon.isNullOrEmpty()) "${node.icon} " else ""
+            node.id to MindMapLabelLayout.fitToWidth(
+                text = iconPrefix + node.title,
+                maxWidth = maxTitleWidthPx,
+                measure = textPaint::measureText
+            )
+        }
+    }
 
     Box(modifier = modifier) {
         Canvas(
@@ -255,6 +274,7 @@ fun MindMapCanvas(
                     onPrimaryColor = onPrimaryColor,
                     secondaryContainerColor = secondaryContainerColor,
                     onSecondaryContainerColor = onSecondaryContainerColor,
+                    displayTitle = fittedTitles[layoutNode.node.id] ?: layoutNode.node.title,
                     textPaint = textPaint,
                     badgePaint = badgePaint,
                     typeface = typeface,
@@ -447,6 +467,7 @@ private fun DrawScope.drawNode(
     onPrimaryColor: Color,
     secondaryContainerColor: Color,
     onSecondaryContainerColor: Color,
+    displayTitle: String,
     textPaint: android.graphics.Paint,
     badgePaint: android.graphics.Paint,
     typeface: android.graphics.Typeface,
@@ -506,18 +527,10 @@ private fun DrawScope.drawNode(
         textPaint.textSize = titleTextSize
         textPaint.typeface = typeface
 
-        // Build display title: optional icon prefix + truncated title
-        val iconPrefix = if (!node.icon.isNullOrEmpty()) "${node.icon} " else ""
-        val displayTitle = if (node.title.length > 12) {
-            node.title.take(12) + "..."
-        } else {
-            node.title
-        }
-        val fullTitle = "$iconPrefix$displayTitle"
-
+        // Title was fitted to the node width (icon prefix included) by the caller.
         val textX = left + textXPad
         val textY = top + nodeHeight / 2f - textYOffset
-        drawText(fullTitle, textX, textY, textPaint)
+        drawText(displayTitle, textX, textY, textPaint)
 
         // Message count badge (bottom-right area)
         badgePaint.color = textColor.toArgb()
