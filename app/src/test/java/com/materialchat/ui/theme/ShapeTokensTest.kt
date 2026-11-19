@@ -70,6 +70,28 @@ class ShapeTokensTest {
         assertNotEquals(ExpressiveShapes.ContentBlock, ExpressiveShapes.Badge)
     }
 
+    @Test fun contentBlockHeaderIsTheBadgeRadiusOnTheBottomCornersOnly() {
+        // W8 part 5: the markdown table header strip (MarkdownText) carries the 8dp inner radius
+        // on its bottom corners and is square on top where it meets the block edge.
+        val expected = RoundedCornerShape(topStart = 0.dp, topEnd = 0.dp, bottomEnd = 8.dp, bottomStart = 8.dp)
+        assertEquals(expected, ExpressiveShapes.ContentBlockHeader)
+        assertEquals(RoundedCornerShape(bottomStart = 8.dp, bottomEnd = 8.dp), ExpressiveShapes.ContentBlockHeader)
+        // Same radius as the all-corner Badge, but not the same shape.
+        assertEquals(ExpressiveShapes.Badge.bottomStart, ExpressiveShapes.ContentBlockHeader.bottomStart)
+        assertEquals(ExpressiveShapes.Badge.bottomEnd, ExpressiveShapes.ContentBlockHeader.bottomEnd)
+        assertNotEquals(ExpressiveShapes.Badge, ExpressiveShapes.ContentBlockHeader)
+        assertNotEquals(ExpressiveShapes.ContentBlock, ExpressiveShapes.ContentBlockHeader)
+        // The top corners are square: the outline on a box is a rounded rect whose top-left
+        // corner has zero radius.
+        val outline = ExpressiveShapes.ContentBlockHeader.createOutline(Size(200f, 40f), LayoutDirection.Ltr, Density(1f))
+        assertTrue(outline is Outline.Rounded)
+        val rect = (outline as Outline.Rounded).roundRect
+        assertEquals(0f, rect.topLeftCornerRadius.x, 0f)
+        assertEquals(0f, rect.topRightCornerRadius.x, 0f)
+        assertEquals(8f, rect.bottomLeftCornerRadius.x, 0f)
+        assertEquals(8f, rect.bottomRightCornerRadius.x, 0f)
+    }
+
     @Test fun squircleEqualityIsByRadiusAndSmoothing() {
         assertEquals(SquircleShape(16.dp), SquircleShape(16.dp))
         assertEquals(SquircleShape(16.dp).hashCode(), SquircleShape(16.dp).hashCode())

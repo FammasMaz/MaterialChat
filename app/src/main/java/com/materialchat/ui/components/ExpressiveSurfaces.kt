@@ -120,6 +120,25 @@ fun ExpressiveContentSurface(
     )
 }
 
+/**
+ * The one top-bar title: headline-small in the expressive title face, bold, with an optional
+ * one-line subtitle, scaling toward its start edge as [collapsedFraction] goes 0 -> 1.
+ *
+ * Top-bar rule (W7 orchestrator ruling; W6 audit #11 / seam note; pinned at the source level by
+ * `HomeSettingsTopBarRuleTest`):
+ * - **Home and Settings only** draw a large bar: `LargeTopAppBar` (or Home's own masthead) with
+ *   `TopAppBarDefaults.exitUntilCollapsedScrollBehavior()`, passing the behaviour's
+ *   `state.collapsedFraction` here so the title shrinks as the bar collapses.
+ * - **Every pushed screen** (model assignments, interaction settings, on-device models,
+ *   workflows, builder, execution, insights, canvas, explore, chat, arena, bookmarks, memories,
+ *   personas, mind map, search) draws a small `TopAppBar` with this title start-aligned and
+ *   `collapsedFraction` left at 0. No `MediumTopAppBar`, no `CenterAlignedTopAppBar`.
+ *
+ * @param title The screen title; one line, ellipsised ([maxLines]).
+ * @param subtitle Optional one-line secondary label under the title (a count, a model name).
+ * @param collapsedFraction The large bar's collapse progress (0 = expanded); 0 on small bars.
+ * @param maxLines Title line cap.
+ */
 @Composable
 fun ExpressiveTopBarTitle(
     title: String,
