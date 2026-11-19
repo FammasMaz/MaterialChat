@@ -21,6 +21,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -68,6 +69,8 @@ data class EmptyStateAction(
  * @param accent Container role for the hero shape; the rest of the cluster stays neutral.
  * @param action Optional primary action; omit when there is nothing to do here.
  * @param modifier Modifier for the whole empty state.
+ * @param secondaryAction Optional low-emphasis action drawn under the primary one (always
+ * second, so "Try again" precedes "Go back" on every error surface).
  */
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -77,7 +80,8 @@ fun HomeEmptyState(
     icon: ImageVector,
     accent: EmptyStateAccent,
     action: EmptyStateAction?,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    secondaryAction: EmptyStateAction? = null
 ) {
     Column(
         modifier = modifier
@@ -107,9 +111,9 @@ fun HomeEmptyState(
             textAlign = TextAlign.Center
         )
 
+        val haptics = rememberHapticFeedback()
         if (action != null) {
             Spacer(modifier = Modifier.height(24.dp))
-            val haptics = rememberHapticFeedback()
             Button(
                 onClick = {
                     haptics.perform(HapticPattern.CLICK)
@@ -118,6 +122,19 @@ fun HomeEmptyState(
                 shapes = ButtonDefaults.shapes()
             ) {
                 Text(text = action.label)
+            }
+        }
+
+        if (secondaryAction != null) {
+            Spacer(modifier = Modifier.height(if (action != null) 8.dp else 24.dp))
+            TextButton(
+                onClick = {
+                    haptics.perform(HapticPattern.CLICK)
+                    secondaryAction.onClick()
+                },
+                shapes = ButtonDefaults.shapes()
+            ) {
+                Text(text = secondaryAction.label)
             }
         }
     }

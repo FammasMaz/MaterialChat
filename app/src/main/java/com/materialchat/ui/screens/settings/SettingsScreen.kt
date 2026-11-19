@@ -2,6 +2,8 @@
 
 package com.materialchat.ui.screens.settings
 
+import com.materialchat.ui.components.LoadErrorContent
+
 import android.Manifest
 import android.app.Activity
 import android.content.Context
@@ -780,8 +782,9 @@ private fun SettingsContent(
                 )
             }
             is SettingsUiState.Error -> {
-                ErrorContent(
-                    message = uiState.message,
+                LoadErrorContent(
+                    title = "Settings could not be loaded",
+                    message = "Something went wrong while reading your preferences",
                     onRetry = onRetry
                 )
             }
@@ -2823,44 +2826,6 @@ private fun DeleteProviderDialog(
         titleContentColor = MaterialTheme.colorScheme.onSurface,
         textContentColor = MaterialTheme.colorScheme.onSurfaceVariant
     )
-}
-
-@Composable
-private fun ErrorContent(
-    message: String,
-    onRetry: () -> Unit
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(32.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        Text(
-            text = "Something went wrong",
-            style = MaterialTheme.typography.titleLarge,
-            color = MaterialTheme.colorScheme.error,
-            textAlign = TextAlign.Center
-        )
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        Text(
-            text = message,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        ExpressiveButton(
-            onClick = onRetry,
-            text = "Try again",
-            style = ExpressiveButtonStyle.Text
-        )
-    }
 }
 
 @Composable

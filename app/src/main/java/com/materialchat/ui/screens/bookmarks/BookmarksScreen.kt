@@ -30,6 +30,7 @@ import com.materialchat.ui.components.ExpressiveButtonStyle
 import com.materialchat.ui.components.ExpressiveContentSurface
 import com.materialchat.ui.components.ExpressiveEmptyState
 import com.materialchat.ui.components.ExpressiveFilledIconButton
+import com.materialchat.ui.components.LoadErrorContent
 import com.materialchat.ui.components.ExpressiveSnackbar
 import com.materialchat.ui.components.ExpressiveTopBarTitle
 import androidx.compose.material3.TopAppBar
@@ -117,10 +118,11 @@ fun BookmarksScreen(
                     BookmarksLoadingContent()
                 }
                 is BookmarksUiState.Error -> {
-                    BookmarksErrorContent(
-                        message = state.message,
+                    LoadErrorContent(
+                        title = "Knowledge base could not be loaded",
+                        message = "Something went wrong while reading your saved answers",
                         onRetry = { viewModel.retry() },
-                        onNavigateBack = onNavigateBack
+                        onBack = onNavigateBack
                     )
                 }
                 is BookmarksUiState.Success -> {
@@ -152,43 +154,6 @@ private fun BookmarksLoadingContent() {
             modifier = Modifier.size(48.dp),
             color = MaterialTheme.colorScheme.primary
         )
-    }
-}
-
-/**
- * Error state content with retry option.
- */
-@Composable
-private fun BookmarksErrorContent(
-    message: String,
-    onRetry: () -> Unit,
-    onNavigateBack: () -> Unit
-) {
-    val haptics = rememberHapticFeedback()
-
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(32.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        Text(
-            text = "Something went wrong",
-            style = MaterialTheme.typography.titleLarge,
-            color = MaterialTheme.colorScheme.error,
-            textAlign = TextAlign.Center
-        )
-        Spacer(modifier = Modifier.height(8.dp))
-        Text(
-            text = message,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center
-        )
-        Spacer(modifier = Modifier.height(16.dp))
-        ExpressiveButton(onClick = { onRetry() }, text = "Try again", style = ExpressiveButtonStyle.Text)
-        ExpressiveButton(onClick = { onNavigateBack() }, text = "Go back", style = ExpressiveButtonStyle.Text)
     }
 }
 
