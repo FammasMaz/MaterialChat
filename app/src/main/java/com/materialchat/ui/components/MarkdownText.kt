@@ -52,6 +52,7 @@ import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.rememberTextMeasurer
 import com.materialchat.domain.model.CanvasArtifact
+import com.materialchat.ui.theme.CustomShapes
 import com.materialchat.ui.theme.ExpressiveShapes
 import com.materialchat.ui.screens.canvas.ArtifactDetector
 import androidx.compose.ui.text.AnnotatedString
@@ -413,7 +414,7 @@ private fun MarkdownContent(
                             modifier = Modifier
                                 .width(3.dp)
                                 .fillMaxHeight()
-                                .clip(RoundedCornerShape(999.dp))
+                                .clip(CustomShapes.Pill)
                                 .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.4f))
                         )
                         Spacer(modifier = Modifier.width(8.dp))

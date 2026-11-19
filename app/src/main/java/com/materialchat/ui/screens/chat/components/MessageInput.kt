@@ -102,6 +102,7 @@ import com.materialchat.ui.navigation.SHARED_ELEMENT_FAB_TO_INPUT
 import com.materialchat.ui.theme.CustomShapes
 import com.materialchat.ui.theme.ExpressiveMotion
 import com.materialchat.ui.theme.ExpressiveShapeToken
+import com.materialchat.ui.theme.ExpressiveShapes
 import com.materialchat.ui.theme.LocalChatButtonShape
 import com.materialchat.ui.theme.MaterialChatMotion
 import com.materialchat.ui.theme.SquircleShape
@@ -608,7 +609,7 @@ private fun ImageActionPill(
         animationSpec = ExpressiveMotion.Press.Shape,
         label = "imageActionPillPressCorner"
     )
-    val shape = if (isPressed || pressedCorner > 0.dp) RoundedCornerShape(12.dp) else restingShape
+    val shape = if (isPressed || pressedCorner > 0.dp) CustomShapes.ButtonPressed else restingShape
     val scale by animateFloatAsState(
         targetValue = if (isPressed) 0.96f else 1f,
         animationSpec = ExpressiveMotion.Press.Scale,
@@ -970,7 +971,7 @@ internal fun AttachmentPreviewRow(
 private fun AttachmentPreviewItem(
     attachment: Attachment,
     onRemove: () -> Unit,
-    shape: Shape = RoundedCornerShape(16.dp)
+    shape: Shape = ExpressiveShapes.ContentBlock
 ) {
     val haptics = rememberHapticFeedback()
     val context = LocalContext.current

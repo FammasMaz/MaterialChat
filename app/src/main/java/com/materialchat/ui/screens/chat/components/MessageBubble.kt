@@ -766,7 +766,7 @@ private fun MessageContent(
                     modifier = Modifier
                         .width(3.dp)
                         .fillMaxHeight()
-                        .clip(RoundedCornerShape(999.dp))
+                        .clip(CustomShapes.Pill)
                         .background(textColor.copy(alpha = 0.4f))
                 )
                 // Upright (no italics anywhere in the app); tone resolved against the user

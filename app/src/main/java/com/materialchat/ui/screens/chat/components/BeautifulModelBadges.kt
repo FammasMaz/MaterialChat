@@ -19,7 +19,6 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -372,7 +371,7 @@ private fun ProviderFilterBadge(
             modifier = Modifier
                 .scale(scale)
                 .defaultMinSize(minWidth = 40.dp, minHeight = 28.dp) // Compact size
-                .clip(RoundedCornerShape(50)) // Full pill shape
+                .clip(CustomShapes.Pill)
                 .background(containerColor)
                 .alpha(if (enabled) 1f else 0.6f)
                 .combinedClickable(
@@ -670,7 +669,7 @@ private fun ModelPickerBadge(
             modifier = Modifier
                 .scale(scale)
                 .defaultMinSize(minWidth = 40.dp, minHeight = 28.dp) // Compact size
-                .clip(RoundedCornerShape(50)) // Full pill shape
+                .clip(CustomShapes.Pill)
                 .background(containerColor)
                 .alpha(if (!isStreaming) 1f else 0.6f)
                 .combinedClickable(
