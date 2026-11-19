@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import com.materialchat.ui.theme.CustomShapes
 import com.materialchat.ui.theme.ExpressiveShapes
+import com.materialchat.ui.theme.ExpressiveSizes
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.Code
@@ -194,7 +195,7 @@ fun BookmarkCard(
                             haptics.perform(HapticPattern.CLICK)
                             onNavigateToConversation()
                         },
-                        modifier = Modifier.size(48.dp)
+                        modifier = Modifier.size(ExpressiveSizes.Target)
                     ) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Outlined.OpenInNew,
@@ -208,7 +209,7 @@ fun BookmarkCard(
                             haptics.perform(HapticPattern.CONFIRM)
                             onDelete()
                         },
-                        modifier = Modifier.size(48.dp)
+                        modifier = Modifier.size(ExpressiveSizes.Target)
                     ) {
                         Icon(
                             imageVector = Icons.Default.Delete,

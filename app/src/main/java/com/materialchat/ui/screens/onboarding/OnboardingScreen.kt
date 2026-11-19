@@ -65,6 +65,7 @@ import com.materialchat.ui.theme.CustomShapes
 import com.materialchat.ui.theme.ExpressiveMotion
 import com.materialchat.ui.theme.ExpressiveShapes
 import com.materialchat.ui.theme.MaterialChatExpressiveTitleFontFamily
+import com.materialchat.ui.theme.ExpressiveSizes
 
 @Composable
 fun OnboardingScreen(
@@ -192,7 +193,7 @@ private fun OnboardingContent(
                     onClick = onSkip,
                     modifier = Modifier
                         .align(Alignment.CenterHorizontally)
-                        .heightIn(min = 48.dp),
+                        .heightIn(min = ExpressiveSizes.Target),
                     shape = CustomShapes.Button
                 ) {
                     Icon(

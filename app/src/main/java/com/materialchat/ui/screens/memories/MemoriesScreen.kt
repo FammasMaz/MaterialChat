@@ -68,6 +68,7 @@ import com.materialchat.ui.components.LoadErrorContent
 import com.materialchat.ui.components.dialogEntrance
 import com.materialchat.ui.theme.ExpressiveMotion
 import com.materialchat.ui.theme.ExpressiveShapes
+import com.materialchat.ui.theme.ExpressiveSizes
 import com.materialchat.ui.components.HapticPattern
 import com.materialchat.ui.components.rememberHapticFeedback
 import java.text.DateFormat
@@ -191,7 +192,7 @@ private fun MemoriesLoadingContent() {
         contentAlignment = Alignment.Center
     ) {
         LoadingIndicator(
-            modifier = Modifier.size(48.dp),
+            modifier = Modifier.size(ExpressiveSizes.IndicatorHero),
             color = MaterialTheme.colorScheme.primary
         )
     }
@@ -297,7 +298,7 @@ private fun MemoryCard(
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Surface(
-                modifier = Modifier.size(48.dp),
+                modifier = Modifier.size(ExpressiveSizes.Tile),
                 shape = ExpressiveShapes.Tile,
                 color = colors.content.copy(alpha = 0.12f),
                 contentColor = colors.content

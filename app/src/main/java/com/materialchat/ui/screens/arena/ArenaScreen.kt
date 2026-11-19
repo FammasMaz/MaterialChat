@@ -55,6 +55,7 @@ import com.materialchat.ui.components.HapticPattern
 import com.materialchat.ui.components.rememberHapticFeedback
 import com.materialchat.ui.theme.ExpressiveMotion
 import com.materialchat.ui.theme.ExpressiveShapes
+import com.materialchat.ui.theme.ExpressiveSizes
 
 /**
  * Main Arena screen composable.
@@ -151,7 +152,7 @@ fun ArenaScreen(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     LoadingIndicator(
-                        modifier = Modifier.size(48.dp),
+                        modifier = Modifier.size(ExpressiveSizes.IndicatorHero),
                         color = MaterialTheme.colorScheme.primary
                     )
                     Spacer(modifier = Modifier.height(16.dp))

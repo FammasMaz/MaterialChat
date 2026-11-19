@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import com.materialchat.ui.theme.ExpressiveShapes
+import com.materialchat.ui.theme.ExpressiveSizes
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.Card
@@ -121,7 +122,7 @@ fun PersonaCard(
                 // Emoji avatar circle
                 Box(
                     modifier = Modifier
-                        .size(48.dp)
+                        .size(ExpressiveSizes.Tile)
                         .clip(CircleShape)
                         .background(accentColor),
                     contentAlignment = Alignment.Center
@@ -138,7 +139,7 @@ fun PersonaCard(
                             haptics.perform(HapticPattern.CONFIRM)
                             onDelete()
                         },
-                        modifier = Modifier.size(48.dp)
+                        modifier = Modifier.size(ExpressiveSizes.Target)
                     ) {
                         Icon(
                             imageVector = Icons.Filled.Delete,

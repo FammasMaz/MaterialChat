@@ -64,6 +64,7 @@ import com.materialchat.ui.theme.MaterialChatMotion
 import com.materialchat.ui.theme.particles.rememberParticleMotionGate
 import com.materialchat.ui.theme.ExpressiveShapeToken
 import com.materialchat.ui.theme.expressiveControlShape
+import com.materialchat.ui.theme.ExpressiveSizes
 import com.materialchat.domain.model.ReasoningEffort
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -93,7 +94,7 @@ fun M3ExpressiveLoadingIndicator(
     modifier: Modifier = Modifier,
     color: Color = MaterialTheme.colorScheme.primary,
     containerColor: Color = MaterialTheme.colorScheme.primaryContainer,
-    size: Dp = 48.dp
+    size: Dp = ExpressiveSizes.IndicatorHero
 ) {
     // Continuous loop: only requests frames while the host motion gate allows it (window
     // started, no power saver, animator scale > 0); otherwise a static soft-burst frame.
@@ -286,7 +287,7 @@ fun M3ExpressiveCircularProgress(
     modifier: Modifier = Modifier,
     color: Color = MaterialTheme.colorScheme.primary,
     trackColor: Color = MaterialTheme.colorScheme.surfaceContainerHighest,
-    size: Dp = 48.dp,
+    size: Dp = ExpressiveSizes.IndicatorHero,
     strokeWidth: Dp = 4.dp
 ) {
     // Gated like every continuous decoration; a static arc is drawn when motion is off.
@@ -514,7 +515,7 @@ fun M3ExpressiveLoadingWithText(
     ) {
         M3ExpressiveLoadingIndicator(
             color = color,
-            size = 48.dp
+            size = ExpressiveSizes.IndicatorHero
         )
         Spacer(modifier = Modifier.height(16.dp))
         Text(
@@ -593,7 +594,7 @@ fun MorphingSendButton(
     onSend: () -> Unit,
     onCancel: () -> Unit,
     modifier: Modifier = Modifier,
-    size: Dp = 48.dp,
+    size: Dp = ExpressiveSizes.Target,
     reasoningEffort: ReasoningEffort = ReasoningEffort.HIGH
 ) {
     val interactionSource = remember { MutableInteractionSource() }

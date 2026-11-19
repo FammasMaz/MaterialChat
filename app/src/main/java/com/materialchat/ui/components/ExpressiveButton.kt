@@ -45,6 +45,7 @@ import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.materialchat.ui.theme.ExpressiveMotion
+import com.materialchat.ui.theme.ExpressiveSizes
 import com.materialchat.ui.components.HapticPattern
 import com.materialchat.ui.components.rememberHapticFeedback
 
@@ -246,7 +247,7 @@ fun ExpressiveIconButton(
     enabled: Boolean = true,
     containerColor: Color = MaterialTheme.colorScheme.primaryContainer,
     contentColor: Color = MaterialTheme.colorScheme.onPrimaryContainer,
-    size: Dp = 48.dp
+    size: Dp = ExpressiveSizes.Target
 ) {
     val haptics = rememberHapticFeedback()
     val interactionSource = remember { MutableInteractionSource() }
@@ -351,7 +352,7 @@ fun ExpressiveActionButton(
     Surface(
         onClick = clickWithHaptics,
         modifier = modifier
-            .size(48.dp) // M3 Expressive: 48dp minimum touch target
+            .size(ExpressiveSizes.Target) // M3 Expressive: 48dp minimum touch target
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale

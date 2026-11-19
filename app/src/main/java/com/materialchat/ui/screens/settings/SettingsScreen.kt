@@ -2576,7 +2576,7 @@ private fun DefaultImageGenerationModelField(
                         label = { Text(tier) },
                         modifier = Modifier
                             .weight(1f)
-                            .defaultMinSize(minHeight = 48.dp),
+                            .defaultMinSize(minHeight = ExpressiveSizes.Target),
                         colors = FilterChipDefaults.filterChipColors(
                             selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
                             selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
@@ -2990,13 +2990,13 @@ private fun AboutSection(
                     when (updateState) {
                         is UpdateState.Checking -> {
                             LoadingIndicator(
-                                modifier = Modifier.size(24.dp),
+                                modifier = Modifier.size(ExpressiveSizes.IndicatorInline),
                                 color = MaterialTheme.colorScheme.primary
                             )
                         }
                         is UpdateState.Downloading -> {
                             LoadingIndicator(
-                                modifier = Modifier.size(24.dp),
+                                modifier = Modifier.size(ExpressiveSizes.IndicatorInline),
                                 color = MaterialTheme.colorScheme.primary
                             )
                         }

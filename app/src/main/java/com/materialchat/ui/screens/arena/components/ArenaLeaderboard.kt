@@ -47,6 +47,7 @@ import com.materialchat.ui.components.rememberHapticFeedback
 import com.materialchat.ui.theme.ExpressiveMotion
 import com.materialchat.ui.theme.ExpressiveShapes
 import com.materialchat.ui.theme.particles.rememberParticleMotionGate
+import com.materialchat.ui.theme.ExpressiveSizes
 import androidx.compose.material3.WavyProgressIndicatorDefaults
 
 /**
@@ -100,7 +101,7 @@ fun ArenaLeaderboard(
                 contentAlignment = Alignment.Center
             ) {
                 LoadingIndicator(
-                    modifier = Modifier.size(48.dp),
+                    modifier = Modifier.size(ExpressiveSizes.IndicatorHero),
                     color = MaterialTheme.colorScheme.primary
                 )
             }

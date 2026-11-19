@@ -3,6 +3,7 @@ package com.materialchat.ui.screens.workflows
 import com.materialchat.ui.components.ExpressiveEmptyState
 import com.materialchat.ui.theme.CustomShapes
 import com.materialchat.ui.theme.ExpressiveMotion
+import com.materialchat.ui.theme.ExpressiveSizes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -170,7 +171,7 @@ private fun WorkflowsLoadingContent() {
         contentAlignment = Alignment.Center
     ) {
         LoadingIndicator(
-            modifier = Modifier.size(48.dp),
+            modifier = Modifier.size(ExpressiveSizes.IndicatorHero),
             color = MaterialTheme.colorScheme.primary
         )
     }

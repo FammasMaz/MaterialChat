@@ -42,6 +42,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import com.materialchat.ui.theme.SquircleShape
+import com.materialchat.ui.theme.ExpressiveSizes
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -290,7 +291,7 @@ private fun ProviderTypeIcon(
 ) {
     Box(
         modifier = modifier
-            .size(48.dp)
+            .size(ExpressiveSizes.Tile)
             .clip(ExpressiveShapes.Tile)
             .background(MaterialTheme.colorScheme.secondaryContainer),
         contentAlignment = Alignment.Center
@@ -307,7 +308,7 @@ private fun ProviderTypeIcon(
             },
             contentDescription = "${type.displayName} provider",
             tint = MaterialTheme.colorScheme.onSecondaryContainer,
-            modifier = Modifier.size(26.dp)
+            modifier = Modifier.size(ExpressiveSizes.TileIcon)
         )
     }
 }

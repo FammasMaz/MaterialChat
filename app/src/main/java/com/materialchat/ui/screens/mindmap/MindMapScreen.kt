@@ -22,6 +22,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.materialchat.ui.screens.mindmap.components.MindMapCanvas
 import com.materialchat.ui.screens.mindmap.components.MindMapTopBar
 import com.materialchat.ui.theme.ExpressiveShapes
+import com.materialchat.ui.theme.ExpressiveSizes
 
 /**
  * Full-screen Mind Map (Branch Visualizer) screen.
@@ -63,7 +64,7 @@ fun MindMapScreen(
                         modifier = Modifier.fillMaxSize()
                     ) {
                         LoadingIndicator(
-                            modifier = Modifier.size(48.dp),
+                            modifier = Modifier.size(ExpressiveSizes.IndicatorHero),
                             color = MaterialTheme.colorScheme.primary
                         )
                     }

@@ -56,6 +56,7 @@ import com.materialchat.ui.components.ExpressiveContentSurface
 import com.materialchat.ui.components.ExpressiveEmptyState
 import com.materialchat.ui.theme.ExpressiveShapes
 import com.materialchat.ui.theme.CustomShapes
+import com.materialchat.ui.theme.ExpressiveSizes
 import com.materialchat.ui.components.ExpressiveFilledIconButton
 import com.materialchat.ui.components.ExpressiveTopBarTitle
 import com.materialchat.ui.components.HapticPattern
@@ -149,7 +150,7 @@ private fun GeneratedImagesLoadingContent() {
         contentAlignment = Alignment.Center
     ) {
         LoadingIndicator(
-            modifier = Modifier.size(48.dp),
+            modifier = Modifier.size(ExpressiveSizes.IndicatorHero),
             color = MaterialTheme.colorScheme.primary
         )
     }
