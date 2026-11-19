@@ -319,9 +319,3 @@ fun M3ExpressiveInlineLoading(
         dotSize = 6.dp
     )
 }
-
-// W8 part 4: `M3ExpressiveDeterminateProgress`, `M3ExpressiveLoadingWithText`,
-// `M3ExpressiveFullscreenLoading` and `MorphingSendButton` (with its private
-// `calculateMorphParams` / `drawMorphingShapeFilled`) were deleted: zero callers in main,
-// androidTest, scripts/ and .github/ (word-exact grep). `ComposerSendButton` is the live send
-// morph. `M3ExpressiveInlineLoading` below is kept (AddProviderSheet, OnboardingScreen).
