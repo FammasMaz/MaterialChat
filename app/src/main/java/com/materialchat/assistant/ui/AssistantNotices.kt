@@ -13,6 +13,8 @@ internal enum class AssistantNoticeAction(val label: String) {
     TypeInstead("Type instead"),
     /** Open the main app (the provider list lives in its settings). */
     OpenApp("Open app"),
+    /** Open the app's settings (the provider's key): the provider rejected the request. */
+    OpenSettings("Open settings"),
     /** Open the system's digital-assistant settings (screen context). */
     ScreenSettings("Open assistant settings")
 }
@@ -55,6 +57,8 @@ internal object AssistantNotices {
                 isError = true,
                 action = when {
                     error == AssistantCopy.NO_PROVIDER -> AssistantNoticeAction.OpenApp
+                    // A rejected key is fixed in settings, not by sending the question again.
+                    error == AssistantCopy.PROVIDER_REJECTED -> AssistantNoticeAction.OpenSettings
                     // handleError mirrors the message into the voice state; a speech-output
                     // failure does not, and the answer it interrupted is already on screen.
                     voiceError != null && voiceError.message == error && hasQuestion ->

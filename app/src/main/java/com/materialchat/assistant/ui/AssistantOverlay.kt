@@ -175,7 +175,9 @@ fun AssistantOverlay(
     /** The user wants to add a photo; the session opens the camera or picker activity. */
     onRequestAttach: (AssistantEvent.Attach) -> Unit = {},
     /** The screen could not be read; the session opens the system's digital-assistant settings. */
-    onOpenScreenContextSettings: () -> Unit = {}
+    onOpenScreenContextSettings: () -> Unit = {},
+    /** The provider rejected the request; the session opens the app's settings. */
+    onOpenSettings: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val pendingAttachments by viewModel.pendingAttachments.collectAsStateWithLifecycle()
@@ -309,6 +311,7 @@ fun AssistantOverlay(
             when (event) {
                 is AssistantEvent.OpenClock -> onOpenClock(event)
                 is AssistantEvent.OpenInApp -> onOpenInApp(event.conversationId)
+                is AssistantEvent.OpenSettings -> onOpenSettings()
                 is AssistantEvent.Attach -> onRequestAttach(event)
                 is AssistantEvent.Dismiss -> {
                     leavingState.value = true
@@ -444,6 +447,7 @@ fun AssistantOverlay(
                     onSendClick = { viewModel.sendQuery() },
                     onRetry = viewModel::retryLastQuery,
                     onOpenInApp = viewModel::openInApp,
+                    onOpenSettings = viewModel::openSettings,
                     onDismiss = viewModel::dismiss,
                     onNewChat = viewModel::startNewChat,
                     pendingAttachments = pendingAttachments,
@@ -527,6 +531,8 @@ internal fun AssistantOverlayContent(
     onRemoveScreenContext: () -> Unit = {},
     /** The question wanted the screen and nothing arrived: opens the system's digital-assistant settings. */
     onOpenScreenContextSettings: () -> Unit = {},
+    /** The provider rejected the request (401/403): opens the app's settings. */
+    onOpenSettings: () -> Unit = {},
     /** Soft-edged pill: no own fill or shadow; the parent paints a blurred fill behind it. */
     softEdges: Boolean = false,
     /** The session is dismissing: the sheet drops and shrinks out before the window hides. */
@@ -622,6 +628,7 @@ internal fun AssistantOverlayContent(
             }
             AssistantNoticeAction.TypeInstead -> enterKeyboard()
             AssistantNoticeAction.OpenApp -> onOpenInApp()
+            AssistantNoticeAction.OpenSettings -> onOpenSettings()
             AssistantNoticeAction.ScreenSettings -> onOpenScreenContextSettings()
         }
     }
@@ -1657,6 +1664,7 @@ private fun AssistantNoticeSurface(
                             AssistantNoticeAction.RetryListening -> Icons.Default.Refresh
                             AssistantNoticeAction.TypeInstead -> Icons.Default.Keyboard
                             AssistantNoticeAction.OpenApp -> Icons.AutoMirrored.Filled.OpenInNew
+                            AssistantNoticeAction.OpenSettings,
                             AssistantNoticeAction.ScreenSettings -> Icons.Outlined.Settings
                         },
                         label = action.label,
