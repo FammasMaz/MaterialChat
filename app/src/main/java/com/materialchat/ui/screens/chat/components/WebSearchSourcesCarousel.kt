@@ -25,7 +25,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.outlined.Language
@@ -289,10 +288,13 @@ private fun WebSearchSourceCard(
                     model = resolvedImageUrl,
                     contentDescription = null,
                     contentScale = ContentScale.Crop,
+                    // No inner clip: the card Surface already clips to its position-morph shape
+                    // (24dp outer / 12dp inner / 14dp pressed), so a fixed 20dp top clip here
+                    // would leave a wedge of card fill at the corners whenever the card corner
+                    // is not 20dp. The image takes the card's corners.
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(66.dp)
-                        .clip(RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp))
                 )
             }
 
