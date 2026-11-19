@@ -280,7 +280,7 @@ private fun ToolbarDestinationPill(
                     imageVector = icon,
                     contentDescription = tab.label,
                     tint = iconTint,
-                    modifier = Modifier.size(24.dp)
+                    modifier = Modifier.size(ExpressiveSizes.IconLarge)
                 )
             }
 

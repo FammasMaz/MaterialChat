@@ -90,6 +90,8 @@ import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import com.materialchat.ui.components.ExpressiveButton
 import com.materialchat.ui.components.ExpressiveTopBarTitle
+import com.materialchat.ui.components.HomeSettingsSlot
+import com.materialchat.ui.components.rememberHomeSettingsPalette
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
@@ -1302,7 +1304,7 @@ private fun BackupRestoreSection(
                     imageVector = Icons.Outlined.History,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(24.dp)
+                    modifier = Modifier.size(ExpressiveSizes.IconLarge)
                 )
                 Spacer(modifier = Modifier.width(12.dp))
                 Column(modifier = Modifier.weight(1f)) {
@@ -1656,7 +1658,7 @@ private fun ColorPaletteSelector(
                     imageVector = Icons.Outlined.Palette,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(24.dp)
+                    modifier = Modifier.size(ExpressiveSizes.IconLarge)
                 )
                 Spacer(modifier = Modifier.width(12.dp))
                 Column(modifier = Modifier.weight(1f)) {
@@ -1762,7 +1764,7 @@ private fun ChatBubbleStyleSelector(
                     imageVector = Icons.Outlined.AutoAwesome,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(24.dp)
+                    modifier = Modifier.size(ExpressiveSizes.IconLarge)
                 )
                 Spacer(modifier = Modifier.width(12.dp))
                 Column(modifier = Modifier.weight(1f)) {
@@ -1867,7 +1869,7 @@ private fun ControlShapeStyleSelector(
                     imageVector = Icons.Outlined.AutoAwesome,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(24.dp)
+                    modifier = Modifier.size(ExpressiveSizes.IconLarge)
                 )
                 Spacer(modifier = Modifier.width(12.dp))
                 Column(modifier = Modifier.weight(1f)) {
@@ -2016,7 +2018,7 @@ private fun FontSizeSelector(
                     imageVector = Icons.Outlined.FormatSize,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(24.dp)
+                    modifier = Modifier.size(ExpressiveSizes.IconLarge)
                 )
                 Spacer(modifier = Modifier.width(12.dp))
                 Column(modifier = Modifier.weight(1f)) {
@@ -2141,7 +2143,7 @@ private fun AiGeneratedTitlesToggle(
                     imageVector = Icons.Outlined.Title,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(24.dp)
+                    modifier = Modifier.size(ExpressiveSizes.IconLarge)
                 )
                 Spacer(modifier = Modifier.width(12.dp))
                 Column {
@@ -2193,7 +2195,7 @@ private fun PreferOnDeviceTitleModelToggle(
                     imageVector = Icons.Outlined.Memory,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(24.dp)
+                    modifier = Modifier.size(ExpressiveSizes.IconLarge)
                 )
                 Spacer(modifier = Modifier.width(12.dp))
                 Column {
@@ -2293,7 +2295,7 @@ private fun TitleGenerationModelField(
                     imageVector = Icons.Outlined.SmartToy,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.secondary,
-                    modifier = Modifier.size(24.dp)
+                    modifier = Modifier.size(ExpressiveSizes.IconLarge)
                 )
                 Spacer(modifier = Modifier.width(12.dp))
                 Column(modifier = Modifier.weight(1f)) {
@@ -2538,7 +2540,7 @@ private fun DefaultImageGenerationModelField(
                     imageVector = Icons.Outlined.AutoAwesome,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(24.dp)
+                    modifier = Modifier.size(ExpressiveSizes.IconLarge)
                 )
                 Spacer(modifier = Modifier.width(12.dp))
                 Column {
@@ -2643,7 +2645,7 @@ private fun DefaultImageOutputFormatField(
                     imageVector = Icons.Outlined.Image,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(24.dp)
+                    modifier = Modifier.size(ExpressiveSizes.IconLarge)
                 )
                 Spacer(modifier = Modifier.width(12.dp))
                 Column {
@@ -2873,7 +2875,7 @@ private fun AboutSection(
                         imageVector = Icons.Outlined.Info,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(24.dp)
+                        modifier = Modifier.size(ExpressiveSizes.IconLarge)
                     )
                     Spacer(modifier = Modifier.width(12.dp))
                     Column {
@@ -2917,7 +2919,7 @@ private fun AboutSection(
                         imageVector = Icons.Outlined.SystemUpdate,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(24.dp)
+                        modifier = Modifier.size(ExpressiveSizes.IconLarge)
                     )
                     Spacer(modifier = Modifier.width(12.dp))
                     Column {
@@ -2967,7 +2969,7 @@ private fun AboutSection(
                             imageVector = Icons.Outlined.Refresh,
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(24.dp)
+                            modifier = Modifier.size(ExpressiveSizes.IconLarge)
                         )
                         Spacer(modifier = Modifier.width(12.dp))
                         Column(modifier = Modifier.weight(1f)) {
@@ -3262,7 +3264,7 @@ private fun WebSearchSection(
                         imageVector = Icons.Outlined.Language,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(24.dp)
+                        modifier = Modifier.size(ExpressiveSizes.IconLarge)
                     )
                     Spacer(modifier = Modifier.width(12.dp))
                     Column {
@@ -3361,7 +3363,8 @@ private fun WebSearchSection(
                             modifier = Modifier.fillMaxWidth(),
                             shape = ExpressiveShapes.DisclosurePanel,
                             color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.58f),
-                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                            // Gated as HomeSettingsSlot.SearchNativeNote (the wash composited over the card).
+                            contentColor = rememberHomeSettingsPalette()[HomeSettingsSlot.SearchNativeNote]
                         ) {
                             Text(
                                 text = "Uses the selected chat provider's backend search through the proxy /v2 chat endpoint. Configure search providers in the proxy; MaterialChat will ask for citations and turn a final Sources section into the collapsible sources carousel.",

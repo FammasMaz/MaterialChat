@@ -237,7 +237,7 @@ private fun PersonaOnboardingCard() {
                 imageVector = Icons.Filled.Lightbulb,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onSecondaryContainer,
-                modifier = Modifier.size(24.dp)
+                modifier = Modifier.size(ExpressiveSizes.IconLarge)
             )
             Text(
                 text = "How to use personas",

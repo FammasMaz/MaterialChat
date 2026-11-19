@@ -426,7 +426,7 @@ private fun AssistiveMessageCard(
             Icon(
                 imageVector = icon,
                 contentDescription = null,
-                modifier = Modifier.size(24.dp)
+                modifier = Modifier.size(ExpressiveSizes.IconLarge)
             )
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(

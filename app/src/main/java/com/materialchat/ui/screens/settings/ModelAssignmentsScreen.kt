@@ -63,6 +63,8 @@ import com.materialchat.ui.components.ExpressiveScreenBackdrop
 import com.materialchat.ui.components.ExpressiveSwitch
 import androidx.compose.material3.LoadingIndicator
 import com.materialchat.ui.components.ExpressiveTopBarTitle
+import com.materialchat.ui.components.HomeSettingsSlot
+import com.materialchat.ui.components.rememberHomeSettingsPalette
 import com.materialchat.ui.theme.ExpressiveShapes
 import com.materialchat.ui.theme.ExpressiveSizes
 
@@ -256,7 +258,7 @@ private fun AssignmentSectionCard(
                     imageVector = icon,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(24.dp)
+                    modifier = Modifier.size(ExpressiveSizes.IconLarge)
                 )
                 Spacer(modifier = Modifier.width(12.dp))
                 Column(modifier = Modifier.weight(1f)) {
@@ -292,26 +294,30 @@ private fun OnDeviceModelStatusRow(row: OnDeviceModelRow) {
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
+            // Text on the 55% surfaceContainerHighest wash over the card: gated as
+            // HomeSettingsSlot.OnDeviceRow* (W7 #6).
+            val palette = rememberHomeSettingsPalette()
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = row.displayName,
                     style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Medium
+                    fontWeight = FontWeight.Medium,
+                    color = palette[HomeSettingsSlot.OnDeviceRowTitle]
                 )
                 Text(
                     text = listOfNotNull(row.sizeLabel, row.availability)
                         .joinToString(" · "),
                     style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = palette[HomeSettingsSlot.OnDeviceRowMeta]
                 )
             }
             Text(
                 text = if (row.isUsable) "Ready" else "—",
                 style = MaterialTheme.typography.labelLarge,
                 color = if (row.isUsable) {
-                    MaterialTheme.colorScheme.primary
+                    palette[HomeSettingsSlot.OnDeviceRowReady]
                 } else {
-                    MaterialTheme.colorScheme.onSurfaceVariant
+                    palette[HomeSettingsSlot.OnDeviceRowMeta]
                 }
             )
         }

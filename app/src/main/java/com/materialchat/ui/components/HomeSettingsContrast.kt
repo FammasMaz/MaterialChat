@@ -142,7 +142,25 @@ internal enum class HomeSettingsSlot(
     ErrorHeroIcon(ThemeContrast.ICON, { it.secondaryContainer }, { it.onSecondaryContainer }),
     ErrorPrimaryAction(ThemeContrast.BODY_TEXT, { it.primary }, { it.onPrimary }, { listOf(it.onPrimaryContainer) }),
     ErrorSecondaryAction(ThemeContrast.BODY_TEXT, { it.surfaceContainerLow }, { it.primary }, { listOf(it.onSurface) }),
-    ErrorSecondaryActionOnContainer(ThemeContrast.BODY_TEXT, { it.surfaceContainer }, { it.primary }, { listOf(it.onSurface) });
+    ErrorSecondaryActionOnContainer(ThemeContrast.BODY_TEXT, { it.surfaceContainer }, { it.primary }, { listOf(it.onSurface) }),
+
+    // --- Alpha fills that carry text or an icon (W7 #6, cross-surface audit W6 #8) -------------
+    // Each fill is the alpha wash composited over the backdrop it is actually drawn on.
+    // Explore hero card: the 45% primary clover reaches under the title/body column.
+    ExploreHeroTitle(ThemeContrast.BODY_TEXT, { over(it.primary, 0.45f, it.primaryContainer) }, { it.onPrimaryContainer }, { listOf(it.onPrimary, it.onSurface) }),
+    ExploreHeroBody(ThemeContrast.BODY_TEXT, { over(it.primary, 0.45f, it.primaryContainer) }, { it.onPrimaryContainer }, { listOf(it.onPrimary, it.onSurface) }),
+    // Persona picker rows: surfaceContainerHighest at 50% over the sheet (surfaceContainerLow).
+    PickerRowTitle(ThemeContrast.BODY_TEXT, { over(it.surfaceContainerHighest, 0.5f, it.surfaceContainerLow) }, { it.onSurface }),
+    PickerRowSupporting(ThemeContrast.BODY_TEXT, { over(it.surfaceContainerHighest, 0.5f, it.surfaceContainerLow) }, { it.onSurfaceVariant }, { listOf(it.onSurface) }),
+    // Model assignments on-device status row: surfaceContainerHighest at 55% over the surfaceContainer card.
+    OnDeviceRowTitle(ThemeContrast.BODY_TEXT, { over(it.surfaceContainerHighest, 0.55f, it.surfaceContainer) }, { it.onSurface }),
+    OnDeviceRowMeta(ThemeContrast.BODY_TEXT, { over(it.surfaceContainerHighest, 0.55f, it.surfaceContainer) }, { it.onSurfaceVariant }, { listOf(it.onSurface) }),
+    OnDeviceRowReady(ThemeContrast.BODY_TEXT, { over(it.surfaceContainerHighest, 0.55f, it.surfaceContainer) }, { it.primary }, { listOf(it.onPrimaryContainer, it.onSurface) }),
+    // Memory card tile: the kind's content colour at 12% over the kind's container, icon in that content colour.
+    MemoryTileIconPreference(ThemeContrast.ICON, { over(it.onTertiaryContainer, 0.12f, it.tertiaryContainer) }, { it.onTertiaryContainer }, { listOf(it.onSurface) }),
+    MemoryTileIconInstruction(ThemeContrast.ICON, { over(it.onPrimaryContainer, 0.12f, it.primaryContainer) }, { it.onPrimaryContainer }, { listOf(it.onSurface) }),
+    MemoryTileIconFact(ThemeContrast.ICON, { over(it.onSecondaryContainer, 0.12f, it.secondaryContainer) }, { it.onSecondaryContainer }, { listOf(it.onSurface) }),
+    MemoryTileIconOther(ThemeContrast.ICON, { over(it.onSurfaceVariant, 0.12f, it.surfaceContainerHigh) }, { it.onSurfaceVariant }, { listOf(it.onSurface) });
 
     companion object {
         private fun over(top: Color, alpha: Float, under: Color): Color =

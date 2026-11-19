@@ -15,6 +15,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.materialchat.ui.theme.ExpressiveSizes
 import com.materialchat.ui.theme.CustomShapes
 
 /**
@@ -47,7 +48,7 @@ fun BookmarkSearchBar(
                 imageVector = Icons.Default.Search,
                 contentDescription = "Search",
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(20.dp)
+                modifier = Modifier.size(ExpressiveSizes.Icon)
             )
         },
         trailingIcon = {
@@ -57,7 +58,7 @@ fun BookmarkSearchBar(
                         imageVector = Icons.Default.Close,
                         contentDescription = "Clear search",
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(20.dp)
+                        modifier = Modifier.size(ExpressiveSizes.Icon)
                     )
                 }
             }

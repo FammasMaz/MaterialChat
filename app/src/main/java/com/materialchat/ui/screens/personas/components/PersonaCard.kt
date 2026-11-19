@@ -139,7 +139,7 @@ fun PersonaCard(
                             imageVector = Icons.Filled.Delete,
                             contentDescription = "Delete persona",
                             tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(18.dp)
+                            modifier = Modifier.size(ExpressiveSizes.IconSmall)
                         )
                     }
                 }

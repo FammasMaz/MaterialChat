@@ -333,7 +333,7 @@ private fun ActiveIndicator(
             imageVector = Icons.Default.Check,
             contentDescription = "Active",
             tint = MaterialTheme.colorScheme.primaryContainer,
-            modifier = Modifier.size(18.dp)
+            modifier = Modifier.size(ExpressiveSizes.IconSmall)
         )
     }
 }

@@ -55,6 +55,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.materialchat.ui.theme.ExpressiveSizes
 import com.materialchat.ui.theme.ExpressiveMotion
 import com.materialchat.ui.theme.ExpressiveShapes
 import com.materialchat.ui.components.HomeSettingsSlot
@@ -126,7 +127,7 @@ fun SystemPromptField(
                             imageVector = Icons.AutoMirrored.Outlined.Chat,
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.onTertiaryContainer,
-                            modifier = Modifier.size(24.dp)
+                            modifier = Modifier.size(ExpressiveSizes.IconLarge)
                         )
                     }
                     Spacer(modifier = Modifier.width(12.dp))

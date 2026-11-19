@@ -26,6 +26,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.materialchat.ui.theme.ExpressiveSizes
 import androidx.compose.ui.unit.sp
 import com.materialchat.ui.theme.ExpressiveMotion
 import com.materialchat.ui.theme.particles.rememberParticleMotionGate
@@ -183,7 +184,7 @@ private fun StepCircle(
             Icon(
                 imageVector = Icons.Default.Check,
                 contentDescription = "Step $stepNumber completed",
-                modifier = Modifier.size(18.dp),
+                modifier = Modifier.size(ExpressiveSizes.IconSmall),
                 tint = onPrimaryColor
             )
         } else {
