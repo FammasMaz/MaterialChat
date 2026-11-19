@@ -1,8 +1,6 @@
 package com.materialchat.ui.screens.chat.components
 
 import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.spring
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -16,7 +14,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Check
@@ -30,7 +27,6 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
@@ -40,7 +36,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.materialchat.domain.model.AiModel
+import com.materialchat.ui.screens.settings.components.SettingsSheetShape
 import com.materialchat.ui.theme.CustomShapes
+import com.materialchat.ui.theme.ExpressiveMotion
+import com.materialchat.ui.theme.ExpressiveShapes
 
 /**
  * Bottom sheet for selecting models for fusion mode.
@@ -79,44 +78,28 @@ fun FusionModelSelector(
         ModalBottomSheet(
             onDismissRequest = onDismiss,
             sheetState = sheetState,
-            shape = CustomShapes.BottomSheet,
-            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-            contentColor = MaterialTheme.colorScheme.onSurface,
-            dragHandle = {
-                Surface(
-                    modifier = Modifier.padding(vertical = 12.dp),
-                    color = MaterialTheme.colorScheme.outline,
-                    shape = MaterialTheme.shapes.extraLarge
-                ) {
-                    Spacer(
-                        modifier = Modifier
-                            .width(32.dp)
-                            .height(4.dp)
-                    )
-                }
-            }
+            // Same sheet family as settings: top-only squircle, low container tier, default
+            // drag handle, headline title with a close affordance.
+            shape = SettingsSheetShape,
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+            contentColor = MaterialTheme.colorScheme.onSurface
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp)
+                    .padding(horizontal = ChatSheetGutter)
                     .padding(bottom = 32.dp)
                     .animateContentSize(
-                        animationSpec = com.materialchat.ui.theme.ExpressiveMotion.Spatial.contentSize()
+                        animationSpec = ExpressiveMotion.Spatial.contentSize()
                     )
             ) {
-                Text(
-                    text = "Response Fusion",
-                    style = MaterialTheme.typography.titleLarge,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.padding(bottom = 4.dp)
-                )
+                ChatSheetHeader(title = "Response fusion", onClose = onDismiss)
 
                 Text(
                     text = "Select 2-3 models to query in parallel, then pick a judge to synthesize the best response.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(bottom = 16.dp)
+                    modifier = Modifier.padding(top = 4.dp, bottom = 16.dp)
                 )
 
                 // Models section
@@ -145,7 +128,7 @@ fun FusionModelSelector(
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .clip(RoundedCornerShape(16.dp))
+                                    .clip(ExpressiveShapes.MenuSelection)
                                     .clickable(enabled = canSelect) { onModelToggle(model) }
                                     .padding(horizontal = 4.dp, vertical = 2.dp),
                                 verticalAlignment = Alignment.CenterVertically
@@ -211,7 +194,7 @@ fun FusionModelSelector(
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .clip(RoundedCornerShape(16.dp))
+                                    .clip(ExpressiveShapes.MenuSelection)
                                     .clickable { onJudgeModelSelect(model) }
                                     .padding(horizontal = 12.dp, vertical = 14.dp),
                                 verticalAlignment = Alignment.CenterVertically
@@ -258,7 +241,7 @@ fun FusionModelSelector(
                     onClick = onStartFusion,
                     enabled = selectedModelIds.size >= 2 && judgeModelId != null,
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(24.dp),
+                    shape = CustomShapes.Button,
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.tertiary,
                         contentColor = MaterialTheme.colorScheme.onTertiary

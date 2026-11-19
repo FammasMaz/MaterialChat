@@ -86,6 +86,7 @@ fun WebSearchSourcesCarousel(
     )
     // Shared disclosure-panel contour (20dp squircle), the same as the memory panel above it.
     val containerShape = com.materialchat.ui.theme.ExpressiveShapes.DisclosurePanel
+    val palette = rememberChatSurfacePalette()
 
     Column(
         modifier = modifier
@@ -107,12 +108,15 @@ fun WebSearchSourcesCarousel(
             } else {
                 MaterialTheme.colorScheme.surfaceContainerHigh
             },
+            // Content resolved against the painted fill (ChatSurfacePalette): the expanded
+            // header is a translucent wash over the bubble, not the plain secondaryContainer.
             contentColor = if (expanded) {
-                MaterialTheme.colorScheme.onSecondaryContainer
+                palette.sourcesHeaderExpanded.content
             } else {
-                MaterialTheme.colorScheme.onSurfaceVariant
+                palette.sourcesHeaderCollapsed.content
             }
         ) {
+            val mutedColor = if (expanded) palette.sourcesHeaderMutedExpanded else palette.sourcesHeaderMutedCollapsed
             Row(
                 modifier = Modifier
                     .heightIn(min = 48.dp)
@@ -150,7 +154,7 @@ fun WebSearchSourcesCarousel(
                             Text(
                                 text = "· ${formatSearchDuration(ms)}",
                                 style = MaterialTheme.typography.labelSmall,
-                                modifier = Modifier.alpha(0.68f),
+                                color = mutedColor,
                                 maxLines = 1
                             )
                         }
@@ -158,7 +162,7 @@ fun WebSearchSourcesCarousel(
                     Text(
                         text = if (expanded) "Swipe source cards" else "Tap to inspect web results",
                         style = MaterialTheme.typography.labelSmall,
-                        modifier = Modifier.alpha(0.72f),
+                        color = mutedColor,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -299,7 +303,7 @@ private fun WebSearchSourceCard(
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     Surface(
-                        shape = RoundedCornerShape(8.dp),
+                        shape = MaterialTheme.shapes.extraSmall,
                         color = MaterialTheme.colorScheme.primaryContainer
                     ) {
                         Text(

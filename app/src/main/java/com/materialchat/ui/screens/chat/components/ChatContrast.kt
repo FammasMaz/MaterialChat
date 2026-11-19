@@ -125,6 +125,12 @@ internal data class ChatSurfacePalette(
     /** The expanded memory panel (translucent highest container over the bubble) and its body. */
     val memoryPanel: ChatTonal,
     val memoryPanelTitle: Color,
+    /** The web-search sources header: collapsed (surfaceContainerHigh) and expanded (secondaryContainer at 0.72 over the bubble). */
+    val sourcesHeaderCollapsed: ChatTonal,
+    val sourcesHeaderExpanded: ChatTonal,
+    /** The secondary line / duration on the sources header, per state. */
+    val sourcesHeaderMutedCollapsed: Color,
+    val sourcesHeaderMutedExpanded: Color,
     /** Action row segments: standard, the primary (regenerate), toggled (bookmarked / stats). */
     val actionStandard: ChatTonal,
     val actionPrimary: ChatTonal,
@@ -175,7 +181,13 @@ internal data class ChatSurfacePalette(
     val attachmentRemove: ChatTonal,
     val plusMenuCamera: ChatTonal,
     val plusMenuAttach: ChatTonal,
-    val plusMenuCreate: ChatTonal
+    val plusMenuCreate: ChatTonal,
+    /**
+     * The full-screen image viewer: the scrim (0.96 over the screen surface) and the control
+     * colour that reads on it, and the translucent control chip (content at 0.14 over the scrim).
+     */
+    val imageViewerScrim: ChatTonal,
+    val imageViewerChip: ChatTonal
 ) {
     /** Every container/content pair with its required ratio, one per fill the container can present. */
     fun pairs(): List<AssistantContrastPair> = buildList {
@@ -208,6 +220,10 @@ internal data class ChatSurfacePalette(
         text("memory used chip", memoryUsedChip)
         text("memory panel", memoryPanel)
         add("memory panel title", memoryPanel.fill, memoryPanelTitle, ChatContrast.BODY_TEXT)
+        text("sources header collapsed", sourcesHeaderCollapsed)
+        text("sources header expanded", sourcesHeaderExpanded)
+        add("sources header muted collapsed", sourcesHeaderCollapsed.fill, sourcesHeaderMutedCollapsed, ChatContrast.BODY_TEXT)
+        add("sources header muted expanded", sourcesHeaderExpanded.fill, sourcesHeaderMutedExpanded, ChatContrast.BODY_TEXT)
         icon("action standard", actionStandard)
         icon("action primary", actionPrimary)
         icon("action selected", actionSelected)
@@ -253,6 +269,8 @@ internal data class ChatSurfacePalette(
         text("plus menu camera", plusMenuCamera)
         text("plus menu attach", plusMenuAttach)
         text("plus menu create", plusMenuCreate)
+        icon("image viewer scrim", imageViewerScrim)
+        icon("image viewer chip", imageViewerChip)
     }
 
     companion object {
@@ -291,6 +309,9 @@ internal data class ChatSurfacePalette(
                 ChatContrast.over(assistant.content.copy(alpha = 0.04f), assistantFill)
             )
             val memoryPanelFill = ChatContrast.over(scheme.surfaceContainerHighest.copy(alpha = 0.86f), assistantFill)
+            val sourcesExpandedFill = ChatContrast.over(scheme.secondaryContainer.copy(alpha = 0.72f), assistantFill)
+            val sourcesCollapsed = tonal(scheme.surfaceContainerHigh, scheme.onSurfaceVariant, body)
+            val sourcesExpanded = tonal(sourcesExpandedFill, scheme.onSecondaryContainer, body)
             val modelPickerFills = listOf(
                 ChatContrast.over(scheme.secondaryContainer.copy(alpha = 0.72f), headerFill),
                 scheme.secondaryContainer
@@ -298,6 +319,14 @@ internal data class ChatSurfacePalette(
             val composerFills = listOf(scheme.surfaceContainerHigh, scheme.surfaceContainerHighest)
             val imageLoadingFill = ChatContrast.over(scheme.primaryContainer.copy(alpha = 0.55f), assistantFill)
             val inlineCodeFill = ChatContrast.over(assistant.content.copy(alpha = 0.15f), assistantFill)
+            // ImageViewerDialog: the scrim role at 0.96 over whatever screen is underneath (taken as
+            // `surface`); inverseOnSurface is the M3 role for content on an inverse fill, but on a
+            // dark theme it is itself dark, so the resolver steps to onSurface there.
+            val scrimFill = ChatContrast.over(scheme.scrim.copy(alpha = 0.96f), scheme.surface)
+            val imageViewerContent = ChatContrast.pick(
+                scrimFill, listOf(scheme.inverseOnSurface, scheme.onSurface, scheme.inverseSurface), icon
+            )
+            val imageViewerChipFill = ChatContrast.over(imageViewerContent.copy(alpha = 0.14f), scrimFill)
 
             val chips = ChatHeaderBadge.values().associateWith { badge ->
                 when (badge) {
@@ -341,6 +370,10 @@ internal data class ChatSurfacePalette(
                 memoryUsedChip = tonal(scheme.secondaryContainer, scheme.onSecondaryContainer, body),
                 memoryPanel = tonal(memoryPanelFill, scheme.onSurfaceVariant, body),
                 memoryPanelTitle = faded(listOf(memoryPanelFill), scheme.onSurfaceVariant, 0.72f, body),
+                sourcesHeaderCollapsed = sourcesCollapsed,
+                sourcesHeaderExpanded = sourcesExpanded,
+                sourcesHeaderMutedCollapsed = faded(listOf(sourcesCollapsed.fill), sourcesCollapsed.content, 0.72f, body),
+                sourcesHeaderMutedExpanded = faded(listOf(sourcesExpandedFill), sourcesExpanded.content, 0.72f, body),
                 actionStandard = tonal(scheme.surfaceContainerHigh, scheme.onSurfaceVariant, icon),
                 actionPrimary = tonal(scheme.secondaryContainer, scheme.onSecondaryContainer, icon),
                 actionSelected = tonal(scheme.primaryContainer, scheme.onPrimaryContainer, body),
@@ -384,7 +417,9 @@ internal data class ChatSurfacePalette(
                 attachmentRemove = tonal(scheme.errorContainer, scheme.onErrorContainer, icon),
                 plusMenuCamera = tonal(scheme.secondaryContainer, scheme.onSecondaryContainer, body),
                 plusMenuAttach = tonal(scheme.tertiaryContainer, scheme.onTertiaryContainer, body),
-                plusMenuCreate = tonal(scheme.primaryContainer, scheme.onPrimaryContainer, body)
+                plusMenuCreate = tonal(scheme.primaryContainer, scheme.onPrimaryContainer, body),
+                imageViewerScrim = ChatTonal(scrimFill, imageViewerContent),
+                imageViewerChip = ChatTonal(imageViewerChipFill, imageViewerContent)
             )
         }
     }

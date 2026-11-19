@@ -3,12 +3,9 @@ package com.materialchat.ui.screens.chat.components
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.VectorConverter
-import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
@@ -45,7 +42,6 @@ import com.materialchat.R
 import com.materialchat.ui.components.HapticPattern
 import com.materialchat.ui.components.rememberHapticFeedback
 import com.materialchat.ui.theme.ExpressiveMotion
-import com.materialchat.ui.theme.MaterialChatMotion
 import com.materialchat.ui.theme.particles.rememberParticleMotionGate
 
 /** Resting corner of the scroll FAB (M3E small FAB: 16dp). */
@@ -120,10 +116,8 @@ fun ScrollToBottomFab(
             val animated by infiniteTransition.animateFloat(
                 initialValue = -bobAmplitude,
                 targetValue = bobAmplitude,
-                animationSpec = infiniteRepeatable(
-                    animation = tween(MaterialChatMotion.Durations.ExtraLong + MaterialChatMotion.Durations.Quick),
-                    repeatMode = RepeatMode.Reverse
-                ),
+                // Shared bob token (Durations.Bob half period, reversing); identical spec.
+                animationSpec = ExpressiveMotion.Spatial.bob(),
                 label = "bobOffset"
             )
             animated

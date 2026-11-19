@@ -8,6 +8,7 @@ import androidx.compose.ui.graphics.lerp
 import com.materialchat.assistant.ui.AssistantContrastPair
 import com.materialchat.data.local.preferences.AppPreferences
 import com.materialchat.ui.theme.MaterialChatThemePalettes
+import com.materialchat.ui.theme.ThemeContrast
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -78,13 +79,16 @@ class ChatContrastTest {
             "assistant error[0]", "assistant link", "system bubble",
             "thinking title[0]", "thinking preview[1]", "thinking chevron[0]", "thinking body",
             "memory saved chip", "memory used chip", "memory panel", "memory panel title",
+            "sources header collapsed", "sources header expanded",
+            "sources header muted collapsed", "sources header muted expanded",
             "action standard", "action primary", "action selected", "action stats text", "meta label",
             "date pill", "header chip Temporary", "header chip ContextCritical",
             "model picker[0]", "model picker disabled[1]", "composer text[0]", "composer placeholder[1]",
             "composer attach", "send idle", "send ready", "send streaming", "scroll fab", "scroll fab badge",
             "code block", "code keyword", "code string", "code comment", "code number", "code chip", "inline code",
             "table header", "table body", "table alternate", "working badge", "empty card", "empty tile",
-            "image action chip", "image loading card", "attachment remove", "plus menu create"
+            "image action chip", "image loading card", "attachment remove", "plus menu create",
+            "image viewer scrim", "image viewer chip"
         )) assertTrue("missing pair $expected in $names", expected in names)
     }
 
@@ -100,6 +104,31 @@ class ChatContrastTest {
             assertEquals(scheme.onSurfaceVariant, palette.actionStandard.content)
             assertEquals(scheme.onPrimary, palette.sendReady.content)
         }
+    }
+
+    @Test fun composerSendStatesStayDistinctOnEveryPalette() {
+        // The disabled (idle) send button must read as its own control on the composer backdrop
+        // (surfaceContainerLow, the chat content surface) and never be mistaken for Ready: the
+        // glyph reaches 3:1 on the idle fill (gated with every other pair above), the idle fill
+        // is a visible tier above the backdrop (the theme's own TIER_STEP), and the idle and
+        // ready fills differ at 3:1. The tier step is asserted on the shipped palettes only: the
+        // dynamic-like seeds here are a synthetic ramp (plain lerps to white/black) flatter than
+        // Material You's tonal palette, so their surfaceContainerHigh/Low step is 1.07-1.10 and
+        // says nothing about a real wallpaper scheme.
+        val shipped = AppPreferences.ThemePalette.values().map { it.toString() }
+        val failures = buildList {
+            for (theme in themes) for (family in families) {
+                val p = ChatSurfacePalette.resolve(theme.scheme, family)
+                val idleOnBackdrop = ChatContrast.ratio(p.sendIdle.fill, p.listBackground)
+                val idleVsReady = ChatContrast.ratio(p.sendIdle.fill, p.sendReady.fill)
+                val isShipped = shipped.any { theme.name.startsWith("$it ") }
+                if (isShipped && idleOnBackdrop < ThemeContrast.TIER_STEP) {
+                    add("${theme.name} / $family: idle fill on backdrop ${idleOnBackdrop.fmt()} < ${ThemeContrast.TIER_STEP}")
+                }
+                if (idleVsReady < ChatContrast.ICON) add("${theme.name} / $family: idle vs ready fill ${idleVsReady.fmt()} < 3.0")
+            }
+        }
+        assertTrue(failures.joinToString("\n"), failures.isEmpty())
     }
 
     /**

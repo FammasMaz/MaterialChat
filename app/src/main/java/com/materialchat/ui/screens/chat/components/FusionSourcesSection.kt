@@ -22,6 +22,7 @@ import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import com.materialchat.ui.theme.ExpressiveShapes
 import com.materialchat.ui.theme.readableMutedOn
 import com.materialchat.ui.theme.readableOn
 import androidx.compose.material3.Surface
@@ -71,9 +72,8 @@ fun FusionSourcesSection(
                 imageVector = if (isExpanded) Icons.Default.KeyboardArrowUp
                 else Icons.Default.KeyboardArrowDown,
                 contentDescription = if (isExpanded) "Collapse sources" else "Expand sources",
-                modifier = Modifier
-                    .size(16.dp)
-                    .alpha(0.6f),
+                // Solid secondary role: a 0.6-alpha icon on the bubble fell under 3:1 on light palettes.
+                modifier = Modifier.size(16.dp),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
@@ -122,7 +122,8 @@ private fun SourceResponseCard(
 ) {
     Surface(
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
+        // A content block inside the bubble body, same contour as code/table/math blocks.
+        shape = ExpressiveShapes.ContentBlock,
         color = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.7f)
     ) {
         Column(
