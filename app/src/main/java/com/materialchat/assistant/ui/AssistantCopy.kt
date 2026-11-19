@@ -3,6 +3,7 @@ package com.materialchat.assistant.ui
 import com.materialchat.assistant.voice.GeminiTtsFailure
 import com.materialchat.assistant.voice.SpeechRecognitionErrors
 import com.materialchat.assistant.voice.VoiceCopy
+import com.materialchat.ui.theme.CopyRules
 import java.io.IOException
 
 /**
@@ -34,7 +35,9 @@ internal object AssistantCopy {
     const val ANSWERING = "Answering\u2026"
     const val SPEAKING = "Speaking\u2026"
     /** The one verb for trying a failed thing again. Chip labels and the resting line use it as is. */
-    const val ERROR_VERB = "Try again"
+    // W7: the app-wide verb and generic notice are the theme's CopyRules; CopyRulesTest pins the
+    // cross-owner equality, so this file no longer carries its own copy of either literal.
+    const val ERROR_VERB = CopyRules.TRY_AGAIN
     const val AFTER_ERROR = ERROR_VERB
 
     /** The thinking surface inside the answer: the phase word without the pill's ellipsis, over one status line. */
@@ -56,7 +59,7 @@ internal object AssistantCopy {
      * the key lives in the app's provider settings, which the notice's action opens.
      */
     const val PROVIDER_REJECTED = "The provider rejected the request. Check the API key in settings."
-    const val REQUEST_FAILED = "Something went wrong. Try again."
+    const val REQUEST_FAILED = CopyRules.REQUEST_FAILED
 
     /** Labelled actions of the answer surface and the opened pill. */
     const val OPEN_IN_APP = "Open in app"

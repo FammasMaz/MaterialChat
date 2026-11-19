@@ -20,6 +20,7 @@ import androidx.compose.ui.Modifier
 import com.materialchat.ui.components.ExpressiveButton
 import com.materialchat.ui.components.ExpressiveButtonStyle
 import com.materialchat.ui.components.ExpressiveSlider
+import com.materialchat.ui.components.dialogActionButtonColors
 import com.materialchat.ui.components.dialogEntrance
 import com.materialchat.ui.theme.ExpressiveShapes
 import com.materialchat.ui.theme.ExpressiveSpacing
@@ -274,9 +275,10 @@ fun AssistantVoiceSettingsPanel(viewModel: AssistantVoiceSettingsViewModel = hil
         confirmButton = {
             // W5: the dialog action colour resolved against the dialog container (raw `primary`
             // on surfaceContainerHigh reads 4.07:1 on VIOLET light; the theme falls back there).
+            // W7: through the shared `dialogActionButtonColors()` every other dialog host draws.
             TextButton(
                 enabled = !saving,
-                colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.dialogActionColor()),
+                colors = dialogActionButtonColors(),
                 onClick = {
                     viewModel.save(draft, if (removeKey) "" else key.takeIf { it.isNotBlank() })
                     key = ""
@@ -287,7 +289,7 @@ fun AssistantVoiceSettingsPanel(viewModel: AssistantVoiceSettingsViewModel = hil
         dismissButton = {
             TextButton(
                 enabled = !saving,
-                colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.dialogActionColor()),
+                colors = dialogActionButtonColors(),
                 onClick = { open = false }
             ) { Text("Close") }
         }
@@ -376,7 +378,8 @@ private fun VoiceRate(rate: Float, onChange: (Float) -> Unit) {
 /**
  * A choice row shaped like the Settings screen's model picker: the label in the supporting style
  * over the current value in `bodyLarge`, a trailing drop-down arrow, on `surfaceContainerHigh`
- * (the fill of every settings row), opening the same `DropdownMenu`.
+ * (the fill of every settings row), opening the same `DropdownMenu`. W7: the picker's own
+ * `shapes.medium` corner (this row drew `large`, one step rounder than the row it imitates).
  */
 @Composable
 private fun <T> VoiceChoice(label: String, value: String, choices: List<Pair<T, String>>, onSelect: (T) -> Unit) {
@@ -384,7 +387,7 @@ private fun <T> VoiceChoice(label: String, value: String, choices: List<Pair<T, 
     Column {
         Surface(
             onClick = { expanded = true },
-            shape = MaterialTheme.shapes.large,
+            shape = MaterialTheme.shapes.medium,
             color = MaterialTheme.colorScheme.surfaceContainerHigh,
             contentColor = MaterialTheme.colorScheme.onSurface,
             modifier = Modifier.fillMaxWidth()

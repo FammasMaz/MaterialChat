@@ -523,6 +523,99 @@ class AssistantViewModelTest {
         assertNull(vm.uiState.value.error)
     }
 
+    @Test fun `new chat clears the screen hint and a later screen question shows it again`() = runTest {
+        val vm = createViewModel()
+        vm.onOverlayShown()
+        // No capture arrived; the question asks for the screen (automatic mode is the default).
+        vm.sendQuery("what is this page about")
+        runCurrent()
+        assertTrue(vm.uiState.value.screenContextUnavailable)
+        vm.startNewChat()
+        assertFalse("the hint leaves with the exchange it was shown under", vm.uiState.value.screenContextUnavailable)
+        vm.sendQuery("summarise this page")
+        runCurrent()
+        assertTrue("the next screen question in the same invocation is told again", vm.uiState.value.screenContextUnavailable)
+        // Within one chat the hint is given once: the next screen question in the same chat
+        // goes out without it (the send clears the marker and the once-flag stays consumed).
+        vm.sendQuery("and this tweet")
+        runCurrent()
+        assertFalse("the hint is shown once per chat", vm.uiState.value.screenContextUnavailable)
+    }
+
+    @Test fun `a photo goes out again on retry through the saved question row`() = runTest {
+        val vm = createViewModel()
+        val saved = mutableListOf<Message>()
+        val sent = mutableListOf<List<Message>>()
+        coEvery { conversations.addMessage(any()) } answers { saved += firstArg<Message>(); firstArg<Message>().id }
+        coEvery { conversations.getMessages(any()) } answers { saved.toList() }
+        every { chat.sendMessage(any(), capture(sent), any(), any(), any(), any(), any(), any()) } returns flow {
+            for (state in states) emit(state)
+        }
+        val photo = Attachment(uri = "file:///photo.jpg", mimeType = "image/jpeg")
+        vm.addAttachment(photo)
+        vm.sendQuery("describe this photo")
+        runCurrent()
+        assertTrue(vm.pendingAttachments.value.isEmpty())
+        states.send(StreamingState.Error(IllegalStateException("{}"), httpStatus = 429))
+        runCurrent()
+        assertEquals(AssistantCopy.RATE_LIMITED, vm.uiState.value.error)
+        vm.retryLastQuery()
+        runCurrent()
+        // The row the first attempt saved carries the photo and is reused, so the retry's
+        // history has the photo exactly once.
+        assertEquals(1, saved.size)
+        assertEquals(listOf(photo.uri), saved.single().attachments.map { it.uri })
+        assertEquals(2, sent.size)
+        assertEquals(listOf(photo.uri), sent.last().single().attachments.map { it.uri })
+        assertTrue(vm.pendingAttachments.value.isEmpty())
+    }
+
+    @Test fun `a photo returns to the tray when the turn fails before the question is saved`() = runTest {
+        val vm = createViewModel()
+        val saved = mutableListOf<Message>()
+        coEvery { conversations.addMessage(any()) } answers { saved += firstArg<Message>(); firstArg<Message>().id }
+        coEvery { conversations.getMessages(any()) } answers { saved.toList() }
+        coEvery { create.withProviderAndModel(any(), any()) } throws java.io.IOException("down")
+        val photo = Attachment(uri = "file:///photo.jpg", mimeType = "image/jpeg")
+        vm.addAttachment(photo)
+        vm.sendQuery("describe this photo")
+        runCurrent()
+        assertEquals(AssistantCopy.NO_CONNECTION, vm.uiState.value.error)
+        assertTrue(saved.isEmpty())
+        // Nothing was saved, so the photo is back where the user can see it is still attached.
+        assertEquals(listOf(photo.uri), vm.pendingAttachments.value.map { it.uri })
+        coEvery { create.withProviderAndModel(any(), any()) } returns "conversation"
+        vm.retryLastQuery()
+        runCurrent()
+        assertEquals(listOf(photo.uri), saved.single().attachments.map { it.uri })
+        assertTrue(vm.pendingAttachments.value.isEmpty())
+        assertEquals(VoiceState.Thinking("describe this photo"), vm.voiceState.value)
+    }
+
+    @Test fun `a spoken action result stops when the overlay hides for Open in app`() = runTest {
+        val vm = createViewModel()
+        every { deviceActions.perform(DeviceAction.SetTorch(true)) } returns
+            DeviceActionOutcome("Flashlight on.", succeeded = true)
+        val events = mutableListOf<AssistantEvent>()
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.events.collect { events += it } }
+        vm.onOverlayShown()
+        vm.sendQuery("turn the flashlight on")
+        runCurrent()
+        assertEquals("Flashlight on.", vm.uiState.value.response)
+        assertTrue(vm.uiState.value.isSpeaking)
+        assertEquals(listOf("Flashlight on."), utterances)
+        // Open in app: the session hides, and nothing may keep talking behind the app.
+        vm.openInApp()
+        runCurrent()
+        assertEquals(listOf<AssistantEvent>(AssistantEvent.OpenInApp(conversationId = null)), events)
+        vm.onOverlayHidden()
+        runCurrent()
+        assertFalse(vm.uiState.value.isSpeaking)
+        assertTrue("the action's speech job is cancelled with the hide", speechReleased)
+        verify(atLeast = 1) { android.stop() }
+        assertEquals(VoiceState.Idle, vm.voiceState.value)
+    }
+
     @Test fun `open in app is withheld while the answer is awaited or arriving`() {
         assertTrue(AssistantUiState(isLoading = true).answerInFlight)
         assertTrue(AssistantUiState(isStreaming = true).answerInFlight)

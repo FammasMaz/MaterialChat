@@ -288,6 +288,11 @@ class AssistantViewModel(
         _pendingAttachments.value.forEach(discardAttachment)
         _pendingAttachments.value = emptyList()
         unstageScreen()
+        // W7: the settings hint for a missing capture belongs to the exchange it was shown under.
+        // Before, New chat left `screenContextUnavailable` standing (the hint showed above the
+        // empty pill) while the once-flag stayed consumed, so the next screen question in the
+        // same invocation got no hint at all.
+        screenUnavailableShown = false
         _messages.value = emptyList()
         _uiState.update {
             it.copy(
@@ -297,7 +302,8 @@ class AssistantViewModel(
                 isLoading = false,
                 isStreaming = false,
                 error = null,
-                notice = null
+                notice = null,
+                screenContextUnavailable = false
             )
         }
         _voiceState.value = VoiceState.Idle
@@ -438,6 +444,9 @@ class AssistantViewModel(
         if (screenPlan == ScreenContextDecision.UNAVAILABLE) markScreenUnavailable()
         _voiceState.value = VoiceState.Thinking(trimmedQuery)
         lastActivityTimestamp = System.currentTimeMillis()
+        // W7: until the question row is saved, the photos exist only in this turn; a failure
+        // before that point puts them back in the tray so "Try again" sends them.
+        var questionSaved = false
 
         streamingJob = viewModelScope.launch {
             try {
@@ -522,6 +531,7 @@ class AssistantViewModel(
                     val provider = settings.providerId?.let { providerRepository.getProvider(it) }
                         ?: if (settings.providerId == null) providerRepository.getActiveProvider() else null
                     if (provider == null) {
+                        restoreAttachments(attachments)
                         handleError(AssistantCopy.NO_PROVIDER)
                         stagedScreen?.let(discardAttachment)
                         queue.finish()
@@ -576,6 +586,7 @@ class AssistantViewModel(
                     )
                     if (reused == null) conversationRepository.addMessage(userMessage)
                     savedQuestion = userMessage
+                    questionSaved = true
 
                     var resend = true
                     while (resend) {
@@ -749,7 +760,10 @@ class AssistantViewModel(
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (e: Exception) {
-                if (token == turn) handleError(AssistantCopy.requestFailure(e))
+                if (token == turn) {
+                    if (!questionSaved) restoreAttachments(attachments)
+                    handleError(AssistantCopy.requestFailure(e))
+                }
             }
         }
     }
@@ -817,7 +831,10 @@ class AssistantViewModel(
      */
     private fun speakActionResult(result: String, token: Long) {
         if (!_uiState.value.isTtsEnabled) return
-        viewModelScope.launch {
+        // W7: owned like the streamed answer's speech, so stopSpeaking (Stop, Open in app, the
+        // hide, New chat) cancels it; before, the job ran on untracked and a cloud voice could
+        // keep speaking after the overlay was gone.
+        ttsJob = viewModelScope.launch {
             try {
                 val settings = appPreferences.assistantVoiceSettings.first().normalized()
                 speechRuntime.speak(result, settings) { event ->
@@ -1068,6 +1085,11 @@ class AssistantViewModel(
      */
     fun addAttachment(attachment: Attachment) {
         _pendingAttachments.update { it + attachment }
+    }
+
+    /** Photos a turn took but never saved go back to the tray (in front of anything added since). */
+    private fun restoreAttachments(attachments: List<Attachment>) {
+        if (attachments.isNotEmpty()) _pendingAttachments.update { attachments + it }
     }
 
     /**

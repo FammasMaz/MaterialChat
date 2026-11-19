@@ -10,9 +10,9 @@ import kotlin.math.sqrt
 
 /**
  * The assistant's motion is the shared token set, and every exit settles inside
- * [AssistantExitMotion]'s window. W5: the small shape morphs draw `Press.Shape` / `Press.Progress`
- * and the opened pill's height disclosures draw `Disclosure.Expand` / `Disclosure.Shrink`; this
- * pins the springs those tokens resolve to and the settle times the overlay's comments quote.
+ * [AssistantExitMotion]'s window. W7: the theme's `MotionTokensTest` pins the token values
+ * themselves (press, disclosure); this test only asserts which token each assistant motion
+ * resolves to and the settle times the overlay's comments quote.
  */
 class AssistantMotionTest {
 
@@ -24,28 +24,48 @@ class AssistantMotionTest {
         assertEquals(0L, AssistantExitMotion.durationMillis(0f))
     }
 
-    @Test fun pressMorphsAreTheSharedPressToken() {
-        // What the glyph container, the `+` -> `x` affordance and the notice chip now draw.
-        for (spec in listOf(ExpressiveMotion.Press.Shape, ExpressiveMotion.Press.Progress)) {
-            assertEquals(0.6f, spec.dampingRatio, 1e-6f)
-            assertEquals(800f, spec.stiffness, 1e-6f)
-        }
-        // Value-identical to the fast spatial token the assistant used to alias as morph(), so
-        // the feel of the three morphs is unchanged by the token move.
-        assertEquals(ExpressiveMotion.Spatial.fast<Float>(), ExpressiveMotion.Press.Progress)
+    @Test fun entrancesArriveOnTheSharedContainerSpring() {
+        // W7: the answer surface rising out of the pill and the thinking surface growing from
+        // its corner arrive on the one container spatial token every container transform in
+        // the app uses, the same spring the sheet itself enters on.
+        assertEquals(ExpressiveMotion.Spatial.container<Float>(), AssistantMotion.surfaceReveal<Float>())
+        assertEquals(AssistantMotion.container<Float>(), AssistantMotion.surfaceReveal<Float>())
+        // Arrival may overshoot (M3: overshoot on arrival, never on departure).
+        assertTrue(AssistantMotion.surfaceReveal<Float>().dampingRatio < 1f)
+    }
+
+    @Test fun theEntranceSpringCouldNotServeAsAnExit() {
+        // Why the answer surface leaves on exit() and not on the spring it arrived on: the
+        // container token's under-damped envelope is still above 1 % of its travel when the
+        // session's 320 ms window closes, so a surface dismissed while the window is leaving
+        // would be cut off mid-motion.
+        val arrive = AssistantMotion.surfaceReveal<Float>()
+        val envelope = underdampedEnvelopeMillis(arrive.dampingRatio, arrive.stiffness, remaining = 0.01)
+        assertTrue("container 99 % envelope at $envelope ms", envelope > exitWindowMillis)
+    }
+
+    @Test fun stateSwitchesDrawTheFastSpatialToken() {
+        // The glyph and state-line switches alias the fast spatial token. The glyph container,
+        // the `+` -> `x` affordance and the notice chip draw Press.Shape / Press.Progress
+        // directly; whether those stay value-identical to the fast token is the theme's call
+        // (MotionTokensTest), not pinned here (W7: the W6 audit's cross-owner pin, F15).
+        assertEquals(ExpressiveMotion.Spatial.fast<Float>(), AssistantMotion.stateSwitch<Float>())
     }
 
     @Test fun disclosuresFoldOnTheSheetsOwnExitCurve() {
+        // The opened pill's regions fold on the shared Shrink disclosure, which must be the same
+        // spec the whole sheet leaves on, so a region folding while the window leaves is on one
+        // curve. Critically damped: departure never overshoots back into view.
         val shrink = ExpressiveMotion.Disclosure.Shrink
         val exit = AssistantMotion.exit<Float>()
-        assertEquals(1.0f, shrink.dampingRatio, 1e-6f)
-        assertEquals(420f, shrink.stiffness, 1e-6f)
+        assertEquals(ExpressiveMotion.Spatial.collapse<Float>(), exit)
         assertEquals(exit.dampingRatio, shrink.dampingRatio, 1e-6f)
         assertEquals(exit.stiffness, shrink.stiffness, 1e-6f)
-        // Expand may overshoot a little on arrival (M3: arrival, not departure).
+        assertEquals(1.0f, exit.dampingRatio, 1e-6f)
+        // Expand is the arrival of the same disclosure: same stiffness, a little overshoot allowed.
         val expand = ExpressiveMotion.Disclosure.Expand
-        assertEquals(0.75f, expand.dampingRatio, 1e-6f)
-        assertEquals(420f, expand.stiffness, 1e-6f)
+        assertEquals(exit.stiffness, expand.stiffness, 1e-6f)
+        assertTrue(expand.dampingRatio < 1f)
     }
 
     @Test fun everyExitSettlesInsideTheWindow() {
@@ -54,9 +74,11 @@ class AssistantMotionTest {
         val alphaSettle = criticallyDampedSettleMillis(AssistantMotion.effect<Float>().stiffness, remaining = 0.01)
         assertTrue("alpha 99 % at $alphaSettle ms", alphaSettle < exitWindowMillis)
         assertTrue("alpha 99 % at $alphaSettle ms", alphaSettle in 150L..180L)
-        // The drop/shrink and the folding regions: 90 % of the travel inside the window, and the
-        // last 1 % lands within a few ms of it, after the alpha has already reached 99 %.
+        // The drop/shrink, the answer surface's slide/scale-out and the folding regions: 90 % of
+        // the travel inside the window, and the last 1 % lands within a few ms of it, after the
+        // alpha has already reached 99 %.
         val exit = AssistantMotion.exit<Float>()
+        assertEquals(1.0f, exit.dampingRatio, 1e-6f)
         val ninety = criticallyDampedSettleMillis(exit.stiffness, remaining = 0.10)
         val ninetyNine = criticallyDampedSettleMillis(exit.stiffness, remaining = 0.01)
         assertTrue("exit 90 % at $ninety ms", ninety < exitWindowMillis)
@@ -81,7 +103,7 @@ class AssistantMotionTest {
         return ((lo + hi) / 2 / omega * 1000).toLong()
     }
 
-    @Suppress("unused")
+    /** Decay envelope of an under-damped unit spring: e^(-zeta omega t) reaches [remaining]. */
     private fun underdampedEnvelopeMillis(dampingRatio: Float, stiffness: Float, remaining: Double): Long =
         (ln(1 / remaining) / (dampingRatio * sqrt(stiffness.toDouble())) * 1000).toLong()
 }
