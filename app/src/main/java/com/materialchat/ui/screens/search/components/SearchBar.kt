@@ -1,8 +1,6 @@
 package com.materialchat.ui.screens.search.components
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.spring
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -30,6 +28,7 @@ import androidx.compose.ui.unit.dp
 import com.materialchat.ui.components.HapticPattern
 import com.materialchat.ui.components.rememberHapticFeedback
 import com.materialchat.ui.theme.CustomShapes
+import com.materialchat.ui.theme.ExpressiveMotion
 
 /**
  * Search bar component for the conversations screen.
@@ -92,12 +91,8 @@ fun ChatSearchBar(
         trailingIcon = {
             AnimatedVisibility(
                 visible = query.isNotEmpty(),
-                enter = fadeIn(
-                    animationSpec = spring(stiffness = Spring.StiffnessMediumLow)
-                ),
-                exit = fadeOut(
-                    animationSpec = spring(stiffness = Spring.StiffnessMedium)
-                )
+                enter = fadeIn(animationSpec = ExpressiveMotion.Disclosure.FadeIn),
+                exit = fadeOut(animationSpec = ExpressiveMotion.Disclosure.FadeOut)
             ) {
                 IconButton(onClick = { haptics.perform(HapticPattern.CLICK); onClear() }) {
                     Icon(

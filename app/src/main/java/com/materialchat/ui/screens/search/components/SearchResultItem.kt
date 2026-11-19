@@ -3,7 +3,6 @@ package com.materialchat.ui.screens.search.components
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -48,6 +47,7 @@ import com.materialchat.domain.model.MatchType
 import com.materialchat.ui.screens.search.MessageSnippet
 import com.materialchat.ui.screens.search.SearchResultUiItem
 import com.materialchat.ui.theme.CustomShapes
+import com.materialchat.ui.theme.ExpressiveMotion
 import com.materialchat.ui.theme.MaterialChatMotion
 
 /**
@@ -69,13 +69,10 @@ fun SearchResultItem(
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
 
-    // Press animation
+    // Press morph on the shared Press tokens, like every home row.
     val scale by animateFloatAsState(
         targetValue = if (isPressed) MaterialChatMotion.Scales.Pressed else MaterialChatMotion.Scales.Normal,
-        animationSpec = spring(
-            dampingRatio = MaterialChatMotion.Springs.ScalePress.dampingRatio,
-            stiffness = MaterialChatMotion.Springs.ScalePress.stiffness
-        ),
+        animationSpec = ExpressiveMotion.Press.Scale,
         label = "scale"
     )
 
@@ -85,7 +82,7 @@ fun SearchResultItem(
         } else {
             MaterialTheme.colorScheme.surfaceContainerLow
         },
-        animationSpec = spring(),
+        animationSpec = ExpressiveMotion.Press.Tint,
         label = "backgroundColor"
     )
 
@@ -190,16 +187,10 @@ fun SearchResultItem(
         // Matching messages (branched from title)
         AnimatedVisibility(
             visible = item.matchingMessages.isNotEmpty(),
-            enter = expandVertically(
-                animationSpec = spring(dampingRatio = 0.7f, stiffness = 500f)
-            ) + fadeIn(
-                animationSpec = spring(dampingRatio = 1.0f, stiffness = 500f)
-            ),
-            exit = shrinkVertically(
-                animationSpec = spring(dampingRatio = 1.0f, stiffness = 500f)
-            ) + fadeOut(
-                animationSpec = spring(dampingRatio = 1.0f, stiffness = 500f)
-            )
+            enter = expandVertically(animationSpec = ExpressiveMotion.Disclosure.Expand) +
+                fadeIn(animationSpec = ExpressiveMotion.Disclosure.FadeIn),
+            exit = shrinkVertically(animationSpec = ExpressiveMotion.Disclosure.Shrink) +
+                fadeOut(animationSpec = ExpressiveMotion.Disclosure.FadeOut)
         ) {
             val highlightColor = MaterialTheme.colorScheme.tertiaryContainer
             Column(

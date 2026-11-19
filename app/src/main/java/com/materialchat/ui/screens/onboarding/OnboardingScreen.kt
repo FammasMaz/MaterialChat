@@ -58,6 +58,7 @@ import com.materialchat.ui.components.M3ExpressiveInlineLoading
 import com.materialchat.ui.components.rememberDeviceTilt
 import com.materialchat.ui.theme.CustomShapes
 import com.materialchat.ui.theme.ExpressiveMotion
+import com.materialchat.ui.theme.ExpressiveShapes
 import com.materialchat.ui.theme.MaterialChatExpressiveTitleFontFamily
 
 @Composable
@@ -215,7 +216,8 @@ private fun HeroHeader() {
             modifier = Modifier
                 .size(104.dp)
                 .scale(scale),
-            shape = RoundedCornerShape(32.dp),
+            // Hero tile on the sheet squircle, like the other 32 dp hero containers.
+            shape = ExpressiveShapes.Sheet,
             color = MaterialTheme.colorScheme.primaryContainer,
             contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
             tonalElevation = 6.dp
@@ -260,7 +262,7 @@ private fun CodexHeroCard(
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(32.dp),
+        shape = ExpressiveShapes.Sheet,
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.primaryContainer,
             contentColor = MaterialTheme.colorScheme.onPrimaryContainer
@@ -366,7 +368,7 @@ private fun ProviderOptionCard(
         modifier = Modifier
             .fillMaxWidth()
             .height(88.dp),
-        shape = RoundedCornerShape(28.dp),
+        shape = ExpressiveShapes.Card,
         colors = CardDefaults.cardColors(containerColor = containerColor),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
@@ -421,7 +423,7 @@ private fun AssistiveMessageCard(
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(28.dp),
+        shape = ExpressiveShapes.Card,
         colors = CardDefaults.cardColors(
             containerColor = containerColor,
             contentColor = contentColor

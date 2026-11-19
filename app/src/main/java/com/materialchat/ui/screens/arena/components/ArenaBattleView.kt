@@ -1,11 +1,6 @@
 package com.materialchat.ui.screens.arena.components
 
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
@@ -45,6 +40,7 @@ import com.materialchat.ui.screens.arena.ContenderUi
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlin.random.Random
+import com.materialchat.ui.theme.ExpressiveMotion
 import com.materialchat.ui.theme.ExpressiveShapes
 
 /**
@@ -158,8 +154,11 @@ private fun BattleCard(
                 AnimatedContent(
                     targetState = revealed,
                     transitionSpec = {
-                        (fadeIn(tween(350)) + slideInHorizontally(tween(350)) { it / 3 })
-                            .togetherWith(fadeOut(tween(200)))
+                        // Reveal on the shared disclosure physics: slide in on the spatial
+                        // expand spring, cross-fade on the effects reveal spring.
+                        (fadeIn(ExpressiveMotion.Disclosure.FadeIn) +
+                            slideInHorizontally(ExpressiveMotion.Spatial.expand()) { it / 3 })
+                            .togetherWith(fadeOut(ExpressiveMotion.Disclosure.FadeOut))
                     },
                     label = "arenaReveal"
                 ) { isRevealed ->
