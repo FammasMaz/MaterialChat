@@ -225,7 +225,7 @@ private fun OnDeviceModelsHero() {
             containerColor = MaterialTheme.colorScheme.primaryContainer,
             contentColor = MaterialTheme.colorScheme.onPrimaryContainer
         ),
-        shape = CustomShapes.ProviderCard
+        shape = ExpressiveShapes.Card
     ) {
         Column(
             modifier = Modifier.padding(20.dp),
@@ -255,7 +255,7 @@ private fun ModelDownloadGuideCard(onOpenLink: (String) -> Unit) {
             containerColor = MaterialTheme.colorScheme.secondaryContainer,
             contentColor = MaterialTheme.colorScheme.onSecondaryContainer
         ),
-        shape = CustomShapes.ProviderCard
+        shape = ExpressiveShapes.Card
     ) {
         Column(
             modifier = Modifier.padding(16.dp),
@@ -315,7 +315,7 @@ private fun HuggingFaceTokenCard(
             containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
             contentColor = MaterialTheme.colorScheme.onSurface
         ),
-        shape = CustomShapes.ProviderCard
+        shape = ExpressiveShapes.Card
     ) {
         Column(
             modifier = Modifier.padding(16.dp),
@@ -395,7 +395,7 @@ private fun RuntimeMemoryStatusCard(models: List<LocalModelState>) {
     val mounted = models.firstOrNull { it.isMountedInRam }
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = CustomShapes.ProviderCard,
+        shape = ExpressiveShapes.Card,
         colors = CardDefaults.cardColors(
             containerColor = if (mounted != null) {
                 MaterialTheme.colorScheme.tertiaryContainer
@@ -454,7 +454,7 @@ private fun OnDeviceModelCard(
         (state.availability == LocalModelAvailability.UNAVAILABLE || state.availability == LocalModelAvailability.ERROR)
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = CustomShapes.ProviderCard,
+        shape = ExpressiveShapes.Card,
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
             contentColor = MaterialTheme.colorScheme.onSurface

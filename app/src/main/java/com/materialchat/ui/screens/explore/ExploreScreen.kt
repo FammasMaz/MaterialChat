@@ -27,7 +27,6 @@ import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountTree
 import androidx.compose.material.icons.filled.Bookmark
@@ -249,7 +248,7 @@ private fun ArenaHeroCard(onClick: () -> Unit) {
             onClick()
         },
         interactionSource = interactionSource,
-        shape = RoundedCornerShape(32.dp),
+        shape = ExpressiveShapes.Sheet,
         elevation = CardDefaults.elevatedCardElevation(defaultElevation = 4.dp),
         colors = CardDefaults.elevatedCardColors(
             containerColor = MaterialTheme.colorScheme.primaryContainer
@@ -403,7 +402,7 @@ private fun ExploreFeatureCard(feature: ExploreFeature, modifier: Modifier = Mod
             feature.onClick()
         },
         interactionSource = interactionSource,
-        shape = RoundedCornerShape(if (feature.isWide) 28.dp else 24.dp),
+        shape = ExpressiveShapes.Card,
         colors = CardDefaults.elevatedCardColors(containerColor = colors.first),
         elevation = CardDefaults.elevatedCardElevation(defaultElevation = if (feature.isWide) 3.dp else 1.dp),
         modifier = modifier
@@ -426,7 +425,7 @@ private fun ExploreFeatureCard(feature: ExploreFeature, modifier: Modifier = Mod
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Surface(
-                    shape = RoundedCornerShape(18.dp),
+                    shape = ExpressiveShapes.Tile,
                     color = colors.second.copy(alpha = 0.18f),
                     contentColor = colors.second
                 ) {
@@ -439,7 +438,7 @@ private fun ExploreFeatureCard(feature: ExploreFeature, modifier: Modifier = Mod
                 Text(
                     text = feature.eyebrow,
                     style = MaterialTheme.typography.labelSmall,
-                    color = colors.second.copy(alpha = 0.78f),
+                    color = colors.second,
                     maxLines = 1
                 )
             }
@@ -456,7 +455,7 @@ private fun ExploreFeatureCard(feature: ExploreFeature, modifier: Modifier = Mod
                 Text(
                     text = feature.description,
                     style = MaterialTheme.typography.bodySmall,
-                    color = colors.second.copy(alpha = 0.72f),
+                    color = colors.second,
                     maxLines = if (feature.isWide) 2 else 3,
                     overflow = TextOverflow.Ellipsis
                 )

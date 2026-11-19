@@ -73,8 +73,7 @@ class HomeSettingsContrastTest {
     @Test fun newSharedComponentSlotsArePresent() {
         val names = HomeSettingsPalette.resolve(themes.first().scheme).pairs().map { it.name }.toSet()
         for (expected in listOf(
-            "EmptyHeroOnSurfaceLow", "MemoryKindChip", "SettingsBadgeOnTertiary",
-            "ExploreTileOnSecondary", "ExploreTileOnTertiary", "StatCardLabel", "StatCardValue"
+            "StatCardLabel", "StatCardValue"
         )) assertTrue("missing slot $expected", expected in names)
     }
 

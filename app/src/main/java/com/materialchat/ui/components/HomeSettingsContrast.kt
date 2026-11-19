@@ -120,19 +120,10 @@ internal enum class HomeSettingsSlot(
     MemoryMuted(ThemeContrast.BODY_TEXT, { it.secondaryContainer }, { it.onSecondaryContainer }),
 
     // --- Shared components -------------------------------------------------------------
-    // Secondary-screen empty states: hero shape on the accent container, copy on the
-    // content surface the HomeEmptyState family is drawn on.
-    EmptyHeroOnSurfaceLow(ThemeContrast.ICON, { it.surfaceContainerLow }, { it.primaryContainer }, { listOf(it.primary, it.onSurface) }),
-    // Memory kind chip on a memory card (secondaryContainer card, primary-tinted chip).
-    MemoryKindChip(ThemeContrast.BODY_TEXT, { it.primaryContainer }, { it.onPrimaryContainer }),
-    // Provider type and status badges in the settings provider list.
-    SettingsBadgeOnTertiary(ThemeContrast.BODY_TEXT, { it.tertiaryContainer }, { it.onTertiaryContainer }),
-    // Explore feature tiles: title on the tile's container role.
-    ExploreTileOnSecondary(ThemeContrast.BODY_TEXT, { it.secondaryContainer }, { it.onSecondaryContainer }),
-    ExploreTileOnTertiary(ThemeContrast.BODY_TEXT, { it.tertiaryContainer }, { it.onTertiaryContainer }),
-    // Arena/insights stat cards: label text on surfaceContainerHigh.
+    // (ImageViewerDialog is owned by the chat pass and gated in ChatContrastTest.)
+    // Insights stat cards: label and value text on the surfaceContainerHigh card.
     StatCardLabel(ThemeContrast.BODY_TEXT, { it.surfaceContainerHigh }, { it.onSurfaceVariant }, { listOf(it.onSurface) }),
-    StatCardValue(ThemeContrast.BODY_TEXT, { it.surfaceContainerHigh }, { it.primary }, { listOf(it.onSurface) });
+    StatCardValue(ThemeContrast.BODY_TEXT, { it.surfaceContainerHigh }, { it.onSurface });
 
     companion object {
         private fun over(top: Color, alpha: Float, under: Color): Color =

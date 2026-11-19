@@ -267,7 +267,12 @@ fun ConversationsScreen(
             }
         },
         snackbarHost = {
-            SnackbarHost(hostState = snackbarHostState) { snackbarData ->
+            // The floating toolbar is overlaid by MainActivity, so the host must clear it
+            // itself: toolbar height + its margin + the navigation-bar inset, not a constant.
+            SnackbarHost(
+                hostState = snackbarHostState,
+                modifier = Modifier.padding(bottom = snackbarBottomClearance())
+            ) { snackbarData ->
                 ExpressiveSnackbar(snackbarData = snackbarData)
             }
         }

@@ -34,6 +34,15 @@ object HomeListInsets {
      */
     fun bottomClearance(navigationBarInset: Dp): Dp =
         navigationBarInset.coerceAtLeast(0.dp) + ToolbarBottomMargin + ToolbarHeight + RowGap
+
+    /**
+     * Bottom padding for the snackbar host so a snackbar floats above the toolbar instead
+     * of under it. No [RowGap]: the snackbar carries its own 12dp outer padding.
+     *
+     * @param navigationBarInset bottom system-bar inset the toolbar is already padded by
+     */
+    fun snackbarClearance(navigationBarInset: Dp): Dp =
+        navigationBarInset.coerceAtLeast(0.dp) + ToolbarBottomMargin + ToolbarHeight
 }
 
 /**
@@ -43,5 +52,12 @@ object HomeListInsets {
 @Composable
 internal fun listBottomClearance(): Dp =
     HomeListInsets.bottomClearance(
+        navigationBarInset = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+    )
+
+/** [HomeListInsets.snackbarClearance] fed with the live navigation-bar inset. */
+@Composable
+internal fun snackbarBottomClearance(): Dp =
+    HomeListInsets.snackbarClearance(
         navigationBarInset = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     )
