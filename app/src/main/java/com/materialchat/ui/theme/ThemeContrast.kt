@@ -105,15 +105,20 @@ object ThemeContrast {
     }
 }
 
-/** One container/content pair a theme guarantees, with the ratio it must reach. */
+/**
+ * One container/content pair a theme guarantees, with the ratio it must reach. The theme's
+ * [ContrastSlot]: [name] is the slot name and [container] the fill.
+ */
 data class ThemeContrastPair(
     val name: String,
     val container: Color,
-    val content: Color,
-    val minimum: Double
-) {
-    val ratio: Double get() = ThemeContrast.contrastRatio(content, container)
-    val passes: Boolean get() = ratio >= minimum
+    override val content: Color,
+    override val minimum: Double
+) : ContrastSlot {
+    override val slotName: String get() = name
+    override val fill: Color get() = container
+    override val ratio: Double get() = ThemeContrast.contrastRatio(content, container)
+    override val passes: Boolean get() = ratio >= minimum
 }
 
 /**
@@ -224,6 +229,70 @@ fun ColorScheme.standardContrastPairs(): List<ThemeContrastPair> = buildList {
         icon("error/$fillName", fill, error)
     }
 }
+
+/**
+ * The shared-component pairs every palette must satisfy, named by the component that draws
+ * them rather than by role: the snackbar ([ExpressiveSnackbar]: inverse surface), the dialog
+ * (`ExpressiveShapes.Dialog` on M3's `surfaceContainerHigh` dialog container) and the loading
+ * row (an inline indicator beside muted text on a list row). These were gated on one surface
+ * only (`HomeSettingsSlot.SnackbarBody/SnackbarAction/DialogBody/DialogLabel/DialogDestructive`)
+ * while chat, memories and the assistant settings panel painted the same pairs ungated (W4
+ * audit F5); asserting them here gates every host at once. Dialog label and destructive text
+ * are body-sized text (`labelLarge` buttons), so they are held to [ThemeContrast.BODY_TEXT].
+ */
+fun ColorScheme.componentContrastPairs(): List<ThemeContrastPair> = buildList {
+    fun body(name: String, container: Color, content: Color) =
+        add(ThemeContrastPair(name, container, content, ThemeContrast.BODY_TEXT))
+    fun icon(name: String, container: Color, content: Color) =
+        add(ThemeContrastPair(name, container, content, ThemeContrast.ICON))
+
+    // Snackbar (ExpressiveSnackbar): message, action label, dismiss icon on inverseSurface.
+    body("snackbar body", inverseSurface, inverseOnSurface)
+    body("snackbar action", inverseSurface, inversePrimary)
+    icon("snackbar dismiss", inverseSurface, inverseOnSurface)
+
+    // Dialog (AlertDialog on surfaceContainerHigh): title/body, confirm label, destructive label, icon.
+    // The two action labels are the RESOLVED colours ([dialogActionColor], [dialogDestructiveColor]):
+    // raw `primary` on the dialog container measures 4.07:1 (VIOLET light) and 4.13:1 (CITRUS
+    // light), under 4.5:1 for a labelLarge button, so the roles alone cannot be guaranteed and
+    // every dialog host must draw the resolved value. The fallback appearances are pinned in
+    // `ThemeContrastTest.dialogActionColourKeepsPrimaryExceptWhereItCannotRead`.
+    body("dialog body", surfaceContainerHigh, onSurface)
+    body("dialog supporting", surfaceContainerHigh, onSurfaceVariant)
+    body("dialog label", surfaceContainerHigh, dialogActionColor())
+    body("dialog destructive", surfaceContainerHigh, dialogDestructiveColor())
+    icon("dialog icon", surfaceContainerHigh, secondary)
+
+    // Loading row: an inline indicator (primary) beside muted text on the row tiers.
+    for ((fillName, fill) in listOf("surfaceContainerLow" to surfaceContainerLow, "surfaceContainer" to surfaceContainer, "surfaceContainerHigh" to surfaceContainerHigh)) {
+        icon("loading row indicator/$fillName", fill, primary)
+        body("loading row text/$fillName", fill, onSurfaceVariant)
+    }
+
+    // Error content (ErrorContent / ExpressiveEmptyState card on surfaceContainer): tile glyph,
+    // headline, supporting line.
+    icon("error content glyph", errorContainer, onErrorContainer)
+    body("error content headline", surfaceContainer, onSurface)
+    body("error content supporting", surfaceContainer, onSurfaceVariant)
+}
+
+/**
+ * The colour of a dialog's confirm/dismiss `TextButton` label on the M3 dialog container
+ * (`surfaceContainerHigh`): `primary` wherever it reaches 4.5:1 (every appearance but VIOLET
+ * light and CITRUS light), else `onSurface`. Same resolution as `HomeSettingsSlot.DialogLabel`;
+ * exposed at theme level so the chat, memories and assistant dialogs draw the same value
+ * (`ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.dialogActionColor())`).
+ */
+fun ColorScheme.dialogActionColor(): Color =
+    readableOn(surfaceContainerHigh, ThemeContrast.BODY_TEXT, listOf(primary))
+
+/**
+ * The colour of a dialog's destructive action label on `surfaceContainerHigh`: `error` where it
+ * reads at 4.5:1, then `onErrorContainer`, then `onSurface`. Same resolution as
+ * `HomeSettingsSlot.DialogDestructive`.
+ */
+fun ColorScheme.dialogDestructiveColor(): Color =
+    readableOn(surfaceContainerHigh, ThemeContrast.BODY_TEXT, listOf(error, onErrorContainer))
 
 /**
  * Luminance ratio of each surface-container tier over the tier below it (lowest over

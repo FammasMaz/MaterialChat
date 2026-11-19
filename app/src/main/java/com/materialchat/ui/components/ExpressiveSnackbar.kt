@@ -19,16 +19,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.material3.Snackbar
 import com.materialchat.ui.theme.ExpressiveMotion
+import com.materialchat.ui.theme.ExpressiveShapes
+import com.materialchat.ui.theme.ExpressiveSpacing
 import com.materialchat.ui.theme.ShapeMorphing
-import com.materialchat.ui.theme.SquircleShape
-
-/** Snackbar container: the app's squircle at the M3 extra-large-ish 20dp radius. */
-private val SnackbarShape = SquircleShape(20.dp)
 
 /**
  * M3 Expressive snackbar used by every `SnackbarHost` on the home and settings
  * screens. Keeps the M3 inverse-surface container for contrast over any content,
- * squares it off with the app's squircle, and renders the action as a pill button
+ * squares it off with the app's notice squircle ([ExpressiveShapes.Notice], 20dp), insets it
+ * by [ExpressiveSpacing.Inset], and renders the action as a pill button
  * that morphs on press with a click haptic. The dismiss icon is shown only when the
  * visuals ask for it, exactly like the stock snackbar.
  *
@@ -86,10 +85,10 @@ fun ExpressiveSnackbar(
     }
 
     Snackbar(
-        modifier = modifier.padding(12.dp),
+        modifier = modifier.padding(ExpressiveSpacing.Inset),
         action = action,
         dismissAction = dismissAction,
-        shape = SnackbarShape,
+        shape = ExpressiveShapes.Notice,
         containerColor = MaterialTheme.colorScheme.inverseSurface,
         contentColor = MaterialTheme.colorScheme.inverseOnSurface,
         actionContentColor = MaterialTheme.colorScheme.inversePrimary,

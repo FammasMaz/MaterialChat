@@ -13,13 +13,16 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.materialchat.ui.theme.ExpressiveSpacing
 
 /**
  * Horizontal gutter every modal bottom sheet uses (chat sheets and the settings
- * "Add provider" sheet), so sheet content lines up across screens.
+ * "Add provider" sheet), so sheet content lines up across screens. Alias of the theme token
+ * [ExpressiveSpacing.SheetGutter]; new call sites should read the token directly.
  */
-val SheetGutter = 24.dp
+val SheetGutter: Dp = ExpressiveSpacing.SheetGutter
 
 /**
  * Header row of a modal bottom sheet: headline title with an optional close affordance on

@@ -65,6 +65,17 @@ class MotionTokensTest {
         assertEquals(RepeatMode.Reverse, breath.repeatMode)
     }
 
+    @Test fun fusionOrbitIsOneLinearTurnPerThreeSeconds() {
+        // FusionAnimation: decorativeSpin(Indicator.MorphShape) for want of a name -> FusionOrbit.
+        assertEquals(3_000, MaterialChatMotion.Durations.FusionOrbit)
+        assertEquals(MaterialChatMotion.Durations.Indicator.MorphShape, MaterialChatMotion.Durations.FusionOrbit)
+        val orbit = ExpressiveMotion.Spatial.decorativeSpin(MaterialChatMotion.Durations.FusionOrbit)
+        val tween = orbit.animation as TweenSpec<Float>
+        assertEquals(3_000, tween.durationMillis)
+        assertEquals(LinearEasing, tween.easing)
+        assertEquals(RepeatMode.Restart, orbit.repeatMode)
+    }
+
     @Test fun indicatorCyclesMatchTheLoadingIndicatorAndTheM3CircularSpec() {
         // ExpressiveLoadingIndicator's private IndicatorCycle, lifted here value for value.
         val i = MaterialChatMotion.Durations.Indicator

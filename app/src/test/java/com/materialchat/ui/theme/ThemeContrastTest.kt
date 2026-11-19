@@ -44,6 +44,135 @@ class ThemeContrastTest {
         }
     }
 
+    /**
+     * Every surface that exposes its slots through the theme's [ContrastSlot] vocabulary. The
+     * theme foundation implements [ContrastSlotResolver] itself; the three surface palettes are
+     * adapted here (their files belong to the home-settings / chat / assistant owners) until each
+     * implements [ContrastSlotSet] on its resolved instance, at which point its adapter line
+     * collapses to the palette's own resolver. Adding a surface means adding one line here.
+     */
+    private val surfaces: List<Pair<String, ContrastSlotResolver>> by lazy {
+        listOf(
+            ThemeContrastSlots.SURFACE to (ThemeContrastSlots as ContrastSlotResolver),
+            "home-settings" to ContrastSlotResolver { scheme ->
+                ContrastSlotList("home-settings", HomeSettingsPalette.resolve(scheme).pairs())
+            },
+            "assistant" to ContrastSlotResolver { scheme ->
+                ContrastSlotList(
+                    "assistant",
+                    AssistantSurfacePalette.resolve(scheme).pairs().map { ThemeContrastPair(it.name, it.container, it.content, it.minimum) }
+                )
+            }
+        ) + AppPreferences.ChatBubbleStyle.values().map { family ->
+            "chat/$family" to ContrastSlotResolver { scheme ->
+                ContrastSlotList(
+                    "chat/$family",
+                    ChatSurfacePalette.resolve(scheme, family).pairs().map { ThemeContrastPair(it.name, it.container, it.content, it.minimum) }
+                )
+            }
+        }
+    }
+
+    /** Under a wallpaper-dynamic scheme the app only vouches for the surface text roles. */
+    private fun ContrastSlot.appControlsUnder(theme: Theme): Boolean = theme.static ||
+        content == theme.scheme.onSurface || content == theme.scheme.onSurfaceVariant ||
+        content == theme.scheme.outline || content == theme.scheme.onBackground
+
+    @Test fun everyRegisteredSurfaceSlotReadsInEveryTheme() {
+        // One walk over every ContrastSlot in the app: theme pairs, component pairs and the
+        // three surface palettes, crossed with all 39 appearances. A surface that stops
+        // registering here, or a slot that stops reading, fails the build.
+        assertTrue(surfaces.size >= 4)
+        assertEquals(surfaces.size, surfaces.map { it.first }.distinct().size)
+        val failures = buildList {
+            for ((name, resolver) in surfaces) for (theme in themes) {
+                val set = resolver.resolve(theme.scheme)
+                assertEquals(name, set.surfaceName)
+                assertTrue("$name has no slots", set.slots.isNotEmpty())
+                for (slot in set.slots) {
+                    assertTrue("$name: ${slot.slotName} minimum ${slot.minimum}", slot.minimum == ThemeContrast.BODY_TEXT || slot.minimum == ThemeContrast.ICON)
+                    assertTrue("$name: blank slot name", slot.slotName.isNotBlank())
+                    // The interface's default arithmetic and the pair's own agree to the last digit.
+                    assertEquals(slot.slotName, ThemeContrast.contrastRatio(slot.content, slot.fill), slot.ratio, 1e-12)
+                    assertEquals(slot.slotName, slot.ratio, slot.toThemeContrastPair().ratio, 1e-12)
+                    if (slot.appControlsUnder(theme) && !slot.passes) add("${theme.name} / $name: ${slot.slotName} ${slot.ratio.fmt()} < ${slot.minimum}")
+                }
+            }
+        }
+        assertTrue("${failures.size} slot(s) below threshold:\n" + failures.joinToString("\n"), failures.isEmpty())
+    }
+
+    @Test fun componentPairsGateTheSharedSnackbarDialogLoadingRowAndErrorContentEverywhere() {
+        // The pairs that were gated on the home/settings surface only (HomeSettingsSlot.Snackbar*,
+        // Dialog*) now live in the theme foundation, so the chat snackbar host, the memories
+        // dialog and the assistant settings dialogs are gated by the same assertion.
+        val sample = themes.first().scheme.componentContrastPairs()
+        val names = sample.map { it.name }
+        assertEquals(names.size, names.distinct().size)
+        for (expected in listOf(
+            "snackbar body", "snackbar action", "snackbar dismiss",
+            "dialog body", "dialog supporting", "dialog label", "dialog destructive", "dialog icon",
+            "loading row indicator/surfaceContainer", "loading row text/surfaceContainerHigh",
+            "error content glyph", "error content headline", "error content supporting"
+        )) assertTrue(expected, expected in names)
+        // The theme slot set is the standard pairs plus these, nothing else.
+        val themeSet = ThemeContrastSlots.resolve(themes.first().scheme)
+        assertEquals(themes.first().scheme.standardContrastPairs().size + sample.size, themeSet.slots.size)
+        val failures = buildList {
+            for (theme in themes.filter { it.static }) {
+                for (pair in theme.scheme.componentContrastPairs()) {
+                    if (!pair.passes) add("${theme.name}: ${pair.name} ${pair.ratio.fmt()} < ${pair.minimum}")
+                }
+            }
+        }
+        assertTrue("${failures.size} component pair(s) below WCAG AA:\n" + failures.joinToString("\n"), failures.isEmpty())
+        // The home slots that used to be the only gate still describe the same fill/role pairs,
+        // so the two gates cannot drift apart.
+        for (theme in themes) {
+            val s = theme.scheme
+            assertEquals(s.inverseSurface, HomeSettingsSlot.SnackbarBody.fill(s)); assertEquals(s.inverseOnSurface, HomeSettingsSlot.SnackbarBody.preferred(s))
+            assertEquals(s.inverseSurface, HomeSettingsSlot.SnackbarAction.fill(s)); assertEquals(s.inversePrimary, HomeSettingsSlot.SnackbarAction.preferred(s))
+            assertEquals(s.surfaceContainerHigh, HomeSettingsSlot.DialogBody.fill(s)); assertEquals(s.onSurface, HomeSettingsSlot.DialogBody.preferred(s))
+            assertEquals(s.surfaceContainerHigh, HomeSettingsSlot.DialogLabel.fill(s)); assertEquals(s.primary, HomeSettingsSlot.DialogLabel.preferred(s))
+            assertEquals(s.surfaceContainerHigh, HomeSettingsSlot.DialogDestructive.fill(s)); assertEquals(s.error, HomeSettingsSlot.DialogDestructive.preferred(s))
+        }
+    }
+
+    @Test fun dialogActionColourKeepsPrimaryExceptWhereItCannotRead() {
+        // Raw `primary` on the M3 dialog container (surfaceContainerHigh) misses 4.5:1 on exactly
+        // two shipped appearances (VIOLET light 4.07, CITRUS light 4.13). The theme-level resolved
+        // colour keeps primary everywhere else and falls back to onSurface there; it must always
+        // read, and it must equal what the home/settings slot already resolves so the two gates
+        // cannot disagree about a dialog button.
+        val fallbacks = mutableListOf<String>()
+        for (theme in themes.filter { it.static }) {
+            val s = theme.scheme
+            val action = s.dialogActionColor()
+            assertTrue(theme.name, ThemeContrast.contrastRatio(action, s.surfaceContainerHigh) >= ThemeContrast.BODY_TEXT)
+            if (ThemeContrast.contrastRatio(s.primary, s.surfaceContainerHigh) >= ThemeContrast.BODY_TEXT) {
+                assertEquals(theme.name, s.primary, action)
+            } else {
+                assertEquals(theme.name, s.onSurface, action)
+                fallbacks.add(theme.name)
+            }
+            val destructive = s.dialogDestructiveColor()
+            assertTrue(theme.name, ThemeContrast.contrastRatio(destructive, s.surfaceContainerHigh) >= ThemeContrast.BODY_TEXT)
+            if (ThemeContrast.contrastRatio(s.error, s.surfaceContainerHigh) >= ThemeContrast.BODY_TEXT) {
+                assertEquals(theme.name, s.error, destructive)
+            }
+            val home = HomeSettingsPalette.resolve(s)
+            assertEquals(theme.name, home[HomeSettingsSlot.DialogLabel], action)
+            assertEquals(theme.name, home[HomeSettingsSlot.DialogDestructive], destructive)
+        }
+        assertEquals(setOf("VIOLET light", "CITRUS light"), fallbacks.toSet())
+        // Dynamic-like schemes: the resolved colour still reads even though the roles are the system's.
+        for (theme in themes.filterNot { it.static }) {
+            val s = theme.scheme
+            assertTrue(theme.name, ThemeContrast.contrastRatio(s.dialogActionColor(), s.surfaceContainerHigh) >= ThemeContrast.BODY_TEXT)
+            assertTrue(theme.name, ThemeContrast.contrastRatio(s.dialogDestructiveColor(), s.surfaceContainerHigh) >= ThemeContrast.BODY_TEXT)
+        }
+    }
+
     @Test fun themeMatrixCoversEveryAppearance() {
         assertEquals(AppPreferences.ThemePalette.values().size * 3 + 9, themes.size)
         assertEquals(themes.size, themes.map { it.name }.distinct().size)
