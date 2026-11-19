@@ -106,6 +106,8 @@ import androidx.compose.ui.layout.layout
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -487,6 +489,8 @@ private fun ConversationsTopBar(
     val shakeEnergy = rememberShakeEnergy()
 
     val density = LocalDensity.current
+    // The title scales from its leading edge: the start edge in LTR, the end edge in RTL.
+    val titleOriginX = if (LocalLayoutDirection.current == LayoutDirection.Rtl) 1f else 0f
     val haptics = rememberHapticFeedback()
     SideEffect {
         scrollBehavior.state.heightOffsetLimit = with(density) {
@@ -588,7 +592,7 @@ private fun ConversationsTopBar(
                     .graphicsLayer {
                         scaleX = titleScale
                         scaleY = titleScale
-                        transformOrigin = TransformOrigin(0f, 0.5f)
+                        transformOrigin = TransformOrigin(titleOriginX, 0.5f)
                     },
                 verticalAlignment = Alignment.CenterVertically
             ) {
