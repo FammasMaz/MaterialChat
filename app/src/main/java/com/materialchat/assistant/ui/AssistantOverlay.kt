@@ -802,12 +802,12 @@ internal fun AssistantOverlayContent(
                     visible = attachExpanded,
                     enter = fadeIn(animationSpec = AssistantMotion.effect()) +
                         expandVertically(
-                            animationSpec = AssistantMotion.surfaceReveal(),
+                            animationSpec = ExpressiveMotion.Disclosure.Expand,
                             expandFrom = Alignment.Bottom
                         ),
                     exit = fadeOut(animationSpec = AssistantMotion.effect()) +
                         shrinkVertically(
-                            animationSpec = AssistantMotion.surfaceReveal(),
+                            animationSpec = ExpressiveMotion.Disclosure.Shrink,
                             shrinkTowards = Alignment.Bottom
                         )
                 ) {
@@ -848,7 +848,7 @@ internal fun AssistantOverlayContent(
                     val glyphCorner by animateDpAsState(
                         targetValue = if (phase == AssistantPhase.Thinking) AssistantShapes.GlyphSquareCorner
                         else AssistantShapes.GlyphRoundCorner,
-                        animationSpec = AssistantMotion.morph(),
+                        animationSpec = ExpressiveMotion.Press.Shape,
                         label = "glyphCorner"
                     )
                     val glyphContainer by animateColorAsState(
@@ -1031,17 +1031,17 @@ internal fun AssistantOverlayContent(
                     ) {
                         val affordanceRotation by animateFloatAsState(
                             targetValue = if (attachReveal.open) 45f else 0f,
-                            animationSpec = AssistantMotion.morph(),
+                            animationSpec = ExpressiveMotion.Press.Progress,
                             label = "attachAffordance"
                         )
                         // + -> x is a shape morph as well as a rotation: the 40dp container
                         // goes from a transparent circle to the tonal rounded square of an M3
-                        // selected icon button, on the fast spatial spring; the geometry the
-                        // hosted gate measures (40dp, inside the 76dp row) is unchanged.
+                        // selected icon button, on the shared press-morph token; the geometry
+                        // the hosted gate measures (40dp, inside the 76dp row) is unchanged.
                         val affordanceCorner by animateDpAsState(
                             targetValue = if (attachReveal.open) AssistantShapes.ConnectedPressedCorner
                             else AssistantShapes.GlyphRoundCorner,
-                            animationSpec = AssistantMotion.morph(),
+                            animationSpec = ExpressiveMotion.Press.Shape,
                             label = "attachAffordanceCorner"
                         )
                         val affordanceFill by animateColorAsState(
@@ -1439,9 +1439,9 @@ private fun AssistantAttachRevealContent(
         AnimatedVisibility(
             visible = attachments.isNotEmpty() || screenAttachment != null,
             enter = fadeIn(animationSpec = AssistantMotion.effect()) +
-                expandVertically(animationSpec = AssistantMotion.surfaceReveal(), expandFrom = Alignment.Bottom),
+                expandVertically(animationSpec = ExpressiveMotion.Disclosure.Expand, expandFrom = Alignment.Bottom),
             exit = fadeOut(animationSpec = AssistantMotion.effect()) +
-                shrinkVertically(animationSpec = AssistantMotion.surfaceReveal(), shrinkTowards = Alignment.Bottom)
+                shrinkVertically(animationSpec = ExpressiveMotion.Disclosure.Shrink, shrinkTowards = Alignment.Bottom)
         ) {
             Column(modifier = Modifier.fillMaxWidth()) {
                 if (screenAttachment != null) {
@@ -1470,9 +1470,9 @@ private fun AssistantAttachRevealContent(
         AnimatedVisibility(
             visible = showActions,
             enter = fadeIn(animationSpec = AssistantMotion.effect()) +
-                expandVertically(animationSpec = AssistantMotion.surfaceReveal(), expandFrom = Alignment.Bottom),
+                expandVertically(animationSpec = ExpressiveMotion.Disclosure.Expand, expandFrom = Alignment.Bottom),
             exit = fadeOut(animationSpec = AssistantMotion.effect()) +
-                shrinkVertically(animationSpec = AssistantMotion.surfaceReveal(), shrinkTowards = Alignment.Bottom)
+                shrinkVertically(animationSpec = ExpressiveMotion.Disclosure.Shrink, shrinkTowards = Alignment.Bottom)
         ) {
             Row(
                 modifier = Modifier

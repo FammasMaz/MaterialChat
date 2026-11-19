@@ -33,7 +33,12 @@ internal object AssistantMotion {
     /** Glyph and state-line switches (listening -> thinking -> speaking): the shared fast spatial token. */
     fun <T> stateSwitch(): SpringSpec<T> = ExpressiveMotion.Spatial.fast()
 
-    /** The answer surface and the attach reveal appearing or leaving: the shared default spatial token. */
+    /**
+     * The answer surface rising out of the pill or sinking back (slide + scale): the shared default
+     * spatial token. Height disclosures (the opened pill's regions growing or folding) do not use
+     * this: they draw [ExpressiveMotion.Disclosure.Expand] / [ExpressiveMotion.Disclosure.Shrink]
+     * directly, like every other disclosure in the app (W5).
+     */
     fun <T> surfaceReveal(): SpringSpec<T> = ExpressiveMotion.Spatial.default()
 
     /** Sheet entrance: the shared M3 Expressive container spatial token. */
@@ -45,13 +50,19 @@ internal object AssistantMotion {
     /**
      * The whole surface leaving: it drops and shrinks on a critically damped spring, so the exit
      * never overshoots back into view (M3: expressive motion overshoots on arrival, not departure).
-     * The shared critically damped collapse token (1.0 / 420) settles in about 250 ms, inside
-     * [AssistantExitMotion]'s 320 ms window.
+     * The shared critically damped collapse token (1.0 / 420, omega = 20.5 rad/s) is 90 % of the
+     * way at 190 ms and 99 % at 324 ms; the sheet's alpha leaves on [effect] (1.0 / 1600,
+     * omega = 40 rad/s), which is at 99 % by 166 ms, so nothing of the last 1 % of travel is
+     * visible before [AssistantExitMotion]'s 320 ms window closes. The opened pill's regions fold
+     * on [ExpressiveMotion.Disclosure.Shrink], which is this same spec, so they leave on the
+     * sheet's own curve (AssistantMotionTest pins all three).
      */
     fun <T> exit(): SpringSpec<T> = ExpressiveMotion.Spatial.collapse()
 
-    /** Shape morphs of small components (the glyph container, the `+` -> `x` affordance): the shared fast spatial token. */
-    fun <T> morph(): SpringSpec<T> = ExpressiveMotion.Spatial.fast()
+    // Shape morphs of small components (the glyph container's corner, the `+` -> `x` affordance's
+    // corner and rotation) draw ExpressiveMotion.Press.Shape / Press.Progress directly: the one
+    // press-morph token every pressable control in the app shares (W5; value-identical to the
+    // fast spatial token this object used to alias).
 
     /** The primary action changing role: the shared threshold pop (overshoots, then settles). */
     fun <T> pop(): SpringSpec<T> = ExpressiveMotion.Spatial.thresholdPop()
