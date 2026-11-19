@@ -94,7 +94,8 @@ class MotionTokensTest {
     }
 
     @Test fun indicatorCyclesMatchTheLoadingIndicatorAndTheChatStreamingIndicators() {
-        // M3ExpressiveLoadingIndicator's cycle, lifted here value for value, plus the three chat
+        // The former M3ExpressiveLoadingIndicator's cycle (deleted W9 part 2, zero callers; the
+        // tokens stay: MorphShape is FusionOrbit), lifted here value for value, plus the three chat
         // StreamingIndicator periods (W7 part 5: 3000 rotation, 2400 morph, 1400 shimmer).
         val i = MaterialChatMotion.Durations.Indicator
         assertEquals(4000, i.MorphRotation)
@@ -107,8 +108,8 @@ class MotionTokensTest {
     }
 
     @Test fun tweenHelpersCarryTheDurationAndTheNamedEasing() {
-        // W7 part 5: MindMapCanvas / StreamingIndicator / M3ExpressiveLoadingIndicator wrap these
-        // in infiniteRepeatable instead of calling tween( directly.
+        // W7 part 5: MindMapCanvas / StreamingIndicator wrap these in infiniteRepeatable instead
+        // of calling tween( directly (the hero M3ExpressiveLoadingIndicator went in W9 part 2).
         val linear = MaterialChatMotion.Tweens.linear<Float>(MaterialChatMotion.Durations.StreamingIndicator)
         assertEquals(1_200, linear.durationMillis)
         assertEquals(LinearEasing, linear.easing)
