@@ -158,6 +158,25 @@ class TopSquircleShape(
 /**
  * Expressive container shape tokens. Use these for cards, sheets and leading tiles
  * where a squircle fits; keep [MaterialChatShapes] for component defaults.
+ *
+ * Corner class ruling (W9, cross-surface audit W8 #1 and #10; ruled once, here and in
+ * `ShapeMorphing`):
+ * - **Pressables are round and press-morph.** Buttons, the FAB, icon buttons, chips, the
+ *   chat and assistant pressables rest on a circular [RoundedCornerShape] (a capsule or
+ *   [CustomShapes.Button]) and animate that radius on press (`ShapeMorphing`,
+ *   `ExpressiveButton`, `ExpressiveChips`). This is deliberate: a pressed corner has to
+ *   animate, and a [RoundedCornerShape] radius animates as one `Dp`, which a G2 squircle
+ *   does not do cheaply. The one squircle that morphs is the chat composer field
+ *   (`MessageInput`, `ComposerFieldShape`), ruled with chat.
+ * - **Containers are squircles and do not morph.** Cards, grouped list containers, sheets,
+ *   dialogs, notices, content blocks and leading tiles rest on a [SquircleShape] token of
+ *   this object ([Card], [Sheet], [BottomSheet], [Dialog], [Notice], [ContentBlock], [Tile])
+ *   and keep it at rest and on press. `PersonaCard` rests on [Card] (W7); no card-class
+ *   surface rests on a round shape (`ShapeClassRulingsTest` scans every `Card` /
+ *   `ElevatedCard` / `AlertDialog` / `ModalBottomSheet` call site outside the theme).
+ * - **`CircleShape` is a glyph shape.** It is allowed for dots, avatars, status glyphs and the
+ *   container circle behind an indicator; never for a pressable container and never for a
+ *   card-class surface. The 17 `CircleShape` sites outside the theme are all glyphs.
  */
 object ExpressiveShapes {
     /** Leading icon tiles in list rows (48dp, [ExpressiveSizes.Tile]). */
