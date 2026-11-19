@@ -26,19 +26,20 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.materialchat.ui.theme.ExpressiveShapes
 import com.materialchat.ui.theme.ExpressiveSizes
+import com.materialchat.ui.theme.CopyRules
 import com.materialchat.ui.theme.ExpressiveSpacing
 
 /**
- * Copy every error surface shares. The retry verb is "Try again" app-wide (W5 orchestrator
- * ruling); `ChatErrorCopy.TRY_AGAIN` and `AssistantCopy.AFTER_ERROR` are pinned equal to it in
- * `ErrorContentCopyTest`.
+ * Copy every error surface shares: aliases of the theme's [CopyRules] constants (W7 part 6).
+ * The retry verb is "Try again" app-wide (W5 orchestrator ruling); `ChatErrorCopy.TRY_AGAIN`
+ * and `AssistantCopy.AFTER_ERROR` are pinned equal to it in `CopyRulesTest`.
  */
 object ErrorContentCopy {
     /** The one retry verb, sentence case, no trailing period. */
-    const val TRY_AGAIN = "Try again"
+    const val TRY_AGAIN = CopyRules.TRY_AGAIN
 
     /** Default headline when a screen cannot name what failed. */
-    const val GENERIC_HEADLINE = "Something went wrong"
+    const val GENERIC_HEADLINE = CopyRules.GENERIC_HEADLINE
 }
 
 /**
@@ -115,7 +116,7 @@ internal fun ExpressiveStateCard(
     Box(modifier = modifier.fillMaxWidth().padding(ExpressiveSpacing.Gutter), contentAlignment = Alignment.Center) {
         Surface(
             modifier = Modifier.widthIn(max = StateCardMaxWidth),
-            shape = ExpressiveShapes.Card,
+            shape = StateCardShape,
             color = MaterialTheme.colorScheme.surfaceContainer,
             contentColor = MaterialTheme.colorScheme.onSurface,
             tonalElevation = 0.dp,
@@ -163,6 +164,13 @@ internal fun ExpressiveStateCard(
         }
     }
 }
+
+/**
+ * The one container of [ExpressiveEmptyState] and [ErrorContent]: [ExpressiveShapes.Card]
+ * (W6 audit F3; pinned in `ErrorContentCopyTest` so neither state can drift back to a round
+ * corner).
+ */
+internal val StateCardShape = ExpressiveShapes.Card
 
 /** Inner padding of the empty/error state card (chat `ChatEmptyState` uses the same 24dp). */
 internal val StateCardPadding = 24.dp

@@ -55,8 +55,11 @@ import com.materialchat.ui.navigation.MaterialChatNavBar
 import com.materialchat.ui.navigation.MaterialChatNavHost
 import com.materialchat.ui.navigation.Screen
 import com.materialchat.ui.navigation.TopLevelTab
+import com.materialchat.ui.screens.conversations.HomeListInsets
+import com.materialchat.ui.screens.conversations.listBottomClearance
 import com.materialchat.ui.screens.personas.components.PersonaPickerSheet
 import com.materialchat.ui.theme.ExpressiveMotion
+import com.materialchat.ui.theme.ExpressiveSpacing
 import com.materialchat.ui.theme.MaterialChatTheme
 import com.materialchat.ui.theme.LocalChatFontSizeScale
 import com.materialchat.ui.theme.isDynamicColorSupported
@@ -341,8 +344,11 @@ fun MaterialChatApp(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
-                .padding(horizontal = 12.dp)
-                .padding(bottom = if (showBottomBar) 104.dp else 16.dp),
+                .padding(horizontal = ExpressiveSpacing.Inset)
+                // Clearance above the floating toolbar from the one home-list formula
+                // (nav-bar inset + toolbar margin + toolbar height + row gap) instead of a
+                // literal that ignored the navigation-bar inset (W7 part 7).
+                .padding(bottom = if (showBottomBar) listBottomClearance() else HomeListInsets.ToolbarBottomMargin),
             // Shared container physics: spatial entrance, critically damped spatial exit.
             enter = slideInVertically(
                 animationSpec = ExpressiveMotion.Spatial.container(),
@@ -380,7 +386,7 @@ fun MaterialChatApp(
                 modifier = Modifier
                     .fillMaxWidth()
                     .navigationBarsPadding()
-                    .padding(bottom = 16.dp),
+                    .padding(bottom = HomeListInsets.ToolbarBottomMargin),
                 horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally),
                 verticalAlignment = Alignment.CenterVertically
             ) {

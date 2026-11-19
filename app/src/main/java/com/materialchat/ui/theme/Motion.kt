@@ -1,5 +1,6 @@
 package com.materialchat.ui.theme
 
+import androidx.compose.animation.core.EaseInOutCubic
 import androidx.compose.animation.core.InfiniteRepeatableSpec
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
@@ -7,6 +8,7 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.SpringSpec
+import androidx.compose.animation.core.TweenSpec
 import androidx.compose.animation.core.tween
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
@@ -200,13 +202,13 @@ object ExpressiveMotion {
         /**
          * Press morph shared by every pressable control (buttons, chips, tiles, FAB,
          * icon buttons): corner radius / scale / shape-morph progress on press and release.
-         * M3E fast spatial (0.6 / 800): settles in well under 200 ms so a tap feels
-         * immediate, with a visible but short overshoot on release.
+         * It IS the M3E fast spatial spring ([fast], 0.6 / 800): settles in well under 200 ms
+         * so a tap feels immediate, with a visible but short overshoot on release. One spec,
+         * two names (W7 part 5): this name documents intent at a press site; [fast] is the
+         * M3E token name for every other quick, small movement. Pinned equal in
+         * `MotionTokensTest`.
          */
-        fun <T> pressMorph(): SpringSpec<T> = spring(
-            dampingRatio = 0.6f,
-            stiffness = 800f
-        )
+        fun <T> pressMorph(): SpringSpec<T> = fast()
 
         /**
          * M3E fast spatial (ExpressiveMotionTokens.fastSpatialSpec): quick, small
@@ -546,6 +548,23 @@ object MaterialChatMotion {
          * Uses spring physics for M3 Expressive spatial animations.
          */
         fun <T> ScreenTransition(): SpringSpec<T> = ExpressiveMotion.Spatial.container()
+
+        /**
+         * The one linear-time tween: a continuous, constant-rate indicator phase (a rotation, a
+         * shimmer pass, a mind-map pulse) over [durationMillis], normally a
+         * [MaterialChatMotion.Durations] token. Wrap it in `infiniteRepeatable` at the site
+         * (`MindMapCanvas`, `StreamingIndicator.gatedInfiniteFloat`,
+         * `M3ExpressiveLoadingIndicator`) so no raw `tween(` call is needed outside the theme.
+         */
+        fun <T> linear(durationMillis: Int): TweenSpec<T> =
+            tween(durationMillis = durationMillis, easing = LinearEasing)
+
+        /**
+         * The ease-in-out tween for a cycle that must slow at both ends (a shape morph, a
+         * reversing sweep): [EaseInOutCubic] over [durationMillis].
+         */
+        fun <T> easeInOut(durationMillis: Int): TweenSpec<T> =
+            tween(durationMillis = durationMillis, easing = EaseInOutCubic)
     }
 
     /**
@@ -627,9 +646,12 @@ object MaterialChatMotion {
         const val StatsPillHold = 3_500
 
         /**
-         * Cycle lengths of the indeterminate loading indicators (`ExpressiveLoadingIndicator`):
-         * every loop runs only behind the particle motion gate and holds a static frame
-         * otherwise. Each value is one period of a linear or ease-in-out tween.
+         * Cycle lengths of the indeterminate loading indicators (`M3ExpressiveLoadingIndicator`
+         * in `ui/components`, the chat `StreamingIndicator` family): every loop runs only behind
+         * the particle motion gate and holds a static frame otherwise. Each value is one period
+         * of a linear or ease-in-out tween, drawn through [Tweens.linear] / [Tweens.easeInOut].
+         * The former `ArcRotation / ArcSweep / LinearPass / LinearWidth` entries went with their
+         * only consumers (`M3ExpressiveCircularProgress`, `M3ExpressiveLinearProgress`, W7).
          */
         object Indicator {
             /** One full rotation of the morphing shape. */
@@ -638,17 +660,18 @@ object MaterialChatMotion {
             /** Soft-burst -> pentagon -> hexagon -> soft-burst. */
             const val MorphShape = 3000
 
-            /** One rotation of the circular arc (M3 circular indicator spec: 1332 ms). */
-            const val ArcRotation = 1332
+            /**
+             * One full rotation of a chat streaming indicator's morphing shape
+             * (`StreamingIndicator`: single and triple variants). Value-equal to [MorphShape]
+             * and [FusionOrbit] but its own token: the streaming spin can be retuned alone.
+             */
+            const val StreamingSpin = 3000
 
-            /** Arc sweep grow/shrink, half the rotation so the two phases stay in step. */
-            const val ArcSweep = ArcRotation / 2
+            /** One soft-burst -> polygon -> soft-burst cycle of a chat streaming indicator. */
+            const val StreamingMorph = 2400
 
-            /** One pass of the linear bar across the track. */
-            const val LinearPass = 1500
-
-            /** Linear bar width grow/shrink, half the pass. */
-            const val LinearWidth = LinearPass / 2
+            /** One pass of the streaming shimmer across its track. */
+            const val StreamingShimmer = 1400
         }
     }
 
