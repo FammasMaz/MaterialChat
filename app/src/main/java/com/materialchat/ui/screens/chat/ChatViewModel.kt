@@ -65,6 +65,9 @@ import kotlin.math.abs
 
 private const val MESSAGE_GROUP_TIME_WINDOW_MS = 5 * 60 * 1000L
 private const val STREAMING_UI_UPDATE_INTERVAL_MS = 120L
+
+/** One-phrase snackbar (no period) when edit-and-resend is submitted under a reply in flight. */
+internal const val EDIT_WHILE_STREAMING_NOTICE = "Wait for the reply to finish before editing"
 /** How often the context-window indicator may be recomputed while a reply is streaming. */
 private const val HISTORY_TOKENS_MIN_INTERVAL_MS = 500L
 
@@ -1174,36 +1177,40 @@ class ChatViewModel @Inject constructor(
         )
 
         // Use applicationScope so streaming survives navigation away / ViewModel destruction.
+        val targetConversationId = activeConversationId.value
         streamingJob = applicationScope.launch(ioDispatcher) {
             try {
                 regenerateResponseUseCase(
-                    conversationId = activeConversationId.value,
+                    conversationId = targetConversationId,
                     systemPrompt = currentSystemPrompt,
                     reasoningEffort = currentReasoningEffort,
                     overrideModelName = overrideModelName,
                     webSearchConfig = buildCurrentWebSearchConfig()
                 ).collect { state ->
-                    updateStreamingState(state)
+                    updateStreamingState(state, targetConversationId)
                     // Notify when completed and app is in background
                     if (state is StreamingState.Completed) {
                         appNotificationManager.notifyChatResponseComplete(
-                            conversationId = activeConversationId.value,
+                            conversationId = targetConversationId,
                             preview = state.finalContent
                         )
                     }
                 }
+            } catch (e: CancellationException) {
+                // Stop: cancelStreaming() has already put the UI at Idle. Treating the
+                // cancellation as a failure re-armed the errored state and raised a snackbar
+                // carrying the coroutine's cancellation text.
+                throw e
             } catch (e: Exception) {
+                // updateStreamingState raises the one classified snackbar for an Error; a
+                // second, unclassified "Failed to regenerate response" line doubled it.
                 updateStreamingState(
                     StreamingState.Error(
                         error = e,
                         partialContent = null,
                         messageId = null
-                    )
-                )
-                _events.emit(
-                    ChatEvent.ShowSnackbar(
-                        message = e.message ?: "Failed to regenerate response"
-                    )
+                    ),
+                    targetConversationId
                 )
             }
         }
@@ -1245,6 +1252,9 @@ class ChatViewModel @Inject constructor(
     fun startEditingMessage(messageId: String) {
         val currentState = _uiState.value
         if (currentState !is ChatUiState.Success) return
+        // Edit-and-resend branches and auto-sends; like regenerate, branch and redo it
+        // waits for the reply in flight (the screen hides the action meanwhile).
+        if (currentState.isStreaming) return
         val message = currentState.messages.find { it.message.id == messageId }?.message ?: return
         _uiState.value = currentState.copy(
             editingMessageId = messageId,
@@ -1279,6 +1289,14 @@ class ChatViewModel @Inject constructor(
         val currentState = _uiState.value
         if (currentState !is ChatUiState.Success) return
         val editingMessageId = currentState.editingMessageId ?: return
+        if (currentState.isStreaming) {
+            // The editor was open before a reply started (regenerate, a composer send).
+            // Keep the draft; say why nothing happened instead of branching under a stream.
+            viewModelScope.launch {
+                _events.emit(ChatEvent.ShowSnackbar(message = EDIT_WHILE_STREAMING_NOTICE))
+            }
+            return
+        }
         val editedText = currentState.editingText.trim()
         if (editedText.isEmpty()) return
 
