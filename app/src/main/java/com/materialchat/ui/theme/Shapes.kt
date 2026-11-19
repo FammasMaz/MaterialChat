@@ -130,6 +130,16 @@ object ExpressiveShapes {
     val ContentBlock = SquircleShape(16.dp)
 
     /**
+     * Small inline badges and labels: a step number, a judge/model name chip on a fusion card,
+     * a favicon tile in the sources row, a persona tag, the inner header of a markdown block.
+     * M3 small (8dp) as a plain circular corner, the same geometry as
+     * [MaterialChatShapes.extraSmall]; a badge is too small for G2 smoothing to read, so it
+     * stays a [RoundedCornerShape]. Replaces the nine raw `RoundedCornerShape(8.dp)` sites
+     * outside the theme (W4 inventory).
+     */
+    val Badge = RoundedCornerShape(8.dp)
+
+    /**
      * Screen content surface that rounds into the top app bar. Only the top
      * corners are rounded, so this stays a [RoundedCornerShape].
      */

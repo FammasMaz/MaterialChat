@@ -1,5 +1,6 @@
 package com.materialchat.ui.theme
 
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Outline
 import androidx.compose.ui.unit.Density
@@ -67,6 +68,14 @@ class ShapeTokensTest {
         assertEquals(SquircleShape(16.dp), ExpressiveShapes.ContentBlock)
         assertEquals(SquircleShape(20.dp), ExpressiveShapes.DisclosurePanel)
         assertEquals(SquircleShape(28.dp), ExpressiveShapes.Card)
+    }
+
+    @Test fun badgeIsTheM3SmallCornerAndMatchesExtraSmall() {
+        // The 8dp badge token the W4 inventory needs (nine raw sites): plain round corner, no
+        // squircle, identical to the component-default extraSmall so the two never diverge.
+        assertEquals(RoundedCornerShape(8.dp), ExpressiveShapes.Badge)
+        assertEquals(MaterialChatShapes.extraSmall, ExpressiveShapes.Badge)
+        assertNotEquals(ExpressiveShapes.ContentBlock, ExpressiveShapes.Badge)
     }
 
     @Test fun squircleEqualityIsByRadiusAndSmoothing() {
