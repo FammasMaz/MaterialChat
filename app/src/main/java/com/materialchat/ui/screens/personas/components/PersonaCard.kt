@@ -80,12 +80,12 @@ fun PersonaCard(
     // M3 Expressive press feedback: bouncy scale + corner shape morph
     val scale by animateFloatAsState(
         targetValue = if (isPressed) 0.96f else 1f,
-        animationSpec = ExpressiveMotion.Spatial.scale(),
+        animationSpec = ExpressiveMotion.Press.Scale,
         label = "personaCardScale"
     )
     val cornerRadius by animateDpAsState(
         targetValue = if (isPressed) 18.dp else 24.dp,
-        animationSpec = ExpressiveMotion.Spatial.shapeMorph(),
+        animationSpec = ExpressiveMotion.Press.Shape,
         label = "personaCardCorner"
     )
 

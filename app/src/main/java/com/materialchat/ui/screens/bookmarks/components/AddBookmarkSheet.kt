@@ -1,8 +1,8 @@
 package com.materialchat.ui.screens.bookmarks.components
 
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.spring
+import com.materialchat.ui.screens.settings.components.SettingsSheetShape
+import com.materialchat.ui.theme.ExpressiveMotion
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -75,7 +75,8 @@ fun AddBookmarkSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
         containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-        shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
+        // Same squircle sheet contour as the settings sheets.
+        shape = SettingsSheetShape
     ) {
         Column(
             modifier = Modifier
@@ -112,10 +113,7 @@ fun AddBookmarkSheet(
                         } else {
                             MaterialTheme.colorScheme.surfaceContainerHigh
                         },
-                        animationSpec = spring(
-                            dampingRatio = Spring.DampingRatioNoBouncy,
-                            stiffness = Spring.StiffnessMedium
-                        ),
+                        animationSpec = ExpressiveMotion.Effects.color(),
                         label = "add_category_chip_color"
                     )
 

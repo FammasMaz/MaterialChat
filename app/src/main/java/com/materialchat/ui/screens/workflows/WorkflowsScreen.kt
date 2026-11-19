@@ -1,7 +1,8 @@
 package com.materialchat.ui.screens.workflows
 
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.spring
+import com.materialchat.ui.components.ExpressiveEmptyState
+import com.materialchat.ui.theme.CustomShapes
+import com.materialchat.ui.theme.ExpressiveMotion
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -115,7 +116,7 @@ fun WorkflowsScreen(
 
                 is WorkflowsUiState.Success -> {
                     if (state.workflows.isEmpty()) {
-                        WorkflowsEmptyContent()
+                        WorkflowsEmptyContent(onCreate = { onNavigateToBuilder(null) })
                     } else {
                         WorkflowsListContent(
                             state = state,
@@ -151,35 +152,15 @@ private fun WorkflowsLoadingContent() {
  * Empty state content when no workflows exist.
  */
 @Composable
-private fun WorkflowsEmptyContent() {
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
-    ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Icon(
-                imageVector = Icons.Outlined.AccountTree,
-                contentDescription = null,
-                modifier = Modifier.size(48.dp),
-                tint = MaterialTheme.colorScheme.outline
-            )
-            Text(
-                text = "No workflows yet",
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.Center
-            )
-            Text(
-                text = "Create multi-step prompt chains\nto automate complex tasks",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.outline,
-                textAlign = TextAlign.Center
-            )
-        }
-    }
+private fun WorkflowsEmptyContent(onCreate: () -> Unit) {
+    // Same empty-state family as the home list, with the FAB's action repeated inline.
+    ExpressiveEmptyState(
+        icon = Icons.Outlined.AccountTree,
+        title = "No workflows yet",
+        message = "Create multi-step prompt chains to automate complex tasks",
+        actionText = "New workflow",
+        onAction = onCreate
+    )
 }
 
 /**
@@ -227,7 +208,7 @@ private fun WorkflowsListContent(
                             .fillMaxSize()
                             .background(
                                 color = MaterialTheme.colorScheme.errorContainer,
-                                shape = RoundedCornerShape(24.dp)
+                                shape = CustomShapes.ConversationItem
                             )
                             .padding(horizontal = 20.dp),
                         contentAlignment = Alignment.CenterEnd
@@ -241,14 +222,9 @@ private fun WorkflowsListContent(
                 },
                 enableDismissFromStartToEnd = false,
                 modifier = Modifier.animateItem(
-                    fadeInSpec = spring(
-                        dampingRatio = Spring.DampingRatioNoBouncy,
-                        stiffness = Spring.StiffnessMediumLow
-                    ),
-                    fadeOutSpec = spring(
-                        dampingRatio = Spring.DampingRatioNoBouncy,
-                        stiffness = Spring.StiffnessMediumLow
-                    )
+                    fadeInSpec = ExpressiveMotion.ListItem.FadeIn,
+                    fadeOutSpec = ExpressiveMotion.ListItem.FadeOut,
+                    placementSpec = ExpressiveMotion.ListItem.Placement
                 )
             ) {
                 WorkflowCard(
