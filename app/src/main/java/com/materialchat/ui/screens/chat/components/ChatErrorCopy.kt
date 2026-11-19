@@ -2,6 +2,7 @@ package com.materialchat.ui.screens.chat.components
 
 import com.materialchat.domain.model.ProviderHttpException
 import com.materialchat.domain.model.StreamingState
+import com.materialchat.ui.theme.CopyRules
 import java.io.IOException
 
 /**
@@ -40,10 +41,10 @@ object ChatErrorCopy {
     const val NO_CONNECTION = "No connection. Check your network and try again."
 
     /** Everything else, including in-stream provider errors on a 200. */
-    const val REQUEST_FAILED = "Something went wrong. Try again."
+    const val REQUEST_FAILED = CopyRules.REQUEST_FAILED
 
     /** The retry action label, shared with the assistant's notice action. */
-    const val TRY_AGAIN = "Try again"
+    const val TRY_AGAIN = CopyRules.TRY_AGAIN
 
     // --- failed actions: one-phrase snackbar lines, `Could not …`, no trailing period ------
 

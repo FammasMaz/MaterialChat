@@ -43,6 +43,7 @@ import androidx.graphics.shapes.Morph
 import androidx.graphics.shapes.toPath
 import com.materialchat.R
 import com.materialchat.ui.theme.ExpressiveMotion
+import com.materialchat.ui.theme.ExpressiveSizes
 import com.materialchat.ui.theme.SquircleShape
 
 /** Squircle contour of the composer text field, matching the app's card contour. */
@@ -113,8 +114,8 @@ internal class ComposerSendTrackShape(
  * the shared button animates a single `RoundedCornerShape` corner radius on press, while this
  * control's contour is a [Morph] track over `MaterialShapes` (cookie → scalloped cookie →
  * square) that also encodes the Idle/Ready/Streaming state, so the shared button cannot carry
- * it. The 22dp glyphs are a size this 48dp control chose for its own optical balance; they move
- * to the theme's icon token once `ExpressiveSizes.Icon*` ships.
+ * it. The glyphs are [ExpressiveSizes.IconLarge] (24dp, the M3 glyph inside a 48dp filled
+ * control; W7 theme icon ladder) — they were a bespoke 22dp before.
  */
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -220,13 +221,13 @@ internal fun ComposerSendButton(
                     Icon(
                         imageVector = Icons.Default.Stop,
                         contentDescription = null,
-                        modifier = Modifier.size(22.dp)
+                        modifier = Modifier.size(ExpressiveSizes.IconLarge)
                     )
                 } else {
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.Send,
                         contentDescription = null,
-                        modifier = Modifier.size(22.dp)
+                        modifier = Modifier.size(ExpressiveSizes.IconLarge)
                     )
                 }
             }

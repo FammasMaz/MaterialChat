@@ -922,10 +922,11 @@ private fun getBubbleStyle(
  * settings bubble-style preview can draw the real shapes instead of its own copy of the radii
  * (W6 theme inventory, `SettingsScreen.kt:1977-1990`).
  *
- * The radii here are the family's record: `EXPRESSIVE` reads the theme's [MessageBubbleShapes];
- * `ROUNDED` 34, `COMPACT` 20 / 18-6 and `GEOMETRIC` 16 / 18-4-10 have no theme token
- * (`ExpressiveShapes.Bubble.*` is a pending theme decision), and the family stays on circular
- * corners together with the composer (W4 ruling, `Shapes.kt` `MessageBubbleShapes` KDoc).
+ * This is the family function; the radii are the theme's: `EXPRESSIVE` reads
+ * [MessageBubbleShapes], `ROUNDED` / `COMPACT` / `GEOMETRIC` read [ExpressiveShapes.Bubble]
+ * (W7 theme, pinned value-for-value in `ShapeTokensTest`), so the settings preview and the
+ * bubble cannot drift apart. The family stays on circular corners together with the composer
+ * (W4 ruling, `Shapes.kt` `MessageBubbleShapes` KDoc).
  */
 internal fun bubbleShapeFor(
     style: AppPreferences.ChatBubbleStyle,
@@ -935,8 +936,8 @@ internal fun bubbleShapeFor(
 ): Shape {
     if (!isUser && !isAssistant) {
         return when (style) {
-            AppPreferences.ChatBubbleStyle.COMPACT -> RoundedCornerShape(20.dp)
-            AppPreferences.ChatBubbleStyle.GEOMETRIC -> RoundedCornerShape(16.dp)
+            AppPreferences.ChatBubbleStyle.COMPACT -> ExpressiveShapes.Bubble.Compact.System
+            AppPreferences.ChatBubbleStyle.GEOMETRIC -> ExpressiveShapes.Bubble.Geometric.System
             else -> MessageBubbleShapes.SystemBubble
         }
     }
@@ -956,35 +957,11 @@ internal fun bubbleShapeFor(
                 MessageGroupPosition.Single -> MessageBubbleShapes.AssistantBubble
             }
         }
-        AppPreferences.ChatBubbleStyle.ROUNDED -> RoundedCornerShape(34.dp)
-        AppPreferences.ChatBubbleStyle.COMPACT -> when {
-            isUser -> RoundedCornerShape(
-                topStart = 18.dp,
-                topEnd = 6.dp,
-                bottomStart = 18.dp,
-                bottomEnd = 18.dp
-            )
-            else -> RoundedCornerShape(
-                topStart = 6.dp,
-                topEnd = 18.dp,
-                bottomStart = 18.dp,
-                bottomEnd = 18.dp
-            )
-        }
-        AppPreferences.ChatBubbleStyle.GEOMETRIC -> when {
-            isUser -> RoundedCornerShape(
-                topStart = 18.dp,
-                topEnd = 4.dp,
-                bottomStart = 18.dp,
-                bottomEnd = 10.dp
-            )
-            else -> RoundedCornerShape(
-                topStart = 4.dp,
-                topEnd = 18.dp,
-                bottomStart = 10.dp,
-                bottomEnd = 18.dp
-            )
-        }
+        AppPreferences.ChatBubbleStyle.ROUNDED -> ExpressiveShapes.Bubble.Rounded
+        AppPreferences.ChatBubbleStyle.COMPACT ->
+            if (isUser) ExpressiveShapes.Bubble.Compact.User else ExpressiveShapes.Bubble.Compact.Assistant
+        AppPreferences.ChatBubbleStyle.GEOMETRIC ->
+            if (isUser) ExpressiveShapes.Bubble.Geometric.User else ExpressiveShapes.Bubble.Geometric.Assistant
     }
 }
 
