@@ -34,6 +34,7 @@ import androidx.compose.material3.DropdownMenuItem
 
 import com.materialchat.ui.theme.CustomShapes
 import com.materialchat.ui.theme.ExpressiveMotion
+import com.materialchat.ui.theme.ExpressiveSizes
 import com.materialchat.ui.theme.readableMutedOn
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -370,7 +371,8 @@ private fun ProviderFilterBadge(
         Box(
             modifier = Modifier
                 .scale(scale)
-                .defaultMinSize(minWidth = 40.dp, minHeight = 28.dp) // Compact size
+                // Compact control class (ExpressiveSizes.Compact, 32dp) in a 40dp-wide capsule.
+                .defaultMinSize(minWidth = ExpressiveSizes.Control, minHeight = ExpressiveSizes.Compact)
                 .clip(CustomShapes.Pill)
                 .background(containerColor)
                 .alpha(if (enabled) 1f else 0.6f)
@@ -668,7 +670,8 @@ private fun ModelPickerBadge(
         Box(
             modifier = Modifier
                 .scale(scale)
-                .defaultMinSize(minWidth = 40.dp, minHeight = 28.dp) // Compact size
+                // Compact control class (ExpressiveSizes.Compact, 32dp) in a 40dp-wide capsule.
+                .defaultMinSize(minWidth = ExpressiveSizes.Control, minHeight = ExpressiveSizes.Compact)
                 .clip(CustomShapes.Pill)
                 .background(containerColor)
                 .alpha(if (!isStreaming) 1f else 0.6f)

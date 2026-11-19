@@ -7,9 +7,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
 import com.materialchat.data.local.preferences.AppPreferences
+import com.materialchat.ui.theme.ContrastSlot
+import com.materialchat.ui.theme.ContrastSlotSet
 import com.materialchat.ui.theme.LocalChatBubbleStyle
 import com.materialchat.ui.theme.ThemeContrast
 import com.materialchat.ui.theme.ThemeContrastPair
+import com.materialchat.ui.theme.componentContrastPairs
 
 /**
  * WCAG contrast for the chat screen.
@@ -206,8 +209,21 @@ internal data class ChatSurfacePalette(
     val screenError: ChatTonal,
     val screenErrorMuted: Color,
     /** The reasoning selector while streaming: the same neutral fill as the plus button. */
-    val reasoningDisabled: ChatTonal
-) {
+    val reasoningDisabled: ChatTonal,
+    /** The bubble family this palette was resolved for (names the slot set). */
+    val family: AppPreferences.ChatBubbleStyle,
+    /**
+     * The shared component pairs (`ColorScheme.componentContrastPairs()`): the snackbar host
+     * (`ExpressiveSnackbar` on `inverseSurface`), the shared `ErrorContent` card and the loading
+     * rows the chat screen draws through the theme's components rather than its own fills.
+     */
+    val sharedComponentSlots: List<ThemeContrastPair>
+) : ContrastSlotSet {
+    override val surfaceName: String get() = "chat/$family"
+
+    /** Chat's own pairs plus the shared component pairs: everything the chat screen paints. */
+    override val slots: List<ContrastSlot> get() = pairs() + sharedComponentSlots
+
     /** Every container/content pair with its required ratio, one per fill the container can present. */
     fun pairs(): List<ThemeContrastPair> = buildList {
         fun add(name: String, fill: Color, content: Color, minimum: Double) =
@@ -469,7 +485,9 @@ internal data class ChatSurfacePalette(
                 ),
                 screenError = tonal(scheme.surfaceContainer, scheme.error, body),
                 screenErrorMuted = ChatContrast.pick(scheme.surfaceContainer, listOf(scheme.onSurfaceVariant) + onSurfaceOrInverse, body),
-                reasoningDisabled = tonal(scheme.surfaceContainerHigh, scheme.onSurfaceVariant, icon)
+                reasoningDisabled = tonal(scheme.surfaceContainerHigh, scheme.onSurfaceVariant, icon),
+                family = family,
+                sharedComponentSlots = scheme.componentContrastPairs()
             )
         }
     }

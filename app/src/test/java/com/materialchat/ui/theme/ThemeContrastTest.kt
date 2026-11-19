@@ -64,12 +64,9 @@ class ThemeContrastTest {
                 )
             }
         ) + AppPreferences.ChatBubbleStyle.values().map { family ->
-            "chat/$family" to ContrastSlotResolver { scheme ->
-                ContrastSlotList(
-                    "chat/$family",
-                    ChatSurfacePalette.resolve(scheme, family).pairs().map { ThemeContrastPair(it.name, it.container, it.content, it.minimum) }
-                )
-            }
+            // ChatSurfacePalette implements ContrastSlotSet itself (W5 chat): its slots are the
+            // chat pairs plus the shared component pairs (snackbar, error card, loading rows).
+            "chat/$family" to ContrastSlotResolver { scheme -> ChatSurfacePalette.resolve(scheme, family) }
         }
     }
 
