@@ -38,7 +38,6 @@ import androidx.compose.ui.unit.dp
 import com.materialchat.domain.usecase.ExportConversationUseCase
 import com.materialchat.ui.components.SheetGutter
 import com.materialchat.ui.components.SheetHeader
-import com.materialchat.ui.screens.settings.components.SettingsSheetShape
 import com.materialchat.ui.theme.ExpressiveMotion
 import com.materialchat.ui.theme.ExpressiveShapes
 import com.materialchat.ui.components.HapticPattern
@@ -77,7 +76,7 @@ fun ExportBottomSheet(
             sheetState = sheetState,
             // Same sheet family as settings: top-only squircle, low container tier, default
             // drag handle, headline title with a close affordance.
-            shape = SettingsSheetShape,
+            shape = ExpressiveShapes.BottomSheet,
             containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
             contentColor = MaterialTheme.colorScheme.onSurface
         ) {

@@ -130,6 +130,7 @@ import com.materialchat.ui.theme.CustomShapes
 import com.materialchat.ui.theme.ExpressiveMotion
 import com.materialchat.ui.theme.ExpressiveShapes
 import com.materialchat.ui.theme.LocalChatBubbleStyle
+import com.materialchat.ui.theme.MaterialChatMotion
 import com.materialchat.ui.theme.MessageBubbleShapes
 import com.materialchat.util.GeneratedImageActions
 import kotlinx.coroutines.launch
@@ -627,7 +628,7 @@ fun MessageBubble(
                 }
                 LaunchedEffect(statsExpanded) {
                     if (statsExpanded) {
-                        delay(3_500)
+                        delay(MaterialChatMotion.Durations.StatsPillHold.toLong())
                         statsExpanded = false
                     }
                 }
