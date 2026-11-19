@@ -34,6 +34,7 @@ import com.materialchat.assistant.ui.AssistantCopy
 import com.materialchat.assistant.ui.AssistantMessage
 import com.materialchat.assistant.ui.AssistantMotion
 import com.materialchat.assistant.ui.AssistantShapes
+import com.materialchat.assistant.ui.AssistantSizes
 import com.materialchat.assistant.ui.AssistantSpacing
 import com.materialchat.assistant.ui.AssistantTypography
 import com.materialchat.assistant.ui.rememberAssistantSurfacePalette
@@ -81,7 +82,7 @@ fun AssistantResponseCard(
     val isStreaming = lastMessage?.isStreaming ?: false
 
     // Scroll buffer for visual comfort
-    val scrollBufferPx = with(density) { 8.dp.toPx() }
+    val scrollBufferPx = with(density) { AssistantSpacing.Between.toPx() }
 
     // Robust auto-scroll matching main ChatScreen approach
     LaunchedEffect(
@@ -167,7 +168,7 @@ private fun UserQueryBubble(query: String) {
         horizontalArrangement = Arrangement.End  // Right-aligned
     ) {
         Surface(
-            modifier = Modifier.widthIn(min = 40.dp, max = maxBubbleWidth),
+            modifier = Modifier.widthIn(min = AssistantSizes.QueryBubbleMin, max = maxBubbleWidth),
             shape = MessageBubbleShapes.UserBubble,  // Theme shape: 28dp/8dp/28dp/28dp
             color = userBubbleColor,
             tonalElevation = 2.dp
@@ -209,8 +210,8 @@ private fun AssistantBubble(
         }
         if (isStreaming) {
             TypingIndicator(
-                dotSize = 7.dp,
-                dotSpacing = 4.dp,
+                dotSize = AssistantSizes.TypingDot,
+                dotSpacing = AssistantSpacing.Tight,
                 color = palette.answer.indicator
             )
         }
@@ -288,7 +289,7 @@ private fun ContinueInAppButton(onClick: () -> Unit) {
             shape = AssistantShapes.Chip,
             color = palette.continueChip.container,
             contentColor = palette.continueChip.content,
-            modifier = Modifier.height(40.dp)
+            modifier = Modifier.height(AssistantSizes.ChipHeight)
         ) {
             Row(
                 modifier = Modifier.padding(horizontal = AssistantSpacing.ChipInset),
@@ -298,11 +299,11 @@ private fun ContinueInAppButton(onClick: () -> Unit) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.OpenInNew,
                     contentDescription = null,
-                    modifier = Modifier.size(16.dp),
+                    modifier = Modifier.size(AssistantSizes.ChipIcon),
                     tint = palette.continueChip.content
                 )
                 Text(
-                    text = "Continue in app",
+                    text = AssistantCopy.CONTINUE_IN_APP,
                     style = AssistantTypography.action(MaterialTheme.typography),
                     color = palette.continueChip.content
                 )

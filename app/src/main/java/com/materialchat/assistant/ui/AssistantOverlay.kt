@@ -33,6 +33,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -379,7 +381,7 @@ fun AssistantOverlay(
                 // which also keeps the whole outer band inside the drawing node.
                 .neuralParticleField(
                     capsuleRect = decorationRect,
-                    cornerRadius = 38.dp,
+                    cornerRadius = AssistantShapes.PillCorner,
                     // As in essentials' Gemini pill: the pill's own colour is painted as a
                     // soft-edged capsule with the accent glowing inside along the edge, and the
                     // scattered dots drift in the band around that blurred edge.
@@ -406,7 +408,7 @@ fun AssistantOverlay(
                 if (backdropStatus == CapsuleBackdropBlurSupport.Status.Available) {
                     CapsuleBackdropBlur(
                         rect = { decorationRect },
-                        cornerRadius = with(density) { 38.dp.toPx() },
+                        cornerRadius = with(density) { AssistantShapes.PillCorner.toPx() },
                         radiusPx = with(density) { 40.dp.toPx() },
                         modifier = Modifier.matchParentSize()
                     )
@@ -850,7 +852,7 @@ internal fun AssistantOverlayContent(
                     )
                     Box(
                         modifier = Modifier
-                            .size(40.dp)
+                            .size(AssistantSizes.Control)
                             .clip(RoundedCornerShape(glyphCorner))
                             .background(glyphContainer),
                         contentAlignment = Alignment.Center
@@ -866,10 +868,10 @@ internal fun AssistantOverlayContent(
                                     )
                             },
                             contentAlignment = Alignment.Center,
-                            modifier = Modifier.size(32.dp),
+                            modifier = Modifier.size(AssistantSizes.Glyph),
                             label = "assistantGlyph"
                         ) { current ->
-                            Box(modifier = Modifier.size(32.dp), contentAlignment = Alignment.Center) {
+                            Box(modifier = Modifier.size(AssistantSizes.Glyph), contentAlignment = Alignment.Center) {
                                 when (current) {
                                     AssistantPhase.Capturing -> VoiceWaveform(
                                         amplitudeData = amplitudeData,
@@ -885,7 +887,7 @@ internal fun AssistantOverlayContent(
                                     // Fills its 32dp slot so the polygon morph reads at pill
                                     // size instead of as a small spinner.
                                     AssistantPhase.Thinking -> LoadingIndicator(
-                                        modifier = Modifier.size(32.dp),
+                                        modifier = Modifier.size(AssistantSizes.Glyph),
                                         color = glyphContent
                                     )
                                     AssistantPhase.Speaking -> Icon(
@@ -984,7 +986,11 @@ internal fun AssistantOverlayContent(
                                 Text(
                                     text = current.text,
                                     maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
+                                    // W3: the growing transcript keeps its newest words on the one
+                                    // line (the start is elided, as the system voice typing does);
+                                    // phase lines and the prompt still elide at the end.
+                                    overflow = if (current.emphasised) TextOverflow.StartEllipsis
+                                    else TextOverflow.Ellipsis,
                                     style = if (current.emphasised) AssistantTypography.transcript(MaterialTheme.typography)
                                     else AssistantTypography.prompt(MaterialTheme.typography),
                                     color = if (current.emphasised) palette.pill.body
@@ -1044,7 +1050,7 @@ internal fun AssistantOverlayContent(
                                 contentColor = affordanceContent
                             ),
                             modifier = Modifier
-                                .size(40.dp)
+                                .size(AssistantSizes.Control)
                                 .testTag("assistant_attach")
                         ) {
                             Icon(
@@ -1094,7 +1100,7 @@ internal fun AssistantOverlayContent(
                         }
                     }
                     val primaryCorner by animateDpAsState(
-                        targetValue = if (capturing || busy) 18.dp else 28.dp,
+                        targetValue = if (capturing || busy) AssistantShapes.PrimarySquareCorner else AssistantShapes.PrimaryRoundCorner,
                         animationSpec = AssistantMotion.stateSwitch(),
                         label = "primaryCorner"
                     )
@@ -1121,7 +1127,7 @@ internal fun AssistantOverlayContent(
                         contentColor = primaryContent
                     )
                     val primaryModifier = Modifier
-                        .size(56.dp)
+                        .size(AssistantSizes.PrimaryButton)
                         .graphicsLayer {
                             scaleX = primaryPop.value
                             scaleY = primaryPop.value
@@ -1244,11 +1250,11 @@ private fun AssistantResponseSurface(
                     horizontalArrangement = Arrangement.spacedBy(AssistantSpacing.Gap),
                     modifier = Modifier.testTag("assistant_screen_used")
                 ) {
-                    // 16dp: the same icon size the chips and the Screen chip use.
+                    // The same icon size the chips and the Screen chip use.
                     Icon(
                         imageVector = Icons.Outlined.Screenshot,
                         contentDescription = null,
-                        modifier = Modifier.size(16.dp),
+                        modifier = Modifier.size(AssistantSizes.ChipIcon),
                         tint = palette.answer.muted
                     )
                     Text(
@@ -1297,38 +1303,67 @@ private fun AssistantAnswerToolbar(
         color = palette.toolbar.fill,
         contentColor = palette.toolbar.muted
     ) {
-        Row(
+        val textMeasurer = rememberTextMeasurer()
+        val actionStyle = AssistantTypography.action(MaterialTheme.typography)
+        BoxWithConstraints(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(start = AssistantSpacing.Between, end = AssistantSpacing.Tight, top = AssistantSpacing.Tight, bottom = AssistantSpacing.Tight),
-            verticalAlignment = Alignment.CenterVertically
+                .padding(start = AssistantSpacing.Between, end = AssistantSpacing.Tight, top = AssistantSpacing.Tight, bottom = AssistantSpacing.Tight)
         ) {
-            if (showOpenInApp) {
-                AssistantActionChip(
-                    icon = Icons.AutoMirrored.Filled.OpenInNew,
-                    label = "Open in app",
-                    onClick = onOpenInApp
-                )
-            }
-            Spacer(Modifier.weight(1f))
             // The icon actions form one connected M3 Expressive group: 2dp joins, outer 20dp /
             // inner 8dp corners by position, every item tightening to 12dp while pressed.
             // Touch targets stay 48dp (the buttons keep their minimum interactive size).
-            val count = if (showCopy) 3 else 2
+            val iconCount = if (showCopy) 3 else 2
+            // W3: at 360dp the strip is 284dp wide (336 sheet - 2 x 20 surface inset - 8 - 4);
+            // three 48dp targets with 2dp joins take 148dp and the labelled chip (14 + 16 + 6 +
+            // label + 14) about 138dp at font scale 1.0 and ~165dp at 1.3, so the row cannot
+            // always hold both. The widths are measured from the same styles the chip draws;
+            // when the chip, one spacing step and the group exceed the strip, the chip gives
+            // up its label and joins the group as its leading icon instead of being clipped
+            // by the capsule. Nothing is reserved, nothing is ellipsised.
+            val labelWidth = with(LocalDensity.current) {
+                textMeasurer.measure(AssistantCopy.OPEN_IN_APP, actionStyle, maxLines = 1).size.width.toDp()
+            }
+            val chipWidth = AssistantSpacing.ChipInset * 2 + AssistantSizes.ChipIcon + AssistantSpacing.Gap + labelWidth
+            val groupWidth = AssistantSizes.Target * iconCount +
+                ButtonGroupDefaults.ConnectedSpaceBetween * (iconCount - 1)
+            val labelledChip = showOpenInApp &&
+                chipWidth + AssistantSpacing.Between + groupWidth <= maxWidth
+            val compactOpen = showOpenInApp && !labelledChip
+            val count = iconCount + if (compactOpen) 1 else 0
             Row(
-                horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
+                modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                AssistantToolbarAction(index = 0, count = count, onClick = onNewChat) {
-                    Icon(Icons.Default.AddComment, contentDescription = "New chat")
+                if (labelledChip) {
+                    AssistantActionChip(
+                        icon = Icons.AutoMirrored.Filled.OpenInNew,
+                        label = AssistantCopy.OPEN_IN_APP,
+                        onClick = onOpenInApp
+                    )
                 }
-                if (showCopy) {
-                    AssistantToolbarAction(index = 1, count = count, onClick = onCopy) {
-                        Icon(Icons.Default.ContentCopy, contentDescription = "Copy response")
+                Spacer(Modifier.weight(1f))
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    var index = 0
+                    if (compactOpen) {
+                        AssistantToolbarAction(index = index++, count = count, onClick = onOpenInApp) {
+                            Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = AssistantCopy.OPEN_IN_APP)
+                        }
                     }
-                }
-                AssistantToolbarAction(index = count - 1, count = count, onClick = onClose) {
-                    Icon(Icons.Default.Close, contentDescription = "End assistant session")
+                    AssistantToolbarAction(index = index++, count = count, onClick = onNewChat) {
+                        Icon(Icons.Default.AddComment, contentDescription = "New chat")
+                    }
+                    if (showCopy) {
+                        AssistantToolbarAction(index = index++, count = count, onClick = onCopy) {
+                            Icon(Icons.Default.ContentCopy, contentDescription = "Copy response")
+                        }
+                    }
+                    AssistantToolbarAction(index = index, count = count, onClick = onClose) {
+                        Icon(Icons.Default.Close, contentDescription = "End assistant session")
+                    }
                 }
             }
         }
@@ -1427,13 +1462,13 @@ private fun AssistantAttachRevealContent(
             ) {
                 AssistantActionChip(
                     icon = Icons.Default.PhotoCamera,
-                    label = "Take photo",
+                    label = AssistantCopy.TAKE_PHOTO,
                     shape = AssistantShapes.connectedShape(index = 0, count = 2),
                     onClick = { onAttach(AssistantAttachMode.Camera) }
                 )
                 AssistantActionChip(
                     icon = Icons.Default.AddPhotoAlternate,
-                    label = "Attach photo",
+                    label = AssistantCopy.ATTACH_PHOTO,
                     shape = AssistantShapes.connectedShape(index = 1, count = 2),
                     onClick = { onAttach(AssistantAttachMode.Gallery) }
                 )
@@ -1466,11 +1501,13 @@ private fun AssistantActionChip(
             contentColor = palette.chip.content
         ),
         contentPadding = PaddingValues(horizontal = AssistantSpacing.ChipInset, vertical = AssistantSpacing.Gap),
-        modifier = modifier.height(40.dp)
+        modifier = modifier.height(AssistantSizes.ChipHeight)
     ) {
-        Icon(imageVector = icon, contentDescription = null, modifier = Modifier.size(16.dp))
+        Icon(imageVector = icon, contentDescription = null, modifier = Modifier.size(AssistantSizes.ChipIcon))
         Spacer(Modifier.size(AssistantSpacing.Gap))
-        Text(label, style = AssistantTypography.action(MaterialTheme.typography))
+        // A 40dp chip has one line; a label that cannot fit its row ellipsises instead of
+        // wrapping into a second line the capsule would clip.
+        Text(label, style = AssistantTypography.action(MaterialTheme.typography), maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
 
@@ -1488,7 +1525,7 @@ private fun AssistantScreenChip(attachment: Attachment, onRemove: () -> Unit) {
         color = palette.chip.container,
         contentColor = palette.chip.content,
         modifier = Modifier
-            .height(40.dp)
+            .height(AssistantSizes.ChipHeight)
             .testTag("assistant_screen_chip")
     ) {
         Row(
@@ -1501,25 +1538,25 @@ private fun AssistantScreenChip(attachment: Attachment, onRemove: () -> Unit) {
                 contentDescription = "Screen capture",
                 contentScale = androidx.compose.ui.layout.ContentScale.Crop,
                 modifier = Modifier
-                    .size(28.dp)
-                    .clip(RoundedCornerShape(8.dp))
+                    .size(AssistantSizes.Thumbnail)
+                    .clip(RoundedCornerShape(AssistantShapes.ThumbnailCorner))
             )
             Icon(
                 imageVector = Icons.Outlined.Screenshot,
                 contentDescription = null,
-                modifier = Modifier.size(16.dp)
+                modifier = Modifier.size(AssistantSizes.ChipIcon)
             )
-            Text("Screen", style = AssistantTypography.action(MaterialTheme.typography))
+            Text(AssistantCopy.SCREEN_CHIP, style = AssistantTypography.action(MaterialTheme.typography))
             IconButton(
                 onClick = onRemove,
                 modifier = Modifier
-                    .size(32.dp)
+                    .size(AssistantSizes.CompactTarget)
                     .testTag("assistant_screen_remove")
             ) {
                 Icon(
                     imageVector = Icons.Default.Close,
                     contentDescription = "Remove screen context",
-                    modifier = Modifier.size(16.dp)
+                    modifier = Modifier.size(AssistantSizes.ChipIcon)
                 )
             }
         }
@@ -1595,12 +1632,17 @@ private fun AssistantNoticeSurface(
                 Icon(
                     imageVector = if (notice.isError) Icons.Outlined.ErrorOutline else Icons.Outlined.Info,
                     contentDescription = null,
-                    modifier = Modifier.size(18.dp),
+                    modifier = Modifier.size(AssistantSizes.NoticeGlyph),
                     tint = content
                 )
+                // W3: the longest notice (ScreenContextAccess.notice, 131 characters) has 280dp
+                // at 360dp (336 sheet - 2 x 14 inset - 18 glyph - 10 gap). bodyMedium at font
+                // scale 1.3 (18.2sp, ~9.5dp per character) gives ~29 characters per line, so it
+                // needs five lines; six keeps every notice whole at 1.3 and still bounds a
+                // runaway engine message, which the previous four lines cut mid-sentence.
                 Text(
                     text = notice.message,
-                    maxLines = 4,
+                    maxLines = 6,
                     overflow = TextOverflow.Ellipsis,
                     style = AssistantTypography.notice(MaterialTheme.typography),
                     color = content
@@ -1659,15 +1701,24 @@ private fun AssistantNoticeActionChip(
         contentColor = content,
         border = BorderStroke(1.dp, content),
         interactionSource = interactionSource,
-        modifier = modifier.height(40.dp)
+        modifier = modifier.height(AssistantSizes.ChipHeight)
     ) {
         Row(
             modifier = Modifier.padding(horizontal = AssistantSpacing.ChipInset),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(AssistantSpacing.Gap)
         ) {
-            Icon(imageVector = icon, contentDescription = null, modifier = Modifier.size(16.dp), tint = content)
-            Text(label, style = AssistantTypography.action(MaterialTheme.typography), color = content)
+            Icon(imageVector = icon, contentDescription = null, modifier = Modifier.size(AssistantSizes.ChipIcon), tint = content)
+            // "Open assistant settings" (23 characters, labelLarge bold) is ~230dp at font scale
+            // 1.3 plus 50dp of insets, icon and gap: it fits the 280dp notice row, and a longer
+            // label would ellipsise on its one line rather than wrap under the capsule's clip.
+            Text(
+                label,
+                style = AssistantTypography.action(MaterialTheme.typography),
+                color = content,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
         }
     }
 }
