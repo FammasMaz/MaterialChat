@@ -754,7 +754,8 @@ internal fun AssistantOverlayContent(
                     screenContextUsed = uiState.screenContextUsed,
                     // W6: never while the answer is in flight; opening the app hides the session
                     // and cancels the stream, and the partial answer is only saved on completion.
-                    showOpenInApp = hasContent && !uiState.answerInFlight,
+                    // W8: never for a device-action-only exchange, which has no conversation row.
+                    showOpenInApp = hasContent && uiState.openInAppAvailable,
                     onOpenInApp = onOpenInApp,
                     onNewChat = onNewChat,
                     onCopy = {

@@ -303,7 +303,8 @@ class AssistantViewModel(
                 isStreaming = false,
                 error = null,
                 notice = null,
-                screenContextUnavailable = false
+                screenContextUnavailable = false,
+                conversationSaved = false
             )
         }
         _voiceState.value = VoiceState.Idle
@@ -544,6 +545,9 @@ class AssistantViewModel(
                         currentCoroutineContext().ensureActive()
                         if (token != turn) return@coroutineScope
                         currentConversationId = created
+                        // W8 ruling: only a model exchange creates a conversation; the toolbar
+                        // offers Open in app once there is a row for it to land on.
+                        _uiState.update { it.copy(conversationSaved = true) }
                     }
                     val conversationId = currentConversationId!!
                     conversationRepository.updateConversationProviderAndModel(conversationId, provider.id, model)
@@ -1181,7 +1185,13 @@ data class AssistantUiState(
     /** The current answer was produced with the screen capture (the "Using screen" marker). */
     val screenContextUsed: Boolean = false,
     /** The question wanted the screen but the platform delivered nothing: show how to enable it. */
-    val screenContextUnavailable: Boolean = false
+    val screenContextUnavailable: Boolean = false,
+    /**
+     * A conversation row exists for this chat. A device-action-only exchange ("Flashlight on.")
+     * never creates one (W8 ruling), so Open in app would land on the chat list, not on the
+     * exchange; the toolbar withholds it until a model turn has saved the conversation.
+     */
+    val conversationSaved: Boolean = false
 ) {
     /**
      * The answer is awaited or still arriving. Leaving the overlay now (Open in app hides the
@@ -1189,6 +1199,9 @@ data class AssistantUiState(
      * completion, so the answer toolbar withholds Open in app until this is false (W6).
      */
     val answerInFlight: Boolean get() = isLoading || isStreaming
+
+    /** Open in app is offered: the chat is saved (W8) and nothing is in flight (W6). */
+    val openInAppAvailable: Boolean get() = conversationSaved && !answerInFlight
 }
 
 /**

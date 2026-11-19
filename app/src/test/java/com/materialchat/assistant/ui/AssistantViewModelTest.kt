@@ -621,5 +621,38 @@ class AssistantViewModelTest {
         assertTrue(AssistantUiState(isStreaming = true).answerInFlight)
         assertFalse(AssistantUiState(response = "done").answerInFlight)
         assertFalse(AssistantUiState(error = AssistantCopy.REQUEST_FAILED).answerInFlight)
+        assertFalse(AssistantUiState(isLoading = true, conversationSaved = true).openInAppAvailable)
+        assertFalse(AssistantUiState(isStreaming = true, conversationSaved = true).openInAppAvailable)
+        assertTrue(AssistantUiState(response = "done", conversationSaved = true).openInAppAvailable)
+        assertFalse("no conversation row, nothing to open", AssistantUiState(response = "done").openInAppAvailable)
+    }
+
+    @Test fun `a device-action-only exchange creates no conversation and withholds Open in app`() = runTest {
+        val vm = createViewModel()
+        every { deviceActions.perform(DeviceAction.SetTorch(true)) } returns
+            DeviceActionOutcome("Flashlight on.", succeeded = true)
+        vm.onOverlayShown()
+        vm.sendQuery("turn the flashlight on")
+        runCurrent()
+        assertEquals("Flashlight on.", vm.uiState.value.response)
+        assertTrue(vm.messages.value.isNotEmpty())
+        // W8 ruling: the local action never creates a conversation, so the toolbar has nothing
+        // for Open in app to land on and withholds it.
+        coVerify(exactly = 0) { create.withProviderAndModel(any(), any()) }
+        coVerify(exactly = 0) { conversations.addMessage(any()) }
+        assertFalse(vm.uiState.value.conversationSaved)
+        assertFalse(vm.uiState.value.openInAppAvailable)
+        // A model turn in the same chat creates the row; the chip is offered on completion only.
+        vm.sendQuery("what time is the sunset")
+        runCurrent()
+        assertTrue(vm.uiState.value.conversationSaved)
+        assertFalse("withheld while the answer is awaited", vm.uiState.value.openInAppAvailable)
+        states.send(StreamingState.Completed("About seven.", messageId = "a"))
+        runCurrent()
+        assertTrue(vm.uiState.value.openInAppAvailable)
+        // New chat drops the row reference: the next exchange starts unsaved again.
+        vm.startNewChat()
+        assertFalse(vm.uiState.value.conversationSaved)
+        assertFalse(vm.uiState.value.openInAppAvailable)
     }
 }
