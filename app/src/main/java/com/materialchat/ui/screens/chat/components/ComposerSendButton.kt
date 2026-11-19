@@ -108,6 +108,13 @@ internal class ComposerSendTrackShape(
  * glyph swap and the press morph.
  *
  * Behaviour: tap sends when ready, cancels when streaming, and is disabled otherwise.
+ *
+ * Deliberately a raw M3 [Button], not `ExpressiveButton` (W7 chat part 2, audit F9/F11):
+ * the shared button animates a single `RoundedCornerShape` corner radius on press, while this
+ * control's contour is a [Morph] track over `MaterialShapes` (cookie → scalloped cookie →
+ * square) that also encodes the Idle/Ready/Streaming state, so the shared button cannot carry
+ * it. The 22dp glyphs are a size this 48dp control chose for its own optical balance; they move
+ * to the theme's icon token once `ExpressiveSizes.Icon*` ships.
  */
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable

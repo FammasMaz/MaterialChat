@@ -18,8 +18,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Star
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -36,9 +34,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.materialchat.domain.model.AiModel
+import com.materialchat.ui.components.ExpressiveButton
+import com.materialchat.ui.components.ExpressiveButtonStyle
 import com.materialchat.ui.components.SheetGutter
 import com.materialchat.ui.components.SheetHeader
-import com.materialchat.ui.theme.CustomShapes
 import com.materialchat.ui.theme.ExpressiveMotion
 import com.materialchat.ui.theme.ExpressiveShapes
 
@@ -238,27 +237,19 @@ fun FusionModelSelector(
                 // Start Fusion button
                 Spacer(modifier = Modifier.height(20.dp))
 
-                Button(
+                // The shared expressive button (press shape morph, scale dip, click haptic)
+                // instead of a raw M3 Button on CustomShapes.Button (W7 chat part 2). Its
+                // filled style paints primary/onPrimary; the tertiary fill the raw button
+                // carried is not a parameter of ExpressiveButton (theme-owned), so the sheet
+                // keeps tertiary for its selection accents only.
+                ExpressiveButton(
                     onClick = onStartFusion,
                     enabled = selectedModelIds.size >= 2 && judgeModelId != null,
                     modifier = Modifier.fillMaxWidth(),
-                    shape = CustomShapes.Button,
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.tertiary,
-                        contentColor = MaterialTheme.colorScheme.onTertiary
-                    )
-                ) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.Send,
-                        contentDescription = null,
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "Start fusion",
-                        style = MaterialTheme.typography.labelLarge
-                    )
-                }
+                    text = "Start fusion",
+                    leadingIcon = Icons.AutoMirrored.Filled.Send,
+                    style = ExpressiveButtonStyle.Filled
+                )
             }
         }
     }
