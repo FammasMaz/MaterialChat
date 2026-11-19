@@ -137,6 +137,72 @@ class ThemeContrastTest {
         assertTrue(onMid == Color.White || onMid == Color.Black)
     }
 
+    @Test fun pickOnOneFillAndOnASingletonListAgree() {
+        for (theme in themes) {
+            val s = theme.scheme
+            for ((_, fill) in s.surfaceFills()) {
+                val candidates = listOf(s.onSurfaceVariant, s.onSurface, s.inverseOnSurface)
+                assertEquals(
+                    "${theme.name}",
+                    ThemeContrast.pick(fill, candidates, ThemeContrast.BODY_TEXT),
+                    ThemeContrast.pick(listOf(fill), candidates, ThemeContrast.BODY_TEXT)
+                )
+            }
+        }
+    }
+
+    @Test fun pickOnSeveralFillsRequiresTheCandidateToReadOnEveryOne() {
+        val scheme = MaterialChatThemePalettes.colorScheme(AppPreferences.ThemePalette.VIOLET, darkTheme = false)
+        // onSurface reads on every light tier, so a list of tiers keeps it (no needless repaint).
+        val tiers = scheme.surfaceTiers().map { it.second }
+        assertEquals(scheme.onSurface, ThemeContrast.pick(tiers, listOf(scheme.onSurface), ThemeContrast.BODY_TEXT))
+        assertTrue(ThemeContrast.contrastRatio(scheme.onSurface, tiers) >= ThemeContrast.BODY_TEXT)
+        // The worst-of-fills number is what the list is judged by.
+        assertEquals(
+            tiers.minOf { ThemeContrast.contrastRatio(scheme.onSurface, it) },
+            ThemeContrast.contrastRatio(scheme.onSurface, tiers),
+            1e-12
+        )
+        // Add a dark fill: onSurface (dark) no longer reads on all of them and is skipped even
+        // though it reads on the first; inverseOnSurface fails on the light tiers; nothing meets
+        // 4.5 on both tones, so the least-bad candidate (black: ~1.3 worst, vs ~1.0 for the rest) wins.
+        val mixed = listOf(scheme.surface, Color(0xFF202020))
+        val picked = ThemeContrast.pick(mixed, listOf(scheme.onSurface, scheme.inverseOnSurface), ThemeContrast.BODY_TEXT)
+        assertTrue(picked != scheme.onSurface)
+        assertEquals(scheme.onSurface, ThemeContrast.pick(listOf(scheme.surface), listOf(scheme.onSurface), ThemeContrast.BODY_TEXT))
+        val all = listOf(scheme.onSurface, scheme.inverseOnSurface, Color.White, Color.Black)
+        assertEquals(all.maxByOrNull { ThemeContrast.contrastRatio(it, mixed) }, picked)
+        // Order of preference is honoured when more than one candidate reads on every fill.
+        val containers = listOf(scheme.surfaceContainer, scheme.surfaceContainerHighest)
+        assertEquals(
+            scheme.onSurfaceVariant,
+            ThemeContrast.pick(containers, listOf(scheme.onSurfaceVariant, scheme.onSurface), ThemeContrast.BODY_TEXT)
+        )
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun pickOnNoFillsIsRejected() {
+        ThemeContrast.pick(emptyList(), listOf(Color.Black), ThemeContrast.BODY_TEXT)
+    }
+
+    @Test fun readableOnFillsExtensionsMatchTheSingleFillOnesAndTheirPreference() {
+        for (theme in themes.filter { it.static }) {
+            val s = theme.scheme
+            val tiers = s.surfaceTiers().map { it.second }
+            // One list over every tier equals the single-fill result when that result is shared.
+            val singles = tiers.map { s.readableOn(it) }.distinct()
+            if (singles.size == 1) assertEquals(theme.name, singles.single(), s.readableOn(tiers))
+            // The role each helper prefers is kept on the static tiers (all pass the gate).
+            assertEquals(theme.name, s.onSurface, s.readableOn(tiers))
+            assertEquals(theme.name, s.onSurfaceVariant, s.readableMutedOn(tiers))
+            assertEquals(theme.name, s.primary, s.readableAccentOn(tiers))
+            // Every helper's result reads on every fill it was asked about.
+            assertTrue(theme.name, ThemeContrast.contrastRatio(s.readableOn(tiers), tiers) >= ThemeContrast.BODY_TEXT)
+            assertTrue(theme.name, ThemeContrast.contrastRatio(s.readableMutedOn(tiers), tiers) >= ThemeContrast.BODY_TEXT)
+            assertTrue(theme.name, ThemeContrast.contrastRatio(s.readableAccentOn(tiers), tiers) >= ThemeContrast.ICON)
+        }
+    }
+
     @Test fun themeAndAssistantContrastAgree() {
         // The assistant keeps a private copy of the arithmetic; the two must not drift.
         val samples = listOf(
@@ -148,6 +214,28 @@ class ThemeContrastTest {
             assertEquals(
                 com.materialchat.assistant.ui.AssistantContrast.contrastRatio(fg, bg),
                 ThemeContrast.contrastRatio(fg, bg),
+                1e-9
+            )
+        }
+        // The multi-fill pick must agree too, so the assistant copy can delegate to this one.
+        val fills = samples.map { it.second }
+        val candidates = samples.map { it.first }
+        for (minimum in listOf(ThemeContrast.ICON, ThemeContrast.BODY_TEXT)) {
+            assertEquals(
+                com.materialchat.assistant.ui.AssistantContrast.pick(fills, candidates, minimum),
+                ThemeContrast.pick(fills, candidates, minimum)
+            )
+            for (fill in fills) {
+                assertEquals(
+                    com.materialchat.assistant.ui.AssistantContrast.pick(fill, candidates, minimum),
+                    ThemeContrast.pick(fill, candidates, minimum)
+                )
+            }
+        }
+        for (fg in candidates) {
+            assertEquals(
+                com.materialchat.assistant.ui.AssistantContrast.contrastRatio(fg, fills),
+                ThemeContrast.contrastRatio(fg, fills),
                 1e-9
             )
         }

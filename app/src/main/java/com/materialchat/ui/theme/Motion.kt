@@ -1,8 +1,13 @@
 package com.materialchat.ui.theme
 
+import androidx.compose.animation.core.InfiniteRepeatableSpec
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.SpringSpec
+import androidx.compose.animation.core.tween
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
@@ -219,6 +224,34 @@ object ExpressiveMotion {
         fun <T> slow(): SpringSpec<T> = spring(
             dampingRatio = 0.8f,
             stiffness = 200f
+        )
+
+        /**
+         * Slow decorative rotation of an ornament: one full turn (0 -> 360) per
+         * [periodMillis] on a linear easing, restarting seamlessly. The home banner gear
+         * spins at [MaterialChatMotion.Durations.DecorativeSpin] (16 s); the empty-state
+         * cluster and the explore backdrop at [MaterialChatMotion.Durations.BackdropSpin]
+         * (48 s). Not a spring: it is the one sanctioned infinite tween for ornaments.
+         * Continuous motion, so a consumer may only run it while
+         * `rememberParticleMotionGate().motionAllowed` and must hold 0f otherwise.
+         */
+        fun decorativeSpin(
+            periodMillis: Int = MaterialChatMotion.Durations.DecorativeSpin
+        ): InfiniteRepeatableSpec<Float> = infiniteRepeatable(
+            animation = tween(durationMillis = periodMillis, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        )
+
+        /**
+         * Gentle up/down bob of a hint glyph (the scroll-to-bottom arrow): one half cycle
+         * per [MaterialChatMotion.Durations.Bob], reversing, on the default easing. Gate it
+         * exactly like [decorativeSpin].
+         */
+        fun bob(
+            halfPeriodMillis: Int = MaterialChatMotion.Durations.Bob
+        ): InfiniteRepeatableSpec<Float> = infiniteRepeatable(
+            animation = tween(durationMillis = halfPeriodMillis),
+            repeatMode = RepeatMode.Reverse
         )
     }
 
@@ -534,6 +567,18 @@ object MaterialChatMotion {
          * Duration snackbar stays visible.
          */
         const val SnackbarDuration = 5000
+
+        /**
+         * Half period of the scroll-to-bottom arrow bob (the `ExtraLong + Quick` the FAB
+         * already draws). Pair with [ExpressiveMotion.Spatial.bob].
+         */
+        const val Bob = ExtraLong + Quick
+
+        /** Period of a foreground decorative spin (home banner gear). */
+        const val DecorativeSpin = 16_000
+
+        /** Period of a slow backdrop spin (empty-state cluster, explore backdrop). */
+        const val BackdropSpin = 48_000
     }
 
     /**

@@ -68,11 +68,23 @@ object ExpressiveShapes {
     /** Selected menu/list rows inside a sheet or dropdown. */
     val MenuSelection = SquircleShape(16.dp)
 
-    /** Dialogs: M3 extraLarge (28dp) as a squircle so they match [Card]. */
+    /**
+     * Dialogs: M3 extraLarge (28dp) as a squircle so they match [Card]. The one dialog
+     * token; [CustomShapes.Dialog] delegates here.
+     */
     val Dialog = SquircleShape(28.dp)
 
     /** Expanded disclosure panels inside bubbles (memory references, sources). */
     val DisclosurePanel = SquircleShape(20.dp)
+
+    /**
+     * Content blocks inside a message bubble: code blocks, tables, math blocks. One step
+     * tighter than [DisclosurePanel] (20dp) so a block reads as content *inside* the bubble
+     * rather than a sibling panel, and the same squircle family so the two never sit beside
+     * each other with different corner geometry. 16dp keeps the bubble's 28 -> 16 -> 8dp
+     * (outer -> block -> inner header) ladder that chat already draws.
+     */
+    val ContentBlock = SquircleShape(16.dp)
 
     /**
      * Screen content surface that rounds into the top app bar. Only the top
@@ -252,9 +264,14 @@ object CustomShapes {
     )
 
     /**
-     * Shape for code blocks in chat messages.
+     * Shape for code blocks in chat messages. Superseded by [ExpressiveShapes.ContentBlock],
+     * which is what every in-bubble block (code, table, math) should clip to.
      */
-    val CodeBlock = RoundedCornerShape(20.dp)
+    @Deprecated(
+        message = "Use ExpressiveShapes.ContentBlock: the one in-bubble content block shape.",
+        replaceWith = ReplaceWith("ExpressiveShapes.ContentBlock")
+    )
+    val CodeBlock: Shape get() = ExpressiveShapes.ContentBlock
 
     /**
      * Shape for inline code spans.
@@ -317,9 +334,14 @@ object CustomShapes {
     val Pill = RoundedCornerShape(50)
 
     /**
-     * Shape for dialogs - very rounded.
+     * Shape for dialogs. Delegates to [ExpressiveShapes.Dialog] (28dp squircle) so the app
+     * has one dialog geometry; kept as an alias for existing call sites.
      */
-    val Dialog = RoundedCornerShape(28.dp)
+    @Deprecated(
+        message = "Use ExpressiveShapes.Dialog: the one dialog shape (28dp squircle).",
+        replaceWith = ReplaceWith("ExpressiveShapes.Dialog")
+    )
+    val Dialog: Shape get() = ExpressiveShapes.Dialog
 
     /**
      * Shape for top app bar (when using shape).

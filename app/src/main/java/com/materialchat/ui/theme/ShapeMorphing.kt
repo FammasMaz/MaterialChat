@@ -1,5 +1,6 @@
 package com.materialchat.ui.theme
 
+import androidx.compose.animation.core.SpringSpec
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
@@ -17,8 +18,14 @@ import androidx.compose.ui.unit.dp
  *
  * Key principles:
  * - Round shapes become slightly LESS rounded on press for tactile compression
- * - Use spatial springs for shape morphing (can overshoot)
+ * - Press morphs run on [ExpressiveMotion.Press.Shape] (M3E fast spatial, 0.6 / 800) so
+ *   every pressable in the app settles alike; focus morphs (search bar, text field) keep
+ *   [ExpressiveMotion.Spatial.shapeMorph]
  * - Shape changes should be subtle but noticeable
+ *
+ * [buttonShape] still defaults to [ExpressiveMotion.Spatial.shapeMorph] (0.6 / 500): its one
+ * consumer (ExpressiveSnackbar) would settle ~21% sooner on the Press token, which is a feel
+ * change for that owner to verify; pass `animationSpec = ExpressiveMotion.Press.Shape` to opt in.
  */
 object ShapeMorphing {
 
@@ -29,17 +36,19 @@ object ShapeMorphing {
      * @param isPressed Whether the button is currently pressed
      * @param defaultRadius Default corner radius
      * @param pressedRadius Corner radius when pressed (typically larger)
+     * @param animationSpec Corner spring; [ExpressiveMotion.Press.Shape] is the shared press physics
      * @return Animated RoundedCornerShape
      */
     @Composable
     fun buttonShape(
         isPressed: Boolean,
         defaultRadius: Dp = 24.dp,
-        pressedRadius: Dp = 12.dp
+        pressedRadius: Dp = 12.dp,
+        animationSpec: SpringSpec<Dp> = ExpressiveMotion.Spatial.shapeMorph()
     ): RoundedCornerShape {
         val radius by animateDpAsState(
             targetValue = if (isPressed) pressedRadius else defaultRadius,
-            animationSpec = ExpressiveMotion.Spatial.shapeMorph(),
+            animationSpec = animationSpec,
             label = "buttonShapeMorph"
         )
         return RoundedCornerShape(radius)
@@ -63,7 +72,7 @@ object ShapeMorphing {
 
         val radius by animateDpAsState(
             targetValue = if (isPressed) pressedRadius else baseRadius,
-            animationSpec = ExpressiveMotion.Spatial.playful(),
+            animationSpec = ExpressiveMotion.Press.Shape,
             label = "fabShapeMorph"
         )
         return RoundedCornerShape(radius)
@@ -87,7 +96,7 @@ object ShapeMorphing {
 
         val radius by animateDpAsState(
             targetValue = if (isPressed) pressedRadius else defaultRadius,
-            animationSpec = ExpressiveMotion.Spatial.shapeMorph(),
+            animationSpec = ExpressiveMotion.Press.Shape,
             label = "iconButtonShapeMorph"
         )
         return RoundedCornerShape(radius)
@@ -110,7 +119,7 @@ object ShapeMorphing {
     ): RoundedCornerShape {
         val radius by animateDpAsState(
             targetValue = if (isPressed) pressedRadius else defaultRadius,
-            animationSpec = ExpressiveMotion.Spatial.shapeMorph(),
+            animationSpec = ExpressiveMotion.Press.Shape,
             label = "cardShapeMorph"
         )
         return RoundedCornerShape(radius)
@@ -134,7 +143,7 @@ object ShapeMorphing {
 
         val radius by animateDpAsState(
             targetValue = if (isPressed) pressedRadius else baseRadius,
-            animationSpec = ExpressiveMotion.Spatial.scale(),
+            animationSpec = ExpressiveMotion.Press.Shape,
             label = "chipShapeMorph"
         )
         return RoundedCornerShape(radius)
