@@ -28,8 +28,8 @@ object ChatErrorCopy {
     /** HTTP 403: authenticated but not allowed (plan, region, model access). */
     const val FORBIDDEN = "The provider refused this request. Check your access to this model and try again."
 
-    /** HTTP 429 / quota exhaustion: waiting is the right move. */
-    const val RATE_LIMITED = "The model is busy right now. Wait a moment and try again."
+    /** HTTP 429 / quota exhaustion: waiting is the right move. Shared class line (`CopyRules`, W8 theme). */
+    const val RATE_LIMITED = CopyRules.RATE_LIMITED
 
     /** HTTP 5xx: the provider's side. */
     const val SERVER_ERROR = "The provider is having trouble. Try again in a moment."
@@ -37,8 +37,8 @@ object ChatErrorCopy {
     /** Any other 4xx (400 bad request, 404 unknown model, 413 too large, …). */
     const val REJECTED = "The provider could not handle this request. Check the model and try again."
 
-    /** An [IOException] anywhere in the cause chain. */
-    const val NO_CONNECTION = "No connection. Check your network and try again."
+    /** An [IOException] anywhere in the cause chain. Shared class line (`CopyRules`, W8 theme). */
+    const val NO_CONNECTION = CopyRules.NO_CONNECTION
 
     /** Everything else, including in-stream provider errors on a 200. */
     const val REQUEST_FAILED = CopyRules.REQUEST_FAILED
@@ -53,7 +53,8 @@ object ChatErrorCopy {
     const val COULD_NOT_BRANCH = "Could not create the branch"
     const val COULD_NOT_RESEND_EDIT = "Could not send the edited message"
     const val COULD_NOT_EXPORT = "Could not export the conversation"
-    const val COULD_NOT_SHARE = "Could not share the export"
+    /** The share-chooser failure line is the theme's (`CopyRules.COULD_NOT_SHARE`, W8 theme C5). */
+    const val COULD_NOT_SHARE = CopyRules.COULD_NOT_SHARE
     const val COULD_NOT_REDO = "Could not redo with that model"
     const val COULD_NOT_UPDATE_BOOKMARK = "Could not update the bookmark"
     const val COULD_NOT_RUN_FUSION = "Could not complete the fusion"

@@ -35,6 +35,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.materialchat.domain.model.AiModel
 import com.materialchat.ui.components.ExpressiveButton
+import com.materialchat.ui.components.ExpressiveButtonColors
 import com.materialchat.ui.components.ExpressiveButtonStyle
 import com.materialchat.ui.components.SheetGutter
 import com.materialchat.ui.components.SheetHeader
@@ -238,17 +239,18 @@ fun FusionModelSelector(
                 Spacer(modifier = Modifier.height(20.dp))
 
                 // The shared expressive button (press shape morph, scale dip, click haptic)
-                // instead of a raw M3 Button on CustomShapes.Button (W7 chat part 2). Its
-                // filled style paints primary/onPrimary; the tertiary fill the raw button
-                // carried is not a parameter of ExpressiveButton (theme-owned), so the sheet
-                // keeps tertiary for its selection accents only.
+                // instead of a raw M3 Button on CustomShapes.Button (W7 chat part 2), on the
+                // theme's tertiary filled pair (W8 theme C3) so the Start action matches the
+                // sheet's tertiary checkmarks and judge star; the pair is in the theme's
+                // contrast gate.
                 ExpressiveButton(
                     onClick = onStartFusion,
                     enabled = selectedModelIds.size >= 2 && judgeModelId != null,
                     modifier = Modifier.fillMaxWidth(),
                     text = "Start fusion",
                     leadingIcon = Icons.AutoMirrored.Filled.Send,
-                    style = ExpressiveButtonStyle.Filled
+                    style = ExpressiveButtonStyle.Filled,
+                    colors = ExpressiveButtonColors.tertiary()
                 )
             }
         }
