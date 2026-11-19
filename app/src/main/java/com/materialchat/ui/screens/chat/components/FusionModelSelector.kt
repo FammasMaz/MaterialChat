@@ -113,7 +113,7 @@ fun FusionModelSelector(
 
                 if (isLoading && models.isEmpty()) {
                     Text(
-                        text = "Loading models...",
+                        text = "Loading models\u2026",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(vertical = 16.dp)
@@ -173,7 +173,7 @@ fun FusionModelSelector(
                     Spacer(modifier = Modifier.height(16.dp))
 
                     Text(
-                        text = "Judge Model",
+                        text = "Judge model",
                         style = MaterialTheme.typography.titleSmall,
                         color = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.padding(bottom = 8.dp)
@@ -255,7 +255,7 @@ fun FusionModelSelector(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "Start Fusion",
+                        text = "Start fusion",
                         style = MaterialTheme.typography.labelLarge
                     )
                 }

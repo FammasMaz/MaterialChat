@@ -108,7 +108,7 @@ fun RedoModelPickerSheet(
                         )
                         Spacer(modifier = Modifier.width(12.dp))
                         Text(
-                            text = "Loading models...",
+                            text = "Loading models\u2026",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )

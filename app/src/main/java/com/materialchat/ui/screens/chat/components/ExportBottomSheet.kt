@@ -132,7 +132,7 @@ private fun ExportBottomSheetContent(
                 )
                 Spacer(modifier = Modifier.width(16.dp))
                 Text(
-                    text = "Exporting...",
+                    text = "Exporting\u2026",
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

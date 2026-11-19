@@ -84,6 +84,7 @@ import com.materialchat.ui.screens.chat.components.ChatEmptyStateCopy
 import com.materialchat.ui.screens.chat.components.ChatTopBar
 import com.materialchat.ui.screens.chat.components.MessageArrivalTracker
 import com.materialchat.ui.screens.chat.components.chatEmptyStateCopy
+import com.materialchat.ui.screens.chat.components.rememberChatSurfacePalette
 import com.materialchat.ui.screens.chat.components.rememberChatHeaderScrollState
 import com.materialchat.ui.screens.chat.components.rememberChatListFlingBehavior
 import com.materialchat.ui.screens.chat.components.ChatBackHandling
@@ -278,7 +279,7 @@ fun ChatScreen(
                         }
 
                         context.startActivity(
-                            Intent.createChooser(shareIntent, "Export Conversation")
+                            Intent.createChooser(shareIntent, "Export conversation")
                         )
                     } catch (e: Exception) {
                         coroutineScope.launch {
@@ -565,6 +566,8 @@ private fun ErrorContent(
     onNavigateBack: () -> Unit
 ) {
     val haptics = rememberHapticFeedback()
+    // The error screen sits on the scaffold's surfaceContainer; both lines are resolved on it.
+    val palette = rememberChatSurfacePalette()
 
     Column(
         modifier = Modifier
@@ -577,7 +580,7 @@ private fun ErrorContent(
         Text(
             text = "Something went wrong",
             style = MaterialTheme.typography.titleLarge,
-            color = MaterialTheme.colorScheme.error,
+            color = palette.screenError.content,
             textAlign = TextAlign.Center
         )
 
@@ -586,14 +589,14 @@ private fun ErrorContent(
         Text(
             text = message,
             style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = palette.screenErrorMuted,
             textAlign = TextAlign.Center
         )
 
         Spacer(modifier = Modifier.height(16.dp))
 
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            ExpressiveButton(onClick = { onNavigateBack() }, text = "Go Back", style = ExpressiveButtonStyle.Text)
+            ExpressiveButton(onClick = { onNavigateBack() }, text = "Go back", style = ExpressiveButtonStyle.Text)
             ExpressiveButton(onClick = { onRetry() }, text = "Retry", style = ExpressiveButtonStyle.Text)
         }
     }

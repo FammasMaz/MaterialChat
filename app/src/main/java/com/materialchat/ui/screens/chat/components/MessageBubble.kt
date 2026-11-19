@@ -1056,9 +1056,9 @@ private fun ThinkingSection(
     }
 
     val headerText = when {
-        isThinkingPhase -> "Thinking..."
+        isThinkingPhase -> "Thinking\u2026"
         thinkingDurationMs != null -> "Thought for ${formatDuration(thinkingDurationMs)}"
-        isStreaming -> "Thinking..."
+        isStreaming -> "Thinking\u2026"
         else -> "Thought"
     }
     // One readable line of the reasoning under the collapsed header, so past thinking is
@@ -1500,7 +1500,7 @@ private fun AttachmentImage(
     val generatedModifier = Modifier
         .fillMaxWidth()
         .aspectRatio(1f)
-        .clip(RoundedCornerShape(28.dp))
+        .clip(ExpressiveShapes.Card)
         .background(MaterialTheme.colorScheme.surfaceContainerHighest)
     val thumbnailModifier = Modifier
         .size(120.dp)
@@ -1601,7 +1601,7 @@ private fun GeneratedImageActionChip(
 ) {
     Surface(
         onClick = onClick,
-        shape = RoundedCornerShape(999.dp),
+        shape = CustomShapes.Pill,
         color = MaterialTheme.colorScheme.surfaceContainerHighest,
         contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
         tonalElevation = 1.dp
@@ -1628,7 +1628,7 @@ private fun ImageGenerationLoadingCard(
         modifier = modifier
             .fillMaxWidth()
             .aspectRatio(1f),
-        shape = RoundedCornerShape(28.dp),
+        shape = ExpressiveShapes.Card,
         color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.55f),
         contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
         tonalElevation = 3.dp
@@ -1642,7 +1642,7 @@ private fun ImageGenerationLoadingCard(
                 Box(
                     modifier = Modifier
                         .size(72.dp)
-                        .clip(RoundedCornerShape(24.dp))
+                        .clip(ExpressiveShapes.Tile)
                         .background(MaterialTheme.colorScheme.surfaceContainerHighest),
                     contentAlignment = Alignment.Center
                 ) {

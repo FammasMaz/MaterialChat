@@ -22,6 +22,7 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
+import com.materialchat.ui.theme.CustomShapes
 
 /**
  * Date separator pill shown between message groups from different days.
@@ -53,7 +54,7 @@ fun DateSeparator(
     ) {
         DateSeparatorRule()
         Surface(
-            shape = RoundedCornerShape(999.dp),
+            shape = CustomShapes.Pill,
             color = MaterialTheme.colorScheme.secondaryContainer,
             contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
             tonalElevation = 0.dp,

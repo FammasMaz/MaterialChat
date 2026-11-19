@@ -264,7 +264,7 @@ private fun SearchField(
         },
         singleLine = true,
         textStyle = MaterialTheme.typography.bodyMedium,
-        shape = RoundedCornerShape(24.dp), // M3 Expressive pill shape
+        shape = CustomShapes.Pill,
         colors = OutlinedTextFieldDefaults.colors(
             focusedBorderColor = MaterialTheme.colorScheme.primary,
             unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
@@ -471,7 +471,7 @@ private fun ProviderFilterBadge(
                                 )
                                 Spacer(modifier = Modifier.width(12.dp))
                                 Text(
-                                    text = "Loading providers...",
+                                    text = "Loading providers\u2026",
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -741,7 +741,7 @@ private fun ModelPickerBadge(
                                 )
                                 Spacer(modifier = Modifier.width(12.dp))
                                 Text(
-                                    text = "Loading models...",
+                                    text = "Loading models\u2026",
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )

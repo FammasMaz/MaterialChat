@@ -55,6 +55,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.materialchat.domain.model.WebSearchMetadata
+import com.materialchat.ui.theme.CustomShapes
 
 /**
  * Collapsible Material 3 carousel of source cards for assistant messages that used web search.
@@ -125,7 +126,7 @@ fun WebSearchSourcesCarousel(
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 Surface(
-                    shape = RoundedCornerShape(999.dp),
+                    shape = CustomShapes.Pill,
                     color = MaterialTheme.colorScheme.primaryContainer
                 ) {
                     Icon(
