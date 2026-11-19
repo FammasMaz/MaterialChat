@@ -40,11 +40,14 @@ sealed class StreamingEvent {
      * @param message Human-readable error message.
      * @param code Error code (HTTP status or provider-specific code).
      * @param isRecoverable Whether the error might be resolved by retrying.
+     * @param httpStatus The HTTP status of a failed response, typed; null when the error did
+     *                   not come from an HTTP status line (connectivity, parse, in-stream).
      */
     data class Error(
         val message: String,
         val code: String? = null,
-        val isRecoverable: Boolean = false
+        val isRecoverable: Boolean = false,
+        val httpStatus: Int? = null
     ) : StreamingEvent()
 
     /**
@@ -95,7 +98,8 @@ sealed class StreamingEvent {
             return Error(
                 message = message,
                 code = code.toString(),
-                isRecoverable = isRecoverable
+                isRecoverable = isRecoverable,
+                httpStatus = code
             )
         }
 

@@ -46,11 +46,16 @@ sealed class StreamingState {
      * @property error The error that occurred
      * @property partialContent Any content that was received before the error
      * @property messageId The ID of the message that failed, if available
+     * @property httpStatus The provider's HTTP status when the failure was an HTTP response
+     *   (401, 403, 429, 5xx, …), null for connectivity, parse and in-stream errors. Defaults
+     *   to the status carried by a [ProviderHttpException] so a re-wrap that only copies
+     *   [error] keeps it.
      */
     data class Error(
         val error: Throwable,
         val partialContent: String? = null,
-        val messageId: String? = null
+        val messageId: String? = null,
+        val httpStatus: Int? = (error as? ProviderHttpException)?.httpStatus
     ) : StreamingState()
 
     /**
@@ -64,3 +69,14 @@ sealed class StreamingState {
         val messageId: String? = null
     ) : StreamingState()
 }
+
+/**
+ * A provider answered the request with a non-2xx HTTP status. [message] is the parsed error
+ * body exactly as the API client produced it; [httpStatus] is the typed status so consumers
+ * never have to recognise "429" from the text. Deliberately not an [java.io.IOException]: an
+ * HTTP refusal is not a connectivity failure.
+ */
+class ProviderHttpException(
+    val httpStatus: Int,
+    message: String
+) : Exception(message)

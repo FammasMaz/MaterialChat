@@ -886,7 +886,8 @@ class ChatViewModel @Inject constructor(
             is StreamingState.Error -> StreamingState.Error(
                 error = state.error,
                 partialContent = null,
-                messageId = state.messageId
+                messageId = state.messageId,
+                httpStatus = state.httpStatus
             )
             is StreamingState.Cancelled -> StreamingState.Cancelled(
                 partialContent = null,

@@ -14,6 +14,7 @@ import com.materialchat.domain.model.Attachment
 import com.materialchat.domain.model.Message
 import com.materialchat.domain.model.LocalModelBackend
 import com.materialchat.domain.model.Provider
+import com.materialchat.domain.model.ProviderHttpException
 import com.materialchat.domain.model.ProviderType
 import com.materialchat.domain.model.ReasoningEffort
 import com.materialchat.domain.model.StreamingState
@@ -129,10 +130,14 @@ class ChatRepositoryImpl @Inject constructor(
                 is StreamingEvent.Error -> {
                     val normalized = normalizedAccumulation()
                     android.util.Log.e("ChatRepository", "Stream error: ${event.message}")
+                    // An HTTP refusal keeps its status typed on the exception and the state;
+                    // the message text is the parsed body, unchanged.
+                    val status = event.httpStatus
                     emit(StreamingState.Error(
-                        error = Exception(event.message),
+                        error = if (status != null) ProviderHttpException(status, event.message) else Exception(event.message),
                         partialContent = normalized.content.takeIf { it.isNotEmpty() },
-                        messageId = messageId
+                        messageId = messageId,
+                        httpStatus = status
                     ))
                 }
 
