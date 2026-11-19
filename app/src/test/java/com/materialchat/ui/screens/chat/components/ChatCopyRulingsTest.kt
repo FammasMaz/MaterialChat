@@ -1,5 +1,6 @@
 package com.materialchat.ui.screens.chat.components
 
+import com.materialchat.ui.theme.CopyRules
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
@@ -152,6 +153,7 @@ class ChatCopyRulingsTest {
         )
         for (line in lines) {
             assertTrue(line, line.startsWith("Could not "))
+            assertTrue("snackbar line is a CopyRules phrase: $line", CopyRules.isPhrase(line))
             assertTrue("snackbar lines carry no trailing period: $line", !line.endsWith("."))
             assertTrue("no ASCII ellipsis: $line", !line.contains("..."))
         }

@@ -13,6 +13,7 @@ import com.materialchat.domain.model.ProviderType
 import com.materialchat.domain.model.ReasoningEffort
 import com.materialchat.domain.model.StreamingState
 import com.materialchat.domain.repository.ConversationRepository
+import com.materialchat.domain.usecase.BranchConversationUseCase
 import com.materialchat.domain.usecase.GetConversationsUseCase
 import com.materialchat.domain.usecase.ManageProvidersUseCase
 import com.materialchat.domain.usecase.RegenerateResponseUseCase
@@ -62,6 +63,7 @@ class ChatViewModelStreamingCoherenceTest {
     // Unit-returning calls (`cancel(conversationId)` from Stop) need no answer; the streams do.
     private val send = mockk<SendMessageUseCase>(relaxUnitFun = true)
     private val regenerate = mockk<RegenerateResponseUseCase>(relaxUnitFun = true)
+    private val branch = mockk<BranchConversationUseCase>(relaxed = true)
     private val context = mockk<Context>(relaxed = true)
     private val store = ViewModelStore()
 
@@ -108,6 +110,42 @@ class ChatViewModelStreamingCoherenceTest {
         assertEquals(ChatErrorCopy.RATE_LIMITED, ChatErrorCopy.notice(error))
         val snackbars = events.filterIsInstance<ChatEvent.ShowSnackbar>()
         assertEquals("one snackbar, the class line: $snackbars", listOf(ChatErrorCopy.RATE_LIMITED), snackbars.map { it.message })
+    }
+
+    @Test
+    fun `a failed edit-and-resend hands the edited text back and raises one classified line`() = runTest {
+        val followUp = Message(id = "u2", conversationId = conversation.id, role = MessageRole.USER, content = "second question")
+        messages.value = listOf(user, assistant, followUp)
+        coEvery { branch(any(), any(), any()) } throws IllegalStateException("Source conversation not found")
+        val (viewModel, events) = createViewModel()
+
+        viewModel.startEditingMessage(followUp.id)
+        viewModel.updateEditingText("second question, edited")
+        viewModel.submitEditedMessage()
+        runCurrent()
+
+        val state = state(viewModel)
+        assertEquals("the editor reopens on the same message", followUp.id, state.editingMessageId)
+        assertEquals("second question, edited", state.editingText)
+        assertTrue("no navigation on a failed branch: $events", events.none { it is ChatEvent.NavigateToBranch })
+        val snackbars = events.filterIsInstance<ChatEvent.ShowSnackbar>().map { it.message }
+        assertEquals(listOf(ChatErrorCopy.COULD_NOT_RESEND_EDIT), snackbars)
+        assertTrue(snackbars.none { it.contains("Source conversation") })
+    }
+
+    @Test
+    fun `a failed branch with a typed status shows the class line and never the exception text`() = runTest {
+        coEvery { branch(any(), any(), any()) } throws ProviderHttpException(503, "upstream body")
+        val (viewModel, events) = createViewModel()
+
+        viewModel.branchFromMessage(assistant.id)
+        runCurrent()
+
+        assertEquals(
+            listOf(ChatErrorCopy.SERVER_ERROR),
+            events.filterIsInstance<ChatEvent.ShowSnackbar>().map { it.message }
+        )
+        assertTrue(events.none { it is ChatEvent.NavigateToBranch })
     }
 
     @Test
@@ -178,7 +216,7 @@ class ChatViewModelStreamingCoherenceTest {
             regenerateResponseUseCase = regenerate,
             exportConversationUseCase = mockk(relaxed = true),
             conversationRepository = repository,
-            branchConversationUseCase = mockk(relaxed = true),
+            branchConversationUseCase = branch,
             redoWithModelUseCase = mockk(relaxed = true),
             manageBookmarksUseCase = mockk(relaxed = true),
             runFusionUseCase = mockk(relaxed = true),

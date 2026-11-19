@@ -328,10 +328,11 @@ fun MessageInput(
                 animationSpec = ExpressiveMotion.Effects.color(),
                 label = "composerFieldColor"
             )
-            // Expressive focus morph: the squircle tightens from 28dp to 20dp on the spatial
-            // shape spring while the field has focus, alongside the tonal lift above.
+            // Expressive focus morph: the squircle tightens from ComposerFieldRadius (28dp, the
+            // composer ruling recorded on that constant) to ComposerFieldFocusedRadius (20dp) on
+            // the spatial shape spring while the field has focus, alongside the tonal lift above.
             val fieldRadius by animateDpAsState(
-                targetValue = if (fieldFocused && !isStreaming) 20.dp else 28.dp,
+                targetValue = if (fieldFocused && !isStreaming) ComposerFieldFocusedRadius else ComposerFieldRadius,
                 animationSpec = ExpressiveMotion.Spatial.shapeMorph(),
                 label = "composerFieldRadius"
             )

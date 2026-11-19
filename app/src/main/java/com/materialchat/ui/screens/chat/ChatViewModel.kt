@@ -1314,7 +1314,8 @@ class ChatViewModel @Inject constructor(
         if (editingIndex == 0) {
             viewModelScope.launch {
                 _events.emit(ChatEvent.ShowSnackbar(
-                    message = "Cannot edit the first message"
+                    // CopyRules: a phrase never opens with "Cannot" (banned verb family).
+                    message = "The first message cannot be edited"
                 ))
             }
             return

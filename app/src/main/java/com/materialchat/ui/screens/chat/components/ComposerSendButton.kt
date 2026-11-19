@@ -46,8 +46,22 @@ import com.materialchat.ui.theme.ExpressiveMotion
 import com.materialchat.ui.theme.ExpressiveSizes
 import com.materialchat.ui.theme.SquircleShape
 
-/** Squircle contour of the composer text field, matching the app's card contour. */
-internal val ComposerFieldShape = SquircleShape(28.dp)
+/**
+ * The composer text field's resting corner radius: 28dp, the same value as [ExpressiveShapes.Card]
+ * and the former `CustomShapes.MessageInputContainer`.
+ *
+ * Ruling (W7 chat, audit #6 / W4): **the composer stays at 28dp**. The field draws it as a
+ * [SquircleShape] (the app's card contour), tightening to [ComposerFieldFocusedRadius] on the
+ * spatial shape spring while focused, and it is not migrated to a chip capsule or to the bubble
+ * family's circular corners. `MessageInput` reads these two values; nothing else may restate them.
+ */
+internal val ComposerFieldRadius = 28.dp
+
+/** The composer field's corner radius while it has focus (the focus morph target). */
+internal val ComposerFieldFocusedRadius = 20.dp
+
+/** Squircle contour of the composer text field at rest, matching the app's card contour. */
+internal val ComposerFieldShape = SquircleShape(ComposerFieldRadius)
 
 /** The three states of the composer's primary control. */
 internal enum class ComposerSendState { Idle, Ready, Streaming }

@@ -111,10 +111,11 @@ class ChatErrorCopyTest {
 
     @Test
     fun `the shared lines and the retry label match the assistant notice model`() {
+        // REQUEST_FAILED and TRY_AGAIN are aliases of CopyRules on both sides; the theme's
+        // CopyRulesTest pins them, so those two cross-owner pins live there (W7 theme C11).
+        // The two class lines below have no CopyRules constant yet, so chat still pins them.
         assertEquals(AssistantCopy.RATE_LIMITED, ChatErrorCopy.RATE_LIMITED)
         assertEquals(AssistantCopy.NO_CONNECTION, ChatErrorCopy.NO_CONNECTION)
-        assertEquals(AssistantCopy.REQUEST_FAILED, ChatErrorCopy.REQUEST_FAILED)
-        assertEquals(AssistantCopy.AFTER_ERROR, ChatErrorCopy.TRY_AGAIN)
         assertNotEquals("Retry", ChatErrorCopy.TRY_AGAIN)
     }
 }
