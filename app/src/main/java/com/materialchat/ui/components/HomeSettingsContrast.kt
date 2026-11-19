@@ -119,6 +119,12 @@ internal enum class HomeSettingsSlot(
     SystemPromptPlaceholder(ThemeContrast.BODY_TEXT, { it.surfaceContainerLow }, { it.onSurfaceVariant }, { listOf(it.onSurface) }),
     AssistantDefaultCardText(ThemeContrast.BODY_TEXT, { over(it.primaryContainer, 0.5f, it.surfaceContainerLow) }, { it.onSurface }),
     SearchNativeNote(ThemeContrast.BODY_TEXT, { over(it.secondaryContainer, 0.58f, it.surfaceContainerHigh) }, { it.onSecondaryContainer }, { listOf(it.onSurface) }),
+    // Search result rows (SearchResultItem): match-type badge on a half-alpha container over the
+    // resting row fill, and the query highlight span on tertiaryContainer.
+    SearchMatchTitle(ThemeContrast.BODY_TEXT, { over(it.primaryContainer, 0.5f, it.surfaceContainerLow) }, { it.primary }, { listOf(it.onPrimaryContainer, it.onSurface) }),
+    SearchMatchContent(ThemeContrast.BODY_TEXT, { over(it.secondaryContainer, 0.5f, it.surfaceContainerLow) }, { it.secondary }, { listOf(it.onSecondaryContainer, it.onSurface) }),
+    SearchMatchBoth(ThemeContrast.BODY_TEXT, { over(it.tertiaryContainer, 0.5f, it.surfaceContainerLow) }, { it.tertiary }, { listOf(it.onTertiaryContainer, it.onSurface) }),
+    SearchHighlight(ThemeContrast.BODY_TEXT, { it.tertiaryContainer }, { it.onTertiaryContainer }, { listOf(it.onSurface) }),
     UpdateBannerMuted(ThemeContrast.BODY_TEXT, { it.primaryContainer }, { it.onPrimaryContainer }),
     MemoryMuted(ThemeContrast.BODY_TEXT, { it.secondaryContainer }, { it.onSecondaryContainer }),
 

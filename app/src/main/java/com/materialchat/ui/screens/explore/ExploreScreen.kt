@@ -334,7 +334,8 @@ private fun ArenaHeroCard(onClick: () -> Unit) {
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Medium,
                     color = MaterialTheme.colorScheme.onPrimaryContainer,
-                    maxLines = 2,
+                    // Three lines: at 360dp x font scale 1.3 the sentence needs them inside 62%.
+                    maxLines = 3,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.fillMaxWidth(0.62f)
                 )
@@ -440,7 +441,8 @@ private fun ExploreFeatureCard(feature: ExploreFeature, modifier: Modifier = Mod
                     text = feature.eyebrow,
                     style = MaterialTheme.typography.labelSmall,
                     color = colors.second,
-                    maxLines = 1
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
 

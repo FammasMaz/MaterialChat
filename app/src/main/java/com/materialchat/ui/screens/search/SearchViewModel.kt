@@ -99,9 +99,8 @@ class SearchViewModel @Inject constructor(
                     )
                 }
             } catch (e: Exception) {
-                _uiState.value = SearchUiState.Error(
-                    message = e.message ?: "Search failed"
-                )
+                // Fixed copy: exception text never reaches the search sheet (W5 ruling).
+                _uiState.value = SearchUiState.Error(message = SEARCH_UNAVAILABLE)
             }
         }
     }
@@ -151,5 +150,8 @@ class SearchViewModel @Inject constructor(
         private const val DEBOUNCE_MS = 300L
         private const val MIN_QUERY_LENGTH = 2
         private const val MAX_RESULTS = 10
+
+        /** Supporting line under the inline "Search failed" notice. */
+        const val SEARCH_UNAVAILABLE = "Something went wrong while searching your chats"
     }
 }

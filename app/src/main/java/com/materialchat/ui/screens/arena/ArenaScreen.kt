@@ -7,6 +7,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -48,8 +49,10 @@ import com.materialchat.ui.screens.arena.components.ArenaBattleView
 import com.materialchat.ui.screens.arena.components.ArenaModelPicker
 import com.materialchat.ui.screens.arena.components.ArenaPromptInput
 import com.materialchat.ui.screens.arena.components.ArenaVotingBar
+import com.materialchat.ui.components.ExpressiveEmptyState
 import com.materialchat.ui.components.ExpressiveSnackbar
 import com.materialchat.ui.components.ExpressiveFilledIconButton
+import com.materialchat.ui.components.LoadErrorContent
 import com.materialchat.ui.components.ExpressiveTopBarTitle
 import com.materialchat.ui.components.HapticPattern
 import com.materialchat.ui.components.rememberHapticFeedback
@@ -164,19 +167,26 @@ fun ArenaScreen(
                 }
             }
 
-            is ArenaUiState.Error -> {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize(),
-                    verticalArrangement = Arrangement.Center,
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text(
-                        text = state.message,
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.error
+            is ArenaUiState.NoProviders -> {
+                // Not a failure: the same empty-state card as the other drawer screens.
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    ExpressiveEmptyState(
+                        icon = Icons.Filled.EmojiEvents,
+                        title = "No providers yet",
+                        message = "Add a provider in Settings, then come back to run a battle",
+                        actionText = "Go back",
+                        onAction = onNavigateBack
                     )
                 }
+            }
+
+            is ArenaUiState.Error -> {
+                LoadErrorContent(
+                    title = "Arena could not be loaded",
+                    message = state.message,
+                    onRetry = viewModel::retry,
+                    onBack = onNavigateBack
+                )
             }
 
             is ArenaUiState.Ready -> {

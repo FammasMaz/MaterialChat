@@ -55,7 +55,7 @@ import com.materialchat.ui.theme.ExpressiveMotion
 import com.materialchat.ui.theme.LocalNavigationHapticsEnabled
 import com.materialchat.ui.theme.ExpressiveSizes
 import com.materialchat.ui.components.HapticPattern
-import com.materialchat.ui.theme.CustomShapes
+import com.materialchat.ui.theme.ExpressiveShapes
 import com.materialchat.ui.components.rememberHapticFeedback
 import kotlinx.coroutines.withTimeoutOrNull
 
@@ -258,7 +258,7 @@ private fun ToolbarDestinationPill(
                 scaleX = scale
                 scaleY = scale
             },
-        shape = CustomShapes.Pill,
+        shape = ExpressiveShapes.Chip,
         color = outerContainer,
         contentColor = iconTint,
         interactionSource = interactionSource

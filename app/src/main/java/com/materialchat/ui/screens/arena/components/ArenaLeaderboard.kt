@@ -248,7 +248,9 @@ private fun LeaderboardItem(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(8.dp),
-                        color = contentColor.copy(alpha = 0.6f),
+                        // Active track at the full content role (it carries the win rate, so
+                        // it is a meaningful indicator, WCAG 1.4.11); the track stays a wash.
+                        color = contentColor,
                         trackColor = contentColor.copy(alpha = 0.12f),
                         amplitude = { fraction ->
                             if (motionAllowed) WavyProgressIndicatorDefaults.indicatorAmplitude(fraction) else 0f

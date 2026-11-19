@@ -66,9 +66,8 @@ class OnboardingViewModel @Inject constructor(
                 )
                 complete(OnboardingEvent.Completed)
             } catch (e: Exception) {
-                _uiState.value = OnboardingUiState(
-                    error = e.message ?: "OpenAI sign-in failed. Please try again."
-                )
+                // Fixed copy: the auth flow's exception text never reaches the card (W5 ruling).
+                _uiState.value = OnboardingUiState(error = SIGN_IN_FAILED)
             }
         }
     }
@@ -100,5 +99,11 @@ class OnboardingViewModel @Inject constructor(
         appPreferences.setOnboardingComplete(true)
         _uiState.value = OnboardingUiState()
         _events.emit(event)
+    }
+
+    companion object {
+        /** Body of the error card under the Codex hero; the card's title is the screen's. */
+        const val SIGN_IN_FAILED =
+            "The OpenAI sign-in could not be completed. Try again or pick another way to start."
     }
 }
