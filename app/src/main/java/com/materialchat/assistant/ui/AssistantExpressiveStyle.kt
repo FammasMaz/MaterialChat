@@ -193,7 +193,8 @@ internal object AssistantSizes {
 
     /**
      * The leading icon of a chip, the Screen chip and the Using-screen marker. Deliberately NOT
-     * an alias of [ExpressiveSizes.Chip.Icon] (18dp, the M3 chip icon): the assistant's chips are
+     * an alias of [ExpressiveSizes.Chip.Icon] (W7: a getter on [ExpressiveSizes.IconSmall], 18dp,
+     * the M3 chip icon); this is the one documented 2dp delta below that rung: the assistant's chips are
      * 40dp capsules whose 16dp glyph sits two steps below the 18dp notice glyph
      * ([NoticeGlyph]) so the notice's icon leads its message; the toolbar's measured-width
      * switch (AssistantAnswerToolbar) and the Screen chip's 28dp thumbnail are laid out against
