@@ -8,6 +8,7 @@ import androidx.compose.ui.graphics.lerp
 import com.materialchat.ui.theme.ThemeContrast
 import com.materialchat.data.local.preferences.AppPreferences
 import com.materialchat.ui.theme.MaterialChatThemePalettes
+import com.materialchat.ui.theme.componentContrastPairs
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -63,7 +64,7 @@ class HomeSettingsContrastTest {
             "RowTitle", "RowMeta", "RowMetaStreaming", "RowActiveLabel", "ProviderChip", "ArchivedChip", "BranchChip",
             "SwipeDeleteText", "SwipeDeleteArmedText", "SwipeArchiveText", "SwipeRestoreText", "SwipeEditText",
             "Wordmark", "StatusChipText", "FilterChatsChecked", "FilterArchiveChecked", "EmptyBody",
-            "FastScrollThumb", "FastScrollThumbIcon", "FastScrollLabel", "DialogDestructive", "SnackbarAction",
+            "FastScrollThumb", "FastScrollThumbIcon", "FastScrollLabel",
             "SectionTileIcon", "SettingsRowSupporting", "SettingsRowChevron", "SwitchOnThumbIcon", "SwitchOffThumbIcon",
             "SliderActiveTrackOnHigh", "ProviderSplitButton", "ProviderCredentialError", "PremiumDescription",
             "SystemPromptPlaceholder", "UpdateBannerMuted", "MemoryMuted"
@@ -73,8 +74,32 @@ class HomeSettingsContrastTest {
     @Test fun newSharedComponentSlotsArePresent() {
         val names = HomeSettingsPalette.resolve(themes.first().scheme).pairs().map { it.name }.toSet()
         for (expected in listOf(
-            "StatCardLabel", "StatCardValue"
+            "StatCardLabel", "StatCardValue", "SearchMatchTitle", "SearchMatchContent", "SearchMatchBoth", "SearchHighlight"
         )) assertTrue("missing slot $expected", expected in names)
+    }
+
+    @Test fun theSlotSetCarriesEveryComponentPairByValue() {
+        // W6 part 1: the Snackbar*/Dialog* enum members are gone; the snackbar and dialog hosts on
+        // home/settings are gated through componentContrastPairs(), which the slot set must carry
+        // unchanged (same fill, same content, same minimum) on every appearance.
+        for (theme in themes) {
+            val scheme = theme.scheme
+            val set = HomeSettingsPalette.resolve(scheme)
+            val slots = set.slots
+            val enumWalk = set.pairs()
+            assertEquals(theme.name, HomeSettingsSlot.values().size, enumWalk.size)
+            val components = scheme.componentContrastPairs()
+            assertEquals(theme.name, enumWalk.size + components.size, slots.size)
+            for (pair in components) {
+                assertTrue(
+                    "${theme.name}: slot set lacks component pair '${pair.name}'",
+                    slots.any { it.slotName == pair.name && it.fill == pair.container && it.content == pair.content && it.minimum == pair.minimum }
+                )
+            }
+            for (name in listOf("DialogBody", "DialogLabel", "DialogDestructive", "SnackbarBody", "SnackbarAction")) {
+                assertTrue("${theme.name}: duplicate enum slot $name must stay deleted", enumWalk.none { it.name == name })
+            }
+        }
     }
 
     @Test fun thePreferredRoleIsKeptWhereverItAlreadyReads() {
