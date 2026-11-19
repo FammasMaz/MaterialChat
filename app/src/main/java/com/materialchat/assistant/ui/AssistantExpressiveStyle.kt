@@ -8,6 +8,7 @@ import androidx.compose.material3.Typography
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -15,6 +16,9 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.materialchat.ui.theme.ExpressiveMotion
+import com.materialchat.ui.theme.ExpressiveShapes
+import com.materialchat.ui.theme.ExpressiveSizes
+import com.materialchat.ui.theme.ExpressiveSpacing
 
 /**
  * Assistant-local Material 3 Expressive tokens.
@@ -81,18 +85,25 @@ internal object AssistantShapes {
     /** The pill: a full capsule at 76dp. Shared with the particle field's capsule geometry. */
     val Pill = RoundedCornerShape(PillCorner)
 
-    /** The answer surface: wide, organic top corners that sit against the pill below. */
+    // W5: the answer, notice and thinking surfaces are drawn with the theme's per-corner
+    // squircles (ExpressiveShapes.AnswerSurface / NoticeSurface / ThinkingSurface), whose radii
+    // are these three values exactly; the theme's ShapeTokensTest pins both sides equal so the
+    // geometry cannot drift. These RoundedCornerShapes are kept as the radii record only; no
+    // assistant composable draws them any more.
+
+    /** The answer surface's radii: wide, organic top corners that sit against the pill below. Drawn as [ExpressiveShapes.AnswerSurface]. */
     val Answer = RoundedCornerShape(topStart = 36.dp, topEnd = 36.dp, bottomStart = 28.dp, bottomEnd = 28.dp)
 
-    /** The one-line notice above the pill. */
+    /** The notice surface's radii. Drawn as [ExpressiveShapes.NoticeSurface]. */
     val Notice = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp, bottomStart = 18.dp, bottomEnd = 18.dp)
 
-    /** Tonal action chips in the answer surface. */
-    val Chip = RoundedCornerShape(50)
+    /** Tonal action chips in the answer surface and the opened pill: the app-wide chip capsule. */
+    val Chip: Shape get() = ExpressiveShapes.Chip
 
     /**
-     * The thinking surface: an asymmetric container (M3 variable radii, used for one hero moment)
-     * whose tight bottom-start corner points at the pill it will answer into.
+     * The thinking surface's radii: an asymmetric container (M3 variable radii, used for one hero
+     * moment) whose tight bottom-start corner points at the pill it will answer into. Drawn as
+     * [ExpressiveShapes.ThinkingSurface].
      */
     val Thinking = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp, bottomStart = 8.dp, bottomEnd = 20.dp)
 
@@ -163,11 +174,11 @@ internal object AssistantSpacing {
     /** Between the pill's controls; between a notice's glyph and its message. */
     val Row: Dp = 10.dp
 
-    /** Inner vertical inset of the small surfaces (notice, thinking, question bubble) and the sheet's side inset. */
-    val Inset: Dp = 12.dp
+    /** Inner vertical inset of the small surfaces (notice, thinking, question bubble) and the sheet's side inset: the theme's floating-notice inset. */
+    val Inset: Dp = ExpressiveSpacing.Inset
 
-    /** Horizontal inset of a 40dp chip and of the notice surface. */
-    val ChipInset: Dp = 14.dp
+    /** Horizontal inset of a 40dp chip and of the notice surface: the theme's chip inset. */
+    val ChipInset: Dp = ExpressiveSizes.Chip.Inset
 
     /** The question bubble's side inset; the opened pill's top inset above a thumbnail row (its remove badge overhangs 12dp). */
     val Block: Dp = 16.dp
@@ -185,17 +196,25 @@ internal object AssistantSpacing {
  * composables draw, so a size change cannot silently break the fit.
  */
 internal object AssistantSizes {
-    /** Every labelled chip and the notice's action: a 40dp capsule. */
-    val ChipHeight: Dp = 40.dp
+    /** Every labelled chip and the notice's action: the theme's 40dp chip capsule. */
+    val ChipHeight: Dp = ExpressiveSizes.Chip.Height
 
-    /** The 16dp leading icon of a chip, the Screen chip and the Using-screen marker. */
+    /**
+     * The leading icon of a chip, the Screen chip and the Using-screen marker. Deliberately NOT
+     * an alias of [ExpressiveSizes.Chip.Icon] (18dp, the M3 chip icon): the assistant's chips are
+     * 40dp capsules whose 16dp glyph sits two steps below the 18dp notice glyph
+     * ([NoticeGlyph]) so the notice's icon leads its message; the toolbar's measured-width
+     * switch (AssistantAnswerToolbar) and the Screen chip's 28dp thumbnail are laid out against
+     * 16. Moving to 18 is a 2dp geometry change on four sites, recorded in REPORT.md for a pass
+     * that can render it; W5 leaves it.
+     */
     val ChipIcon: Dp = 16.dp
 
-    /** A Material icon button's laid-out touch target (40dp control inside its 48dp minimum). */
-    val Target: Dp = 48.dp
+    /** A Material icon button's laid-out touch target (40dp control inside its 48dp minimum): the theme's target. */
+    val Target: Dp = ExpressiveSizes.Target
 
-    /** The pill's leading glyph container and the two 40dp chrome controls (`+`, keyboard, close). */
-    val Control: Dp = 40.dp
+    /** The pill's leading glyph container and the two 40dp chrome controls (`+`, keyboard, close): the theme's control. */
+    val Control: Dp = ExpressiveSizes.Control
 
     /** The glyph inside its container (waveform, loading indicator, icon). */
     val Glyph: Dp = 32.dp
@@ -203,8 +222,12 @@ internal object AssistantSizes {
     /** The pill's primary button (mic / send / stop). */
     val PrimaryButton: Dp = 56.dp
 
-    /** A compact remove target inside a chip (the Screen chip's x). */
-    val CompactTarget: Dp = 32.dp
+    /**
+     * A compact remove target inside a chip (the Screen chip's x): the theme's 32dp [ExpressiveSizes.Compact],
+     * not its 44dp [ExpressiveSizes.CompactTarget] (a dense row action). The x sits inside a 40dp
+     * chip, so 44 cannot fit; the name stays for the overlay's call sites.
+     */
+    val CompactTarget: Dp = ExpressiveSizes.Compact
 
     /** The screen capture's thumbnail inside the Screen chip. */
     val Thumbnail: Dp = 28.dp

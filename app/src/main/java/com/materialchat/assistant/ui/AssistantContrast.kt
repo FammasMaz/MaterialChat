@@ -2,6 +2,8 @@ package com.materialchat.assistant.ui
 
 import androidx.compose.material3.ColorScheme
 import androidx.compose.ui.graphics.Color
+import com.materialchat.ui.theme.ContrastSlot
+import com.materialchat.ui.theme.ContrastSlotSet
 import com.materialchat.ui.theme.ThemeContrast
 
 /**
@@ -61,15 +63,21 @@ internal object AssistantContrast {
         ThemeContrast.pick(fill, candidates, minimum)
 }
 
-/** One container/content pair the assistant draws, with the ratio it must reach. */
+/**
+ * One container/content pair the assistant draws, with the ratio it must reach. W5: it is the
+ * theme's [ContrastSlot] under the assistant's historical field names (`name` is the slot name,
+ * `container` the painted fill), so the theme's gate enumerates it without an adapter.
+ */
 internal data class AssistantContrastPair(
     val name: String,
     val container: Color,
-    val content: Color,
-    val minimum: Double
-) {
-    val ratio: Double get() = AssistantContrast.contrastRatio(content, container)
-    val passes: Boolean get() = ratio >= minimum
+    override val content: Color,
+    override val minimum: Double
+) : ContrastSlot {
+    override val slotName: String get() = name
+    override val fill: Color get() = container
+    override val ratio: Double get() = AssistantContrast.contrastRatio(content, container)
+    override val passes: Boolean get() = ratio >= minimum
 }
 
 /**
@@ -177,7 +185,11 @@ internal data class AssistantSurfacePalette(
     val attachmentRemove: AssistantTonal,
     /** The pill's leading glyph per phase; the idle container is transparent and sits on the pill fill. */
     val glyphs: Map<AssistantPhase, AssistantTonal>
-) {
+) : ContrastSlotSet {
+    /** W5: the theme's slot vocabulary; [slots] is [pairs] (one list, so the UI and the gate cannot drift). */
+    override val surfaceName: String get() = SURFACE
+    override val slots: List<ContrastSlot> get() = pairs()
+
     fun glyph(phase: AssistantPhase): AssistantTonal = glyphs.getValue(phase)
 
     /** Every container/content pair with its required ratio, one per fill the container can present. */
@@ -235,6 +247,9 @@ internal data class AssistantSurfacePalette(
     }
 
     companion object {
+        /** The surface name the theme's contrast gate registers this palette under. */
+        const val SURFACE = "assistant"
+
         fun resolve(scheme: ColorScheme): AssistantSurfacePalette {
             // Tonal containers are painted as plain backgrounds or Material buttons, so they are opaque.
             fun tonal(container: Color, preferred: Color, minimum: Double, over: Color? = null): AssistantTonal {

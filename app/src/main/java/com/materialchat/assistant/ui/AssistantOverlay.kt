@@ -77,6 +77,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.Dp
@@ -88,6 +89,7 @@ import com.materialchat.assistant.ui.components.AssistantResponseCard
 import com.materialchat.assistant.voice.VoiceState
 import com.materialchat.data.local.preferences.AppPreferences
 import com.materialchat.ui.theme.ExpressiveMotion
+import com.materialchat.ui.theme.ExpressiveShapes
 import com.materialchat.ui.theme.MaterialChatTheme
 import com.materialchat.ui.theme.isDynamicColorSupported
 import com.materialchat.ui.theme.particles.CapsuleBackdropBlur
@@ -1237,7 +1239,8 @@ private fun AssistantResponseSurface(
         modifier = Modifier
             .fillMaxWidth()
             .heightIn(max = maxHeight),
-        shape = AssistantShapes.Answer,
+        // W5: the theme's per-corner squircle with AssistantShapes.Answer's radii.
+        shape = ExpressiveShapes.AnswerSurface,
         color = palette.answer.fill,
         contentColor = palette.answer.body,
         tonalElevation = 4.dp,
@@ -1527,7 +1530,7 @@ private fun AssistantActionChip(
     label: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    shape: RoundedCornerShape = AssistantShapes.Chip
+    shape: Shape = AssistantShapes.Chip
 ) {
     val palette = rememberAssistantSurfacePalette()
     FilledTonalButton(
@@ -1653,7 +1656,8 @@ private fun AssistantNoticeSurface(
     val content = if (notice.isError) palette.errorNotice.content else palette.notice.muted
     Surface(
         modifier = modifier.fillMaxWidth(),
-        shape = AssistantShapes.Notice,
+        // W5: the theme's per-corner squircle with AssistantShapes.Notice's radii.
+        shape = ExpressiveShapes.NoticeSurface,
         color = container,
         contentColor = content,
         tonalElevation = 2.dp
