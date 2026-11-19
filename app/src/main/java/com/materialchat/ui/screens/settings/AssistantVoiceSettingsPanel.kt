@@ -22,6 +22,7 @@ import com.materialchat.ui.components.ExpressiveButtonStyle
 import com.materialchat.ui.components.ExpressiveSlider
 import com.materialchat.ui.components.dialogEntrance
 import com.materialchat.ui.theme.ExpressiveShapes
+import com.materialchat.ui.theme.ExpressiveSpacing
 import com.materialchat.ui.theme.dialogActionColor
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -100,7 +101,7 @@ fun AssistantVoiceSettingsPanel(viewModel: AssistantVoiceSettingsViewModel = hil
         text = {
             Column(
                 Modifier.verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                verticalArrangement = Arrangement.spacedBy(ExpressiveSpacing.Inset)
             ) {
                 VoiceSection("Voice conversation")
                 VoiceHelp("Inherit uses the active assistant provider. Provider default follows that provider's configured default model. Reasoning can inherit independently")
@@ -113,12 +114,14 @@ fun AssistantVoiceSettingsPanel(viewModel: AssistantVoiceSettingsViewModel = hil
                     draft = draft.copy(model = it)
                 }
                 if (modelPicker.loading) VoiceHelp("Loading provider models\u2026")
-                modelPicker.error?.let { VoiceHelp(it) }
+                modelPicker.error?.let { VoiceHelp(helpLine(it)) }
                 if (!modelPicker.loading) {
                     if (modelPicker.error == null && modelPicker.models.isEmpty()) VoiceHelp("Provider returned no models. Keep the saved choice or use the provider default")
+                    // W6: the one error verb ("Try again", never "Retry"); the help line above
+                    // already says what failed, so the button need not repeat it.
                     ExpressiveButton(
                         onClick = { viewModel.loadModels(draft.providerId) },
-                        text = if (modelPicker.error != null) "Retry models" else "Refresh models",
+                        text = if (modelPicker.error != null) "Try again" else "Refresh models",
                         style = ExpressiveButtonStyle.Text
                     )
                 }
@@ -207,7 +210,7 @@ fun AssistantVoiceSettingsPanel(viewModel: AssistantVoiceSettingsViewModel = hil
                         modifier = Modifier.fillMaxWidth()
                     )
                     if (previewing) ExpressiveButton(onClick = viewModel::stopPreview, text = "Stop preview", style = ExpressiveButtonStyle.Text)
-                    previewMessage?.let { VoiceHelp(it) }
+                    previewMessage?.let { VoiceHelp(helpLine(it)) }
                     VoiceHelp("Blank voice and language use engine defaults. Availability depends on the installed Android speech engine")
                 } else if (draft.backend == AssistantSpeechBackend.SHERPA) {
                     val sherpaStates by viewModel.sherpaStates.collectAsStateWithLifecycle()
@@ -218,39 +221,14 @@ fun AssistantVoiceSettingsPanel(viewModel: AssistantVoiceSettingsViewModel = hil
                         SherpaTtsModel.entries.map { it.id to "${it.label} \u2014 ${formatModelBytes(it.downloadBytes)} download" }) {
                         viewModel.stopPreview(); draft = draft.copy(sherpaModel = it)
                     }
-                    VoiceHelp(model.description)
-                    when (state) {
-                        SherpaModelState.NotDownloaded -> {
-                            ExpressiveButton(
-                                onClick = { viewModel.downloadSherpa(model) },
-                                text = "Download ${model.label} (${formatModelBytes(model.downloadBytes)})",
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                            VoiceHelp("Not downloaded. The assistant uses the Android voice until this model is installed")
-                        }
-                        is SherpaModelState.Downloading -> {
-                            if (state.stage == SherpaModelState.Downloading.Stage.DOWNLOADING) {
-                                LinearWavyProgressIndicator(progress = { state.progress }, modifier = Modifier.fillMaxWidth())
-                                VoiceHelp("Downloading\u2026 ${formatModelBytes(state.downloadedBytes)} of ${formatModelBytes(state.totalBytes)}")
-                            } else {
-                                LinearWavyProgressIndicator(modifier = Modifier.fillMaxWidth())
-                                VoiceHelp(if (state.stage == SherpaModelState.Downloading.Stage.VERIFYING) "Verifying download\u2026" else "Installing\u2026")
-                            }
-                            ExpressiveButton(onClick = { viewModel.cancelSherpa(model) }, text = "Cancel download", style = ExpressiveButtonStyle.Text)
-                        }
-                        SherpaModelState.Installed -> {
-                            VoiceHelp("Installed and verified (${formatModelBytes(model.downloadBytes)} in app storage)")
-                            ExpressiveButton(onClick = { viewModel.deleteSherpa(model) }, text = "Delete model", style = ExpressiveButtonStyle.Text)
-                        }
-                        is SherpaModelState.Failed -> {
-                            VoiceHelp(state.message)
-                            ExpressiveButton(
-                                onClick = { viewModel.downloadSherpa(model) },
-                                text = "Retry download",
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                        }
-                    }
+                    VoiceHelp(helpLine(model.description))
+                    SherpaModelInstallRow(
+                        model = model,
+                        state = state,
+                        onDownload = { viewModel.downloadSherpa(model) },
+                        onCancel = { viewModel.cancelSherpa(model) },
+                        onDelete = { viewModel.deleteSherpa(model) }
+                    )
                     OutlinedTextField(draft.languageTag.orEmpty(), { viewModel.stopPreview(); draft = draft.copy(languageTag = it) },
                         label = { Text("Language tag (e.g. en-US)") }, modifier = Modifier.fillMaxWidth())
                     VoiceHelp("Supertonic speaks English, Korean, Spanish, Portuguese and French; other languages use English. Kokoro is English only")
@@ -262,7 +240,8 @@ fun AssistantVoiceSettingsPanel(viewModel: AssistantVoiceSettingsViewModel = hil
                         modifier = Modifier.fillMaxWidth()
                     )
                     if (previewing) ExpressiveButton(onClick = viewModel::stopPreview, text = "Stop preview", style = ExpressiveButtonStyle.Text)
-                    previewMessage?.let { VoiceHelp(it) }
+                    previewMessage?.let { VoiceHelp(helpLine(it)) }
+                    if (!state.isInstalled) VoiceHelp("Install the model to preview it")
                 } else {
                     VoiceHelp("Gemini sends response text to Google. These are backend-compatible choices, not a live availability check. Account access, availability and billing depend on Google")
                     VoiceChoice("Gemini TTS model", draft.geminiModel,
@@ -277,10 +256,16 @@ fun AssistantVoiceSettingsPanel(viewModel: AssistantVoiceSettingsViewModel = hil
                     OutlinedTextField(key, { key = it; removeKey = false },
                         label = { Text("Optional Gemini TTS API key") }, singleLine = true,
                         visualTransformation = PasswordVisualTransformation(), modifier = Modifier.fillMaxWidth())
-                    ExpressiveButton(onClick = { key = ""; removeKey = true }, text = "Remove stored key on save", style = ExpressiveButtonStyle.Text)
+                    // W6: nothing to remove until a key is stored; disabled rather than a no-op.
+                    ExpressiveButton(
+                        onClick = { key = ""; removeKey = true },
+                        text = "Remove stored key on save",
+                        enabled = configured && !removeKey,
+                        style = ExpressiveButtonStyle.Text
+                    )
                     if (removeKey) VoiceHelp("Stored key will be removed")
                 }
-                message?.let { VoiceHelp(it) }
+                message?.let { VoiceHelp(helpLine(it)) }
             }
         },
         confirmButton = {
@@ -324,6 +309,60 @@ private fun VoiceHelp(text: String) {
     Text(text, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
 }
 
+/**
+ * A sentence from the voice layer or the ViewModel (which end with a full stop, as notices do)
+ * shown as a settings helper line, which carries none (W6: every other helper line in Settings
+ * drops the trailing period; the sentences inside keep theirs).
+ */
+private fun helpLine(sentence: String): String = sentence.trimEnd().removeSuffix(".")
+
+/**
+ * The neural model's install state on one component, in one order for every state: the status
+ * line, the wavy progress while something is in flight, then the single action the state
+ * allows (download, cancel, delete, or try the download again). W6: the four states were four
+ * ad-hoc blocks, two of them with the action above its status line.
+ */
+@Composable
+private fun SherpaModelInstallRow(
+    model: SherpaTtsModel,
+    state: SherpaModelState,
+    onDownload: () -> Unit,
+    onCancel: () -> Unit,
+    onDelete: () -> Unit
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(ExpressiveSpacing.Inset)) {
+        when (state) {
+            SherpaModelState.NotDownloaded -> {
+                VoiceHelp("Not downloaded. The assistant uses the Android voice until this model is installed")
+                ExpressiveButton(
+                    onClick = onDownload,
+                    text = "Download ${model.label} (${formatModelBytes(model.downloadBytes)})",
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+            is SherpaModelState.Downloading -> {
+                if (state.stage == SherpaModelState.Downloading.Stage.DOWNLOADING) {
+                    VoiceHelp("Downloading\u2026 ${formatModelBytes(state.downloadedBytes)} of ${formatModelBytes(state.totalBytes)}")
+                    LinearWavyProgressIndicator(progress = { state.progress }, modifier = Modifier.fillMaxWidth())
+                } else {
+                    VoiceHelp(if (state.stage == SherpaModelState.Downloading.Stage.VERIFYING) "Verifying download\u2026" else "Installing\u2026")
+                    LinearWavyProgressIndicator(modifier = Modifier.fillMaxWidth())
+                }
+                ExpressiveButton(onClick = onCancel, text = "Cancel download", style = ExpressiveButtonStyle.Text)
+            }
+            SherpaModelState.Installed -> {
+                VoiceHelp("Installed and verified (${formatModelBytes(model.downloadBytes)} in app storage)")
+                ExpressiveButton(onClick = onDelete, text = "Delete model", style = ExpressiveButtonStyle.Text)
+            }
+            is SherpaModelState.Failed -> {
+                VoiceHelp(helpLine(state.message))
+                // The one error verb; the line above says what failed.
+                ExpressiveButton(onClick = onDownload, text = "Try again", modifier = Modifier.fillMaxWidth())
+            }
+        }
+    }
+}
+
 /** The speech-rate control: its value line in the helper style over the shared expressive slider. */
 @Composable
 private fun VoiceRate(rate: Float, onChange: (Float) -> Unit) {
@@ -350,7 +389,7 @@ private fun <T> VoiceChoice(label: String, value: String, choices: List<Pair<T, 
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                    .padding(horizontal = ExpressiveSpacing.Gutter, vertical = ExpressiveSpacing.Inset),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Column(modifier = Modifier.weight(1f)) {
