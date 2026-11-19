@@ -17,6 +17,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import com.google.android.gms.ads.AdRequest
 import com.google.android.gms.ads.AdSize
 import com.google.android.gms.ads.AdView
+import com.materialchat.ui.theme.ExpressiveShapes
 
 /**
  * Anchored adaptive AdMob banner wrapped in an M3 container.
@@ -48,7 +49,7 @@ fun AdMobBannerAd(
 
     Surface(
         modifier = modifier,
-        shape = RoundedCornerShape(18.dp),
+        shape = ExpressiveShapes.Tile,
         color = MaterialTheme.colorScheme.surfaceContainerHigh,
         tonalElevation = 6.dp,
         shadowElevation = 2.dp
