@@ -53,7 +53,7 @@ class OnDeviceModelsViewModel @Inject constructor(
                 localModelRepository.getHuggingFaceTokenPreview()
             }
                 .onSuccess { preview -> _uiState.value = _uiState.value.copy(huggingFaceTokenPreview = preview) }
-                .onFailure { _events.emit(OnDeviceModelsEvent.ShowSnackbar(it.message ?: "Status refresh failed")) }
+                .onFailure { _events.emit(OnDeviceModelsEvent.ShowSnackbar("Status refresh failed")) }
             _uiState.value = _uiState.value.copy(isRefreshing = false)
         }
     }
@@ -90,7 +90,7 @@ class OnDeviceModelsViewModel @Inject constructor(
                     }
                     _events.emit(OnDeviceModelsEvent.ShowSnackbar(message))
                 }
-                .onFailure { _events.emit(OnDeviceModelsEvent.ShowSnackbar(it.message ?: "Model download failed")) }
+                .onFailure { _events.emit(OnDeviceModelsEvent.ShowSnackbar("Model download failed")) }
             _uiState.value = _uiState.value.copy(activeModelId = null)
         }
     }
@@ -100,7 +100,7 @@ class OnDeviceModelsViewModel @Inject constructor(
             _uiState.value = _uiState.value.copy(activeModelId = modelId)
             localModelRepository.delete(modelId)
                 .onSuccess { _events.emit(OnDeviceModelsEvent.ShowSnackbar("Downloaded model deleted")) }
-                .onFailure { _events.emit(OnDeviceModelsEvent.ShowSnackbar(it.message ?: "Could not delete model")) }
+                .onFailure { _events.emit(OnDeviceModelsEvent.ShowSnackbar("Could not delete model")) }
             _uiState.value = _uiState.value.copy(activeModelId = null)
         }
     }
@@ -110,7 +110,7 @@ class OnDeviceModelsViewModel @Inject constructor(
             _uiState.value = _uiState.value.copy(activeModelId = modelId)
             localModelRepository.unmount(modelId)
                 .onSuccess { _events.emit(OnDeviceModelsEvent.ShowSnackbar("Model unmounted from RAM")) }
-                .onFailure { _events.emit(OnDeviceModelsEvent.ShowSnackbar(it.message ?: "Could not unmount model")) }
+                .onFailure { _events.emit(OnDeviceModelsEvent.ShowSnackbar("Could not unmount model")) }
             _uiState.value = _uiState.value.copy(activeModelId = null)
         }
     }

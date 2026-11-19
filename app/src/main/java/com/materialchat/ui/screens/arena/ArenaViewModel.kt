@@ -100,7 +100,7 @@ class ArenaViewModel @Inject constructor(
                 loadModelsForProvider(defaultProviderId)
             } catch (e: Exception) {
                 _uiState.value = ArenaUiState.Error(
-                    message = e.message ?: "Failed to load providers"
+                    message = "Could not load providers"
                 )
             }
         }
@@ -138,7 +138,7 @@ class ArenaViewModel @Inject constructor(
                     if (state is ArenaUiState.Ready) state.copy(isLoadingModels = false)
                     else state
                 }
-                _events.emit(ArenaEvent.ShowSnackbar("Failed to load models: ${e.message}"))
+                _events.emit(ArenaEvent.ShowSnackbar("Could not load models"))
             }
         }
     }
@@ -271,7 +271,7 @@ class ArenaViewModel @Inject constructor(
 
                 _events.emit(ArenaEvent.BattleComplete)
             } catch (e: Exception) {
-                _events.emit(ArenaEvent.ShowSnackbar("Battle failed: ${e.message}"))
+                _events.emit(ArenaEvent.ShowSnackbar("The battle failed"))
                 _uiState.update { state ->
                     if (state is ArenaUiState.Ready) {
                         state.copy(
@@ -310,7 +310,7 @@ class ArenaViewModel @Inject constructor(
                 }
                 _events.emit(ArenaEvent.ShowSnackbar("Vote recorded — identities revealed!"))
             } catch (e: Exception) {
-                _events.emit(ArenaEvent.ShowSnackbar("Vote failed: ${e.message}"))
+                _events.emit(ArenaEvent.ShowSnackbar("Could not record the vote"))
                 _uiState.update { state ->
                     if (state is ArenaUiState.Ready) state.copy(voted = false)
                     else state

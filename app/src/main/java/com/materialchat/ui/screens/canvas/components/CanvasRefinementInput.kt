@@ -74,7 +74,8 @@ fun CanvasRefinementInput(
         targetValue = if (canSend) {
             MaterialTheme.colorScheme.onPrimary
         } else {
-            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
+            // Resolved against surfaceContainerHighest (the disabled fill): full-opacity role.
+            MaterialTheme.colorScheme.onSurfaceVariant
         },
         animationSpec = ExpressiveMotion.SpringSpecs.ColorTransition,
         label = "canvasRefinementSendIconColor"
@@ -121,7 +122,7 @@ fun CanvasRefinementInput(
                     ) {
                         if (value.isEmpty()) {
                             Text(
-                                text = "Refine this artifact...",
+                                text = "Refine this artifact\u2026",
                                 style = MaterialTheme.typography.bodyLarge,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )

@@ -26,7 +26,6 @@ import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Snackbar
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
@@ -49,7 +48,7 @@ import com.materialchat.ui.screens.arena.components.ArenaBattleView
 import com.materialchat.ui.screens.arena.components.ArenaModelPicker
 import com.materialchat.ui.screens.arena.components.ArenaPromptInput
 import com.materialchat.ui.screens.arena.components.ArenaVotingBar
-import com.materialchat.ui.theme.CustomShapes
+import com.materialchat.ui.components.ExpressiveSnackbar
 import com.materialchat.ui.components.ExpressiveFilledIconButton
 import com.materialchat.ui.components.ExpressiveTopBarTitle
 import com.materialchat.ui.components.HapticPattern
@@ -130,13 +129,8 @@ fun ArenaScreen(
         },
         snackbarHost = {
             SnackbarHost(hostState = snackbarHostState) { snackbarData ->
-                Snackbar(
-                    snackbarData = snackbarData,
-                    shape = CustomShapes.Snackbar,
-                    containerColor = MaterialTheme.colorScheme.inverseSurface,
-                    contentColor = MaterialTheme.colorScheme.inverseOnSurface,
-                    actionColor = MaterialTheme.colorScheme.inversePrimary
-                )
+                // Same snackbar as home/settings: inverse surface, 20dp squircle, 12dp inset.
+                ExpressiveSnackbar(snackbarData = snackbarData)
             }
         },
         modifier = modifier
@@ -162,7 +156,7 @@ fun ArenaScreen(
                     )
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(
-                        text = "Loading providers...",
+                        text = "Loading providers\u2026",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

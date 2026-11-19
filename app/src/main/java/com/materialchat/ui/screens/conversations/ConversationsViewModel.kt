@@ -558,7 +558,7 @@ class ConversationsViewModel @Inject constructor(
                     return@launch
                 }
 
-                _events.emit(ConversationsEvent.ShowSnackbar(message = "Generating title..."))
+                _events.emit(ConversationsEvent.ShowSnackbar(message = "Generating title…"))
 
                 val result = generateConversationTitleUseCase(
                     conversationId = conversation.id,

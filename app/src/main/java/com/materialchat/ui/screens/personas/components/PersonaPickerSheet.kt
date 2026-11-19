@@ -36,6 +36,8 @@ import androidx.compose.ui.unit.dp
 import com.materialchat.domain.model.Persona
 import kotlin.math.absoluteValue
 import com.materialchat.ui.theme.ExpressiveShapes
+import com.materialchat.ui.components.SheetGutter
+import com.materialchat.ui.components.SheetHeader
 
 /**
  * Quick-picker bottom sheet for selecting a persona when starting a new conversation.
@@ -71,12 +73,11 @@ fun PersonaPickerSheet(
                 .windowInsetsPadding(WindowInsets.navigationBars)
                 .padding(bottom = 16.dp)
         ) {
-            // Title
-            Text(
-                text = "Choose a persona",
-                style = MaterialTheme.typography.headlineSmall,
-                color = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp)
+            // Shared sheet header (same family as the chat and settings sheets).
+            SheetHeader(
+                title = "Choose a persona",
+                onClose = onDismiss,
+                modifier = Modifier.padding(horizontal = SheetGutter)
             )
 
             Spacer(modifier = Modifier.height(8.dp))

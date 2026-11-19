@@ -8,7 +8,6 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionLayout
-import androidx.compose.animation.core.spring
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.Arrangement
@@ -56,6 +55,7 @@ import com.materialchat.ui.navigation.MaterialChatNavHost
 import com.materialchat.ui.navigation.Screen
 import com.materialchat.ui.navigation.TopLevelTab
 import com.materialchat.ui.screens.personas.components.PersonaPickerSheet
+import com.materialchat.ui.theme.ExpressiveMotion
 import com.materialchat.ui.theme.MaterialChatTheme
 import com.materialchat.ui.theme.LocalChatFontSizeScale
 import com.materialchat.ui.theme.isDynamicColorSupported
@@ -318,18 +318,13 @@ fun MaterialChatApp(
                 .fillMaxWidth()
                 .padding(horizontal = 12.dp)
                 .padding(bottom = if (showBottomBar) 104.dp else 16.dp),
+            // Shared container physics: spatial entrance, critically damped spatial exit.
             enter = slideInVertically(
-                animationSpec = spring(
-                    stiffness = 500f,
-                    dampingRatio = 0.8f
-                ),
+                animationSpec = ExpressiveMotion.Spatial.container(),
                 initialOffsetY = { it / 2 }
             ),
             exit = slideOutVertically(
-                animationSpec = spring(
-                    stiffness = 500f,
-                    dampingRatio = 1.0f
-                ),
+                animationSpec = ExpressiveMotion.Spatial.collapse(),
                 targetOffsetY = { it / 2 }
             )
         ) {
@@ -345,18 +340,13 @@ fun MaterialChatApp(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth(),
+            // Shared container physics (Spatial.container 0.6/380 in, Spatial.collapse 1.0/420 out).
             enter = slideInVertically(
-                animationSpec = spring(
-                    stiffness = 500f,
-                    dampingRatio = 0.7f  // Spatial - subtle bounce
-                ),
+                animationSpec = ExpressiveMotion.Spatial.container(),
                 initialOffsetY = { it }  // Slide up from bottom
             ),
             exit = slideOutVertically(
-                animationSpec = spring(
-                    stiffness = 500f,
-                    dampingRatio = 1.0f  // Effects - smooth exit
-                ),
+                animationSpec = ExpressiveMotion.Spatial.collapse(),
                 targetOffsetY = { it }  // Slide down off screen
             )
         ) {

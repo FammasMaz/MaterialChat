@@ -38,7 +38,7 @@ fun BookmarkSearchBar(
         onValueChange = onQueryChange,
         placeholder = {
             Text(
-                text = "Search knowledge base...",
+                text = "Search knowledge base…",
                 style = MaterialTheme.typography.bodyMedium
             )
         },

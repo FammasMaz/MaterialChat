@@ -71,7 +71,7 @@ fun ChatSearchBar(
             .focusRequester(focusRequester),
         placeholder = {
             Text(
-                text = "Search chats...",
+                text = "Search chats…",
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )

@@ -47,7 +47,7 @@ class OnboardingViewModel @Inject constructor(
 
         _uiState.value = OnboardingUiState(
             isSigningIn = true,
-            status = "Opening OpenAI sign-in..."
+            status = "Opening OpenAI sign-in…"
         )
 
         viewModelScope.launch {

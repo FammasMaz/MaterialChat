@@ -444,7 +444,7 @@ class SettingsViewModel @Inject constructor(
     fun restorePurchases() {
         monetizationManager.refreshPurchases()
         viewModelScope.launch {
-            _events.emit(SettingsEvent.ShowSnackbar("Checking purchases..."))
+            _events.emit(SettingsEvent.ShowSnackbar("Checking purchases…"))
         }
     }
 
@@ -573,7 +573,7 @@ class SettingsViewModel @Inject constructor(
 
         _formState.value = current.copy(
             isAuthenticating = true,
-            authStatus = "Starting ${current.type.displayName} sign-in...",
+            authStatus = "Starting ${current.type.displayName} sign-in…",
             apiKeyError = null
         )
 
@@ -603,7 +603,7 @@ class SettingsViewModel @Inject constructor(
                     authStatus = e.message ?: "Authentication failed",
                     apiKeyError = e.message ?: "Authentication failed"
                 )
-                _events.emit(SettingsEvent.ShowSnackbar(e.message ?: "Authentication failed"))
+                _events.emit(SettingsEvent.ShowSnackbar("Authentication failed"))
             }
         }
     }

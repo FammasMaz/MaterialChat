@@ -356,7 +356,7 @@ private fun AddProviderSheetContent(
                 ExpressiveButton(
                     onClick = onAuthenticate,
                     text = when {
-                        formState.isAuthenticating -> "Waiting for sign-in..."
+                        formState.isAuthenticating -> "Waiting for sign-in…"
                         formState.hasExistingKey || formState.apiKey.isNotBlank() -> "Re-authenticate ${formState.type.displayName}"
                         else -> "Sign in to ${formState.type.displayName}"
                     },
@@ -544,7 +544,7 @@ private fun SaveButton(
         }
         Text(
             text = when {
-                isSaving -> "Saving..."
+                isSaving -> "Saving…"
                 isEditing -> "Update provider"
                 else -> "Add provider"
             }

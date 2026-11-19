@@ -110,7 +110,7 @@ fun StepEditor(
                     .fillMaxWidth()
                     .padding(top = 8.dp),
                 label = { Text("Prompt template") },
-                placeholder = { Text("Enter prompt for this step...") },
+                placeholder = { Text("Enter prompt for this step…") },
                 minLines = 3,
                 maxLines = 8,
                 shape = ExpressiveShapes.MenuSelection,

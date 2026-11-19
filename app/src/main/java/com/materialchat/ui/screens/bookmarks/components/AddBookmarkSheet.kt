@@ -3,6 +3,8 @@ package com.materialchat.ui.screens.bookmarks.components
 import androidx.compose.animation.animateColorAsState
 import com.materialchat.ui.theme.ExpressiveMotion
 import com.materialchat.ui.theme.ExpressiveShapes
+import com.materialchat.ui.components.SheetGutter
+import com.materialchat.ui.components.SheetHeader
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -81,14 +83,13 @@ fun AddBookmarkSheet(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 24.dp)
+                .padding(horizontal = SheetGutter)
                 .padding(bottom = 32.dp)
         ) {
-            // Title
-            Text(
-                text = "Add bookmark",
-                style = MaterialTheme.typography.titleLarge,
-                color = MaterialTheme.colorScheme.onSurface
+            // Shared sheet header: headlineSmall title + close, like every other sheet.
+            SheetHeader(
+                title = "Add bookmark",
+                onClose = onDismiss
             )
 
             Spacer(modifier = Modifier.height(20.dp))

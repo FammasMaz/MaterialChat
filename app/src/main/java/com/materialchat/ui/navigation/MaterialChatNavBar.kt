@@ -230,7 +230,8 @@ private fun ToolbarDestinationPill(
         label = "toolbarDestinationIndicator_${tab.name}"
     )
     val iconTint by animateColorAsState(
-        targetValue = if (selected) selectedColors.content else MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.72f),
+        // Unselected glyph sits on the primaryContainer bar: full-opacity on-role, no alpha on an icon.
+        targetValue = if (selected) selectedColors.content else MaterialTheme.colorScheme.onPrimaryContainer,
         animationSpec = ExpressiveMotion.Effects.color(),
         label = "toolbarDestinationTint_${tab.name}"
     )

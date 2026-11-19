@@ -194,7 +194,7 @@ private fun WorkflowInputDialog(
                     value = inputText,
                     onValueChange = { inputText = it },
                     label = { Text("Your input") },
-                    placeholder = { Text("Enter your prompt to start the workflow...") },
+                    placeholder = { Text("Enter your prompt to start the workflow\u2026") },
                     minLines = 3,
                     maxLines = 6,
                     modifier = Modifier.fillMaxWidth(),

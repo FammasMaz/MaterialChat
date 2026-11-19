@@ -1492,10 +1492,10 @@ private fun RemoveAdsCard(
                 onClick = onPurchaseRemoveAds,
                 enabled = premiumState.billingReady && !premiumState.isPurchaseInProgress,
                 text = when {
-                    premiumState.isPurchaseInProgress -> "Opening purchase..."
+                    premiumState.isPurchaseInProgress -> "Opening purchase…"
                     premiumState.removeAdsPrice != null -> "Remove ads • ${premiumState.removeAdsPrice}"
                     premiumState.billingReady -> "Remove ads"
-                    else -> "Loading price..."
+                    else -> "Loading price…"
                 },
                 style = ExpressiveButtonStyle.Filled,
                 modifier = Modifier.fillMaxWidth()
@@ -1550,10 +1550,10 @@ private fun RewardedPremiumCard(
                 onClick = onWatchRewardedAd,
                 enabled = premiumState.rewardedAdReady && !premiumState.isRewardedAdLoading,
                 text = when {
-                    premiumState.isRewardedAdLoading -> "Loading ad..."
+                    premiumState.isRewardedAdLoading -> "Loading ad…"
                     premiumState.rewardedAdReady && premiumState.hasRewardedPremium -> "Extend by 24 hours"
                     premiumState.rewardedAdReady -> "Watch ad"
-                    else -> "Ad loading..."
+                    else -> "Ad loading…"
                 },
                 style = ExpressiveButtonStyle.FilledTonal,
                 modifier = Modifier.fillMaxWidth()
@@ -3101,12 +3101,12 @@ private fun AboutSection(
 private fun getUpdateStatusText(state: UpdateState): String {
     return when (state) {
         is UpdateState.Idle -> "Tap to check for updates"
-        is UpdateState.Checking -> "Checking..."
+        is UpdateState.Checking -> "Checking…"
         is UpdateState.Available -> "Update available: v${state.update.versionName}"
         is UpdateState.UpToDate -> "You're up to date"
-        is UpdateState.Downloading -> "Downloading... ${(state.progress * 100).toInt()}%"
+        is UpdateState.Downloading -> "Downloading… ${(state.progress * 100).toInt()}%"
         is UpdateState.ReadyToInstall -> "Ready to install v${state.update.versionName}"
-        is UpdateState.Installing -> "Installing..."
+        is UpdateState.Installing -> "Installing…"
         is UpdateState.Error -> "Error checking for updates"
     }
 }

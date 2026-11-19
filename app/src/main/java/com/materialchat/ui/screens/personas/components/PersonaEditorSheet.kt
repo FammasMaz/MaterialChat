@@ -38,6 +38,8 @@ import com.materialchat.ui.components.HapticPattern
 import com.materialchat.ui.components.rememberHapticFeedback
 import com.materialchat.ui.theme.CustomShapes
 import com.materialchat.ui.theme.ExpressiveShapes
+import com.materialchat.ui.components.SheetGutter
+import com.materialchat.ui.components.SheetHeader
 
 /**
  * Modal bottom sheet for creating or editing a persona.
@@ -78,15 +80,14 @@ fun PersonaEditorSheet(
             modifier = Modifier
                 .fillMaxWidth()
                 .windowInsetsPadding(WindowInsets.navigationBars)
-                .padding(horizontal = 24.dp)
+                .padding(horizontal = SheetGutter)
                 .padding(bottom = 24.dp)
                 .verticalScroll(rememberScrollState())
         ) {
-            // Title
-            Text(
-                text = if (isEditing) "Edit persona" else "Create persona",
-                style = MaterialTheme.typography.headlineSmall,
-                color = MaterialTheme.colorScheme.onSurface
+            // Shared sheet header (same family as the chat and settings sheets).
+            SheetHeader(
+                title = if (isEditing) "Edit persona" else "Create persona",
+                onClose = onDismiss
             )
 
             Spacer(modifier = Modifier.height(20.dp))
