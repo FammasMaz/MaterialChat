@@ -1,9 +1,7 @@
 package com.materialchat.ui.screens.chat.components
 
 import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -38,8 +36,9 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.materialchat.domain.usecase.ExportConversationUseCase
-import com.materialchat.ui.theme.CustomShapes
+import com.materialchat.ui.screens.settings.components.SettingsSheetShape
 import com.materialchat.ui.theme.ExpressiveMotion
+import com.materialchat.ui.theme.ExpressiveShapes
 import com.materialchat.ui.components.HapticPattern
 import com.materialchat.ui.components.rememberHapticFeedback
 
@@ -74,26 +73,16 @@ fun ExportBottomSheet(
                 }
             },
             sheetState = sheetState,
-            shape = CustomShapes.BottomSheet,
-            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-            contentColor = MaterialTheme.colorScheme.onSurface,
-            dragHandle = {
-                Surface(
-                    modifier = Modifier.padding(vertical = 12.dp),
-                    color = MaterialTheme.colorScheme.outline,
-                    shape = MaterialTheme.shapes.extraLarge
-                ) {
-                    Spacer(
-                        modifier = Modifier
-                            .width(32.dp)
-                            .height(4.dp)
-                    )
-                }
-            }
+            // Same sheet family as settings: top-only squircle, low container tier, default
+            // drag handle, headline title with a close affordance.
+            shape = SettingsSheetShape,
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+            contentColor = MaterialTheme.colorScheme.onSurface
         ) {
             ExportBottomSheetContent(
                 isExporting = isExporting,
-                onExportFormat = onExportFormat
+                onExportFormat = onExportFormat,
+                onClose = { if (!isExporting) onDismiss() }
             )
         }
     }
@@ -106,30 +95,25 @@ fun ExportBottomSheet(
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 private fun ExportBottomSheetContent(
     isExporting: Boolean,
-    onExportFormat: (ExportConversationUseCase.ExportFormat) -> Unit
+    onExportFormat: (ExportConversationUseCase.ExportFormat) -> Unit,
+    onClose: () -> Unit
 ) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp)
+            .padding(horizontal = ChatSheetGutter)
             .padding(bottom = 32.dp)
             .animateContentSize(
                 animationSpec = ExpressiveMotion.Spatial.contentSize()
             )
     ) {
-        // Title
-        Text(
-            text = "Export Conversation",
-            style = MaterialTheme.typography.titleLarge,
-            color = MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.padding(bottom = 8.dp)
-        )
+        ChatSheetHeader(title = "Export conversation", onClose = onClose)
 
         Text(
             text = "Choose a format to export this conversation",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(bottom = 24.dp)
+            modifier = Modifier.padding(top = 4.dp, bottom = 16.dp)
         )
 
         if (isExporting) {
@@ -189,7 +173,7 @@ private fun ExportFormatOption(
 
     val scale by animateFloatAsState(
         targetValue = if (isPressed) 0.96f else 1f,
-        animationSpec = ExpressiveMotion.Spatial.scale(),
+        animationSpec = ExpressiveMotion.Press.Scale,
         label = "export_option_scale"
     )
 
@@ -202,9 +186,10 @@ private fun ExportFormatOption(
                 indication = null,
                 onClick = { haptics.perform(HapticPattern.CLICK); onClick() }
             ),
-        shape = CustomShapes.ProviderCard,
-        color = MaterialTheme.colorScheme.surfaceContainerHigh,
-        tonalElevation = 2.dp
+        // Card tier over the sheet's low container: the same squircle card as a settings
+        // group, one tier up, no tonal overlay so the fill is the role the text is resolved on.
+        shape = ExpressiveShapes.Card,
+        color = MaterialTheme.colorScheme.surfaceContainerHigh
     ) {
         Row(
             modifier = Modifier
@@ -213,7 +198,7 @@ private fun ExportFormatOption(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Surface(
-                shape = MaterialTheme.shapes.medium,
+                shape = ExpressiveShapes.Tile,
                 color = MaterialTheme.colorScheme.primaryContainer,
                 modifier = Modifier.size(48.dp)
             ) {

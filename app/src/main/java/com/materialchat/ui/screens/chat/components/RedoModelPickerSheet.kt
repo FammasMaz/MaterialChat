@@ -2,7 +2,6 @@ package com.materialchat.ui.screens.chat.components
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -14,14 +13,12 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -31,7 +28,6 @@ import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.SheetState
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
@@ -44,8 +40,9 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.materialchat.domain.model.AiModel
-import com.materialchat.ui.theme.CustomShapes
+import com.materialchat.ui.screens.settings.components.SettingsSheetShape
 import com.materialchat.ui.theme.ExpressiveMotion
+import com.materialchat.ui.theme.ExpressiveShapes
 import com.materialchat.ui.theme.SquircleShape
 
 /**
@@ -73,44 +70,28 @@ fun RedoModelPickerSheet(
         ModalBottomSheet(
             onDismissRequest = onDismiss,
             sheetState = sheetState,
-            shape = CustomShapes.BottomSheet,
-            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-            contentColor = MaterialTheme.colorScheme.onSurface,
-            dragHandle = {
-                Surface(
-                    modifier = Modifier.padding(vertical = 12.dp),
-                    color = MaterialTheme.colorScheme.outline,
-                    shape = MaterialTheme.shapes.extraLarge
-                ) {
-                    Spacer(
-                        modifier = Modifier
-                            .width(32.dp)
-                            .height(4.dp)
-                    )
-                }
-            }
+            // Same sheet family as settings: top-only squircle, low container tier, default
+            // drag handle, headline title with a close affordance.
+            shape = SettingsSheetShape,
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+            contentColor = MaterialTheme.colorScheme.onSurface
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp)
+                    .padding(horizontal = ChatSheetGutter)
                     .padding(bottom = 32.dp)
                     .animateContentSize(
                         animationSpec = ExpressiveMotion.Spatial.contentSize()
                     )
             ) {
-                Text(
-                    text = "Redo with Model",
-                    style = MaterialTheme.typography.titleLarge,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.padding(bottom = 8.dp)
-                )
+                ChatSheetHeader(title = "Redo with model", onClose = onDismiss)
 
                 Text(
                     text = "Choose a model to regenerate this response",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(bottom = 16.dp)
+                    modifier = Modifier.padding(top = 4.dp, bottom = 16.dp)
                 )
 
                 if (isLoading && models.isEmpty()) {
@@ -152,16 +133,16 @@ fun RedoModelPickerSheet(
                             )
                             val rowRadius by animateDpAsState(
                                 targetValue = when {
-                                    isPressed -> 12.dp
-                                    isCurrentModel -> 16.dp
-                                    else -> 24.dp
+                                    isPressed -> ExpressiveShapes.RowTile.Resting
+                                    isCurrentModel -> ExpressiveShapes.RowTile.Pressed
+                                    else -> ExpressiveShapes.SwipeAction.Emphasized
                                 },
-                                animationSpec = ExpressiveMotion.Spatial.shapeMorph(),
+                                animationSpec = ExpressiveMotion.Press.Shape,
                                 label = "redoModelRowRadius"
                             )
                             val rowScale by animateFloatAsState(
                                 targetValue = if (isPressed) 0.97f else 1f,
-                                animationSpec = ExpressiveMotion.Spatial.scale(),
+                                animationSpec = ExpressiveMotion.Press.Scale,
                                 label = "redoModelRowScale"
                             )
                             val rowShape = SquircleShape(rowRadius)
