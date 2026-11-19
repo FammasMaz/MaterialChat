@@ -1,4 +1,4 @@
-package com.materialchat.ui.screens.chat.components
+package com.materialchat.ui.components
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
@@ -14,21 +14,24 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.materialchat.ui.components.HapticPattern
-import com.materialchat.ui.components.rememberHapticFeedback
-
-/** Horizontal gutter every chat bottom sheet uses, matching the settings sheets. */
-internal val ChatSheetGutter = 24.dp
 
 /**
- * Header row of a chat bottom sheet: headline title with a close affordance on the trailing
- * edge, the same treatment as the settings "Add provider" sheet so sheets read as one family
- * across screens.
+ * Horizontal gutter every modal bottom sheet uses (chat sheets and the settings
+ * "Add provider" sheet), so sheet content lines up across screens.
+ */
+val SheetGutter = 24.dp
+
+/**
+ * Header row of a modal bottom sheet: headline title with an optional close affordance on
+ * the trailing edge. One composable for every sheet in the app so sheets read as a single
+ * family regardless of which screen opened them.
+ *
+ * Pass `onClose = null` for a sheet that only dismisses through its drag handle or scrim.
  */
 @Composable
-internal fun ChatSheetHeader(
+fun SheetHeader(
     title: String,
-    onClose: () -> Unit,
+    onClose: (() -> Unit)?,
     modifier: Modifier = Modifier
 ) {
     val haptics = rememberHapticFeedback()
@@ -42,14 +45,17 @@ internal fun ChatSheetHeader(
         Text(
             text = title,
             style = MaterialTheme.typography.headlineSmall,
-            color = MaterialTheme.colorScheme.onSurface
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.weight(1f, fill = false)
         )
-        IconButton(onClick = { haptics.perform(HapticPattern.CLICK); onClose() }) {
-            Icon(
-                imageVector = Icons.Default.Close,
-                contentDescription = "Close",
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+        if (onClose != null) {
+            IconButton(onClick = { haptics.perform(HapticPattern.CLICK); onClose() }) {
+                Icon(
+                    imageVector = Icons.Default.Close,
+                    contentDescription = "Close",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         }
     }
 }

@@ -36,6 +36,8 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.materialchat.domain.usecase.ExportConversationUseCase
+import com.materialchat.ui.components.SheetGutter
+import com.materialchat.ui.components.SheetHeader
 import com.materialchat.ui.screens.settings.components.SettingsSheetShape
 import com.materialchat.ui.theme.ExpressiveMotion
 import com.materialchat.ui.theme.ExpressiveShapes
@@ -101,13 +103,13 @@ private fun ExportBottomSheetContent(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = ChatSheetGutter)
+            .padding(horizontal = SheetGutter)
             .padding(bottom = 32.dp)
             .animateContentSize(
                 animationSpec = ExpressiveMotion.Spatial.contentSize()
             )
     ) {
-        ChatSheetHeader(title = "Export conversation", onClose = onClose)
+        SheetHeader(title = "Export conversation", onClose = onClose)
 
         Text(
             text = "Choose a format to export this conversation",

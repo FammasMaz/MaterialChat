@@ -36,6 +36,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.materialchat.domain.model.AiModel
+import com.materialchat.ui.components.SheetGutter
+import com.materialchat.ui.components.SheetHeader
 import com.materialchat.ui.screens.settings.components.SettingsSheetShape
 import com.materialchat.ui.theme.CustomShapes
 import com.materialchat.ui.theme.ExpressiveMotion
@@ -87,13 +89,13 @@ fun FusionModelSelector(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = ChatSheetGutter)
+                    .padding(horizontal = SheetGutter)
                     .padding(bottom = 32.dp)
                     .animateContentSize(
                         animationSpec = ExpressiveMotion.Spatial.contentSize()
                     )
             ) {
-                ChatSheetHeader(title = "Response fusion", onClose = onDismiss)
+                SheetHeader(title = "Response fusion", onClose = onDismiss)
 
                 Text(
                     text = "Select 2-3 models to query in parallel, then pick a judge to synthesize the best response.",
