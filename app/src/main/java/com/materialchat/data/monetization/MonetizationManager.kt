@@ -2,6 +2,7 @@ package com.materialchat.data.monetization
 
 import android.app.Activity
 import android.content.Context
+import android.util.Log
 import com.android.billingclient.api.AcknowledgePurchaseParams
 import com.android.billingclient.api.BillingClient
 import com.android.billingclient.api.BillingClientStateListener
@@ -41,6 +42,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 private const val REWARDED_PREMIUM_DURATION_MILLIS = 24L * 60L * 60L * 1000L
+private const val TAG = "MaterialChatBilling"
 
 /**
  * Handles AdMob rewarded ads and Google Play Billing entitlement for ad removal.
@@ -55,6 +57,15 @@ class MonetizationManager @Inject constructor(
 
     private val _events = MutableSharedFlow<String>(extraBufferCapacity = 8)
     val events: SharedFlow<String> = _events.asSharedFlow()
+
+    /**
+     * W9 part 5: the settings snackbar shows [line], a fixed `CopyRules` phrase; the billing or ad
+     * SDK's own wording ([detail]) goes to the log only and never reaches the user.
+     */
+    private fun emitFailure(line: String, detail: String) {
+        if (detail.isNotBlank()) Log.w(TAG, "$line: $detail")
+        _events.tryEmit(line)
+    }
 
     private val _billingSnapshot = MutableStateFlow(BillingSnapshot())
     private val _rewardedSnapshot = MutableStateFlow(RewardedSnapshot())
@@ -155,7 +166,7 @@ class MonetizationManager @Inject constructor(
             if (result.responseCode == BillingClient.BillingResponseCode.ITEM_ALREADY_OWNED) {
                 refreshPurchases()
             } else {
-                _events.tryEmit(result.debugMessage.ifBlank { "Could not start purchase" })
+                emitFailure("Could not start purchase", result.debugMessage)
             }
         }
     }
@@ -168,7 +179,7 @@ class MonetizationManager @Inject constructor(
 
         val ad = rewardedAd
         if (ad == null) {
-            _events.tryEmit("Rewarded ad is loading. Please try again shortly.")
+            _events.tryEmit("The ad is still loading. Try again in a moment.")
             loadRewardedAd()
             return
         }
@@ -183,7 +194,7 @@ class MonetizationManager @Inject constructor(
             override fun onAdFailedToShowFullScreenContent(adError: AdError) {
                 rewardedAd = null
                 _rewardedSnapshot.update { it.copy(rewardedAdReady = false) }
-                _events.tryEmit(adError.message.ifBlank { "Could not show rewarded ad" })
+                emitFailure("Could not show the ad", adError.message)
                 loadRewardedAd()
             }
         }
@@ -220,7 +231,7 @@ class MonetizationManager @Inject constructor(
                 refreshPurchases()
             }
             else -> {
-                _events.tryEmit(billingResult.debugMessage.ifBlank { "Purchase failed" })
+                emitFailure("Could not complete the purchase", billingResult.debugMessage)
             }
         }
     }
@@ -252,7 +263,7 @@ class MonetizationManager @Inject constructor(
                     queryExistingPurchases()
                 } else {
                     _billingSnapshot.update { it.copy(billingReady = false) }
-                    _events.tryEmit(billingResult.debugMessage.ifBlank { "Billing unavailable" })
+                    emitFailure("Google Play Billing is not available", billingResult.debugMessage)
                 }
             }
 
@@ -279,7 +290,7 @@ class MonetizationManager @Inject constructor(
 
         client.queryProductDetailsAsync(params) { billingResult, productDetailsResult ->
             if (billingResult.responseCode != BillingClient.BillingResponseCode.OK) {
-                _events.tryEmit(billingResult.debugMessage.ifBlank { "Could not load product details" })
+                emitFailure("Could not load product details", billingResult.debugMessage)
                 return@queryProductDetailsAsync
             }
 
@@ -308,7 +319,7 @@ class MonetizationManager @Inject constructor(
 
         client.queryPurchasesAsync(params) { billingResult, purchases ->
             if (billingResult.responseCode != BillingClient.BillingResponseCode.OK) {
-                _events.tryEmit(billingResult.debugMessage.ifBlank { "Could not restore purchases" })
+                emitFailure("Could not restore purchases", billingResult.debugMessage)
                 return@queryPurchasesAsync
             }
 
@@ -361,7 +372,7 @@ class MonetizationManager @Inject constructor(
                     _events.tryEmit("Ads removed permanently")
                 }
             } else {
-                _events.tryEmit(billingResult.debugMessage.ifBlank { "Could not acknowledge purchase" })
+                emitFailure("Could not acknowledge the purchase", billingResult.debugMessage)
             }
         }
     }

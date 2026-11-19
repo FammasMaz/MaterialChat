@@ -23,6 +23,15 @@ import androidx.compose.ui.unit.dp
  *   [ExpressiveMotion.Spatial.shapeMorph]
  * - Shape changes should be subtle but noticeable
  *
+ * Corner class ruling (W9, cross-surface audit W8 #1; the same text sits on
+ * [ExpressiveShapes]): every helper here returns a circular [RoundedCornerShape] on purpose.
+ * Pressables (buttons, FAB, icon buttons, chips) are round and press-morph on that radius;
+ * containers (cards, sheets, dialogs, notices, content blocks, tiles) are static
+ * [SquircleShape] tokens from [ExpressiveShapes] and never morph. [cardShape] is kept for its
+ * two callers (a position-morphing carousel card and the provider card's radius dip), which
+ * both resolve the animated radius into a [SquircleShape] themselves; a new card must not
+ * draw the [RoundedCornerShape] this helper returns.
+ *
  * [buttonShape] still defaults to [ExpressiveMotion.Spatial.shapeMorph] (0.6 / 500): its one
  * consumer (ExpressiveSnackbar) would settle ~21% sooner on the Press token, which is a feel
  * change for that owner to verify; pass `animationSpec = ExpressiveMotion.Press.Shape` to opt in.

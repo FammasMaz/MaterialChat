@@ -473,7 +473,7 @@ private fun CurrentStepStreamingCard(
                 Spacer(modifier = Modifier.width(10.dp))
 
                 Text(
-                    text = "Step $stepNumber — running…",
+                    text = "Step $stepNumber, running…",
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onSurface
@@ -525,7 +525,7 @@ private fun CurrentStepLoadingCard(stepNumber: Int) {
             Spacer(modifier = Modifier.width(10.dp))
 
             Text(
-                text = "Step $stepNumber — waiting for response…",
+                text = "Step $stepNumber, waiting for response…",
                 style = MaterialTheme.typography.titleSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.weight(1f)

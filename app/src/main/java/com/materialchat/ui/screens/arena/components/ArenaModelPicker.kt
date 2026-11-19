@@ -86,7 +86,7 @@ fun ArenaModelPicker(
             if (selectedContenders.isNotEmpty()) {
                 Text(
                     text = "${selectedContenders.size} in the ring" +
-                            if (selectedContenders.size < 2) " — pick at least 2" else "",
+                            if (selectedContenders.size < 2) ", pick at least 2" else "",
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(vertical = 10.dp)

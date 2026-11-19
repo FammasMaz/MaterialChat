@@ -553,8 +553,9 @@ object MaterialChatMotion {
          * The one linear-time tween: a continuous, constant-rate indicator phase (a rotation, a
          * shimmer pass, a mind-map pulse) over [durationMillis], normally a
          * [MaterialChatMotion.Durations] token. Wrap it in `infiniteRepeatable` at the site
-         * (`MindMapCanvas`, `StreamingIndicator.gatedInfiniteFloat`,
-         * `M3ExpressiveLoadingIndicator`) so no raw `tween(` call is needed outside the theme.
+         * (`MindMapCanvas`, `StreamingIndicator.gatedInfiniteFloat`) so no raw `tween(` call
+         * is needed outside the theme. (`M3ExpressiveLoadingIndicator`, the former third
+         * consumer, was deleted in W9 with zero callers.)
          */
         fun <T> linear(durationMillis: Int): TweenSpec<T> =
             tween(durationMillis = durationMillis, easing = LinearEasing)
@@ -646,18 +647,19 @@ object MaterialChatMotion {
         const val StatsPillHold = 3_500
 
         /**
-         * Cycle lengths of the indeterminate loading indicators (`M3ExpressiveLoadingIndicator`
-         * in `ui/components`, the chat `StreamingIndicator` family): every loop runs only behind
-         * the particle motion gate and holds a static frame otherwise. Each value is one period
-         * of a linear or ease-in-out tween, drawn through [Tweens.linear] / [Tweens.easeInOut].
-         * The former `ArcRotation / ArcSweep / LinearPass / LinearWidth` entries went with their
-         * only consumers (`M3ExpressiveCircularProgress`, `M3ExpressiveLinearProgress`, W7).
+         * Cycle lengths of the indeterminate loading indicators (the chat `StreamingIndicator`
+         * family): every loop runs only behind the particle motion gate and holds a static frame
+         * otherwise. Each value is one period of a linear or ease-in-out tween, drawn through
+         * [Tweens.linear] / [Tweens.easeInOut]. The arc and linear-bar entries went with their
+         * consumers in W7, and the morphing hero indicator (`M3ExpressiveLoadingIndicator`) was
+         * deleted in W9 with zero callers; [MorphRotation] and [MorphShape] stay as the record
+         * of its cycle ([MorphShape] is also [FusionOrbit]; both pinned in `MotionTokensTest`).
          */
         object Indicator {
-            /** One full rotation of the morphing shape. */
+            /** One full rotation of the former hero indicator's morphing shape (record only). */
             const val MorphRotation = 4000
 
-            /** Soft-burst -> pentagon -> hexagon -> soft-burst. */
+            /** Soft-burst -> pentagon -> hexagon -> soft-burst; value-equal to [FusionOrbit]. */
             const val MorphShape = 3000
 
             /**

@@ -41,5 +41,5 @@ object LightweightOnDeviceModels {
     )
 
     const val SMALLEST_RECOMMENDATION =
-        "Qwen2.5 0.5B Instruct (~521 MB) is the smallest download — ideal for titles and memory on-device."
+        "Qwen2.5 0.5B Instruct (~521 MB) is the smallest download, ideal for titles and memory on-device."
 }

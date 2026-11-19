@@ -53,5 +53,5 @@ The app will then send the same question again together with the capture. Do not
 
     /** The status line shown with the settings button when nothing arrived from the platform. */
     const val UNAVAILABLE_NOTICE: String =
-        "Screen context is off \u2014 enable \u201cUse screenshot\u201d and \u201cUse text from screen\u201d in Settings \u203a Apps \u203a Default apps \u203a Digital assistant app."
+        "Screen context is off. Enable \u201cUse screenshot\u201d and \u201cUse text from screen\u201d in Settings \u203a Apps \u203a Default apps \u203a Digital assistant app."
 }

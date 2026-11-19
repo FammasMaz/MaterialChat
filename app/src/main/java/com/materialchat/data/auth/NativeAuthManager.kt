@@ -471,7 +471,7 @@ class NativeAuthManager @Inject constructor(
         val result = when {
             error != null -> LoopbackResult.Failure("Authentication failed", "OAuth failed: $error")
             uri.path != expectedPath -> LoopbackResult.Ignore("Unexpected callback")
-            state != expectedState -> LoopbackResult.Failure("Authentication failed", "State mismatch. Please retry sign-in.")
+            state != expectedState -> LoopbackResult.Failure("Authentication failed", "The sign-in response did not match this request. Return to MaterialChat and try again.")
             code.isNullOrBlank() -> LoopbackResult.Failure("Authentication failed", "No authorization code received.")
             else -> runCatching { exchangeCode(code) }.fold(
                 onSuccess = { credential ->
@@ -498,7 +498,7 @@ class NativeAuthManager @Inject constructor(
                 throw IOException(result.message)
             }
             is LoopbackResult.Ignore -> {
-                writeLoopbackHtml(writer, result.title, "Return to MaterialChat and retry sign-in.", isError = true)
+                writeLoopbackHtml(writer, result.title, "Return to MaterialChat and try again.", isError = true)
                 return null
             }
         }
@@ -541,7 +541,7 @@ class NativeAuthManager @Inject constructor(
         val html = when {
             error != null -> "<h1>Authentication failed</h1><p>${escapeHtml(error)}</p>"
             uri.path != expectedPath -> "<h1>Unexpected callback</h1>"
-            state != expectedState -> "<h1>State mismatch</h1><p>Please retry sign-in.</p>"
+            state != expectedState -> "<h1>State mismatch</h1><p>Return to MaterialChat and try again.</p>"
             code != null -> "<h1>Authentication successful</h1><p>You can close this tab and return to MaterialChat.</p>"
             else -> "<h1>Authentication failed</h1><p>No authorization code received.</p>"
         }

@@ -218,6 +218,29 @@ class HomeSettingsCopyRulingsTest {
         )
     }
 
+    /**
+     * W9 part 3 (`CopyRules` dash rule): no em dash and no spaced en dash joins two clauses in
+     * any owned literal, not only in snackbars. Exempt by the ruling: the bare "\u2014" drawn as
+     * an empty-value glyph (`ModelAssignmentsScreen`) and the dash between a picker label and
+     * its interpolated detail value (`"${'$'}{name} \u2014 ${'$'}{id}"`, the voice pickers), which
+     * are separators, not punctuation. Source escapes (`\u2014`) are normalised before the check.
+     */
+    @Test
+    fun `no owned string literal joins two clauses with a dash`() {
+        val separator = Regex("\\}\\s*\u2014|\u2014\\s*\\$\\{")
+        val hits = owned().flatMap { file ->
+            literals(file)
+                .map { (line, text) -> line to text.replace("\\u2014", "\u2014").replace("\\u2013", "\u2013") }
+                .filter { (_, text) ->
+                    (text.contains('\u2014') || text.contains(" \u2013 ")) &&
+                        text.trim() != "\u2014" &&
+                        !separator.containsMatchIn(text)
+                }
+                .map { (line, text) -> "${file.name}:$line \"$text\"" }
+        }
+        report(hits, "a dash joins no clauses: a comma in a phrase, a full stop in a notice (CopyRules dash rule)")
+    }
+
     @Test
     fun `no owned snackbar literal ends with an exclamation mark`() {
         val snackbar = Regex("ShowSnackbar\\(|showSnackbar\\(")

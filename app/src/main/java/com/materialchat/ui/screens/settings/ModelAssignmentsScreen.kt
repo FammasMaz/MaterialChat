@@ -520,7 +520,7 @@ private fun TaskAssignmentCard(
                 }
                 if (providers.isEmpty()) {
                     DropdownMenuItem(
-                        text = { Text("No providers configured — add one in Settings") },
+                        text = { Text("No providers configured. Add one in Settings.") },
                         onClick = { providerMenuExpanded = false },
                         enabled = false
                     )
@@ -617,7 +617,7 @@ private fun TaskAssignmentCard(
                 }
                 if (allModels.isEmpty() && !pickerState.isLoading) {
                     DropdownMenuItem(
-                        text = { Text("No cloud models loaded — tap \"Enter manually\" or add a provider in Settings") },
+                        text = { Text("No cloud models loaded. Tap \"Enter manually\" or add a provider in Settings.") },
                         onClick = { menuExpanded = false },
                         enabled = false
                     )

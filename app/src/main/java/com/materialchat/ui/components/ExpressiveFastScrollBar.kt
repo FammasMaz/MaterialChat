@@ -61,6 +61,7 @@ import kotlin.math.PI
 import kotlin.math.roundToInt
 import kotlin.math.sin
 import com.materialchat.ui.theme.ExpressiveShapes
+import com.materialchat.ui.theme.ExpressiveSizes
 
 private data class FastScrollMetrics(
     val progress: Float,
@@ -431,7 +432,7 @@ fun ExpressiveFastScrollBar(
                             val stats = metrics()
                             val displayProgress = if (isDragging && dragProgress >= 0f) dragProgress else displayedProgress.value
                             val handleY = displayProgress * stats.scrollableHeightPx
-                            val iconSizePx = with(density) { 24.dp.toPx() }
+                            val iconSizePx = with(density) { ExpressiveSizes.IconLarge.toPx() }
                             val paddingEndPx = with(density) { paddingEnd.toPx() }
                             val animatedWidthPx = with(density) { animatedWidth.toPx() }
                             val maxWidthPx = with(density) { (expandedWidth + paddingEnd).toPx() }
@@ -440,7 +441,7 @@ fun ExpressiveFastScrollBar(
                                 y = (handleY + (minHeightPx / 2f) - (iconSizePx / 2f)).toInt()
                             )
                         }
-                        .size(24.dp)
+                        .size(ExpressiveSizes.IconLarge)
                         .graphicsLayer {
                             alpha = iconAlpha
                             scaleX = iconAlpha

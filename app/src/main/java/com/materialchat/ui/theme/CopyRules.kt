@@ -16,6 +16,13 @@ package com.materialchat.ui.theme
  * - Sentence case, addressed to the user, no "please", no exclamation mark, no exception or
  *   provider text, no engine or API names, and the typographic ellipsis [ELLIPSIS] rather
  *   than three ASCII periods.
+ * - Dash rule (W9 ruling, cross-surface audit W8 #7): no em dash ([EM_DASH]) and no spaced en
+ *   dash ([SPACED_EN_DASH]) joins two clauses. A one-phrase line joins them with a comma
+ *   ("No providers configured, add one in Settings"); a notice splits them into sentences
+ *   ("Screen context is off. Enable it in Settings."). An unspaced en dash inside a range
+ *   ("2\u20133 MB") is a number, not a joiner. The bare "\u2014" drawn as an empty-value
+ *   glyph and the dash between a picker label and its interpolated detail ("$name \u2014 $id")
+ *   are separators, not punctuation; the on-disk scanners exempt exactly those two shapes.
  *
  * `ui/components/ErrorContentCopy`, chat's `ChatErrorCopy` and the assistant's
  * `AssistantCopy` alias the constants; `CopyRulesTest` pins the aliases and the predicates.
@@ -59,6 +66,12 @@ object CopyRules {
     /** The typographic ellipsis (U+2026) phase lines end with; never three ASCII periods. */
     const val ELLIPSIS = "\u2026"
 
+    /** The em dash (U+2014): never a clause joiner in copy (dash rule above). */
+    const val EM_DASH = "\u2014"
+
+    /** A spaced en dash (U+2013 with spaces): never a clause joiner in copy (dash rule above). */
+    const val SPACED_EN_DASH = " \u2013 "
+
     /** "Could not " + [action], e.g. `failureLine("save backup")` -> "Could not save backup". */
     fun failureLine(action: String): String = "$FAILURE_VERB ${action.trim()}"
 
@@ -90,5 +103,7 @@ object CopyRules {
         !text.contains("...") &&
             !text.contains('!') &&
             !text.contains("please", ignoreCase = true) &&
+            !text.contains(EM_DASH) &&
+            !text.contains(SPACED_EN_DASH) &&
             BANNED_FAILURE_VERBS.none { text.startsWith(it) }
 }
