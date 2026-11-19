@@ -92,4 +92,19 @@ class MotionTokensTest {
         assertTrue(spec.stiffness * 4 <= ExpressiveMotion.Spatial.slow<Float>().stiffness)
         assertEquals(ExpressiveMotion.Spatial.dataReveal<Int>(), ExpressiveMotion.Spatial.dataReveal<Int>())
     }
+
+    @Test fun dataRevealIsTheOneInsightsSpecDerivedFromTheM3eSpatialTokens() {
+        // W4 ruling: one reveal spec for every insights chart. Damping is the M3E default
+        // spatial damping (ExpressiveMotionTokens.defaultSpatialSpec, 0.8) and stiffness is a
+        // quarter of the M3E slow spatial token (200 / 4 = 50). The retired per-chart variants
+        // (ActivityHeatmap 0.9/40, ModelComparisonCard and ResponseTimeChart 0.7/60) must not
+        // creep back in as the token's values.
+        val spec = ExpressiveMotion.Spatial.dataReveal<Float>()
+        assertEquals(ExpressiveMotion.Spatial.default<Float>().dampingRatio, spec.dampingRatio, 1e-6f)
+        assertEquals(ExpressiveMotion.Spatial.slow<Float>().stiffness / 4f, spec.stiffness, 1e-6f)
+        assertTrue(spec.dampingRatio != 0.9f && spec.dampingRatio != 0.7f)
+        assertTrue(spec.stiffness != 40f && spec.stiffness != 60f)
+        // Never overshoots by a visible digit: under-damped but close to critical.
+        assertTrue(spec.dampingRatio >= 0.75f && spec.dampingRatio < 1f)
+    }
 }

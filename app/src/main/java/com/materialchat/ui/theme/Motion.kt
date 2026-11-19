@@ -228,10 +228,14 @@ object ExpressiveMotion {
 
         /**
          * Data reveal on the insights screen: the count-up of a stat card's number and the
-         * grow-in of its chart bars on data arrival. Deliberately far slower than [slow]
-         * (stiffness 50 vs 200) so the figure is seen arriving rather than snapping; damping
-         * 0.8 so a count-up never overshoots its final value by a visible digit. Pinned to
-         * what `StatCard` and `ModelUsageChart` draw today.
+         * grow-in of its chart bars on data arrival. The ONE insights reveal spec: damping is
+         * the M3E default spatial damping (0.8, same as [default]) so a count-up never
+         * overshoots its final value by a visible digit; stiffness is a quarter of the M3E
+         * slow spatial token ([slow], 200 -> 50) so the figure is seen arriving rather than
+         * snapping. The former per-chart variants (heatmap 0.9/40, comparison and
+         * response-time charts 0.7/60) were retired for this spec: all five insights
+         * consumers (`StatCard`, `ModelUsageChart`, `ActivityHeatmap`, `ModelComparisonCard`,
+         * `ResponseTimeChart`) draw it.
          */
         fun <T> dataReveal(): SpringSpec<T> = spring(
             dampingRatio = 0.8f,
