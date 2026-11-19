@@ -916,7 +916,18 @@ private fun getBubbleStyle(
     }
 }
 
-private fun bubbleShapeFor(
+/**
+ * The bubble family: the one function that maps a user-selectable [AppPreferences.ChatBubbleStyle]
+ * to the corner geometry of a user, assistant or system bubble at [groupPosition]. Exposed so the
+ * settings bubble-style preview can draw the real shapes instead of its own copy of the radii
+ * (W6 theme inventory, `SettingsScreen.kt:1977-1990`).
+ *
+ * The radii here are the family's record: `EXPRESSIVE` reads the theme's [MessageBubbleShapes];
+ * `ROUNDED` 34, `COMPACT` 20 / 18-6 and `GEOMETRIC` 16 / 18-4-10 have no theme token
+ * (`ExpressiveShapes.Bubble.*` is a pending theme decision), and the family stays on circular
+ * corners together with the composer (W4 ruling, `Shapes.kt` `MessageBubbleShapes` KDoc).
+ */
+internal fun bubbleShapeFor(
     style: AppPreferences.ChatBubbleStyle,
     isUser: Boolean,
     isAssistant: Boolean,

@@ -459,8 +459,13 @@ fun ShimmerSkeletonLines(
 /**
  * One restarting infinite-transition value for a streaming indicator, honouring the decoration
  * motion gate ([rememberParticleMotionGate]): with motion denied (power saver, animator scale
- * 0, stopped host) it returns [rest] and composes no frame loop. The tweens here are the one
- * place a tween stays (continuous, linear-time indicators), per the theme audit.
+ * 0, stopped host) it returns [rest] and composes no frame loop. The tween here is the one
+ * place a tween stays (continuous, linear-time indicators), per the theme audit; it is a
+ * pass-through of the caller's [durationMillis] and [easing] (W6 theme inventory row
+ * `StreamingIndicator.kt:481`, exempt). Callers pass the indicator periods as literals
+ * (3000 rotation, 2400 morph, 1400 shimmer): `MaterialChatMotion.Durations.Indicator` has no
+ * entries for them (`MorphRotation` is 4000, `MorphShape` 3000 is a different indicator), so
+ * tokenising them is a theme addition, not a chat consumption.
  */
 @Composable
 private fun gatedInfiniteFloat(
