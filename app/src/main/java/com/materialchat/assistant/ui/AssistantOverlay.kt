@@ -27,6 +27,7 @@ import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -140,6 +141,7 @@ import com.materialchat.domain.model.MessageRole
 import com.materialchat.ui.screens.chat.components.AttachmentPreviewRow
 import androidx.compose.material.icons.filled.AddPhotoAlternate
 import androidx.compose.material.icons.filled.PhotoCamera
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.ui.graphics.vector.ImageVector
 
 /**
@@ -438,6 +440,7 @@ fun AssistantOverlay(
                     },
                     onStopVoice = viewModel::finishVoiceInput,
                     onSendClick = { viewModel.sendQuery() },
+                    onRetry = viewModel::retryLastQuery,
                     onOpenInApp = viewModel::openInApp,
                     onDismiss = viewModel::dismiss,
                     onNewChat = viewModel::startNewChat,
@@ -526,6 +529,8 @@ internal fun AssistantOverlayContent(
     softEdges: Boolean = false,
     /** The session is dismissing: the sheet drops and shrinks out before the window hides. */
     leaving: Boolean = false,
+    /** Re-sends the question a failed request interrupted (the failure notice's "Try again"). */
+    onRetry: () -> Unit = {},
     onCardBoundsChange: (Rect) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
@@ -545,20 +550,23 @@ internal fun AssistantOverlayContent(
         voiceState is VoiceState.Thinking || voiceState is VoiceState.Responding
     val thinking = busy && !speaking && !capturing
     val hasResponse = messages.isNotEmpty() || uiState.isLoading
-    val isError = uiState.error != null || voiceState is VoiceState.Error
     // Worded for what the platform reports (API 37 request state when available).
     val screenUnavailableNotice = remember(context) {
         ScreenContextAccess.notice(ScreenContextAccess.requestState(context))
     }
-    val notice = uiState.error
-        ?: (voiceState as? VoiceState.Error)?.message
-        ?: uiState.notice
-        ?: screenUnavailableNotice.takeIf { uiState.screenContextUnavailable }
-        ?: when {
-            !hasMicPermission -> "Enable microphone permission in system settings to speak."
-            !uiState.isVoiceInputEnabled -> "Voice input is disabled in settings."
-            else -> null
-        }
+    // The one notice the window shows (message, severity, its single action), resolved by the
+    // same pure function the JVM test enumerates. Nothing here reads a raw string any more.
+    val notice = AssistantNotices.resolve(
+        error = uiState.error,
+        notice = uiState.notice,
+        voiceError = voiceState as? VoiceState.Error,
+        hasQuestion = uiState.userQuery.isNotBlank(),
+        screenContextUnavailable = uiState.screenContextUnavailable,
+        screenUnavailableNotice = screenUnavailableNotice,
+        hasMicPermission = hasMicPermission,
+        voiceInputEnabled = uiState.isVoiceInputEnabled,
+        keyboardMode = keyboardMode
+    )
     val partialTranscript = uiState.textInput.ifBlank {
         (voiceState as? VoiceState.Processing)?.partialText.orEmpty()
     }
@@ -599,6 +607,21 @@ internal fun AssistantOverlayContent(
     val endSession: () -> Unit = {
         onInterrupt()
         onDismiss()
+    }
+    // The notice's one action, routed to the same handlers the pill's own controls use so a
+    // retry from the notice behaves exactly like pressing the microphone or Send.
+    val onNoticeAction: (AssistantNoticeAction) -> Unit = { action ->
+        when (action) {
+            AssistantNoticeAction.RetryRequest -> onRetry()
+            AssistantNoticeAction.RetryListening -> {
+                hideKeyboard()
+                onInterrupt()
+                onVoiceClick()
+            }
+            AssistantNoticeAction.TypeInstead -> enterKeyboard()
+            AssistantNoticeAction.OpenApp -> onOpenInApp()
+            AssistantNoticeAction.ScreenSettings -> onOpenScreenContextSettings()
+        }
     }
 
     LaunchedEffect(Unit) {
@@ -704,10 +727,8 @@ internal fun AssistantOverlayContent(
                     messages = messages,
                     isLoading = uiState.isLoading,
                     notice = notice,
-                    isError = isError,
+                    onNoticeAction = onNoticeAction,
                     screenContextUsed = uiState.screenContextUsed,
-                    screenContextUnavailable = uiState.screenContextUnavailable,
-                    onOpenScreenContextSettings = onOpenScreenContextSettings,
                     showOpenInApp = hasContent,
                     onOpenInApp = onOpenInApp,
                     onNewChat = onNewChat,
@@ -722,7 +743,10 @@ internal fun AssistantOverlayContent(
                 )
             }
 
-            // One short line for errors and the microphone hint when there is no response surface.
+            // The notice surface above the pill when there is no response surface. The last
+            // notice is kept for the exit transition so the surface leaves with its text.
+            var lastNotice by remember { mutableStateOf(notice) }
+            LaunchedEffect(notice) { if (notice != null) lastNotice = notice }
             AnimatedVisibility(
                 visible = !hasResponse && notice != null,
                 enter = fadeIn(animationSpec = AssistantMotion.effect()) +
@@ -730,7 +754,7 @@ internal fun AssistantOverlayContent(
                 exit = fadeOut(animationSpec = AssistantMotion.effect()) +
                     scaleOut(animationSpec = AssistantMotion.stateSwitch(), targetScale = 0.9f)
             ) {
-                AssistantNoticeSurface(message = notice.orEmpty(), isError = isError)
+                (notice ?: lastNotice)?.let { AssistantNoticeSurface(notice = it, onAction = onNoticeAction) }
             }
 
             // The pill. At rest it is exactly the 76dp capsule (what the particle test and the
@@ -893,7 +917,7 @@ internal fun AssistantOverlayContent(
                         if (keyboardMode) {
                             if (uiState.textInput.isEmpty()) {
                                 Text(
-                                    text = "Ask anything",
+                                    text = AssistantCopy.PROMPT,
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis,
                                     style = AssistantTypography.prompt(MaterialTheme.typography),
@@ -921,11 +945,21 @@ internal fun AssistantOverlayContent(
                             val line = when {
                                 capturing && partialTranscript.isNotBlank() ->
                                     AssistantStateLine(partialTranscript, emphasised = true, kind = "transcript")
-                                capturing -> AssistantStateLine("Listening\u2026", false, "listening")
-                                thinking -> AssistantStateLine("Thinking\u2026", false, "thinking")
-                                speaking -> AssistantStateLine("Speaking\u2026", false, "speaking")
-                                voiceState is VoiceState.Error -> AssistantStateLine("Try again", false, "error")
-                                else -> AssistantStateLine("Ask anything", false, "idle")
+                                capturing -> AssistantStateLine(AssistantCopy.LISTENING, false, "listening")
+                                // Speaking first: a spoken reply can still be streaming in.
+                                speaking -> AssistantStateLine(AssistantCopy.SPEAKING, false, "speaking")
+                                // Streaming is its own state: the answer is arriving, not awaited.
+                                uiState.isStreaming -> AssistantStateLine(AssistantCopy.ANSWERING, false, "answering")
+                                thinking -> AssistantStateLine(AssistantCopy.THINKING, false, "thinking")
+                                else -> {
+                                    // After a retryable failure the prompt invites the retry; every
+                                    // other notice leaves the resting prompt in place.
+                                    val resting = notice?.restingLine ?: AssistantCopy.PROMPT
+                                    AssistantStateLine(
+                                        resting, false,
+                                        if (resting == AssistantCopy.AFTER_ERROR) "error" else "idle"
+                                    )
+                                }
                             }
                             // Weight contrast: the recognised words are large and semibold, the
                             // phase words and the resting prompt are light. A phase change slides
@@ -1157,13 +1191,11 @@ internal fun AssistantOverlayContent(
 private fun AssistantResponseSurface(
     messages: List<AssistantMessage>,
     isLoading: Boolean,
-    notice: String?,
-    isError: Boolean,
+    /** The one notice (failure, limit or hint) shown under the exchange, with its single action. */
+    notice: AssistantNotice?,
+    onNoticeAction: (AssistantNoticeAction) -> Unit,
     /** The answer was produced with the screen capture: the small "Using screen" marker. */
     screenContextUsed: Boolean = false,
-    /** The question wanted the screen and nothing arrived: the notice gets a settings button. */
-    screenContextUnavailable: Boolean = false,
-    onOpenScreenContextSettings: () -> Unit = {},
     showOpenInApp: Boolean,
     onOpenInApp: () -> Unit,
     onNewChat: () -> Unit,
@@ -1220,32 +1252,16 @@ private fun AssistantResponseSurface(
                         tint = palette.answer.muted
                     )
                     Text(
-                        text = "Using screen",
+                        text = AssistantCopy.USING_SCREEN,
                         style = AssistantTypography.notice(MaterialTheme.typography),
                         color = palette.answer.muted
                     )
                 }
             }
             if (notice != null) {
-                Text(
-                    text = notice,
-                    maxLines = if (screenContextUnavailable) 4 else 2,
-                    overflow = TextOverflow.Ellipsis,
-                    style = AssistantTypography.notice(MaterialTheme.typography),
-                    color = if (isError) palette.answer.error
-                    else palette.answer.muted
-                )
-            }
-            if (screenContextUnavailable) {
-                // The same tonal chip as every other action on the answer surface (a bare text
-                // button read as a different design pass, and its primary-coloured label was
-                // the one text on this fill not resolved against it).
-                AssistantActionChip(
-                    icon = Icons.Outlined.Settings,
-                    label = "Open assistant settings",
-                    onClick = onOpenScreenContextSettings,
-                    modifier = Modifier.testTag("assistant_screen_settings")
-                )
+                // The same notice surface the pill shows on its own: a message is never a bare
+                // line of coloured text on the answer fill, and its action lives inside it.
+                AssistantNoticeSurface(notice = notice, onAction = onNoticeAction)
             }
             AssistantAnswerToolbar(
                 showOpenInApp = showOpenInApp,
@@ -1546,40 +1562,112 @@ private fun AssistantChromeIconButton(
 }
 
 /**
- * Errors and limits above the pill: a leading glyph on the notice's own resolved content colour
- * next to the message, inside the contrast-resolved notice / error-notice container. The
- * container's arrival (fade + scale on the state-switch spring) is owned by the caller.
+ * The one notice surface of the assistant window, above the pill or inside the answer surface:
+ * a leading glyph and the message on the notice's own resolved content colour, inside the
+ * contrast-resolved notice / error-notice container, and, when the notice offers one, its
+ * single action as an outlined chip in that same content colour (the chip adds no new fill).
+ * The container's arrival (fade + scale on the state-switch spring) is owned by the caller.
  */
 @Composable
-private fun AssistantNoticeSurface(message: String, isError: Boolean) {
+private fun AssistantNoticeSurface(
+    notice: AssistantNotice,
+    onAction: (AssistantNoticeAction) -> Unit,
+    modifier: Modifier = Modifier
+) {
     val palette = rememberAssistantSurfacePalette()
-    val container = if (isError) palette.errorNotice.container else palette.notice.fill
-    val content = if (isError) palette.errorNotice.content else palette.notice.muted
+    val container = if (notice.isError) palette.errorNotice.container else palette.notice.fill
+    val content = if (notice.isError) palette.errorNotice.content else palette.notice.muted
     Surface(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
         shape = AssistantShapes.Notice,
         color = container,
         contentColor = content,
         tonalElevation = 2.dp
     ) {
-        Row(
-            modifier = Modifier.padding(start = 14.dp, end = 16.dp, top = 10.dp, bottom = 10.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        Column(
+            modifier = Modifier.padding(start = 14.dp, end = 14.dp, top = 12.dp, bottom = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            Icon(
-                imageVector = if (isError) Icons.Outlined.ErrorOutline else Icons.Outlined.Info,
-                contentDescription = null,
-                modifier = Modifier.size(18.dp),
-                tint = content
-            )
-            Text(
-                text = message,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-                style = AssistantTypography.notice(MaterialTheme.typography),
-                color = content
-            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Icon(
+                    imageVector = if (notice.isError) Icons.Outlined.ErrorOutline else Icons.Outlined.Info,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp),
+                    tint = content
+                )
+                Text(
+                    text = notice.message,
+                    maxLines = 4,
+                    overflow = TextOverflow.Ellipsis,
+                    style = AssistantTypography.notice(MaterialTheme.typography),
+                    color = content
+                )
+            }
+            val action = notice.action
+            if (action != null) {
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                    AssistantNoticeActionChip(
+                        icon = when (action) {
+                            AssistantNoticeAction.RetryRequest,
+                            AssistantNoticeAction.RetryListening -> Icons.Default.Refresh
+                            AssistantNoticeAction.TypeInstead -> Icons.Default.Keyboard
+                            AssistantNoticeAction.OpenApp -> Icons.AutoMirrored.Filled.OpenInNew
+                            AssistantNoticeAction.ScreenSettings -> Icons.Outlined.Settings
+                        },
+                        label = action.label,
+                        content = content,
+                        onClick = { onAction(action) },
+                        // The screen-context settings action keeps the tag the hosted gate reads.
+                        modifier = Modifier.testTag(
+                            if (action == AssistantNoticeAction.ScreenSettings) "assistant_screen_settings"
+                            else "assistant_notice_action"
+                        )
+                    )
+                }
+            }
+        }
+    }
+}
+
+/**
+ * A notice's action: the chip family's 40dp height, 16dp icon and bold label, drawn outlined in
+ * the notice's own content colour (no fill of its own, so it reads on the error container as
+ * well as the plain notice), with the shared press morph (20dp -> 12dp on the Press.Shape token).
+ */
+@Composable
+private fun AssistantNoticeActionChip(
+    icon: ImageVector,
+    label: String,
+    content: Color,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val pressed by interactionSource.collectIsPressedAsState()
+    val corner by animateDpAsState(
+        targetValue = if (pressed) AssistantShapes.ConnectedPressedCorner else AssistantShapes.GlyphRoundCorner,
+        animationSpec = ExpressiveMotion.Press.Shape,
+        label = "noticeActionCorner"
+    )
+    Surface(
+        onClick = onClick,
+        shape = RoundedCornerShape(corner),
+        color = Color.Transparent,
+        contentColor = content,
+        border = BorderStroke(1.dp, content),
+        interactionSource = interactionSource,
+        modifier = modifier.height(40.dp)
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            Icon(imageVector = icon, contentDescription = null, modifier = Modifier.size(16.dp), tint = content)
+            Text(label, style = AssistantTypography.action(MaterialTheme.typography), color = content)
         }
     }
 }

@@ -2,11 +2,8 @@ package com.materialchat.assistant.ui.components
 
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Animatable
-import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.scrollBy
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -19,9 +16,7 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -30,13 +25,12 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
-import com.materialchat.assistant.ui.AssistantColors
+import com.materialchat.assistant.ui.AssistantCopy
 import com.materialchat.assistant.ui.AssistantMessage
 import com.materialchat.assistant.ui.AssistantMotion
 import com.materialchat.assistant.ui.AssistantShapes
@@ -229,12 +223,13 @@ private fun AssistantBubble(
  *   corner points down at the pill the answer will stream into, filled with the thinking tone
  *   (highest surface container leaning toward the secondary container) so it reads as a step
  *   below the answer that replaces it.
- * - Type: a bold, upright "Thinking" title over a regular-weight status line. Never italic.
- * - Motion: the M3 Expressive [LoadingIndicator] (polygons morphing into one another, the spec's
- *   "working" motion) inside a secondary circle, plus one spring entrance from the pill corner.
- *   Nothing pulses, breathes or shimmers; the indicator is the only continuous motion.
+ * - Type: a bold, upright "Thinking" title over a regular-weight status line, both from
+ *   [AssistantCopy]. Never italic.
+ * - Motion: one spring entrance from the pill corner, and nothing continuous. The working
+ *   indicator (the M3 Expressive loading indicator) is owned by the pill's glyph, which is
+ *   visible in every phase; drawing a second one here put two morphing polygons on screen for
+ *   the same state, so this surface is the quiet placeholder the answer streams into.
  */
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun AssistantThinkingSurface() {
     // One spring on appearance, anchored at the corner that points at the pill. A spring, not a
@@ -256,35 +251,20 @@ private fun AssistantThinkingSurface() {
             contentColor = palette.thinking.body,
             tonalElevation = 2.dp
         ) {
-            Row(
-                modifier = Modifier.padding(start = 12.dp, end = 20.dp, top = 12.dp, bottom = 12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            Column(
+                modifier = Modifier.padding(start = 16.dp, end = 20.dp, top = 12.dp, bottom = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(2.dp)
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(40.dp)
-                        .clip(CircleShape)
-                        .background(palette.thinkingBadge.container),
-                    contentAlignment = Alignment.Center
-                ) {
-                    LoadingIndicator(
-                        modifier = Modifier.size(30.dp),
-                        color = palette.thinkingBadge.content
-                    )
-                }
-                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    Text(
-                        text = "Thinking",
-                        style = AssistantTypography.thinkingTitle(MaterialTheme.typography),
-                        color = palette.thinking.body
-                    )
-                    Text(
-                        text = "Working on your answer",
-                        style = AssistantTypography.thinkingStatus(MaterialTheme.typography),
-                        color = palette.thinking.muted
-                    )
-                }
+                Text(
+                    text = AssistantCopy.THINKING_TITLE,
+                    style = AssistantTypography.thinkingTitle(MaterialTheme.typography),
+                    color = palette.thinking.body
+                )
+                Text(
+                    text = AssistantCopy.THINKING_STATUS,
+                    style = AssistantTypography.thinkingStatus(MaterialTheme.typography),
+                    color = palette.thinking.muted
+                )
             }
         }
     }

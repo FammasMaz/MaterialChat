@@ -223,6 +223,14 @@ internal data class AssistantSurfacePalette(
             add(AssistantContrastPair(n, fill, answer.muted, AssistantContrast.ICON))
         }
         tonal("attachment remove", attachmentRemove, AssistantContrast.ICON)
+        // W2: a notice's action chip is outlined in the notice's own content colour on the
+        // notice's own fill (label at body size, the 1dp border as a graphical object), so it
+        // adds no fill; these pairs name the chip so a regression on either surface names itself.
+        notice.fills.forEachIndexed { i, fill ->
+            val n = if (notice.fills.size == 1) "notice action" else "notice action[$i]"
+            add(AssistantContrastPair(n, fill, notice.muted, AssistantContrast.BODY_TEXT))
+        }
+        tonal("error notice action", errorNotice, AssistantContrast.BODY_TEXT)
         for ((phase, glyph) in glyphs) tonal("glyph $phase", glyph, AssistantContrast.ICON)
     }
 
