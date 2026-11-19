@@ -154,6 +154,9 @@ import com.materialchat.ui.screens.settings.components.SettingsToggleRow
 import com.materialchat.ui.screens.settings.components.SystemPromptField
 import com.materialchat.ui.components.HapticPattern
 import com.materialchat.ui.components.rememberHapticFeedback
+import androidx.compose.ui.graphics.Shape
+import com.materialchat.ui.screens.chat.MessageGroupPosition
+import com.materialchat.ui.screens.chat.components.bubbleShapeFor
 import com.materialchat.ui.theme.CustomShapes
 import com.materialchat.ui.theme.ExpressiveMotion
 import com.materialchat.ui.theme.ExpressiveShapes
@@ -1968,29 +1971,20 @@ private fun AppPreferences.ControlShapeStyle.prettyName(): String {
     return name.lowercase().replaceFirstChar { it.uppercase() }
 }
 
+/**
+ * The bubble-style preview draws the real chat bubble family: a single (ungrouped) user or
+ * assistant bubble from chat's [bubbleShapeFor]. There is no local radii table any more, so the
+ * picker cannot show a shape the chat never renders (W6 cross-surface audit #1).
+ */
 private fun previewBubbleShape(
     style: AppPreferences.ChatBubbleStyle,
     isUser: Boolean
-): RoundedCornerShape {
-    return when (style) {
-        AppPreferences.ChatBubbleStyle.EXPRESSIVE -> if (isUser) {
-            RoundedCornerShape(24.dp, 6.dp, 24.dp, 24.dp)
-        } else {
-            RoundedCornerShape(6.dp, 24.dp, 24.dp, 24.dp)
-        }
-        AppPreferences.ChatBubbleStyle.ROUNDED -> RoundedCornerShape(28.dp)
-        AppPreferences.ChatBubbleStyle.COMPACT -> if (isUser) {
-            RoundedCornerShape(16.dp, 6.dp, 16.dp, 16.dp)
-        } else {
-            RoundedCornerShape(6.dp, 16.dp, 16.dp, 16.dp)
-        }
-        AppPreferences.ChatBubbleStyle.GEOMETRIC -> if (isUser) {
-            RoundedCornerShape(18.dp, 4.dp, 18.dp, 10.dp)
-        } else {
-            RoundedCornerShape(4.dp, 18.dp, 10.dp, 18.dp)
-        }
-    }
-}
+): Shape = bubbleShapeFor(
+    style = style,
+    isUser = isUser,
+    isAssistant = !isUser,
+    groupPosition = MessageGroupPosition.Single
+)
 
 @Composable
 private fun FontSizeSelector(
