@@ -5,6 +5,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
+import com.materialchat.ui.theme.ContrastSlot
+import com.materialchat.ui.theme.ContrastSlotResolver
+import com.materialchat.ui.theme.ContrastSlotSet
 import com.materialchat.ui.theme.ThemeContrast
 import com.materialchat.ui.theme.ThemeContrastPair
 import com.materialchat.ui.theme.readableOn
@@ -153,7 +156,7 @@ internal enum class HomeSettingsSlot(
 internal class HomeSettingsPalette private constructor(
     private val scheme: ColorScheme,
     private val contents: Map<HomeSettingsSlot, Color>
-) {
+) : ContrastSlotSet {
     /** The colour to draw [slot]'s content with. */
     operator fun get(slot: HomeSettingsSlot): Color = contents.getValue(slot)
 
@@ -162,6 +165,10 @@ internal class HomeSettingsPalette private constructor(
 
     fun pairs(): List<ThemeContrastPair> =
         HomeSettingsSlot.values().map { ThemeContrastPair(it.name, it.fill(scheme), this[it], it.minimum) }
+
+    // ContrastSlotSet: the theme gate walks this surface through the shared vocabulary.
+    override val surfaceName: String get() = HomeSettingsContrastSlots.SURFACE
+    override val slots: List<ContrastSlot> get() = pairs()
 
     companion object {
         /** Each slot exactly as its call site reads the theme role: the baseline. */
@@ -183,6 +190,18 @@ internal class HomeSettingsPalette private constructor(
                 }
             )
     }
+}
+
+/**
+ * The home/settings surface as a [ContrastSlotResolver], so `ThemeContrastTest` can register it
+ * beside the theme foundation without an adapter. The `Snackbar*` / `Dialog*` slots stay in
+ * [HomeSettingsSlot] even though `componentContrastPairs()` now gates the same pairs: the theme
+ * test pins them equal by name so the two gates cannot drift.
+ */
+internal object HomeSettingsContrastSlots : ContrastSlotResolver {
+    const val SURFACE = "home-settings"
+
+    override fun resolve(scheme: ColorScheme): ContrastSlotSet = HomeSettingsPalette.resolve(scheme)
 }
 
 /** The resolved palette for the current theme; recomputed only when the scheme changes. */

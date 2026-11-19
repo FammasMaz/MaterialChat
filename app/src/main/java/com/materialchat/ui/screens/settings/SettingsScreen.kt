@@ -157,7 +157,10 @@ import com.materialchat.ui.components.rememberHapticFeedback
 import com.materialchat.ui.theme.CustomShapes
 import com.materialchat.ui.theme.ExpressiveMotion
 import com.materialchat.ui.theme.ExpressiveShapes
+import com.materialchat.ui.theme.ExpressiveSizes
 import com.materialchat.ui.theme.MaterialChatThemePalettes
+import com.materialchat.ui.theme.dialogActionColor
+import com.materialchat.ui.theme.dialogDestructiveColor
 
 /**
  * Settings screen for managing providers, theme, and app preferences.
@@ -2720,7 +2723,8 @@ private fun BackupPasswordDialog(
                 onClick = onConfirm,
                 enabled = passphrase.length >= 8 && !isBusy,
                 text = confirmText,
-                style = ExpressiveButtonStyle.Text
+                style = ExpressiveButtonStyle.Text,
+                contentColor = MaterialTheme.colorScheme.dialogActionColor()
             )
         },
         dismissButton = {
@@ -2728,7 +2732,8 @@ private fun BackupPasswordDialog(
                 onClick = onDismiss,
                 enabled = !isBusy,
                 text = "Cancel",
-                style = ExpressiveButtonStyle.Text
+                style = ExpressiveButtonStyle.Text,
+                contentColor = MaterialTheme.colorScheme.dialogActionColor()
             )
         },
         containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
@@ -2771,7 +2776,8 @@ private fun RestoreBackupConfirmationDialog(
                 onClick = onConfirm,
                 enabled = !isBusy,
                 text = "Restore",
-                style = ExpressiveButtonStyle.Text
+                style = ExpressiveButtonStyle.Text,
+                contentColor = MaterialTheme.colorScheme.dialogActionColor()
             )
         },
         dismissButton = {
@@ -2779,7 +2785,8 @@ private fun RestoreBackupConfirmationDialog(
                 onClick = onDismiss,
                 enabled = !isBusy,
                 text = "Cancel",
-                style = ExpressiveButtonStyle.Text
+                style = ExpressiveButtonStyle.Text,
+                contentColor = MaterialTheme.colorScheme.dialogActionColor()
             )
         },
         containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
@@ -2812,14 +2819,16 @@ private fun DeleteProviderDialog(
             ExpressiveButton(
                 onClick = onConfirm,
                 text = "Delete",
-                style = ExpressiveButtonStyle.Text
+                style = ExpressiveButtonStyle.Text,
+                contentColor = MaterialTheme.colorScheme.dialogDestructiveColor()
             )
         },
         dismissButton = {
             ExpressiveButton(
                 onClick = onDismiss,
                 text = "Cancel",
-                style = ExpressiveButtonStyle.Text
+                style = ExpressiveButtonStyle.Text,
+                contentColor = MaterialTheme.colorScheme.dialogActionColor()
             )
         },
         containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,

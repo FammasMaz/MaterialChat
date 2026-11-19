@@ -64,6 +64,12 @@ class WorkflowExecutionViewModel @Inject constructor(
         loadWorkflow()
     }
 
+    /** Clears a load error, returns to the loading state and reads the workflow again. */
+    fun retry() {
+        _uiState.update { it.copy(isLoading = true, error = null) }
+        loadWorkflow()
+    }
+
     /**
      * Loads the workflow metadata and shows the input dialog.
      */

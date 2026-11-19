@@ -139,6 +139,7 @@ fun PersonaStudioScreen(
                 LoadErrorContent(
                     title = "Personas could not be loaded",
                     message = "Something went wrong while reading your personas",
+                    onRetry = viewModel::retry,
                     onBack = onNavigateBack,
                     modifier = Modifier.padding(paddingValues)
                 )

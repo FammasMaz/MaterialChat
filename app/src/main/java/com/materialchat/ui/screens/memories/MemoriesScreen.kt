@@ -60,6 +60,8 @@ import com.materialchat.ui.components.ExpressiveContentSurface
 import com.materialchat.ui.components.ExpressiveEmptyState
 import com.materialchat.ui.screens.conversations.EmptyStateAccent
 import com.materialchat.ui.components.ExpressiveFilledIconButton
+import com.materialchat.ui.components.dialogActionButtonColors
+import com.materialchat.ui.components.dialogDestructiveButtonColors
 import com.materialchat.ui.components.ExpressiveSnackbar
 import com.materialchat.ui.components.ExpressiveTopBarTitle
 import com.materialchat.ui.components.LoadErrorContent
@@ -160,17 +162,18 @@ fun MemoriesScreen(
             text = { Text("This removes every saved memory from this device. Chat history stays intact.") },
             confirmButton = {
                 TextButton(
+                    colors = dialogDestructiveButtonColors(),
                     onClick = {
                         haptics.perform(HapticPattern.CONFIRM)
                         viewModel.deleteAllMemories()
                         showDeleteAllDialog = false
                     }
                 ) {
-                    Text("Delete all", color = MaterialTheme.colorScheme.error)
+                    Text("Delete all")
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showDeleteAllDialog = false }) {
+                TextButton(onClick = { showDeleteAllDialog = false }, colors = dialogActionButtonColors()) {
                     Text("Cancel")
                 }
             },

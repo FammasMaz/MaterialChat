@@ -128,10 +128,12 @@ import com.materialchat.ui.screens.search.components.SearchResultItem
 import com.materialchat.ui.theme.CustomShapes
 import com.materialchat.ui.theme.particles.rememberParticleMotionGate
 import com.materialchat.ui.theme.ExpressiveMotion
-import com.materialchat.ui.components.HomeSettingsSlot
-import com.materialchat.ui.components.rememberHomeSettingsPalette
+import com.materialchat.ui.components.dialogActionButtonColors
+import com.materialchat.ui.components.dialogDestructiveButtonColors
 import com.materialchat.ui.theme.ExpressiveShapes
 import com.materialchat.ui.theme.ExpressiveShapeToken
+import com.materialchat.ui.theme.ExpressiveSizes
+import com.materialchat.ui.theme.dialogActionColor
 import com.materialchat.ui.theme.LocalMainButtonShape
 import com.materialchat.ui.theme.expressiveControlShape
 import com.materialchat.ui.theme.toExpressiveShapeToken
@@ -352,6 +354,7 @@ fun ConversationsScreen(
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     TextButton(
+                        colors = dialogActionButtonColors(),
                         onClick = {
                             dialogHaptics.perform(HapticPattern.CLICK)
                             renameConversation?.let { conv ->
@@ -364,6 +367,7 @@ fun ConversationsScreen(
                         Text("Retry with AI")
                     }
                     TextButton(
+                        colors = dialogDestructiveButtonColors(),
                         onClick = {
                             dialogHaptics.perform(HapticPattern.CONFIRM)
                             renameConversation?.let { conv ->
@@ -373,7 +377,7 @@ fun ConversationsScreen(
                             renameConversation = null
                         }
                     ) {
-                        Text("Delete", color = MaterialTheme.colorScheme.error)
+                        Text("Delete")
                     }
                     val conv = renameConversation
                     if (conv != null) {
@@ -399,6 +403,7 @@ fun ConversationsScreen(
             },
             confirmButton = {
                 TextButton(
+                    colors = dialogActionButtonColors(),
                     onClick = {
                         dialogHaptics.perform(HapticPattern.CLICK)
                         renameConversation?.let { conv ->
@@ -415,6 +420,7 @@ fun ConversationsScreen(
             },
             dismissButton = {
                 TextButton(
+                    colors = dialogActionButtonColors(),
                     onClick = {
                         dialogHaptics.perform(HapticPattern.CLICK)
                         showRenameDialog = false
@@ -586,7 +592,7 @@ private fun ConversationsTopBar(
                 modifier = Modifier
                     // Matches the 44dp icon buttons at font scale 1.0 but may grow: headlineLarge
                     // is a 40sp line (52dp at scale 1.3) and the wordmark clips to its bounds.
-                    .heightIn(min = 44.dp)
+                    .heightIn(min = ExpressiveSizes.CompactTarget)
                     .align(Alignment.BottomStart)
                     .padding(bottom = baseBottomPadding)
                     .graphicsLayer {
@@ -901,7 +907,7 @@ private fun ConversationMetadataDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = onDismiss) {
+            TextButton(onClick = onDismiss, colors = dialogActionButtonColors()) {
                 Text("Done")
             }
         }
@@ -914,8 +920,8 @@ private fun MetadataRow(label: String, value: String) {
         Text(
             text = label,
             style = MaterialTheme.typography.labelMedium,
-            // Resolved against the dialog container: primary reads 4.1:1 on light VIOLET/CITRUS.
-            color = rememberHomeSettingsPalette()[HomeSettingsSlot.DialogLabel]
+            // Theme-resolved against the dialog container: primary reads 4.1:1 on light VIOLET/CITRUS.
+            color = MaterialTheme.colorScheme.dialogActionColor()
         )
         Text(
             text = value,

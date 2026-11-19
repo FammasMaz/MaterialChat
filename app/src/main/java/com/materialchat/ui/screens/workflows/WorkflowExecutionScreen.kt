@@ -62,6 +62,7 @@ import com.materialchat.ui.screens.workflows.components.StepProgressIndicator
 import com.materialchat.ui.screens.workflows.components.StepResultCard
 import com.materialchat.ui.theme.ExpressiveMotion
 import com.materialchat.ui.theme.ExpressiveShapes
+import com.materialchat.ui.theme.dialogActionColor
 
 /**
  * Workflow Execution screen.
@@ -139,6 +140,7 @@ fun WorkflowExecutionScreen(
                 LoadErrorContent(
                     title = "Workflow could not be loaded",
                     message = "Something went wrong while opening this workflow",
+                    onRetry = viewModel::retry,
                     onBack = onNavigateBack
                 )
             }
@@ -218,7 +220,12 @@ private fun WorkflowInputDialog(
             )
         },
         dismissButton = {
-            ExpressiveButton(onClick = { onDismiss() }, text = "Cancel", style = ExpressiveButtonStyle.Text)
+            ExpressiveButton(
+                onClick = { onDismiss() },
+                text = "Cancel",
+                style = ExpressiveButtonStyle.Text,
+                contentColor = MaterialTheme.colorScheme.dialogActionColor()
+            )
         }
     )
 }

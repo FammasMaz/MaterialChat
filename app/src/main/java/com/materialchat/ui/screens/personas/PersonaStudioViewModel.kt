@@ -35,6 +35,12 @@ class PersonaStudioViewModel @Inject constructor(
         observePersonas()
     }
 
+    /** Puts the screen back on the loading indicator and re-observes the persona store. */
+    fun retry() {
+        _uiState.value = PersonaStudioUiState.Loading
+        observePersonas()
+    }
+
     /**
      * Starts observing all personas from the repository.
      */

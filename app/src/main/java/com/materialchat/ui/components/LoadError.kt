@@ -1,12 +1,8 @@
 package com.materialchat.ui.components
 
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.ErrorOutline
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import com.materialchat.ui.screens.conversations.EmptyStateAccent
-import com.materialchat.ui.screens.conversations.EmptyStateAction
-import com.materialchat.ui.screens.conversations.HomeEmptyState
 
 /**
  * Why a list screen (memories, workflows, generated images, leaderboard) could not load.
@@ -19,33 +15,32 @@ sealed interface LoadError {
 }
 
 /** Action verb for every error surface on home, settings and the drawer screens. */
-const val ERROR_RETRY_LABEL = "Try again"
+const val ERROR_RETRY_LABEL = ErrorContentCopy.TRY_AGAIN
 
 /** Secondary verb on error surfaces that were pushed and can be left. */
 const val ERROR_BACK_LABEL = "Go back"
 
 /**
- * The one full-screen error surface for home, settings and every drawer screen: the same
- * empty-state cluster as the home list (icon, sentence-case headline, one supporting line)
- * with a fixed action order — [onRetry] ("Try again") first as the primary button, then
- * [onBack] ("Go back") as a low-emphasis text button. Either may be omitted. The copy is
- * fixed per screen; exception text is never passed through.
+ * The one full-screen error surface for home, settings and every drawer screen: a thin alias
+ * over the shared [ErrorContent] card (error tile, bold headline, supporting line) that fixes
+ * the action order — [onRetry] ([ERROR_RETRY_LABEL]) first as the primary button, then
+ * [onBack] ([ERROR_BACK_LABEL]) as a low-emphasis text button. The copy is fixed per screen;
+ * exception text is never passed through. Fills the space it is given and centres the card.
  */
 @Composable
 fun LoadErrorContent(
     title: String,
     message: String,
+    onRetry: () -> Unit,
     modifier: Modifier = Modifier,
-    onRetry: (() -> Unit)? = null,
     onBack: (() -> Unit)? = null
 ) {
-    HomeEmptyState(
-        headline = title,
-        supportingText = message,
-        icon = Icons.Outlined.ErrorOutline,
-        accent = EmptyStateAccent.Secondary,
-        action = onRetry?.let { EmptyStateAction(ERROR_RETRY_LABEL, it) },
-        secondaryAction = onBack?.let { EmptyStateAction(ERROR_BACK_LABEL, it) },
-        modifier = modifier
+    ErrorContent(
+        title = title,
+        message = message,
+        onRetry = onRetry,
+        modifier = modifier.fillMaxSize(),
+        secondaryLabel = onBack?.let { ERROR_BACK_LABEL },
+        onSecondary = onBack
     )
 }

@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -60,6 +61,9 @@ import com.materialchat.ui.components.rememberHapticFeedback
  * @param leadingIcon Optional leading icon.
  * @param trailingIcon Optional trailing icon.
  * @param style The visual style of the button.
+ * @param contentColor Label/icon colour for [ExpressiveButtonStyle.Text] only (dialog actions
+ * pass the theme-resolved `dialogActionColor()` / `dialogDestructiveColor()`); null keeps the
+ * M3 default. Ignored by the filled styles, whose container decides their content colour.
  */
 @Composable
 fun ExpressiveButton(
@@ -69,7 +73,8 @@ fun ExpressiveButton(
     text: String,
     leadingIcon: ImageVector? = null,
     trailingIcon: ImageVector? = null,
-    style: ExpressiveButtonStyle = ExpressiveButtonStyle.Filled
+    style: ExpressiveButtonStyle = ExpressiveButtonStyle.Filled,
+    contentColor: Color? = null
 ) {
     val haptics = rememberHapticFeedback()
     val interactionSource = remember { MutableInteractionSource() }
@@ -158,6 +163,11 @@ fun ExpressiveButton(
                 modifier = modifier.defaultMinSize(minHeight = 56.dp).scale(scale),
                 enabled = enabled,
                 shape = shape,
+                colors = if (contentColor != null) {
+                    ButtonDefaults.textButtonColors(contentColor = contentColor)
+                } else {
+                    ButtonDefaults.textButtonColors()
+                },
                 interactionSource = interactionSource,
                 contentPadding = PaddingValues(horizontal = 24.dp, vertical = 0.dp)
             ) {

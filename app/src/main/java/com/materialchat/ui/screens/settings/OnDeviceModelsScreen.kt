@@ -68,6 +68,8 @@ import com.materialchat.ui.components.dialogEntrance
 import com.materialchat.ui.theme.ExpressiveMotion
 import com.materialchat.ui.theme.ExpressiveShapes
 import com.materialchat.ui.theme.CustomShapes
+import com.materialchat.ui.theme.dialogActionColor
+import com.materialchat.ui.theme.dialogDestructiveColor
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -204,14 +206,20 @@ fun OnDeviceModelsScreen(
                         pendingDelete = null
                     },
                     text = if (state.descriptor.backend == LocalModelBackend.AICORE_GEMINI_NANO) "Got it" else "Delete",
-                    style = ExpressiveButtonStyle.Text
+                    style = ExpressiveButtonStyle.Text,
+                    contentColor = if (state.descriptor.backend == LocalModelBackend.AICORE_GEMINI_NANO) {
+                        MaterialTheme.colorScheme.dialogActionColor()
+                    } else {
+                        MaterialTheme.colorScheme.dialogDestructiveColor()
+                    }
                 )
             },
             dismissButton = {
                 ExpressiveButton(
                     onClick = { pendingDelete = null },
                     text = "Cancel",
-                    style = ExpressiveButtonStyle.Text
+                    style = ExpressiveButtonStyle.Text,
+                    contentColor = MaterialTheme.colorScheme.dialogActionColor()
                 )
             }
         )
