@@ -2,7 +2,6 @@ package com.materialchat.ui.screens.bookmarks.components
 
 import androidx.compose.animation.animateColorAsState
 import com.materialchat.ui.theme.ExpressiveMotion
-import com.materialchat.ui.theme.ExpressiveShapes
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -15,7 +14,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Tag
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -28,6 +26,7 @@ import androidx.compose.ui.unit.dp
 import com.materialchat.domain.model.BookmarkCategory
 import com.materialchat.ui.components.HapticPattern
 import com.materialchat.ui.components.rememberHapticFeedback
+import com.materialchat.ui.components.ExpressiveFilterChip
 
 /**
  * Horizontal filter bar for the Knowledge Base screen.
@@ -78,9 +77,8 @@ fun BookmarkFilterBar(
                     label = "category_chip_color"
                 )
 
-                FilterChip(
+                ExpressiveFilterChip(
                     selected = isSelected,
-                    shape = ExpressiveShapes.Chip,
                     onClick = {
                         haptics.perform(HapticPattern.SEGMENT_TICK)
                         if (isSelected) {
@@ -133,9 +131,8 @@ fun BookmarkFilterBar(
                         label = "tag_chip_color"
                     )
 
-                    FilterChip(
+                    ExpressiveFilterChip(
                         selected = isSelected,
-                        shape = ExpressiveShapes.Chip,
                         onClick = {
                             haptics.perform(HapticPattern.SEGMENT_TICK)
                             if (isSelected) {

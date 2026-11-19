@@ -7,14 +7,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.SuggestionChip
 import androidx.compose.material3.SuggestionChipDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.text.style.TextOverflow
-import com.materialchat.ui.theme.ExpressiveShapes
+import com.materialchat.ui.components.ExpressiveSuggestionChip
 
 /**
  * Horizontally scrollable row of suggestion chips for persona conversation starters.
@@ -41,7 +40,7 @@ fun ConversationStarterChips(
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         starters.forEach { starter ->
-            SuggestionChip(
+            ExpressiveSuggestionChip(
                 onClick = { onStarterSelected(starter) },
                 label = {
                     Text(
@@ -51,7 +50,6 @@ fun ConversationStarterChips(
                         overflow = TextOverflow.Ellipsis
                     )
                 },
-                shape = ExpressiveShapes.Chip,
                 colors = SuggestionChipDefaults.suggestionChipColors(
                     containerColor = MaterialTheme.colorScheme.secondaryContainer,
                     labelColor = MaterialTheme.colorScheme.onSecondaryContainer

@@ -77,7 +77,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Slider
@@ -165,6 +164,7 @@ import com.materialchat.ui.theme.ExpressiveSizes
 import com.materialchat.ui.theme.MaterialChatThemePalettes
 import com.materialchat.ui.theme.dialogActionColor
 import com.materialchat.ui.theme.dialogDestructiveColor
+import com.materialchat.ui.components.ExpressiveFilterChip
 
 /**
  * Settings screen for managing providers, theme, and app preferences.
@@ -2565,9 +2565,8 @@ private fun DefaultImageGenerationModelField(
             ) {
                 AppPreferences.SUPPORTED_IMAGE_GENERATION_MODELS.forEach { model ->
                     val tier = model.substringAfterLast('-').replaceFirstChar { it.uppercase() }
-                    FilterChip(
+                    ExpressiveFilterChip(
                         selected = currentModel == model,
-                        shape = ExpressiveShapes.Chip,
                         onClick = {
                             text = model
                             onModelChange(model)
@@ -2667,9 +2666,8 @@ private fun DefaultImageOutputFormatField(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 AppPreferences.SUPPORTED_IMAGE_OUTPUT_FORMATS.forEach { format ->
-                    FilterChip(
+                    ExpressiveFilterChip(
                         selected = currentFormat == format,
-                        shape = ExpressiveShapes.Chip,
                         onClick = { onFormatChange(format) },
                         label = { Text(format.uppercase()) },
                         modifier = Modifier.weight(1f),

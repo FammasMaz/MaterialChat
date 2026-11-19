@@ -30,7 +30,6 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ElevatedCard
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -67,6 +66,7 @@ import com.materialchat.ui.components.HomeSettingsSlot
 import com.materialchat.ui.components.rememberHomeSettingsPalette
 import com.materialchat.ui.theme.ExpressiveShapes
 import com.materialchat.ui.theme.ExpressiveSizes
+import com.materialchat.ui.components.ExpressiveFilterChip
 
 /**
  * Pre-computed display tiers for the constant image-generation model list so the
@@ -671,9 +671,8 @@ private fun ImageGenerationAssignmentCard(
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             IMAGE_MODEL_TIERS.forEach { (model, tier) ->
-                FilterChip(
+                ExpressiveFilterChip(
                     selected = currentModel == model,
-                    shape = ExpressiveShapes.Chip,
                     onClick = {
                         text = model
                         onModelChange(model)
@@ -701,9 +700,8 @@ private fun ImageGenerationAssignmentCard(
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             AppPreferences.SUPPORTED_IMAGE_OUTPUT_FORMATS.forEach { format ->
-                FilterChip(
+                ExpressiveFilterChip(
                     selected = currentFormat == format,
-                    shape = ExpressiveShapes.Chip,
                     onClick = { onFormatChange(format) },
                     label = { Text(format.uppercase()) },
                     modifier = Modifier

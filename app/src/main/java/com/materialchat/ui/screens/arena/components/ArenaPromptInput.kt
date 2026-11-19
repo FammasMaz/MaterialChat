@@ -29,7 +29,8 @@ import com.materialchat.ui.components.rememberHapticFeedback
  * The arena composer's corner geometry: round 28dp, the same corner class as the chat
  * composer (W4 ruling, `Shapes.kt` `MessageBubbleShapes` KDoc: bubbles and the composer sit
  * under each other and share circular corners; squircles are for cards and sheets). Held here
- * rather than on `CustomShapes.MessageInputContainer`, which chat no longer reads (W6 audit #8).
+ * as a file-private value: the 28dp radius is `ExpressiveShapes.Card`'s radius with round
+ * corners, and chat keeps its own `ComposerFieldRadius` (W8 theme row H11; no shared token).
  */
 private val ArenaComposerShape = RoundedCornerShape(28.dp)
 
