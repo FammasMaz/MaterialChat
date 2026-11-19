@@ -164,7 +164,7 @@ fun SettingsToggleRow(
                 Icon(
                     imageVector = vector,
                     contentDescription = null,
-                    modifier = Modifier.size(24.dp)
+                    modifier = Modifier.size(ExpressiveSizes.IconLarge)
                 )
             }
         },

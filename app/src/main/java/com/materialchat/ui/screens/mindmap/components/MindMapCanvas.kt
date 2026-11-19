@@ -1,12 +1,10 @@
 package com.materialchat.ui.screens.mindmap.components
 
 import androidx.compose.animation.core.InfiniteTransition
-import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
@@ -132,7 +130,7 @@ fun MindMapCanvas(
             initialValue = 0.3f,
             targetValue = 0.7f,
             animationSpec = infiniteRepeatable(
-                animation = tween(durationMillis = MaterialChatMotion.Durations.StreamingIndicator, easing = LinearEasing),
+                animation = MaterialChatMotion.Tweens.linear(MaterialChatMotion.Durations.StreamingIndicator),
                 repeatMode = RepeatMode.Reverse
             ),
             label = "glowAlpha"

@@ -1,6 +1,5 @@
 package com.materialchat.ui.screens.personas.components
 
-import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -19,7 +18,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import com.materialchat.ui.theme.ExpressiveShapes
 import com.materialchat.ui.theme.ExpressiveSizes
 import androidx.compose.material.icons.Icons
@@ -85,11 +83,6 @@ fun PersonaCard(
         animationSpec = ExpressiveMotion.Press.Scale,
         label = "personaCardScale"
     )
-    val cornerRadius by animateDpAsState(
-        targetValue = if (isPressed) 18.dp else 24.dp,
-        animationSpec = ExpressiveMotion.Press.Shape,
-        label = "personaCardCorner"
-    )
 
     Card(
         modifier = modifier
@@ -102,7 +95,8 @@ fun PersonaCard(
                 haptics.perform(HapticPattern.CLICK)
                 onClick()
             },
-        shape = RoundedCornerShape(cornerRadius),
+        // Static container: the card squircle like every other card (W6 audit #13).
+        shape = ExpressiveShapes.Card,
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerLow
         ),
@@ -145,7 +139,7 @@ fun PersonaCard(
                             imageVector = Icons.Filled.Delete,
                             contentDescription = "Delete persona",
                             tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(18.dp)
+                            modifier = Modifier.size(ExpressiveSizes.IconSmall)
                         )
                     }
                 }

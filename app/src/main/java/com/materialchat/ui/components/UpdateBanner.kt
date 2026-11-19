@@ -38,6 +38,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.materialchat.ui.theme.ExpressiveSizes
 import com.materialchat.domain.model.AppUpdate
 import com.materialchat.domain.model.UpdateState
 import com.materialchat.domain.model.shouldShowBanner
@@ -138,7 +139,7 @@ private fun AvailableBannerContent(
                     imageVector = Icons.Outlined.NewReleases,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                    modifier = Modifier.size(24.dp)
+                    modifier = Modifier.size(ExpressiveSizes.IconLarge)
                 )
                 Spacer(modifier = Modifier.width(12.dp))
                 Column {
@@ -220,7 +221,7 @@ private fun DownloadingBannerContent(
                     imageVector = Icons.Default.Download,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                    modifier = Modifier.size(24.dp)
+                    modifier = Modifier.size(ExpressiveSizes.IconLarge)
                 )
                 Spacer(modifier = Modifier.width(12.dp))
                 Column {
@@ -292,7 +293,7 @@ private fun ReadyToInstallBannerContent(
                     imageVector = Icons.Default.SystemUpdate,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                    modifier = Modifier.size(24.dp)
+                    modifier = Modifier.size(ExpressiveSizes.IconLarge)
                 )
                 Spacer(modifier = Modifier.width(12.dp))
                 Column {

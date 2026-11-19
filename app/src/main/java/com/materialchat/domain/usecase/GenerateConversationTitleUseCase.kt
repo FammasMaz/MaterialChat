@@ -321,7 +321,7 @@ class GenerateConversationTitleUseCase @Inject constructor(
         }
 
         if (cleaned.length > MAX_TITLE_LENGTH) {
-            cleaned = cleaned.take(MAX_TITLE_LENGTH - 3) + "..."
+            cleaned = cleaned.take(MAX_TITLE_LENGTH - 1) + "\u2026"
         }
 
         return cleaned.ifBlank { "New Chat" }
@@ -336,7 +336,7 @@ class GenerateConversationTitleUseCase @Inject constructor(
         return if (cleaned.length <= FALLBACK_MAX_LENGTH) {
             cleaned
         } else {
-            cleaned.take(FALLBACK_MAX_LENGTH - 3) + "..."
+            cleaned.take(FALLBACK_MAX_LENGTH - 1) + "\u2026"
         }
     }
 }

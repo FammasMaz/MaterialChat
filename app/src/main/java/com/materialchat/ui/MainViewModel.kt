@@ -1,6 +1,7 @@
 package com.materialchat.ui
 
 import androidx.lifecycle.ViewModel
+import com.materialchat.ui.theme.CopyRules
 import androidx.lifecycle.viewModelScope
 import com.materialchat.data.monetization.MonetizationManager
 import com.materialchat.domain.model.Persona
@@ -57,7 +58,7 @@ class MainViewModel @Inject constructor(
             } catch (e: IllegalStateException) {
                 _showError.emit("No provider configured")
             } catch (e: Exception) {
-                _showError.emit(e.message ?: "Failed to create conversation")
+                _showError.emit(CopyRules.failureLine("create the conversation"))
             }
         }
     }
@@ -70,7 +71,7 @@ class MainViewModel @Inject constructor(
             } catch (e: IllegalStateException) {
                 _showError.emit("No provider configured")
             } catch (e: Exception) {
-                _showError.emit(e.message ?: "Failed to create temporary conversation")
+                _showError.emit(CopyRules.failureLine("create a temporary conversation"))
             }
         }
     }
@@ -83,7 +84,7 @@ class MainViewModel @Inject constructor(
             } catch (e: IllegalStateException) {
                 _showError.emit("No provider configured")
             } catch (e: Exception) {
-                _showError.emit(e.message ?: "Failed to create conversation")
+                _showError.emit(CopyRules.failureLine("create the conversation"))
             }
             _showPersonaPicker.value = false
         }

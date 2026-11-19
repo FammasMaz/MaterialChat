@@ -87,7 +87,7 @@ fun BookmarkCard(
                 Icon(
                     imageVector = categoryIcon,
                     contentDescription = bookmark.category.displayName,
-                    modifier = Modifier.size(20.dp),
+                    modifier = Modifier.size(ExpressiveSizes.Icon),
                     tint = MaterialTheme.colorScheme.primary
                 )
 
@@ -200,7 +200,7 @@ fun BookmarkCard(
                         Icon(
                             imageVector = Icons.AutoMirrored.Outlined.OpenInNew,
                             contentDescription = "Go to conversation",
-                            modifier = Modifier.size(18.dp),
+                            modifier = Modifier.size(ExpressiveSizes.IconSmall),
                             tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
@@ -214,7 +214,7 @@ fun BookmarkCard(
                         Icon(
                             imageVector = Icons.Default.Delete,
                             contentDescription = "Delete bookmark",
-                            modifier = Modifier.size(18.dp),
+                            modifier = Modifier.size(ExpressiveSizes.IconSmall),
                             tint = MaterialTheme.colorScheme.error
                         )
                     }

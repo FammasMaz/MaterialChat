@@ -74,7 +74,11 @@ class HomeSettingsContrastTest {
     @Test fun newSharedComponentSlotsArePresent() {
         val names = HomeSettingsPalette.resolve(themes.first().scheme).pairs().map { it.name }.toSet()
         for (expected in listOf(
-            "StatCardLabel", "StatCardValue", "SearchMatchTitle", "SearchMatchContent", "SearchMatchBoth", "SearchHighlight"
+            "StatCardLabel", "StatCardValue", "SearchMatchTitle", "SearchMatchContent", "SearchMatchBoth", "SearchHighlight",
+            // W7 #6: text and icons that sit on alpha washes.
+            "ExploreHeroTitle", "ExploreHeroBody", "PickerRowTitle", "PickerRowSupporting",
+            "OnDeviceRowTitle", "OnDeviceRowMeta", "OnDeviceRowReady",
+            "MemoryTileIconPreference", "MemoryTileIconInstruction", "MemoryTileIconFact", "MemoryTileIconOther"
         )) assertTrue("missing slot $expected", expected in names)
     }
 

@@ -1,6 +1,7 @@
 package com.materialchat.ui.screens.conversations
 
 import com.materialchat.ui.components.LoadErrorContent
+import com.materialchat.ui.components.ErrorContent
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
@@ -289,6 +290,7 @@ fun ConversationsScreen(
             SearchContent(
                 searchState = searchUiState,
                 paddingValues = paddingValues,
+                onRetry = { searchViewModel.retry() },
                 onResultClick = { conversationId ->
                     searchViewModel.clearSearch()
                     isSearchActive = false
@@ -364,7 +366,7 @@ fun ConversationsScreen(
                             renameConversation = null
                         }
                     ) {
-                        Text("Retry with AI")
+                        Text("Try again with AI")
                     }
                     TextButton(
                         colors = dialogDestructiveButtonColors(),
@@ -876,7 +878,7 @@ private fun ConversationMetadataDialog(
             append(titleModel)
         }
     } else {
-        "Not recorded yet — retry/regenerate the title to capture the source"
+        "Not recorded yet. Generate the title again to capture the source"
     }
 
     AlertDialog(
@@ -1306,7 +1308,8 @@ private fun GroupedConversationList(
 private fun SearchContent(
     searchState: SearchUiState,
     paddingValues: PaddingValues,
-    onResultClick: (String) -> Unit
+    onResultClick: (String) -> Unit,
+    onRetry: () -> Unit
 ) {
     Surface(
         modifier = Modifier
@@ -1332,7 +1335,13 @@ private fun SearchContent(
                 SearchEmptyContent(query = searchState.query)
             }
             is SearchUiState.Error -> {
-                SearchErrorContent(message = searchState.message)
+                // The one error family (W6 audit #10): the same card every load error draws.
+                ErrorContent(
+                    title = SEARCH_ERROR_HEADLINE,
+                    message = searchState.message,
+                    onRetry = onRetry,
+                    modifier = Modifier.fillMaxSize()
+                )
             }
         }
     }
@@ -1462,29 +1471,5 @@ private fun SearchEmptyContent(query: String) {
     }
 }
 
-@Composable
-private fun SearchErrorContent(message: String) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(32.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        Text(
-            text = "Search failed",
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.error,
-            textAlign = TextAlign.Center
-        )
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        Text(
-            text = message,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center
-        )
-    }
-}
+/** Headline of the search error card; the body is `SearchViewModel.SEARCH_UNAVAILABLE`. */
+private const val SEARCH_ERROR_HEADLINE = "Could not search"

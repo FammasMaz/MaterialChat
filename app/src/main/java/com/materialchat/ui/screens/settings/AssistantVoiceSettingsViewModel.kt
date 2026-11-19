@@ -80,7 +80,7 @@ class AssistantVoiceSettingsViewModel @Inject constructor(
                 throw cancelled
             } catch (_: Exception) {
                 if (generation == modelGeneration) {
-                    modelPicker.value = VoiceModelPickerState(error = "Unable to load models. Check provider settings and retry.")
+                    modelPicker.value = VoiceModelPickerState(error = "Could not load models. Check the provider settings and try again.")
                 }
             }
         }
@@ -105,12 +105,12 @@ class AssistantVoiceSettingsViewModel @Inject constructor(
             try {
                 previewEngine.setEnginePackage(settings.first()?.ttsEnginePackage)
                 if (previewEngine.initialize().first() is TtsInitResult.Error) {
-                    previewMessage.value = "Unable to load installed offline voices. Reopen to retry."
+                    previewMessage.value = "Could not load the installed offline voices. Reopen this dialog and try again."
                 }
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (_: Exception) {
-                previewMessage.value = "Unable to load installed offline voices. Reopen to retry."
+                previewMessage.value = "Could not load the installed offline voices. Reopen this dialog and try again."
             } finally {
                 voicesLoading.value = false
             }
@@ -140,16 +140,16 @@ class AssistantVoiceSettingsViewModel @Inject constructor(
                         previewMessage.value = "Selected voice or language is unavailable. Choose an installed offline voice."
                     } else {
                         previewEngine.enqueue("This is a preview of your assistant voice.").collect {
-                            if (it is TtsEvent.Error) previewMessage.value = "Unable to play voice preview."
+                            if (it is TtsEvent.Error) previewMessage.value = "Could not play the voice preview."
                         }
                     }
                 }
             } catch (cancelled: kotlinx.coroutines.TimeoutCancellationException) {
-                previewMessage.value = "Voice preview timed out. Please retry."
+                previewMessage.value = "The voice preview timed out. Try again."
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (_: Exception) {
-                previewMessage.value = "Unable to play voice preview."
+                previewMessage.value = "Could not play the voice preview."
             } finally {
                 if (generation == previewGeneration) {
                     previewing.value = false
@@ -200,7 +200,7 @@ class AssistantVoiceSettingsViewModel @Inject constructor(
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (_: Exception) {
-                message.value = "Unable to read encrypted credential status."
+                message.value = "Could not read the stored credential status."
             }
         }
     }
@@ -218,7 +218,7 @@ class AssistantVoiceSettingsViewModel @Inject constructor(
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (_: Exception) {
-                message.value = "Unable to save all voice settings. Please retry."
+                message.value = "Could not save every voice setting. Try again."
             } finally {
                 saving.value = false
             }

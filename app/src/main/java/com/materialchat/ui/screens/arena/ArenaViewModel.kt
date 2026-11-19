@@ -1,6 +1,7 @@
 package com.materialchat.ui.screens.arena
 
 import androidx.lifecycle.ViewModel
+import com.materialchat.ui.theme.CopyRules
 import androidx.lifecycle.viewModelScope
 import com.materialchat.di.IoDispatcher
 import com.materialchat.domain.model.AiModel
@@ -315,9 +316,9 @@ class ArenaViewModel @Inject constructor(
                     if (state is ArenaUiState.Ready) state.copy(revealed = true)
                     else state
                 }
-                _events.emit(ArenaEvent.ShowSnackbar("Vote recorded — identities revealed!"))
+                _events.emit(ArenaEvent.ShowSnackbar("Vote recorded, identities revealed"))
             } catch (e: Exception) {
-                _events.emit(ArenaEvent.ShowSnackbar("Could not record the vote"))
+                _events.emit(ArenaEvent.ShowSnackbar(CopyRules.failureLine("record the vote")))
                 _uiState.update { state ->
                     if (state is ArenaUiState.Ready) state.copy(voted = false)
                     else state

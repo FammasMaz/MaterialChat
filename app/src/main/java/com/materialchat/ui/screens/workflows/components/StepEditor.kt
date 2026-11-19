@@ -95,7 +95,7 @@ fun StepEditor(
                         Icon(
                             imageVector = Icons.Default.Delete,
                             contentDescription = "Delete step $stepNumber",
-                            modifier = Modifier.size(20.dp),
+                            modifier = Modifier.size(ExpressiveSizes.Icon),
                             tint = MaterialTheme.colorScheme.error
                         )
                     }

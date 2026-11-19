@@ -333,7 +333,7 @@ private fun ExecutionContent(
                         fadeOutSpec = ExpressiveMotion.ListItem.FadeOut
                     )) {
                         StatusBanner(
-                            text = "Failed: ${execution.error ?: "Unknown error"}",
+                            text = execution.error ?: "Could not run the workflow",
                             containerColor = MaterialTheme.colorScheme.errorContainer,
                             contentColor = MaterialTheme.colorScheme.onErrorContainer
                         )

@@ -90,6 +90,8 @@ import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import com.materialchat.ui.components.ExpressiveButton
 import com.materialchat.ui.components.ExpressiveTopBarTitle
+import com.materialchat.ui.components.HomeSettingsSlot
+import com.materialchat.ui.components.rememberHomeSettingsPalette
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
@@ -154,8 +156,10 @@ import com.materialchat.ui.screens.settings.components.SettingsToggleRow
 import com.materialchat.ui.screens.settings.components.SystemPromptField
 import com.materialchat.ui.components.HapticPattern
 import com.materialchat.ui.components.rememberHapticFeedback
+import androidx.compose.ui.graphics.Shape
 import com.materialchat.ui.theme.CustomShapes
 import com.materialchat.ui.theme.ExpressiveMotion
+import com.materialchat.ui.theme.MessageBubbleShapes
 import com.materialchat.ui.theme.ExpressiveShapes
 import com.materialchat.ui.theme.ExpressiveSizes
 import com.materialchat.ui.theme.MaterialChatThemePalettes
@@ -234,7 +238,7 @@ fun SettingsScreen(
                 }
                 .onFailure { error ->
                     snackbarHostState.showSnackbar(
-                        message = error.message ?: "Could not save backup",
+                        message = "Could not save the backup",
                         duration = SnackbarDuration.Short
                     )
                 }
@@ -257,7 +261,7 @@ fun SettingsScreen(
                 }
                 .onFailure { error ->
                     snackbarHostState.showSnackbar(
-                        message = error.message ?: "Could not read backup",
+                        message = "Could not read the backup",
                         duration = SnackbarDuration.Short
                     )
                 }
@@ -316,7 +320,7 @@ fun SettingsScreen(
                     val message = if (event.success) {
                         "Connected to ${event.providerName}"
                     } else {
-                        "Connection failed: ${event.errorMessage ?: "Unknown error"}"
+                        "Could not connect to ${event.providerName}"
                     }
                     coroutineScope.launch {
                         snackbarHostState.showSnackbar(
@@ -534,7 +538,7 @@ fun SettingsScreen(
                         }
                         .onFailure { error ->
                             snackbarHostState.showSnackbar(
-                                message = error.message ?: "Could not create backup",
+                                message = "Could not create the backup",
                                 duration = SnackbarDuration.Short
                             )
                         }
@@ -568,7 +572,7 @@ fun SettingsScreen(
                         }
                         .onFailure { error ->
                             snackbarHostState.showSnackbar(
-                                message = error.message ?: "Could not unlock backup",
+                                message = "Could not unlock the backup",
                                 duration = SnackbarDuration.Short
                             )
                         }
@@ -603,7 +607,7 @@ fun SettingsScreen(
                         }
                         .onFailure { error ->
                             snackbarHostState.showSnackbar(
-                                message = error.message ?: "Could not restore backup",
+                                message = "Could not restore the backup",
                                 duration = SnackbarDuration.Short
                             )
                         }
@@ -1300,7 +1304,7 @@ private fun BackupRestoreSection(
                     imageVector = Icons.Outlined.History,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(24.dp)
+                    modifier = Modifier.size(ExpressiveSizes.IconLarge)
                 )
                 Spacer(modifier = Modifier.width(12.dp))
                 Column(modifier = Modifier.weight(1f)) {
@@ -1654,7 +1658,7 @@ private fun ColorPaletteSelector(
                     imageVector = Icons.Outlined.Palette,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(24.dp)
+                    modifier = Modifier.size(ExpressiveSizes.IconLarge)
                 )
                 Spacer(modifier = Modifier.width(12.dp))
                 Column(modifier = Modifier.weight(1f)) {
@@ -1760,7 +1764,7 @@ private fun ChatBubbleStyleSelector(
                     imageVector = Icons.Outlined.AutoAwesome,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(24.dp)
+                    modifier = Modifier.size(ExpressiveSizes.IconLarge)
                 )
                 Spacer(modifier = Modifier.width(12.dp))
                 Column(modifier = Modifier.weight(1f)) {
@@ -1865,7 +1869,7 @@ private fun ControlShapeStyleSelector(
                     imageVector = Icons.Outlined.AutoAwesome,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(24.dp)
+                    modifier = Modifier.size(ExpressiveSizes.IconLarge)
                 )
                 Spacer(modifier = Modifier.width(12.dp))
                 Column(modifier = Modifier.weight(1f)) {
@@ -1968,28 +1972,23 @@ private fun AppPreferences.ControlShapeStyle.prettyName(): String {
     return name.lowercase().replaceFirstChar { it.uppercase() }
 }
 
+/**
+ * The bubble-style preview reads the theme's bubble radii record ([ExpressiveShapes.Bubble]),
+ * the same table chat's `bubbleShapeFor` draws for a single (ungrouped) user or assistant bubble,
+ * so the picker cannot show a shape the chat never renders (W6 cross-surface audit #1; W7 theme
+ * H1). `EXPRESSIVE` is the theme's [MessageBubbleShapes] pair. No local radii table.
+ */
 private fun previewBubbleShape(
     style: AppPreferences.ChatBubbleStyle,
     isUser: Boolean
-): RoundedCornerShape {
-    return when (style) {
-        AppPreferences.ChatBubbleStyle.EXPRESSIVE -> if (isUser) {
-            RoundedCornerShape(24.dp, 6.dp, 24.dp, 24.dp)
-        } else {
-            RoundedCornerShape(6.dp, 24.dp, 24.dp, 24.dp)
-        }
-        AppPreferences.ChatBubbleStyle.ROUNDED -> RoundedCornerShape(28.dp)
-        AppPreferences.ChatBubbleStyle.COMPACT -> if (isUser) {
-            RoundedCornerShape(16.dp, 6.dp, 16.dp, 16.dp)
-        } else {
-            RoundedCornerShape(6.dp, 16.dp, 16.dp, 16.dp)
-        }
-        AppPreferences.ChatBubbleStyle.GEOMETRIC -> if (isUser) {
-            RoundedCornerShape(18.dp, 4.dp, 18.dp, 10.dp)
-        } else {
-            RoundedCornerShape(4.dp, 18.dp, 10.dp, 18.dp)
-        }
-    }
+): Shape = when (style) {
+    AppPreferences.ChatBubbleStyle.EXPRESSIVE ->
+        if (isUser) MessageBubbleShapes.UserBubble else MessageBubbleShapes.AssistantBubble
+    AppPreferences.ChatBubbleStyle.ROUNDED -> ExpressiveShapes.Bubble.Rounded
+    AppPreferences.ChatBubbleStyle.COMPACT ->
+        if (isUser) ExpressiveShapes.Bubble.Compact.User else ExpressiveShapes.Bubble.Compact.Assistant
+    AppPreferences.ChatBubbleStyle.GEOMETRIC ->
+        if (isUser) ExpressiveShapes.Bubble.Geometric.User else ExpressiveShapes.Bubble.Geometric.Assistant
 }
 
 @Composable
@@ -2019,7 +2018,7 @@ private fun FontSizeSelector(
                     imageVector = Icons.Outlined.FormatSize,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(24.dp)
+                    modifier = Modifier.size(ExpressiveSizes.IconLarge)
                 )
                 Spacer(modifier = Modifier.width(12.dp))
                 Column(modifier = Modifier.weight(1f)) {
@@ -2144,7 +2143,7 @@ private fun AiGeneratedTitlesToggle(
                     imageVector = Icons.Outlined.Title,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(24.dp)
+                    modifier = Modifier.size(ExpressiveSizes.IconLarge)
                 )
                 Spacer(modifier = Modifier.width(12.dp))
                 Column {
@@ -2196,7 +2195,7 @@ private fun PreferOnDeviceTitleModelToggle(
                     imageVector = Icons.Outlined.Memory,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(24.dp)
+                    modifier = Modifier.size(ExpressiveSizes.IconLarge)
                 )
                 Spacer(modifier = Modifier.width(12.dp))
                 Column {
@@ -2296,7 +2295,7 @@ private fun TitleGenerationModelField(
                     imageVector = Icons.Outlined.SmartToy,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.secondary,
-                    modifier = Modifier.size(24.dp)
+                    modifier = Modifier.size(ExpressiveSizes.IconLarge)
                 )
                 Spacer(modifier = Modifier.width(12.dp))
                 Column(modifier = Modifier.weight(1f)) {
@@ -2438,7 +2437,7 @@ private fun TitleGenerationModelField(
                                         Column {
                                             Text(
                                                 text = if (pickerState.error != null)
-                                                    "Couldn't fetch models"
+                                                    "Could not fetch models"
                                                 else "No models available",
                                                 style = MaterialTheme.typography.bodyMedium
                                             )
@@ -2505,7 +2504,7 @@ private fun TitleGenerationModelField(
                 if (pickerState.error != null && allModels.isNotEmpty()) {
                     Spacer(modifier = Modifier.height(6.dp))
                     Text(
-                        text = "Some providers failed: ${pickerState.error}",
+                        text = pickerState.error,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -2541,7 +2540,7 @@ private fun DefaultImageGenerationModelField(
                     imageVector = Icons.Outlined.AutoAwesome,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(24.dp)
+                    modifier = Modifier.size(ExpressiveSizes.IconLarge)
                 )
                 Spacer(modifier = Modifier.width(12.dp))
                 Column {
@@ -2646,7 +2645,7 @@ private fun DefaultImageOutputFormatField(
                     imageVector = Icons.Outlined.Image,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(24.dp)
+                    modifier = Modifier.size(ExpressiveSizes.IconLarge)
                 )
                 Spacer(modifier = Modifier.width(12.dp))
                 Column {
@@ -2876,7 +2875,7 @@ private fun AboutSection(
                         imageVector = Icons.Outlined.Info,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(24.dp)
+                        modifier = Modifier.size(ExpressiveSizes.IconLarge)
                     )
                     Spacer(modifier = Modifier.width(12.dp))
                     Column {
@@ -2920,7 +2919,7 @@ private fun AboutSection(
                         imageVector = Icons.Outlined.SystemUpdate,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(24.dp)
+                        modifier = Modifier.size(ExpressiveSizes.IconLarge)
                     )
                     Spacer(modifier = Modifier.width(12.dp))
                     Column {
@@ -2970,7 +2969,7 @@ private fun AboutSection(
                             imageVector = Icons.Outlined.Refresh,
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(24.dp)
+                            modifier = Modifier.size(ExpressiveSizes.IconLarge)
                         )
                         Spacer(modifier = Modifier.width(12.dp))
                         Column(modifier = Modifier.weight(1f)) {
@@ -3265,7 +3264,7 @@ private fun WebSearchSection(
                         imageVector = Icons.Outlined.Language,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(24.dp)
+                        modifier = Modifier.size(ExpressiveSizes.IconLarge)
                     )
                     Spacer(modifier = Modifier.width(12.dp))
                     Column {
@@ -3364,7 +3363,8 @@ private fun WebSearchSection(
                             modifier = Modifier.fillMaxWidth(),
                             shape = ExpressiveShapes.DisclosurePanel,
                             color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.58f),
-                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                            // Gated as HomeSettingsSlot.SearchNativeNote (the wash composited over the card).
+                            contentColor = rememberHomeSettingsPalette()[HomeSettingsSlot.SearchNativeNote]
                         ) {
                             Text(
                                 text = "Uses the selected chat provider's backend search through the proxy /v2 chat endpoint. Configure search providers in the proxy; MaterialChat will ask for citations and turn a final Sources section into the collapsible sources carousel.",

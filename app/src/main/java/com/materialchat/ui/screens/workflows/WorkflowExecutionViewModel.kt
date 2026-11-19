@@ -1,6 +1,7 @@
 package com.materialchat.ui.screens.workflows
 
 import androidx.lifecycle.SavedStateHandle
+import com.materialchat.ui.theme.CopyRules
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.materialchat.data.local.preferences.AppPreferences
@@ -97,7 +98,7 @@ class WorkflowExecutionViewModel @Inject constructor(
                 _uiState.update {
                     it.copy(
                         isLoading = false,
-                        error = e.message ?: "Failed to load workflow"
+                        error = CopyRules.failureLine("load the workflow")
                     )
                 }
             }
@@ -146,7 +147,7 @@ class WorkflowExecutionViewModel @Inject constructor(
                         execution = WorkflowExecution(
                             workflowId = workflowId,
                             status = WorkflowStatus.FAILED,
-                            error = e.message ?: "Execution failed"
+                            error = CopyRules.failureLine("run the workflow")
                         )
                     )
                 }

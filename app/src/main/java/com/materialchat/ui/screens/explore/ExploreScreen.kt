@@ -65,6 +65,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.layout.heightIn
 import com.materialchat.ui.components.ExpressiveTopBarTitle
 import com.materialchat.ui.components.HapticPattern
+import com.materialchat.ui.components.HomeSettingsSlot
+import com.materialchat.ui.components.rememberHomeSettingsPalette
 import com.materialchat.ui.components.rememberDeviceTilt
 import com.materialchat.ui.components.rememberHapticFeedback
 import com.materialchat.ui.theme.ExpressiveMotion
@@ -323,17 +325,19 @@ private fun ArenaHeroCard(onClick: () -> Unit) {
                         modifier = Modifier.padding(10.dp).size(22.dp)
                     )
                 }
+                // The 45% primary clover reaches under this column: title/body are gated as
+                // HomeSettingsSlot.ExploreHero* against that composite (W7 #6).
                 Text(
                     text = "Arena",
                     style = MaterialTheme.typography.displaySmall,
                     fontWeight = FontWeight.ExtraBold,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                    color = rememberHomeSettingsPalette()[HomeSettingsSlot.ExploreHeroTitle]
                 )
                 Text(
                     text = "Compare models head-to-head and vote on the better answer.",
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Medium,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    color = rememberHomeSettingsPalette()[HomeSettingsSlot.ExploreHeroBody],
                     // Three lines: at 360dp x font scale 1.3 the sentence needs them inside 62%.
                     maxLines = 3,
                     overflow = TextOverflow.Ellipsis,

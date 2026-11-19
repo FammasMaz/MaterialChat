@@ -64,8 +64,10 @@ import com.materialchat.ui.components.dialogActionButtonColors
 import com.materialchat.ui.components.dialogDestructiveButtonColors
 import com.materialchat.ui.components.ExpressiveSnackbar
 import com.materialchat.ui.components.ExpressiveTopBarTitle
+import com.materialchat.ui.components.HomeSettingsSlot
 import com.materialchat.ui.components.LoadErrorContent
 import com.materialchat.ui.components.dialogEntrance
+import com.materialchat.ui.components.rememberHomeSettingsPalette
 import com.materialchat.ui.theme.ExpressiveMotion
 import com.materialchat.ui.theme.ExpressiveShapes
 import com.materialchat.ui.theme.ExpressiveSizes
@@ -300,14 +302,16 @@ private fun MemoryCard(
             Surface(
                 modifier = Modifier.size(ExpressiveSizes.Tile),
                 shape = ExpressiveShapes.Tile,
+                // 12% of the kind's content colour over its container; the icon on it is gated as
+                // HomeSettingsSlot.MemoryTileIcon* (W7 #6).
                 color = colors.content.copy(alpha = 0.12f),
-                contentColor = colors.content
+                contentColor = memoryTileIconColor(memory.kind)
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
                         imageVector = Icons.Outlined.Memory,
                         contentDescription = null,
-                        modifier = Modifier.size(24.dp)
+                        modifier = Modifier.size(ExpressiveSizes.IconLarge)
                     )
                 }
             }
@@ -376,6 +380,18 @@ private fun memoryColors(kind: MemoryKind): MemoryColors {
         else -> MemoryColors(scheme.surfaceContainerHigh, scheme.onSurfaceVariant)
     }
 }
+
+/** The icon tint on the memory tile wash, resolved through the home/settings contrast slots. */
+@Composable
+private fun memoryTileIconColor(kind: MemoryKind): androidx.compose.ui.graphics.Color =
+    rememberHomeSettingsPalette()[
+        when (kind) {
+            MemoryKind.USER_PREFERENCE -> HomeSettingsSlot.MemoryTileIconPreference
+            MemoryKind.INSTRUCTION -> HomeSettingsSlot.MemoryTileIconInstruction
+            MemoryKind.PROJECT_FACT -> HomeSettingsSlot.MemoryTileIconFact
+            else -> HomeSettingsSlot.MemoryTileIconOther
+        }
+    ]
 
 private data class MemoryColors(
     val container: androidx.compose.ui.graphics.Color,

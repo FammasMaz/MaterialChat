@@ -486,7 +486,7 @@ class NativeAuthManager @Inject constructor(
                 onFailure = { throwable ->
                     LoopbackResult.Failure(
                         title = "Authentication failed",
-                        message = throwable.message ?: "Token exchange failed. Return to MaterialChat and try again."
+                        message = "Could not exchange the sign-in code. Return to MaterialChat and try again."
                     )
                 }
             )

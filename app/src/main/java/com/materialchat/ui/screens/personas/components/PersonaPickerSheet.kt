@@ -36,8 +36,10 @@ import androidx.compose.ui.unit.dp
 import com.materialchat.domain.model.Persona
 import kotlin.math.absoluteValue
 import com.materialchat.ui.theme.ExpressiveShapes
+import com.materialchat.ui.components.HomeSettingsSlot
 import com.materialchat.ui.components.SheetGutter
 import com.materialchat.ui.components.SheetHeader
+import com.materialchat.ui.components.rememberHomeSettingsPalette
 
 /**
  * Quick-picker bottom sheet for selecting a persona when starting a new conversation.
@@ -111,15 +113,16 @@ fun PersonaPickerSheet(
                     }
                     Spacer(modifier = Modifier.width(12.dp))
                     Column {
+                        // Row text on the 50% surfaceContainerHighest wash over the sheet (W7 #6).
                         Text(
                             text = "No persona",
                             style = MaterialTheme.typography.titleSmall,
-                            color = MaterialTheme.colorScheme.onSurface
+                            color = rememberHomeSettingsPalette()[HomeSettingsSlot.PickerRowTitle]
                         )
                         Text(
                             text = "Use the default system prompt",
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = rememberHomeSettingsPalette()[HomeSettingsSlot.PickerRowSupporting]
                         )
                     }
                 }
@@ -191,7 +194,7 @@ private fun PersonaPickerItem(
                 Text(
                     text = persona.name,
                     style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.onSurface,
+                    color = rememberHomeSettingsPalette()[HomeSettingsSlot.PickerRowTitle],
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -199,7 +202,7 @@ private fun PersonaPickerItem(
                     Text(
                         text = persona.description,
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = rememberHomeSettingsPalette()[HomeSettingsSlot.PickerRowSupporting],
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )

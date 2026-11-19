@@ -495,9 +495,9 @@ class ConversationRepositoryImpl @Inject constructor(
         val end = minOf(content.length, index + query.length + contextLength)
 
         return buildString {
-            if (start > 0) append("...")
+            if (start > 0) append("\u2026")
             append(content.substring(start, end))
-            if (end < content.length) append("...")
+            if (end < content.length) append("\u2026")
         }
     }
 
