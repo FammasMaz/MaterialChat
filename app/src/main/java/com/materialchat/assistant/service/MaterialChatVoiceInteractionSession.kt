@@ -517,7 +517,7 @@ class MaterialChatVoiceInteractionSession(
 
     private companion object {
         const val TAG = "MaterialChatAssistant"
-        /** MainActivity action for the provider settings (not yet routed there; see openSettings). */
+        /** MainActivity action that routes straight to the Settings screen (see openSettings). */
         const val ACTION_OPEN_SETTINGS = "com.materialchat.OPEN_SETTINGS"
     }
 }

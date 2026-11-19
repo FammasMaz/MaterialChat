@@ -83,6 +83,9 @@ class MainActivity : ComponentActivity() {
     /** Pending conversation ID from assistant intent, to be navigated after init */
     private var pendingConversationId: String? = null
 
+    /** Set by the assistant's "Open settings" action; cleared once the nav host has routed there. */
+    private var pendingOpenSettings by mutableStateOf(false)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         // Install splash screen before calling super.onCreate()
         val splashScreen = installSplashScreen()
@@ -184,6 +187,8 @@ class MainActivity : ComponentActivity() {
                         MaterialChatApp(
                             updateManager = updateManager,
                             initialConversationId = pendingConversationId,
+                            openSettings = pendingOpenSettings,
+                            onOpenSettingsHandled = { pendingOpenSettings = false },
                             startDestination = startDestination ?: Screen.Conversations.route
                         )
                     }
@@ -198,16 +203,18 @@ class MainActivity : ComponentActivity() {
     }
 
     /**
-     * Handles the OPEN_CHAT intent action from the assistant overlay.
+     * Handles the OPEN_CHAT and OPEN_SETTINGS intent actions from the assistant overlay.
      */
     private fun handleAssistantIntent(intent: Intent?) {
-        if (intent?.action == ACTION_OPEN_CHAT) {
-            pendingConversationId = intent.getStringExtra(EXTRA_CONVERSATION_ID)
+        when (intent?.action) {
+            ACTION_OPEN_CHAT -> pendingConversationId = intent.getStringExtra(EXTRA_CONVERSATION_ID)
+            ACTION_OPEN_SETTINGS -> pendingOpenSettings = true
         }
     }
 
     companion object {
         const val ACTION_OPEN_CHAT = "com.materialchat.OPEN_CHAT"
+        const val ACTION_OPEN_SETTINGS = "com.materialchat.OPEN_SETTINGS"
         const val EXTRA_CONVERSATION_ID = "conversation_id"
     }
 }
@@ -231,12 +238,15 @@ private val topLevelRoutes = setOf(
  *
  * @param updateManager Manager for app updates
  * @param initialConversationId Optional conversation ID to navigate to on launch (from assistant)
+ * @param openSettings True when the assistant asked for the Settings screen; routed once, then [onOpenSettingsHandled] clears it
  */
 @OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 fun MaterialChatApp(
     updateManager: UpdateManager? = null,
     initialConversationId: String? = null,
+    openSettings: Boolean = false,
+    onOpenSettingsHandled: () -> Unit = {},
     startDestination: String = Screen.startDestination
 ) {
     val navController = rememberNavController()
@@ -264,6 +274,19 @@ fun MaterialChatApp(
                     inclusive = false
                 }
             }
+        }
+    }
+
+    // Navigate to Settings when the assistant's "Open settings" notice action launched us
+    LaunchedEffect(openSettings) {
+        if (openSettings) {
+            navController.navigate(Screen.Settings.route) {
+                popUpTo(Screen.Conversations.route) {
+                    inclusive = false
+                }
+                launchSingleTop = true
+            }
+            onOpenSettingsHandled()
         }
     }
 
