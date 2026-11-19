@@ -381,7 +381,7 @@ fun AssistantOverlay(
                 // which also keeps the whole outer band inside the drawing node.
                 .neuralParticleField(
                     capsuleRect = decorationRect,
-                    cornerRadius = 38.dp,
+                    cornerRadius = AssistantShapes.PillCorner,
                     // As in essentials' Gemini pill: the pill's own colour is painted as a
                     // soft-edged capsule with the accent glowing inside along the edge, and the
                     // scattered dots drift in the band around that blurred edge.
@@ -408,7 +408,7 @@ fun AssistantOverlay(
                 if (backdropStatus == CapsuleBackdropBlurSupport.Status.Available) {
                     CapsuleBackdropBlur(
                         rect = { decorationRect },
-                        cornerRadius = with(density) { 38.dp.toPx() },
+                        cornerRadius = with(density) { AssistantShapes.PillCorner.toPx() },
                         radiusPx = with(density) { 40.dp.toPx() },
                         modifier = Modifier.matchParentSize()
                     )
@@ -852,7 +852,7 @@ internal fun AssistantOverlayContent(
                     )
                     Box(
                         modifier = Modifier
-                            .size(40.dp)
+                            .size(AssistantSizes.Control)
                             .clip(RoundedCornerShape(glyphCorner))
                             .background(glyphContainer),
                         contentAlignment = Alignment.Center
@@ -868,10 +868,10 @@ internal fun AssistantOverlayContent(
                                     )
                             },
                             contentAlignment = Alignment.Center,
-                            modifier = Modifier.size(32.dp),
+                            modifier = Modifier.size(AssistantSizes.Glyph),
                             label = "assistantGlyph"
                         ) { current ->
-                            Box(modifier = Modifier.size(32.dp), contentAlignment = Alignment.Center) {
+                            Box(modifier = Modifier.size(AssistantSizes.Glyph), contentAlignment = Alignment.Center) {
                                 when (current) {
                                     AssistantPhase.Capturing -> VoiceWaveform(
                                         amplitudeData = amplitudeData,
@@ -887,7 +887,7 @@ internal fun AssistantOverlayContent(
                                     // Fills its 32dp slot so the polygon morph reads at pill
                                     // size instead of as a small spinner.
                                     AssistantPhase.Thinking -> LoadingIndicator(
-                                        modifier = Modifier.size(32.dp),
+                                        modifier = Modifier.size(AssistantSizes.Glyph),
                                         color = glyphContent
                                     )
                                     AssistantPhase.Speaking -> Icon(
@@ -1046,7 +1046,7 @@ internal fun AssistantOverlayContent(
                                 contentColor = affordanceContent
                             ),
                             modifier = Modifier
-                                .size(40.dp)
+                                .size(AssistantSizes.Control)
                                 .testTag("assistant_attach")
                         ) {
                             Icon(
@@ -1096,7 +1096,7 @@ internal fun AssistantOverlayContent(
                         }
                     }
                     val primaryCorner by animateDpAsState(
-                        targetValue = if (capturing || busy) 18.dp else 28.dp,
+                        targetValue = if (capturing || busy) AssistantShapes.PrimarySquareCorner else AssistantShapes.PrimaryRoundCorner,
                         animationSpec = AssistantMotion.stateSwitch(),
                         label = "primaryCorner"
                     )
@@ -1123,7 +1123,7 @@ internal fun AssistantOverlayContent(
                         contentColor = primaryContent
                     )
                     val primaryModifier = Modifier
-                        .size(56.dp)
+                        .size(AssistantSizes.PrimaryButton)
                         .graphicsLayer {
                             scaleX = primaryPop.value
                             scaleY = primaryPop.value
@@ -1246,11 +1246,11 @@ private fun AssistantResponseSurface(
                     horizontalArrangement = Arrangement.spacedBy(AssistantSpacing.Gap),
                     modifier = Modifier.testTag("assistant_screen_used")
                 ) {
-                    // 16dp: the same icon size the chips and the Screen chip use.
+                    // The same icon size the chips and the Screen chip use.
                     Icon(
                         imageVector = Icons.Outlined.Screenshot,
                         contentDescription = null,
-                        modifier = Modifier.size(16.dp),
+                        modifier = Modifier.size(AssistantSizes.ChipIcon),
                         tint = palette.answer.muted
                     )
                     Text(
@@ -1521,7 +1521,7 @@ private fun AssistantScreenChip(attachment: Attachment, onRemove: () -> Unit) {
         color = palette.chip.container,
         contentColor = palette.chip.content,
         modifier = Modifier
-            .height(40.dp)
+            .height(AssistantSizes.ChipHeight)
             .testTag("assistant_screen_chip")
     ) {
         Row(
@@ -1534,25 +1534,25 @@ private fun AssistantScreenChip(attachment: Attachment, onRemove: () -> Unit) {
                 contentDescription = "Screen capture",
                 contentScale = androidx.compose.ui.layout.ContentScale.Crop,
                 modifier = Modifier
-                    .size(28.dp)
-                    .clip(RoundedCornerShape(8.dp))
+                    .size(AssistantSizes.Thumbnail)
+                    .clip(RoundedCornerShape(AssistantShapes.ThumbnailCorner))
             )
             Icon(
                 imageVector = Icons.Outlined.Screenshot,
                 contentDescription = null,
-                modifier = Modifier.size(16.dp)
+                modifier = Modifier.size(AssistantSizes.ChipIcon)
             )
             Text(AssistantCopy.SCREEN_CHIP, style = AssistantTypography.action(MaterialTheme.typography))
             IconButton(
                 onClick = onRemove,
                 modifier = Modifier
-                    .size(32.dp)
+                    .size(AssistantSizes.CompactTarget)
                     .testTag("assistant_screen_remove")
             ) {
                 Icon(
                     imageVector = Icons.Default.Close,
                     contentDescription = "Remove screen context",
-                    modifier = Modifier.size(16.dp)
+                    modifier = Modifier.size(AssistantSizes.ChipIcon)
                 )
             }
         }
@@ -1628,7 +1628,7 @@ private fun AssistantNoticeSurface(
                 Icon(
                     imageVector = if (notice.isError) Icons.Outlined.ErrorOutline else Icons.Outlined.Info,
                     contentDescription = null,
-                    modifier = Modifier.size(18.dp),
+                    modifier = Modifier.size(AssistantSizes.NoticeGlyph),
                     tint = content
                 )
                 // W3: the longest notice (ScreenContextAccess.notice, 131 characters) has 280dp

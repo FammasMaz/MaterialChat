@@ -64,8 +64,11 @@ internal object AssistantMotion {
 }
 
 internal object AssistantShapes {
+    /** The pill's corner: half its 76dp row. The particle field and the backdrop blur read the same value. */
+    val PillCorner: Dp = 38.dp
+
     /** The pill: a full capsule at 76dp. Shared with the particle field's capsule geometry. */
-    val Pill = RoundedCornerShape(38.dp)
+    val Pill = RoundedCornerShape(PillCorner)
 
     /** The answer surface: wide, organic top corners that sit against the pill below. */
     val Answer = RoundedCornerShape(topStart = 36.dp, topEnd = 36.dp, bottomStart = 28.dp, bottomEnd = 28.dp)
@@ -115,6 +118,15 @@ internal object AssistantShapes {
 
     /** The pill's glyph container while thinking: a rounded square, the M3 toggled/selected morph. */
     val GlyphSquareCorner: Dp = 12.dp
+
+    /** The 56dp primary button at rest (mic, send): a circle. */
+    val PrimaryRoundCorner: Dp = 28.dp
+
+    /** The primary button while it interrupts (stop): the M3 toggled rounded square. */
+    val PrimarySquareCorner: Dp = 18.dp
+
+    /** The screen capture's 28dp thumbnail inside the Screen chip. */
+    val ThumbnailCorner: Dp = 8.dp
 }
 
 /**
@@ -170,6 +182,30 @@ internal object AssistantSizes {
 
     /** A Material icon button's laid-out touch target (40dp control inside its 48dp minimum). */
     val Target: Dp = 48.dp
+
+    /** The pill's leading glyph container and the two 40dp chrome controls (`+`, keyboard, close). */
+    val Control: Dp = 40.dp
+
+    /** The glyph inside its container (waveform, loading indicator, icon). */
+    val Glyph: Dp = 32.dp
+
+    /** The pill's primary button (mic / send / stop). */
+    val PrimaryButton: Dp = 56.dp
+
+    /** A compact remove target inside a chip (the Screen chip's x). */
+    val CompactTarget: Dp = 32.dp
+
+    /** The screen capture's thumbnail inside the Screen chip. */
+    val Thumbnail: Dp = 28.dp
+
+    /** The notice surface's leading glyph: one step above the chip icon so it leads the message. */
+    val NoticeGlyph: Dp = 18.dp
+
+    /** The narrowest the question bubble gets (one short word). */
+    val QueryBubbleMin: Dp = 40.dp
+
+    /** One dot of the streaming indicator under the answer. */
+    val TypingDot: Dp = 7.dp
 }
 
 internal object AssistantTypography {
