@@ -68,6 +68,7 @@ import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material.icons.outlined.KeyboardArrowDown as OutlinedKeyboardArrowDown
 import androidx.compose.material.icons.outlined.ErrorOutline
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenu
@@ -1097,22 +1098,27 @@ private fun ThinkingSection(
                 .tapThroughScroll(onClick = toggle)
                 // Bubble-level last resort when neither path above saw the tap (see BubbleTapRouter).
                 .bubbleTapTarget(tapRouter, "thinking") { haptics.perform(HapticPattern.CLICK, hapticsEnabled); isExpanded = !isExpanded }
-                .heightIn(min = 40.dp)
-                .padding(horizontal = 8.dp, vertical = 6.dp),
+                .heightIn(min = ThinkingHeaderGeometry.MinHeight)
+                .padding(
+                    horizontal = ThinkingHeaderGeometry.HorizontalInset,
+                    vertical = ThinkingHeaderGeometry.VerticalInset
+                ),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            // The app's outlined icon family; centred vertically in the strip, the same inset on
+            // the leading edge as the title has on the trailing edge (ThinkingHeaderGeometry).
             Icon(
-                imageVector = Icons.Default.KeyboardArrowDown,
+                imageVector = Icons.Outlined.OutlinedKeyboardArrowDown,
                 contentDescription = if (isExpanded) "Collapse thinking" else "Expand thinking",
                 modifier = Modifier
-                    .size(18.dp)
+                    .size(ThinkingHeaderGeometry.Chevron)
                     .graphicsLayer { rotationZ = chevronRotation },
                 tint = palette.thinkingChevron
             )
             Column(
                 modifier = Modifier
                     .weight(1f)
-                    .padding(start = 6.dp)
+                    .padding(start = ThinkingHeaderGeometry.ChevronGap)
             ) {
                 Text(
                     text = headerText,

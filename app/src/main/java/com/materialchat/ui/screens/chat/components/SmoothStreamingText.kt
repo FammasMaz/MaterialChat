@@ -184,12 +184,14 @@ private fun StreamingTailEffect(
         animationSpec = ExpressiveMotion.Spatial.playful(),
         label = "streamingTailPulse"
     )
-    val tailShape = MaterialShapes.SoftBurst.toShape(startAngle = 18)
+    // Unrotated SoftBurst with the same inset on every side (StreamingTailGeometry): the
+    // glyph is centred in its slot and reads the same way up as the M3 indicator's polygon.
+    val tailShape = MaterialShapes.SoftBurst.toShape(startAngle = StreamingTailGeometry.StartAngle)
 
     Box(
         modifier = Modifier
-            .padding(top = 2.dp, start = 2.dp)
-            .size(12.dp)
+            .padding(StreamingTailGeometry.Inset)
+            .size(StreamingTailGeometry.Size)
             .graphicsLayer {
                 scaleX = pulse
                 scaleY = pulse
