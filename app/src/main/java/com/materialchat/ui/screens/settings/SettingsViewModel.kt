@@ -663,7 +663,7 @@ class SettingsViewModel @Inject constructor(
         val currentFormState = _formState.value
         if (currentFormState.baseUrl.isBlank()) {
             viewModelScope.launch {
-                _events.emit(SettingsEvent.ShowSnackbar("Base URL is required to fetch models."))
+                _events.emit(SettingsEvent.ShowSnackbar("Base URL is required to fetch models"))
             }
             return
         }
@@ -678,7 +678,7 @@ class SettingsViewModel @Inject constructor(
                 currentFormState.type == ProviderType.ANTIGRAVITY_NATIVE
             if (!hasCredential) {
                 viewModelScope.launch {
-                    _events.emit(SettingsEvent.ShowSnackbar("API key or sign-in is required to fetch models."))
+                    _events.emit(SettingsEvent.ShowSnackbar("API key or sign-in is required to fetch models"))
                 }
                 return
             }
@@ -706,7 +706,7 @@ class SettingsViewModel @Inject constructor(
                     modelsError = null
                 )
                 if (models.isEmpty()) {
-                    _events.emit(SettingsEvent.ShowSnackbar("No models were returned by the provider."))
+                    _events.emit(SettingsEvent.ShowSnackbar("No models were returned by the provider"))
                 }
             }.onFailure { error ->
                 val message = error.message ?: "Failed to fetch models."
@@ -714,7 +714,9 @@ class SettingsViewModel @Inject constructor(
                     isFetchingModels = false,
                     modelsError = message
                 )
-                _events.emit(SettingsEvent.ShowSnackbar(message))
+                // The form's inline modelsError keeps the provider's diagnostic; the snackbar
+                // never shows exception text (cross-surface audit F6).
+                _events.emit(SettingsEvent.ShowSnackbar("Could not fetch models"))
             }
         }
     }

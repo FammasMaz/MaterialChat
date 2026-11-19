@@ -1,5 +1,7 @@
 package com.materialchat.ui.screens.workflows
 
+import com.materialchat.ui.components.LoadErrorContent
+
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -17,7 +19,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Cancel
-import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -135,9 +136,10 @@ fun WorkflowExecutionScreen(
             }
 
             uiState.error != null && uiState.execution == null -> {
-                ExecutionErrorContent(
-                    message = uiState.error!!,
-                    onNavigateBack = onNavigateBack
+                LoadErrorContent(
+                    title = "Workflow could not be loaded",
+                    message = "Something went wrong while opening this workflow",
+                    onBack = onNavigateBack
                 )
             }
 
@@ -235,48 +237,6 @@ private fun ExecutionLoadingContent() {
             modifier = Modifier.size(48.dp),
             color = MaterialTheme.colorScheme.primary
         )
-    }
-}
-
-/**
- * Error content when workflow loading fails.
- */
-@Composable
-private fun ExecutionErrorContent(
-    message: String,
-    onNavigateBack: () -> Unit
-) {
-    val haptics = rememberHapticFeedback()
-
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(32.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        Icon(
-            imageVector = Icons.Default.Error,
-            contentDescription = null,
-            modifier = Modifier.size(48.dp),
-            tint = MaterialTheme.colorScheme.error
-        )
-        Spacer(modifier = Modifier.height(12.dp))
-        Text(
-            text = "Something went wrong",
-            style = MaterialTheme.typography.titleLarge,
-            color = MaterialTheme.colorScheme.error,
-            textAlign = TextAlign.Center
-        )
-        Spacer(modifier = Modifier.height(8.dp))
-        Text(
-            text = message,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center
-        )
-        Spacer(modifier = Modifier.height(16.dp))
-        ExpressiveButton(onClick = { onNavigateBack() }, text = "Go back", style = ExpressiveButtonStyle.Text)
     }
 }
 

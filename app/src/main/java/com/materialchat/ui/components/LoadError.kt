@@ -5,6 +5,8 @@ import androidx.compose.material.icons.outlined.ErrorOutline
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import com.materialchat.ui.screens.conversations.EmptyStateAccent
+import com.materialchat.ui.screens.conversations.EmptyStateAction
+import com.materialchat.ui.screens.conversations.HomeEmptyState
 
 /**
  * Why a list screen (memories, workflows, generated images, leaderboard) could not load.
@@ -16,25 +18,34 @@ sealed interface LoadError {
     data object Unavailable : LoadError
 }
 
+/** Action verb for every error surface on home, settings and the drawer screens. */
+const val ERROR_RETRY_LABEL = "Try again"
+
+/** Secondary verb on error surfaces that were pushed and can be left. */
+const val ERROR_BACK_LABEL = "Go back"
+
 /**
- * The shared error surface for a screen whose list failed to load: the same empty-state
- * cluster as the home list (icon, sentence-case headline, one supporting line) with a single
- * retry action. [onRetry] must put the screen back into its loading state.
+ * The one full-screen error surface for home, settings and every drawer screen: the same
+ * empty-state cluster as the home list (icon, sentence-case headline, one supporting line)
+ * with a fixed action order — [onRetry] ("Try again") first as the primary button, then
+ * [onBack] ("Go back") as a low-emphasis text button. Either may be omitted. The copy is
+ * fixed per screen; exception text is never passed through.
  */
 @Composable
 fun LoadErrorContent(
     title: String,
     message: String,
-    onRetry: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onRetry: (() -> Unit)? = null,
+    onBack: (() -> Unit)? = null
 ) {
-    ExpressiveEmptyState(
+    HomeEmptyState(
+        headline = title,
+        supportingText = message,
         icon = Icons.Outlined.ErrorOutline,
-        title = title,
-        message = message,
-        modifier = modifier,
-        actionText = "Try again",
-        onAction = onRetry,
-        accent = EmptyStateAccent.Secondary
+        accent = EmptyStateAccent.Secondary,
+        action = onRetry?.let { EmptyStateAction(ERROR_RETRY_LABEL, it) },
+        secondaryAction = onBack?.let { EmptyStateAction(ERROR_BACK_LABEL, it) },
+        modifier = modifier
     )
 }

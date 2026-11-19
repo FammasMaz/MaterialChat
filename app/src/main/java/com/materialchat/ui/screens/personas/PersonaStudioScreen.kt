@@ -1,5 +1,7 @@
 package com.materialchat.ui.screens.personas
 
+import com.materialchat.ui.components.LoadErrorContent
+
 import com.materialchat.ui.components.ExpressiveSnackbar
 import com.materialchat.ui.theme.ExpressiveMotion
 import com.materialchat.ui.theme.ExpressiveShapes
@@ -134,11 +136,11 @@ fun PersonaStudioScreen(
             }
 
             is PersonaStudioUiState.Error -> {
-                PersonaStudioErrorContent(
-                    message = state.message,
-                    paddingValues = paddingValues,
-                    onRetry = { /* ViewModel re-observes automatically */ },
-                    onNavigateBack = onNavigateBack
+                LoadErrorContent(
+                    title = "Personas could not be loaded",
+                    message = "Something went wrong while reading your personas",
+                    onBack = onNavigateBack,
+                    modifier = Modifier.padding(paddingValues)
                 )
             }
 
@@ -212,48 +214,6 @@ private fun PersonaStudioLoadingContent(paddingValues: PaddingValues) {
             modifier = Modifier.size(48.dp),
             color = MaterialTheme.colorScheme.primary
         )
-    }
-}
-
-/**
- * Error state content for Persona Studio.
- */
-@Composable
-private fun PersonaStudioErrorContent(
-    message: String,
-    paddingValues: PaddingValues,
-    onRetry: () -> Unit,
-    onNavigateBack: () -> Unit
-) {
-    val haptics = rememberHapticFeedback()
-
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(paddingValues)
-            .padding(32.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        Text(
-            text = "Something went wrong",
-            style = MaterialTheme.typography.titleLarge,
-            color = MaterialTheme.colorScheme.error,
-            textAlign = TextAlign.Center
-        )
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        Text(
-            text = message,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        ExpressiveButton(onClick = { onNavigateBack() }, text = "Go back", style = ExpressiveButtonStyle.Text)
     }
 }
 

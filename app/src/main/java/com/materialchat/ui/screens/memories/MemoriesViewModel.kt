@@ -8,9 +8,12 @@ import com.materialchat.ui.components.LoadError
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.emitAll
@@ -34,6 +37,10 @@ class MemoriesViewModel @Inject constructor(
     private val memoryRepository: MemoryRepository
 ) : ViewModel() {
     private val searchQuery = MutableStateFlow("")
+
+    /** Failures of best-effort actions (delete) that the list state cannot carry. */
+    private val _events = MutableSharedFlow<MemoriesEvent>(extraBufferCapacity = 4)
+    val events: SharedFlow<MemoriesEvent> = _events.asSharedFlow()
 
     /** Bumped by [retry]; each value re-subscribes to the repository from scratch. */
     private val loadAttempt = MutableStateFlow(0)
@@ -91,15 +98,18 @@ class MemoriesViewModel @Inject constructor(
         loadAttempt.update { it + 1 }
     }
 
+    /** A repository throw here used to escape viewModelScope and crash; now it is a notice. */
     fun deleteMemory(memoryId: String) {
         viewModelScope.launch {
-            memoryRepository.deleteMemory(memoryId)
+            runCatching { memoryRepository.deleteMemory(memoryId) }
+                .onFailure { _events.emit(MemoriesEvent.ShowSnackbar("Could not delete memory")) }
         }
     }
 
     fun deleteAllMemories() {
         viewModelScope.launch {
-            memoryRepository.deleteAllMemories()
+            runCatching { memoryRepository.deleteAllMemories() }
+                .onFailure { _events.emit(MemoriesEvent.ShowSnackbar("Could not delete memories")) }
         }
     }
 }

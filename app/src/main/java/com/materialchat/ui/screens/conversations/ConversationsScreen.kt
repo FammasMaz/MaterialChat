@@ -1,5 +1,7 @@
 package com.materialchat.ui.screens.conversations
 
+import com.materialchat.ui.components.LoadErrorContent
+
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.Spring
@@ -26,6 +28,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -103,6 +106,8 @@ import androidx.compose.ui.layout.layout
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -484,6 +489,8 @@ private fun ConversationsTopBar(
     val shakeEnergy = rememberShakeEnergy()
 
     val density = LocalDensity.current
+    // The title scales from its leading edge: the start edge in LTR, the end edge in RTL.
+    val titleOriginX = if (LocalLayoutDirection.current == LayoutDirection.Rtl) 1f else 0f
     val haptics = rememberHapticFeedback()
     SideEffect {
         scrollBehavior.state.heightOffsetLimit = with(density) {
@@ -577,13 +584,15 @@ private fun ConversationsTopBar(
             // Title row - aligned to bottom left with fixed padding
             Row(
                 modifier = Modifier
-                    .height(44.dp) // Same height as icon buttons for alignment
+                    // Matches the 44dp icon buttons at font scale 1.0 but may grow: headlineLarge
+                    // is a 40sp line (52dp at scale 1.3) and the wordmark clips to its bounds.
+                    .heightIn(min = 44.dp)
                     .align(Alignment.BottomStart)
                     .padding(bottom = baseBottomPadding)
                     .graphicsLayer {
                         scaleX = titleScale
                         scaleY = titleScale
-                        transformOrigin = TransformOrigin(0f, 0.5f)
+                        transformOrigin = TransformOrigin(titleOriginX, 0.5f)
                     },
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -835,8 +844,9 @@ private fun ConversationsContent(
                     }
                 }
                 is ConversationsUiState.Error -> {
-                    ErrorContent(
-                        message = uiState.message,
+                    LoadErrorContent(
+                        title = "Chats could not be loaded",
+                        message = "Something went wrong while reading your conversations",
                         onRetry = onRetry,
                         modifier = Modifier.weight(1f)
                     )
@@ -1279,42 +1289,6 @@ private fun GroupedConversationList(
                 .align(Alignment.CenterEnd)
                 .padding(top = 16.dp, bottom = listBottomClearance(), end = 2.dp)
         )
-    }
-}
-
-@Composable
-private fun ErrorContent(
-    message: String,
-    onRetry: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val haptics = rememberHapticFeedback()
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .padding(32.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        Text(
-            text = "Something went wrong",
-            style = MaterialTheme.typography.titleLarge,
-            color = MaterialTheme.colorScheme.error,
-            textAlign = TextAlign.Center
-        )
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        Text(
-            text = message,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        ExpressiveButton(onClick = { onRetry() }, text = "Retry", style = ExpressiveButtonStyle.Text)
     }
 }
 
