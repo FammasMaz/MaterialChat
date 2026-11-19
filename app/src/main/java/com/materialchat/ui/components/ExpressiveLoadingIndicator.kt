@@ -71,6 +71,32 @@ import kotlin.math.cos
 import kotlin.math.sin
 
 /**
+ * Cycle lengths of the indeterminate indicator loops in this file, in one place so the
+ * three indicators share a single definition. `Motion.kt` has no token for an indicator
+ * cycle yet (the theme owner is adding decorative-spin tokens); when one lands these are
+ * the values to lift. Every loop runs behind [rememberParticleMotionGate].
+ */
+private object IndicatorCycle {
+    /** One full rotation of the morphing shape. */
+    const val MorphRotationMillis = 4000
+
+    /** Soft-burst → pentagon → hexagon → soft-burst. */
+    const val MorphShapeMillis = 3000
+
+    /** One rotation of the circular arc (M3 circular indicator spec: 1332 ms). */
+    const val ArcRotationMillis = 1332
+
+    /** Arc sweep grow/shrink, half the rotation so the two phases stay in step. */
+    const val ArcSweepMillis = ArcRotationMillis / 2
+
+    /** One pass of the linear bar across the track. */
+    const val LinearPassMillis = 1500
+
+    /** Linear bar width grow/shrink, half the pass. */
+    const val LinearWidthMillis = LinearPassMillis / 2
+}
+
+/**
  * Material 3 Expressive Loading Indicator with shape morphing.
  *
  * This is the authentic M3 Expressive loading indicator that morphs between
@@ -104,7 +130,7 @@ fun M3ExpressiveLoadingIndicator(
         initialValue = 0f,
         targetValue = 360f,
         animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 4000, easing = LinearEasing),
+            animation = tween(durationMillis = IndicatorCycle.MorphRotationMillis, easing = LinearEasing),
             repeatMode = RepeatMode.Restart
         ),
         label = "rotation"
@@ -119,7 +145,7 @@ fun M3ExpressiveLoadingIndicator(
         initialValue = 0f,
         targetValue = 3f,
         animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 3000, easing = EaseInOutCubic),
+            animation = tween(durationMillis = IndicatorCycle.MorphShapeMillis, easing = EaseInOutCubic),
             repeatMode = RepeatMode.Restart
         ),
         label = "shapeMorph"
@@ -296,7 +322,7 @@ fun M3ExpressiveCircularProgress(
         initialValue = 0f,
         targetValue = 360f,
         animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 1332, easing = LinearEasing),
+            animation = tween(durationMillis = IndicatorCycle.ArcRotationMillis, easing = LinearEasing),
             repeatMode = RepeatMode.Restart
         ),
         label = "rotation"
@@ -306,7 +332,7 @@ fun M3ExpressiveCircularProgress(
         initialValue = 0f,
         targetValue = 1f,
         animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 666, easing = EaseInOutCubic),
+            animation = tween(durationMillis = IndicatorCycle.ArcSweepMillis, easing = EaseInOutCubic),
             repeatMode = RepeatMode.Reverse
         ),
         label = "sweepProgress"
@@ -412,7 +438,7 @@ fun M3ExpressiveLinearProgress(
         initialValue = -0.5f,
         targetValue = 1.5f,
         animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 1500, easing = LinearEasing),
+            animation = tween(durationMillis = IndicatorCycle.LinearPassMillis, easing = LinearEasing),
             repeatMode = RepeatMode.Restart
         ),
         label = "position"
@@ -422,7 +448,7 @@ fun M3ExpressiveLinearProgress(
         initialValue = 0f,
         targetValue = 1f,
         animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 750, easing = EaseInOutCubic),
+            animation = tween(durationMillis = IndicatorCycle.LinearWidthMillis, easing = EaseInOutCubic),
             repeatMode = RepeatMode.Reverse
         ),
         label = "width"

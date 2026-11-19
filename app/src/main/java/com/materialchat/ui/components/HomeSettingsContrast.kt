@@ -117,7 +117,22 @@ internal enum class HomeSettingsSlot(
     AssistantDefaultCardText(ThemeContrast.BODY_TEXT, { over(it.primaryContainer, 0.5f, it.surfaceContainerLow) }, { it.onSurface }),
     SearchNativeNote(ThemeContrast.BODY_TEXT, { over(it.secondaryContainer, 0.58f, it.surfaceContainerHigh) }, { it.onSecondaryContainer }, { listOf(it.onSurface) }),
     UpdateBannerMuted(ThemeContrast.BODY_TEXT, { it.primaryContainer }, { it.onPrimaryContainer }),
-    MemoryMuted(ThemeContrast.BODY_TEXT, { it.secondaryContainer }, { it.onSecondaryContainer });
+    MemoryMuted(ThemeContrast.BODY_TEXT, { it.secondaryContainer }, { it.onSecondaryContainer }),
+
+    // --- Shared components -------------------------------------------------------------
+    // Secondary-screen empty states: hero shape on the accent container, copy on the
+    // content surface the HomeEmptyState family is drawn on.
+    EmptyHeroOnSurfaceLow(ThemeContrast.ICON, { it.surfaceContainerLow }, { it.primaryContainer }, { listOf(it.primary, it.onSurface) }),
+    // Memory kind chip on a memory card (secondaryContainer card, primary-tinted chip).
+    MemoryKindChip(ThemeContrast.BODY_TEXT, { it.primaryContainer }, { it.onPrimaryContainer }),
+    // Provider type and status badges in the settings provider list.
+    SettingsBadgeOnTertiary(ThemeContrast.BODY_TEXT, { it.tertiaryContainer }, { it.onTertiaryContainer }),
+    // Explore feature tiles: title on the tile's container role.
+    ExploreTileOnSecondary(ThemeContrast.BODY_TEXT, { it.secondaryContainer }, { it.onSecondaryContainer }),
+    ExploreTileOnTertiary(ThemeContrast.BODY_TEXT, { it.tertiaryContainer }, { it.onTertiaryContainer }),
+    // Arena/insights stat cards: label text on surfaceContainerHigh.
+    StatCardLabel(ThemeContrast.BODY_TEXT, { it.surfaceContainerHigh }, { it.onSurfaceVariant }, { listOf(it.onSurface) }),
+    StatCardValue(ThemeContrast.BODY_TEXT, { it.surfaceContainerHigh }, { it.primary }, { listOf(it.onSurface) });
 
     companion object {
         private fun over(top: Color, alpha: Float, under: Color): Color =
