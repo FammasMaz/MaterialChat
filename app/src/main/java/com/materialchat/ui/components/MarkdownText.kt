@@ -47,10 +47,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.rememberTextMeasurer
 import com.materialchat.domain.model.CanvasArtifact
+import com.materialchat.ui.theme.ExpressiveShapes
 import com.materialchat.ui.screens.canvas.ArtifactDetector
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.Placeholder
@@ -638,8 +640,11 @@ private fun inlineMathWidthFactor(expression: String): Float {
     }
 }
 
-/** M3 Expressive container shapes for markdown blocks: 16dp outer container, 8dp inner elements. */
-private val MarkdownBlockOuterShape = RoundedCornerShape(16.dp)
+/**
+ * M3 Expressive container shapes for markdown blocks: the shared in-bubble content block
+ * ([ExpressiveShapes.ContentBlock], 16dp squircle) outside, 8dp inner elements.
+ */
+private val MarkdownBlockOuterShape: Shape get() = ExpressiveShapes.ContentBlock
 private val MarkdownBlockInnerShape = RoundedCornerShape(8.dp)
 
 /** Width of the fade drawn over a horizontally scrolling block's clipped edge. */

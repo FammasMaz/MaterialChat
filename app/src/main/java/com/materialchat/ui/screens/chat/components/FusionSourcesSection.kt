@@ -22,6 +22,7 @@ import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import com.materialchat.ui.theme.ExpressiveShapes
 import com.materialchat.ui.theme.readableMutedOn
 import com.materialchat.ui.theme.readableOn
 import androidx.compose.material3.Surface
@@ -121,7 +122,8 @@ private fun SourceResponseCard(
 ) {
     Surface(
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
+        // A content block inside the bubble body, same contour as code/table/math blocks.
+        shape = ExpressiveShapes.ContentBlock,
         color = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.7f)
     ) {
         Column(
