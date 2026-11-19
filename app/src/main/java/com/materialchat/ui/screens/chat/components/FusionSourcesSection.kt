@@ -16,7 +16,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
@@ -62,7 +61,7 @@ fun FusionSourcesSection(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(8.dp))
+                .clip(ExpressiveShapes.Badge)
                 .clickable { isExpanded = !isExpanded }
                 .padding(vertical = 6.dp, horizontal = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -136,7 +135,7 @@ private fun SourceResponseCard(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Surface(
-                    shape = RoundedCornerShape(8.dp),
+                    shape = ExpressiveShapes.Badge,
                     color = MaterialTheme.colorScheme.secondaryContainer
                 ) {
                     Text(

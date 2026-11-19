@@ -21,7 +21,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
@@ -143,7 +142,7 @@ fun FusionProgressView(
 
                     // Judge model label
                     Surface(
-                        shape = RoundedCornerShape(8.dp),
+                        shape = ExpressiveShapes.Badge,
                         color = MaterialTheme.colorScheme.primaryContainer
                     ) {
                         Text(
@@ -185,7 +184,7 @@ private fun FusionModelCard(
     val card = if (response.isStreaming) palette.fusionCardStreaming else palette.fusionCardDone
     val accent = if (response.isStreaming) palette.fusionCardStreamingAccent else palette.fusionCardDoneAccent
 
-    // The streaming dot breathes on the shared bob spec (half period = Durations.Long) and only
+    // The streaming dot breathes on the shared bob spec (half period = Durations.Pulse) and only
     // while the decoration motion gate allows continuous animation; otherwise it holds solid.
     val motionGate = rememberParticleMotionGate()
     val pulseAlpha = if (response.isStreaming && motionGate.motionAllowed) {
@@ -193,7 +192,7 @@ private fun FusionModelCard(
         val animated by transition.animateFloat(
             initialValue = 1f,
             targetValue = 0.4f,
-            animationSpec = ExpressiveMotion.Spatial.bob(MaterialChatMotion.Durations.Long),
+            animationSpec = ExpressiveMotion.Spatial.bob(MaterialChatMotion.Durations.Pulse),
             label = "fusionCardPulseAlpha"
         )
         animated
@@ -229,7 +228,7 @@ private fun FusionModelCard(
                 ) {
                     // Model name badge
                     Surface(
-                        shape = RoundedCornerShape(8.dp),
+                        shape = ExpressiveShapes.Badge,
                         color = if (response.isStreaming) {
                             MaterialTheme.colorScheme.tertiaryContainer
                         } else {

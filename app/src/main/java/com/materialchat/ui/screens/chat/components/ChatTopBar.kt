@@ -3,14 +3,10 @@ package com.materialchat.ui.screens.chat.components
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateIntAsState
-import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -83,6 +79,7 @@ import androidx.compose.material3.Surface
 import com.materialchat.ui.screens.chat.ContextWindowUsage
 import com.materialchat.ui.theme.CustomShapes
 import com.materialchat.ui.theme.ExpressiveMotion
+import com.materialchat.ui.theme.MaterialChatMotion
 import com.materialchat.ui.theme.MaterialChatExpressiveTitleFontFamily
 import com.materialchat.ui.theme.readableMutedOn
 import com.materialchat.ui.theme.particles.rememberParticleMotionGate
@@ -452,10 +449,7 @@ internal fun ChatHeaderPulse(
         val animated by transition.animateFloat(
             initialValue = 0f,
             targetValue = 2f * PI.toFloat(),
-            animationSpec = infiniteRepeatable(
-                animation = tween(durationMillis = 1400, easing = LinearEasing),
-                repeatMode = RepeatMode.Restart
-            ),
+            animationSpec = ExpressiveMotion.Spatial.decorativeSpin(MaterialChatMotion.Durations.HeaderPulse),
             label = "chatHeaderPulsePhase"
         )
         animated

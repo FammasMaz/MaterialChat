@@ -646,7 +646,7 @@ private fun inlineMathWidthFactor(expression: String): Float {
  * ([ExpressiveShapes.ContentBlock], 16dp squircle) outside, 8dp inner elements.
  */
 private val MarkdownBlockOuterShape: Shape get() = ExpressiveShapes.ContentBlock
-private val MarkdownBlockInnerShape = RoundedCornerShape(8.dp)
+private val MarkdownBlockInnerShape = ExpressiveShapes.Badge
 
 /** Width of the fade drawn over a horizontally scrolling block's clipped edge. */
 private val MarkdownScrollEdgeFade = 20.dp
