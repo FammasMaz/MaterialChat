@@ -4,6 +4,7 @@ import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.TweenSpec
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
@@ -42,5 +43,33 @@ class MotionTokensTest {
         val bob = ExpressiveMotion.Spatial.bob()
         assertEquals(800, (bob.animation as TweenSpec<Float>).durationMillis)
         assertEquals(RepeatMode.Reverse, bob.repeatMode)
+    }
+
+    @Test fun indicatorCyclesMatchTheLoadingIndicatorAndTheM3CircularSpec() {
+        // ExpressiveLoadingIndicator's private IndicatorCycle, lifted here value for value.
+        val i = MaterialChatMotion.Durations.Indicator
+        assertEquals(4000, i.MorphRotation)
+        assertEquals(3000, i.MorphShape)
+        assertEquals(1332, i.ArcRotation)
+        assertEquals(666, i.ArcSweep)
+        assertEquals(i.ArcRotation / 2, i.ArcSweep)
+        assertEquals(1500, i.LinearPass)
+        assertEquals(750, i.LinearWidth)
+        assertEquals(i.LinearPass / 2, i.LinearWidth)
+    }
+
+    @Test fun statsPillHoldIsWhatTheMessageBubbleDelays() {
+        // MessageBubble: delay(3_500) before the auto-expanded stats pill collapses.
+        assertEquals(3_500, MaterialChatMotion.Durations.StatsPillHold)
+    }
+
+    @Test fun dataRevealIsTheSlowInsightsCountUp() {
+        // StatCard / ModelUsageChart: spring(dampingRatio = 0.8f, stiffness = 50f).
+        val spec = ExpressiveMotion.Spatial.dataReveal<Float>()
+        assertEquals(0.8f, spec.dampingRatio, 1e-6f)
+        assertEquals(50f, spec.stiffness, 1e-6f)
+        // Deliberately far slower than the M3E slow spatial spring so a figure is seen arriving.
+        assertTrue(spec.stiffness * 4 <= ExpressiveMotion.Spatial.slow<Float>().stiffness)
+        assertEquals(ExpressiveMotion.Spatial.dataReveal<Int>(), ExpressiveMotion.Spatial.dataReveal<Int>())
     }
 }
