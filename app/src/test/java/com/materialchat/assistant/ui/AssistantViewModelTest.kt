@@ -655,4 +655,65 @@ class AssistantViewModelTest {
         assertFalse(vm.uiState.value.conversationSaved)
         assertFalse(vm.uiState.value.openInAppAvailable)
     }
+
+    // W8 sequence walk round 5.
+
+    @Test fun `a question typed over an arriving answer saves the answer as far as it got first`() = runTest {
+        val vm = createViewModel()
+        val saved = mutableListOf<Message>()
+        coEvery { conversations.addMessage(any()) } answers { saved += firstArg<Message>(); firstArg<Message>().id }
+        vm.onOverlayShown()
+        vm.sendQuery("first")
+        runCurrent()
+        states.send(StreamingState.Streaming("Partial answer. More", messageId = "a"))
+        runCurrent()
+        assertTrue(vm.uiState.value.isStreaming)
+        // The next question interrupts the answer (submitTyped: onInterrupt, then send).
+        vm.sendQuery("second")
+        runCurrent()
+        assertTrue(cancelled)
+        // The chat and the model's history carry what the pill showed: question, the answer as
+        // far as it got, question. Before W8 the partial was never saved and the history had
+        // two user rows in a row.
+        assertEquals(listOf("first", "Partial answer. More", "second"), saved.map { it.content })
+        assertEquals(listOf(MessageRole.USER, MessageRole.ASSISTANT, MessageRole.USER), saved.map { it.role })
+        assertTrue(saved.all { it.conversationId == "conversation" })
+        assertEquals(
+            listOf("first", "Partial answer. More", "second"),
+            vm.messages.value.map { it.content }
+        )
+        assertTrue(vm.messages.value.none { it.isStreaming })
+        assertEquals(VoiceState.Thinking("second"), vm.voiceState.value)
+    }
+
+    @Test fun `a new invocation over an arriving answer keeps it and an answer that never started saves nothing`() = runTest {
+        val vm = createViewModel()
+        val saved = mutableListOf<Message>()
+        coEvery { conversations.addMessage(any()) } answers { saved += firstArg<Message>(); firstArg<Message>().id }
+        vm.onOverlayShown()
+        vm.sendQuery("first")
+        runCurrent()
+        states.send(StreamingState.Streaming("Half an answer", messageId = "a"))
+        runCurrent()
+        // The session hides for the new invocation: clearConversation -> cancelStreaming.
+        vm.onOverlayHidden()
+        runCurrent()
+        assertTrue(cancelled)
+        assertEquals(listOf("first", "Half an answer"), saved.map { it.content })
+        assertEquals(MessageRole.ASSISTANT, saved.last().role)
+        assertFalse(vm.uiState.value.isStreaming)
+        assertEquals(VoiceState.Idle, vm.voiceState.value)
+        // Nothing shown yet: the cut-off turn leaves only its question behind.
+        cancelled = false
+        vm.onOverlayShown()
+        vm.sendQuery("second")
+        runCurrent()
+        states.send(StreamingState.Starting)
+        runCurrent()
+        vm.cancelStreaming()
+        runCurrent()
+        assertTrue(cancelled)
+        assertEquals(listOf("first", "Half an answer", "second"), saved.map { it.content })
+        assertEquals(MessageRole.USER, saved.last().role)
+    }
 }

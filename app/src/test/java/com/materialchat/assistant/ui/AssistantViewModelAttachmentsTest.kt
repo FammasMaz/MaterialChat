@@ -207,4 +207,36 @@ class AssistantViewModelAttachmentsTest {
         assertTrue(vm.pendingAttachments.value.isEmpty())
         assertEquals(listOf(photo("a").uri, photo("b").uri), discarded.map { it.uri })
     }
+
+    @Test fun `the limit notice leaves with the removal it asks for and only then`() = runTest {
+        val inbox = AssistantAttachmentInbox()
+        val vm = createViewModel(inbox)
+        val events = mutableListOf<AssistantEvent>()
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.events.collect { events += it } }
+        inbox.publish((1..AttachmentLimits.MAX_PER_MESSAGE).map { photo("p$it") })
+        runCurrent()
+        vm.requestAttach(AssistantAttachMode.Gallery)
+        runCurrent()
+        assertTrue(events.isEmpty())
+        assertEquals(AttachmentLimits.limitNotice(), vm.uiState.value.notice)
+        // W8: "Remove one to add another" obeyed: the notice has nothing left to say.
+        vm.removeAttachment(photo("p1"))
+        assertNull(vm.uiState.value.notice)
+        // Any other notice is not the limit's and stays through a removal.
+        vm.onAttachLaunchFailed("Could not open the camera.")
+        vm.removeAttachment(photo("p2"))
+        assertEquals("Could not open the camera.", vm.uiState.value.notice)
+        // A refused tap's notice also leaves with the next tap that has room.
+        inbox.publish(listOf(photo("q1"), photo("q2")))
+        runCurrent()
+        vm.requestAttach(AssistantAttachMode.Camera)
+        runCurrent()
+        assertEquals(AttachmentLimits.limitNotice(), vm.uiState.value.notice)
+        assertTrue(events.isEmpty())
+        vm.removeAttachment(photo("q1"))
+        vm.requestAttach(AssistantAttachMode.Camera)
+        runCurrent()
+        assertNull(vm.uiState.value.notice)
+        assertEquals(1, events.size)
+    }
 }
