@@ -8,6 +8,8 @@ import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -85,13 +87,18 @@ fun QuoteReplyPreview(
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.padding(end = 4.dp)
+                // Intrinsic height so the accent bar spans the quoted text (same idiom as the
+                // bubble's quote block); a fixed 48dp bar sat 16dp short of the 64dp text
+                // column at scale 1.0 and 30dp short at 1.3.
+                modifier = Modifier
+                    .padding(end = 4.dp)
+                    .height(IntrinsicSize.Min)
             ) {
                 // M3 Expressive: Accent bar for containment and visual hierarchy
                 Box(
                     modifier = Modifier
                         .width(4.dp)
-                        .height(48.dp)
+                        .fillMaxHeight()
                         .padding(vertical = 8.dp)
                         .clip(CustomShapes.Pill)
                         .background(MaterialTheme.colorScheme.primary)

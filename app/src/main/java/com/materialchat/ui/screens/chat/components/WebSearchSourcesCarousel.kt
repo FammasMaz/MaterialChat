@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -268,7 +269,10 @@ private fun WebSearchSourceCard(
     Surface(
         modifier = modifier
             .fillMaxWidth()
-            .height(132.dp)
+            // The carousel owns the height (140dp). A fixed 132dp here clipped the second
+            // title line even at font scale 1.0 (66 image + 10 + 20 badge row + 6 + 32 title
+            // + 10 = 144dp); the card now fills the carousel and the image absorbs the rest.
+            .fillMaxHeight()
             .expressivePressScale(isPressed)
             .clip(cardShape)
             .clickable(
@@ -290,9 +294,12 @@ private fun WebSearchSourceCard(
                     // (24dp outer / 12dp inner / 14dp pressed), so a fixed 20dp top clip here
                     // would leave a wedge of card fill at the corners whenever the card corner
                     // is not 20dp. The image takes the card's corners.
+                    // Weighted, not fixed: the text column below is measured first at the
+                    // current font scale and the image takes whatever height is left, so the
+                    // title never clips (62dp at scale 1.0, ~52dp at 1.3).
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(66.dp)
+                        .weight(1f)
                 )
             }
 

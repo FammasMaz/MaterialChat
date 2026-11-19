@@ -230,7 +230,11 @@ private fun SearchField(
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 12.dp, vertical = 8.dp)
-            .height(48.dp) // Fixed height to prevent expansion
+            // Minimum, not fixed: OutlinedTextField pads 16dp above and below the text, so a
+            // fixed 48dp left 16dp for a 20dp bodyMedium line (26dp at font scale 1.3) and
+            // clipped the descenders. The field settles at the M3 56dp minimum; the dropdown
+            // scrolls inside its own height cap.
+            .heightIn(min = 48.dp)
             .focusRequester(focusRequester),
         placeholder = {
             Text(

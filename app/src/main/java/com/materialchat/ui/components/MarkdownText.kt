@@ -64,6 +64,7 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.BaselineShift
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.withStyle
@@ -772,20 +773,26 @@ private fun CodeBlockView(
                 .padding(start = 10.dp, end = 2.dp, top = 4.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Box(
-                modifier = Modifier
-                    .clip(MarkdownBlockInnerShape)
-                    .background(chipTone)
-                    .padding(horizontal = 8.dp, vertical = 3.dp)
-            ) {
-                Text(
-                    text = language?.trim()?.takeIf { it.isNotEmpty() }?.lowercase() ?: "code",
-                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Medium),
-                    color = chipContent,
-                    maxLines = 1
-                )
+            // The chip owns the slack of the row (weighted), so a long info string such as
+            // "typescript title=App.tsx" ellipsises inside the chip instead of pushing the
+            // copy / open buttons past the block edge (an unweighted chip measured first
+            // against the full row width).
+            Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
+                Box(
+                    modifier = Modifier
+                        .clip(MarkdownBlockInnerShape)
+                        .background(chipTone)
+                        .padding(horizontal = 8.dp, vertical = 3.dp)
+                ) {
+                    Text(
+                        text = language?.trim()?.takeIf { it.isNotEmpty() }?.lowercase() ?: "code",
+                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Medium),
+                        color = chipContent,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
             }
-            Spacer(modifier = Modifier.weight(1f))
             CodeBlockActionButton(
                 icon = Icons.Default.ContentCopy,
                 contentDescription = "Copy code",
