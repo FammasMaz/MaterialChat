@@ -16,8 +16,8 @@ object ExpressiveSizes {
         /** Chip row height (M3 assist/filter chip containers are 32dp; the app's touch-friendly chips are 40). */
         val Height: Dp = 40.dp
 
-        /** Leading glyph inside a chip (M3 chip icon size). */
-        val Icon: Dp = 18.dp
+        /** Leading glyph inside a chip (M3 chip icon size): [ExpressiveSizes.IconSmall]. */
+        val Icon: Dp get() = IconSmall
 
         /** Horizontal inset from the chip edge to its first glyph or label. */
         val Inset: Dp = 14.dp
@@ -46,6 +46,21 @@ object ExpressiveSizes {
 
     /** Indeterminate indicator that owns a screen or a card. */
     val IndicatorHero: Dp = 48.dp
+
+    /**
+     * The glyph ladder for icons drawn inside controls (W6 audit F11): one value per step so a
+     * button family cannot carry 20 / 22 / 24dp glyphs beside each other.
+     * [Icon] is the glyph inside a labelled button or a [Control]-sized icon button; [IconSmall]
+     * is the chip glyph ([Chip.Icon] aliases it) and a trailing affordance; [IconLarge] is the
+     * M3 default icon size, drawn inside a [Target]-sized filled icon button and the FAB.
+     */
+    val Icon: Dp = 20.dp
+
+    /** Glyph inside a chip or a dense trailing affordance (M3 chip icon size). */
+    val IconSmall: Dp = 18.dp
+
+    /** Glyph inside a 48dp filled icon button or a FAB (M3 default icon size). */
+    val IconLarge: Dp = 24.dp
 }
 
 /**

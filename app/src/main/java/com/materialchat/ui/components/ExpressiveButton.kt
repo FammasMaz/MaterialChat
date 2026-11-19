@@ -195,7 +195,7 @@ private fun ButtonContent(
         Icon(
             imageVector = leadingIcon,
             contentDescription = null,
-            modifier = Modifier.size(20.dp)
+            modifier = Modifier.size(ExpressiveSizes.Icon)
         )
         Spacer(modifier = Modifier.width(8.dp))
     }
@@ -211,7 +211,7 @@ private fun ButtonContent(
         Icon(
             imageVector = trailingIcon,
             contentDescription = null,
-            modifier = Modifier.size(20.dp)
+            modifier = Modifier.size(ExpressiveSizes.Icon)
         )
     }
 }
@@ -303,7 +303,7 @@ fun ExpressiveIconButton(
             Icon(
                 imageVector = icon,
                 contentDescription = contentDescription,
-                modifier = Modifier.size(24.dp)
+                modifier = Modifier.size(ExpressiveSizes.IconLarge)
             )
         }
     }
@@ -370,7 +370,7 @@ fun ExpressiveActionButton(
             Icon(
                 imageVector = icon,
                 contentDescription = contentDescription,
-                modifier = Modifier.size(20.dp) // Slightly larger icon for 48dp container
+                modifier = Modifier.size(ExpressiveSizes.Icon)
             )
         }
     }
@@ -450,7 +450,7 @@ fun ExpressiveFab(
             Icon(
                 imageVector = icon,
                 contentDescription = if (!expanded) contentDescription else null,
-                modifier = Modifier.size(24.dp)
+                modifier = Modifier.size(ExpressiveSizes.IconLarge)
             )
 
             if (expanded && text.isNotEmpty()) {

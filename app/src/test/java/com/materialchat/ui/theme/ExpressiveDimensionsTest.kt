@@ -37,6 +37,19 @@ class ExpressiveDimensionsTest {
         assertEquals(ExpressiveSizes.Target, ExpressiveSizes.Tile)
     }
 
+    @Test fun iconLadderIsEighteenTwentyTwentyFour() {
+        // W7 part 4 (audit F11): ExpressiveButton draws Icon (labelled / 48dp icon button) and
+        // IconLarge (filled icon button, FAB); chips draw IconSmall through Chip.Icon.
+        assertEquals(18.dp, ExpressiveSizes.IconSmall)
+        assertEquals(20.dp, ExpressiveSizes.Icon)
+        assertEquals(24.dp, ExpressiveSizes.IconLarge)
+        assertEquals(ExpressiveSizes.IconSmall, ExpressiveSizes.Chip.Icon)
+        assertTrue(ExpressiveSizes.IconSmall < ExpressiveSizes.Icon)
+        assertTrue(ExpressiveSizes.Icon < ExpressiveSizes.IconLarge)
+        // Icon is the inline-indicator size, so a button swapping its glyph for a spinner keeps its width.
+        assertEquals(ExpressiveSizes.IndicatorInline, ExpressiveSizes.Icon)
+    }
+
     @Test fun indicatorSizesArePinned() {
         assertEquals(20.dp, ExpressiveSizes.IndicatorInline)
         assertEquals(48.dp, ExpressiveSizes.IndicatorHero)
