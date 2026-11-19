@@ -5,7 +5,7 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
-import com.materialchat.assistant.ui.AssistantContrastPair
+import com.materialchat.ui.theme.ThemeContrastPair
 import com.materialchat.data.local.preferences.AppPreferences
 import com.materialchat.ui.theme.MaterialChatThemePalettes
 import com.materialchat.ui.theme.ThemeContrast
@@ -160,21 +160,21 @@ class ChatContrastTest {
      * v2.41.0 (574b5c3): a role's colour at a fixed alpha, never checked against the fill. This
      * is the baseline the resolver replaces; the test records which themes it broke.
      */
-    private fun legacyPairs(scheme: ColorScheme, family: AppPreferences.ChatBubbleStyle): List<AssistantContrastPair> {
+    private fun legacyPairs(scheme: ColorScheme, family: AppPreferences.ChatBubbleStyle): List<ThemeContrastPair> {
         val assistant = ChatContrast.assistantBubbleFill(scheme, family)
         val user = ChatContrast.userBubbleFill(scheme, family)
         val list = scheme.surfaceContainerLow
         val thinkingHeader = ChatContrast.over(scheme.onSurface.copy(alpha = 0.07f), assistant)
         val memoryPanel = ChatContrast.over(scheme.surfaceContainerHighest.copy(alpha = 0.86f), assistant)
         return listOf(
-            AssistantContrastPair("model label onSurfaceVariant@0.5", list, scheme.onSurfaceVariant.copy(alpha = 0.5f), ChatContrast.BODY_TEXT),
-            AssistantContrastPair("sibling label onSurfaceVariant@0.5", list, scheme.onSurfaceVariant.copy(alpha = 0.5f), ChatContrast.BODY_TEXT),
-            AssistantContrastPair("elapsed label onSurfaceVariant@0.7", list, scheme.onSurfaceVariant.copy(alpha = 0.7f), ChatContrast.BODY_TEXT),
-            AssistantContrastPair("thinking preview onSurface@0.6", thinkingHeader, scheme.onSurface.copy(alpha = 0.6f), ChatContrast.BODY_TEXT),
-            AssistantContrastPair("thinking body onSurface@0.7", assistant, scheme.onSurface.copy(alpha = 0.7f), ChatContrast.BODY_TEXT),
-            AssistantContrastPair("user quote onPrimaryContainer@0.65", user, scheme.onPrimaryContainer.copy(alpha = 0.65f), ChatContrast.BODY_TEXT),
-            AssistantContrastPair("memory panel title onSurfaceVariant@0.72", memoryPanel, scheme.onSurfaceVariant.copy(alpha = 0.72f), ChatContrast.BODY_TEXT),
-            AssistantContrastPair("system bubble onTertiaryContainer", ChatContrast.systemBubbleFill(scheme), scheme.onTertiaryContainer, ChatContrast.BODY_TEXT)
+            ThemeContrastPair("model label onSurfaceVariant@0.5", list, scheme.onSurfaceVariant.copy(alpha = 0.5f), ChatContrast.BODY_TEXT),
+            ThemeContrastPair("sibling label onSurfaceVariant@0.5", list, scheme.onSurfaceVariant.copy(alpha = 0.5f), ChatContrast.BODY_TEXT),
+            ThemeContrastPair("elapsed label onSurfaceVariant@0.7", list, scheme.onSurfaceVariant.copy(alpha = 0.7f), ChatContrast.BODY_TEXT),
+            ThemeContrastPair("thinking preview onSurface@0.6", thinkingHeader, scheme.onSurface.copy(alpha = 0.6f), ChatContrast.BODY_TEXT),
+            ThemeContrastPair("thinking body onSurface@0.7", assistant, scheme.onSurface.copy(alpha = 0.7f), ChatContrast.BODY_TEXT),
+            ThemeContrastPair("user quote onPrimaryContainer@0.65", user, scheme.onPrimaryContainer.copy(alpha = 0.65f), ChatContrast.BODY_TEXT),
+            ThemeContrastPair("memory panel title onSurfaceVariant@0.72", memoryPanel, scheme.onSurfaceVariant.copy(alpha = 0.72f), ChatContrast.BODY_TEXT),
+            ThemeContrastPair("system bubble onTertiaryContainer", ChatContrast.systemBubbleFill(scheme), scheme.onTertiaryContainer, ChatContrast.BODY_TEXT)
         )
     }
 

@@ -6,10 +6,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
-import com.materialchat.assistant.ui.AssistantContrast
-import com.materialchat.assistant.ui.AssistantContrastPair
 import com.materialchat.data.local.preferences.AppPreferences
 import com.materialchat.ui.theme.LocalChatBubbleStyle
+import com.materialchat.ui.theme.ThemeContrast
+import com.materialchat.ui.theme.ThemeContrastPair
 
 /**
  * WCAG contrast for the chat screen.
@@ -24,27 +24,27 @@ import com.materialchat.ui.theme.LocalChatBubbleStyle
  * the required ratio and stepping to the next one otherwise (white/black close the list, so a
  * readable colour always exists).
  *
- * Pure Kotlin on top of [AssistantContrast]: no composition, no Android, so the JVM test can
+ * Pure Kotlin on top of the theme's [ThemeContrast]: no composition, no Android, so the JVM test can
  * enumerate every theme the app can produce. [ChatSurfacePalette.pairs] lists the same values the
  * UI consumes, so the test and the screen cannot drift apart.
  */
 internal object ChatContrast {
     /** WCAG AA for body-sized text (labels under 18pt included). */
-    const val BODY_TEXT = AssistantContrast.BODY_TEXT
+    const val BODY_TEXT = ThemeContrast.BODY_TEXT
 
     /** WCAG AA for icons, graphical objects and large text. */
-    const val ICON = AssistantContrast.ICON
+    const val ICON = ThemeContrast.ICON
 
-    fun ratio(content: Color, fill: Color): Double = AssistantContrast.contrastRatio(content, fill)
+    fun ratio(content: Color, fill: Color): Double = ThemeContrast.contrastRatio(content, fill)
 
     /** Source-over composite of a translucent [top] on an opaque [under]. */
-    fun over(top: Color, under: Color): Color = AssistantContrast.compositeOver(top, under)
+    fun over(top: Color, under: Color): Color = ThemeContrast.compositeOver(top, under)
 
     fun pick(fills: List<Color>, candidates: List<Color>, minimum: Double): Color =
-        AssistantContrast.pick(fills, candidates, minimum)
+        ThemeContrast.pick(fills, candidates, minimum)
 
     fun pick(fill: Color, candidates: List<Color>, minimum: Double): Color =
-        AssistantContrast.pick(listOf(fill), candidates, minimum)
+        ThemeContrast.pick(fill, candidates, minimum)
 
     // --- the fills exactly as the chat paints them ------------------------------------------
 
@@ -70,7 +70,7 @@ internal object ChatContrast {
 
     /** MarkdownText: the fenced code block / math block container. */
     fun codeBlockFill(scheme: ColorScheme): Color =
-        if (AssistantContrast.relativeLuminance(scheme.background) < 0.5) scheme.surfaceContainerHighest
+        if (ThemeContrast.relativeLuminance(scheme.background) < 0.5) scheme.surfaceContainerHighest
         else scheme.surfaceContainerLow
 }
 
@@ -209,9 +209,9 @@ internal data class ChatSurfacePalette(
     val reasoningDisabled: ChatTonal
 ) {
     /** Every container/content pair with its required ratio, one per fill the container can present. */
-    fun pairs(): List<AssistantContrastPair> = buildList {
+    fun pairs(): List<ThemeContrastPair> = buildList {
         fun add(name: String, fill: Color, content: Color, minimum: Double) =
-            add(AssistantContrastPair(name, fill, content, minimum))
+            add(ThemeContrastPair(name, fill, content, minimum))
         fun add(name: String, fills: List<Color>, content: Color, minimum: Double) =
             fills.forEachIndexed { i, f -> add(if (fills.size == 1) name else "$name[$i]", f, content, minimum) }
         fun text(name: String, t: ChatTonal) = add(name, t.fill, t.content, ChatContrast.BODY_TEXT)
