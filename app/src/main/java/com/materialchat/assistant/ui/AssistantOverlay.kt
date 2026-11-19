@@ -104,17 +104,17 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.automirrored.outlined.OpenInNew
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.AddComment
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.ContentCopy
-import androidx.compose.material.icons.filled.GraphicEq
-import androidx.compose.material.icons.filled.Keyboard
-import androidx.compose.material.icons.filled.KeyboardHide
-import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Stop
+import androidx.compose.material.icons.outlined.AddComment
+import androidx.compose.material.icons.outlined.GraphicEq
+import androidx.compose.material.icons.outlined.Keyboard
+import androidx.compose.material.icons.outlined.KeyboardHide
+import androidx.compose.material.icons.outlined.Mic
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilledTonalButton
@@ -921,12 +921,14 @@ internal fun AssistantOverlayContent(
                                         color = glyphContent
                                     )
                                     AssistantPhase.Speaking -> Icon(
-                                        imageVector = Icons.Default.GraphicEq,
+                                        imageVector = Icons.Outlined.GraphicEq,
                                         contentDescription = null,
                                         tint = glyphContent
                                     )
+                                    // Filled on purpose: the chat composer and bubbles draw the model glyph as
+                                    // Icons.Filled.AutoAwesome (MessageInput.kt, MessageBubble.kt).
                                     AssistantPhase.Idle -> Icon(
-                                        imageVector = Icons.Default.AutoAwesome,
+                                        imageVector = Icons.Filled.AutoAwesome,
                                         contentDescription = null,
                                         tint = glyphContent
                                     )
@@ -1083,6 +1085,8 @@ internal fun AssistantOverlayContent(
                                 .size(AssistantSizes.Control)
                                 .testTag("assistant_attach")
                         ) {
+                            // Filled on purpose: the chat composer's attach affordance is Icons.Default.Add
+                            // (MessageInput.kt); the pill shares that glyph rather than the Outlined family.
                             Icon(
                                 imageVector = Icons.Default.Add,
                                 contentDescription = if (attachReveal.open) "Close photo options" else "Add photo",
@@ -1104,7 +1108,7 @@ internal fun AssistantOverlayContent(
                     ) {
                         AssistantChromeIconButton(onClick = { if (keyboardMode) hideKeyboard() else enterKeyboard() }) {
                             Icon(
-                                imageVector = if (keyboardMode) Icons.Default.KeyboardHide else Icons.Default.Keyboard,
+                                imageVector = if (keyboardMode) Icons.Outlined.KeyboardHide else Icons.Outlined.Keyboard,
                                 contentDescription = if (keyboardMode) "Hide keyboard" else "Keyboard"
                             )
                         }
@@ -1169,6 +1173,7 @@ internal fun AssistantOverlayContent(
                             shape = primaryShape,
                             colors = primaryColors
                         ) {
+                            // Filled on purpose: same glyph as the chat composer's send (ComposerSendButton.kt).
                             Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "Send")
                         }
                         capturing -> FilledIconButton(
@@ -1177,6 +1182,7 @@ internal fun AssistantOverlayContent(
                             shape = primaryShape,
                             colors = primaryColors
                         ) {
+                            // Filled on purpose: same stop square as the chat composer (ComposerSendButton.kt).
                             Icon(Icons.Default.Stop, contentDescription = "Stop listening")
                         }
                         busy -> FilledIconButton(
@@ -1185,6 +1191,7 @@ internal fun AssistantOverlayContent(
                             shape = primaryShape,
                             colors = primaryColors
                         ) {
+                            // Filled on purpose: same stop square as the chat composer (ComposerSendButton.kt).
                             Icon(Icons.Default.Stop, contentDescription = "Interrupt")
                         }
                         else -> FilledIconButton(
@@ -1198,7 +1205,7 @@ internal fun AssistantOverlayContent(
                             shape = primaryShape,
                             colors = primaryColors
                         ) {
-                            Icon(Icons.Default.Mic, contentDescription = "Microphone")
+                            Icon(Icons.Outlined.Mic, contentDescription = "Microphone")
                         }
                     }
 
@@ -1213,6 +1220,7 @@ internal fun AssistantOverlayContent(
                             shrinkHorizontally(animationSpec = AssistantMotion.stateSwitch())
                     ) {
                         AssistantChromeIconButton(onClick = endSession) {
+                            // Filled on purpose: the chat composer's dismiss glyph is Icons.Default.Close (MessageInput.kt).
                             Icon(Icons.Default.Close, contentDescription = "End assistant session")
                         }
                     }
@@ -1388,7 +1396,7 @@ private fun AssistantAnswerToolbar(
             ) {
                 if (labelledChip) {
                     AssistantActionChip(
-                        icon = Icons.AutoMirrored.Filled.OpenInNew,
+                        icon = Icons.AutoMirrored.Outlined.OpenInNew,
                         label = AssistantCopy.OPEN_IN_APP,
                         onClick = onOpenInApp
                     )
@@ -1401,18 +1409,20 @@ private fun AssistantAnswerToolbar(
                     var index = 0
                     if (compactOpen) {
                         AssistantToolbarAction(index = index++, count = count, onClick = onOpenInApp) {
-                            Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = AssistantCopy.OPEN_IN_APP)
+                            Icon(Icons.AutoMirrored.Outlined.OpenInNew, contentDescription = AssistantCopy.OPEN_IN_APP)
                         }
                     }
                     AssistantToolbarAction(index = index++, count = count, onClick = onNewChat) {
-                        Icon(Icons.Default.AddComment, contentDescription = "New chat")
+                        Icon(Icons.Outlined.AddComment, contentDescription = "New chat")
                     }
                     if (showCopy) {
                         AssistantToolbarAction(index = index++, count = count, onClick = onCopy) {
+                            // Filled on purpose: the chat bubble's copy action is Icons.Default.ContentCopy (MessageActions.kt).
                             Icon(Icons.Default.ContentCopy, contentDescription = "Copy response")
                         }
                     }
                     AssistantToolbarAction(index = index, count = count, onClick = onClose) {
+                        // Filled on purpose: the chat composer's dismiss glyph is Icons.Default.Close (MessageInput.kt).
                         Icon(Icons.Default.Close, contentDescription = "End assistant session")
                     }
                 }
@@ -1519,6 +1529,8 @@ private fun AssistantAttachRevealContent(
                 horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween, Alignment.End),
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                // Filled on purpose: both photo chips mirror the chat composer's attach sheet
+                // (Icons.Default.PhotoCamera / Icons.Default.AddPhotoAlternate in MessageInput.kt).
                 AssistantActionChip(
                     icon = Icons.Default.PhotoCamera,
                     label = AssistantCopy.TAKE_PHOTO,
@@ -1635,6 +1647,7 @@ private fun AssistantScreenChip(attachment: Attachment, onRemove: () -> Unit) {
                     .size(AssistantSizes.CompactTarget)
                     .testTag("assistant_screen_remove")
             ) {
+                // Filled on purpose: the chat composer removes its previews with Icons.Default.Close (MessageInput.kt).
                 Icon(
                     imageVector = Icons.Default.Close,
                     contentDescription = "Remove screen context",
@@ -1744,9 +1757,10 @@ private fun AssistantNoticeSurface(
                     AssistantNoticeActionChip(
                         icon = when (action) {
                             AssistantNoticeAction.RetryRequest,
+                            // Refresh stays filled: the chat bubble's regenerate action is Icons.Default.Refresh (MessageActions.kt).
                             AssistantNoticeAction.RetryListening -> Icons.Default.Refresh
-                            AssistantNoticeAction.TypeInstead -> Icons.Default.Keyboard
-                            AssistantNoticeAction.OpenApp -> Icons.AutoMirrored.Filled.OpenInNew
+                            AssistantNoticeAction.TypeInstead -> Icons.Outlined.Keyboard
+                            AssistantNoticeAction.OpenApp -> Icons.AutoMirrored.Outlined.OpenInNew
                             AssistantNoticeAction.OpenSettings,
                             AssistantNoticeAction.ScreenSettings -> Icons.Outlined.Settings
                         },
