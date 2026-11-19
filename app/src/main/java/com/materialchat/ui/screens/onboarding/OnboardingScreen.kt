@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -18,7 +17,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CheckCircle
@@ -28,15 +26,12 @@ import androidx.compose.material.icons.outlined.ErrorOutline
 import androidx.compose.material.icons.outlined.Key
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.SmartToy
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -58,9 +53,10 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.foundation.layout.heightIn
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.materialchat.ui.components.ExpressiveButton
+import com.materialchat.ui.components.ExpressiveButtonStyle
 import com.materialchat.ui.components.M3ExpressiveInlineLoading
 import com.materialchat.ui.components.rememberDeviceTilt
-import com.materialchat.ui.theme.CustomShapes
 import com.materialchat.ui.theme.ExpressiveMotion
 import com.materialchat.ui.theme.ExpressiveShapes
 import com.materialchat.ui.theme.MaterialChatExpressiveTitleFontFamily
@@ -189,21 +185,15 @@ private fun OnboardingContent(
                     containerColor = MaterialTheme.colorScheme.surfaceContainerLow
                 )
 
-                TextButton(
+                ExpressiveButton(
                     onClick = onSkip,
                     modifier = Modifier
                         .align(Alignment.CenterHorizontally)
                         .heightIn(min = ExpressiveSizes.Target),
-                    shape = CustomShapes.Button
-                ) {
-                    Icon(
-                        imageVector = Icons.Outlined.Settings,
-                        contentDescription = null,
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Spacer(modifier = Modifier.size(8.dp))
-                    Text("Skip and explore the app")
-                }
+                    text = "Skip and explore the app",
+                    leadingIcon = Icons.Outlined.Settings,
+                    style = ExpressiveButtonStyle.Text
+                )
             }
         }
     }
@@ -324,36 +314,21 @@ private fun CodexHeroCard(
                 color = MaterialTheme.colorScheme.onPrimaryContainer
             )
 
-            Button(
+            // W7 #5: the shared ExpressiveButton owns its content, so the in-flight spinner
+            // sits beside the status line below instead of inside the label.
+            ExpressiveButton(
                 onClick = onSignIn,
                 enabled = !isSigningIn,
                 modifier = Modifier
                     .fillMaxWidth()
                     .heightIn(min = 72.dp),
-                shape = CircleShape,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary
-                ),
-                contentPadding = ButtonDefaults.ContentPadding
-            ) {
-                if (isSigningIn) {
-                    M3ExpressiveInlineLoading(color = MaterialTheme.colorScheme.onPrimary)
-                    Spacer(modifier = Modifier.size(12.dp))
-                    Text("Waiting for sign-in")
-                } else {
-                    Icon(
-                        imageVector = Icons.Outlined.CheckCircle,
-                        contentDescription = null,
-                        modifier = Modifier.size(22.dp)
-                    )
-                    Spacer(modifier = Modifier.size(12.dp))
-                    Text(
-                        text = "Sign in with OpenAI",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
+                text = if (isSigningIn) "Waiting for sign-in" else "Sign in with OpenAI",
+                leadingIcon = if (isSigningIn) null else Icons.Outlined.CheckCircle,
+                style = ExpressiveButtonStyle.Filled
+            )
+
+            if (isSigningIn) {
+                M3ExpressiveInlineLoading(color = MaterialTheme.colorScheme.onPrimaryContainer)
             }
 
             status?.takeIf { it.isNotBlank() }?.let {

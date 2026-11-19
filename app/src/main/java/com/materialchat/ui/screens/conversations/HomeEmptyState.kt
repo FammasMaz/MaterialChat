@@ -14,8 +14,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialShapes
@@ -33,8 +31,8 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.materialchat.ui.components.HapticPattern
-import com.materialchat.ui.components.rememberHapticFeedback
+import com.materialchat.ui.components.ExpressiveButton
+import com.materialchat.ui.components.ExpressiveButtonStyle
 import com.materialchat.ui.theme.ExpressiveMotion
 import com.materialchat.ui.theme.ExpressiveSizes
 import com.materialchat.ui.theme.MaterialChatMotion
@@ -62,6 +60,10 @@ data class EmptyStateAction(
  * M3 Expressive empty state for the home screen: a cluster of overlapping
  * Material shapes in tonal container colours, an emphasized headline, one line
  * of supporting copy and one shape-morphing primary action.
+ *
+ * The type pair (headlineSmall Bold / bodyMedium) and the [ExpressiveButton] FilledTonal action
+ * are the same ones `ErrorContent` and `ExpressiveEmptyState` draw, so the three state surfaces
+ * read as one family (W6 cross-surface audit #3, #9); only the hero shape cluster is home's own.
  *
  * @param headline Short emphasized title.
  * @param supportingText One line explaining what to do next.
@@ -93,7 +95,7 @@ fun HomeEmptyState(
 
         Text(
             text = headline,
-            style = MaterialTheme.typography.headlineMedium,
+            style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onSurface,
             textAlign = TextAlign.Center
@@ -103,23 +105,19 @@ fun HomeEmptyState(
 
         Text(
             text = supportingText,
-            style = MaterialTheme.typography.bodyLarge,
+            style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center
         )
 
-        val haptics = rememberHapticFeedback()
         if (action != null) {
             Spacer(modifier = Modifier.height(24.dp))
-            Button(
-                onClick = {
-                    haptics.perform(HapticPattern.CLICK)
-                    action.onClick()
-                },
-                shapes = ButtonDefaults.shapes()
-            ) {
-                Text(text = action.label)
-            }
+            // ExpressiveButton performs the CLICK haptic itself.
+            ExpressiveButton(
+                onClick = action.onClick,
+                text = action.label,
+                style = ExpressiveButtonStyle.FilledTonal
+            )
         }
     }
 }
