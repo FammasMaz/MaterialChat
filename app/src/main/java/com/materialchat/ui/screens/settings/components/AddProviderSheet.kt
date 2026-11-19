@@ -25,7 +25,6 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.outlined.Cloud
 import androidx.compose.material.icons.outlined.Computer
 import androidx.compose.material.icons.outlined.SmartToy
@@ -39,7 +38,6 @@ import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
@@ -64,8 +62,8 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import com.materialchat.domain.model.Provider
 import com.materialchat.domain.model.ProviderType
-import com.materialchat.ui.components.HapticPattern
-import com.materialchat.ui.components.rememberHapticFeedback
+import com.materialchat.ui.components.SheetGutter
+import com.materialchat.ui.components.SheetHeader
 import com.materialchat.ui.screens.chat.components.ModelPickerDropdown
 import com.materialchat.ui.screens.settings.ProviderFormState
 import com.materialchat.ui.theme.ExpressiveMotion
@@ -173,7 +171,7 @@ private fun AddProviderSheetContent(
         modifier = Modifier
             .fillMaxWidth()
             .verticalScroll(scrollState)
-            .padding(horizontal = 24.dp)
+            .padding(horizontal = SheetGutter)
             .navigationBarsPadding()
             .padding(bottom = imePadding)
             .animateContentSize(
@@ -391,37 +389,6 @@ private fun AddProviderSheetContent(
         )
 
         Spacer(modifier = Modifier.height(24.dp))
-    }
-}
-
-/**
- * Sheet header with title and close button.
- */
-@Composable
-private fun SheetHeader(
-    title: String,
-    onClose: () -> Unit
-) {
-    val haptics = rememberHapticFeedback()
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(top = 16.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.headlineSmall,
-            color = MaterialTheme.colorScheme.onSurface
-        )
-        IconButton(onClick = { haptics.perform(HapticPattern.CLICK); onClose() }) {
-            Icon(
-                imageVector = Icons.Default.Close,
-                contentDescription = "Close",
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
     }
 }
 

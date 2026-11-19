@@ -30,7 +30,6 @@ import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -39,18 +38,6 @@ import com.materialchat.ui.components.ExpressiveSwitch
 import androidx.compose.material3.Surface
 import com.materialchat.ui.theme.ExpressiveShapes
 import com.materialchat.ui.theme.MaterialChatExpressiveTitleFontFamily
-
-/**
- * Modal bottom sheet contour for the settings screen. Delegates to
- * [ExpressiveShapes.BottomSheet] (the one bottom-sheet token, geometry-identical to the
- * private object this used to be). Kept only while chat's three sheets still import it;
- * new consumers use [ExpressiveShapes.BottomSheet] directly.
- */
-@Deprecated(
-    message = "Use ExpressiveShapes.BottomSheet: the one bottom-sheet shape.",
-    replaceWith = ReplaceWith("ExpressiveShapes.BottomSheet", "com.materialchat.ui.theme.ExpressiveShapes")
-)
-val SettingsSheetShape: Shape get() = ExpressiveShapes.BottomSheet
 
 /**
  * M3 Expressive section header for the settings list: a tonal icon tile, an
