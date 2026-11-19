@@ -25,6 +25,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import com.materialchat.ui.theme.CopyRules
 
 private val memoryQueryTokenizer = Regex("\\s+")
 
@@ -102,14 +103,14 @@ class MemoriesViewModel @Inject constructor(
     fun deleteMemory(memoryId: String) {
         viewModelScope.launch {
             runCatching { memoryRepository.deleteMemory(memoryId) }
-                .onFailure { _events.emit(MemoriesEvent.ShowSnackbar("Could not delete memory")) }
+                .onFailure { _events.emit(MemoriesEvent.ShowSnackbar(CopyRules.failureLine("delete memory"))) }
         }
     }
 
     fun deleteAllMemories() {
         viewModelScope.launch {
             runCatching { memoryRepository.deleteAllMemories() }
-                .onFailure { _events.emit(MemoriesEvent.ShowSnackbar("Could not delete memories")) }
+                .onFailure { _events.emit(MemoriesEvent.ShowSnackbar(CopyRules.failureLine("delete memories"))) }
         }
     }
 }

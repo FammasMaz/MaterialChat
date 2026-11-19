@@ -1,6 +1,7 @@
 package com.materialchat.ui.screens.conversations
 
 import androidx.lifecycle.ViewModel
+import com.materialchat.ui.theme.CopyRules
 import androidx.lifecycle.viewModelScope
 import com.materialchat.data.local.preferences.AppPreferences
 import com.materialchat.domain.model.Conversation
@@ -114,7 +115,7 @@ class ConversationsViewModel @Inject constructor(
                 .distinctUntilChanged()
                 .catch { e ->
                     _uiState.value = ConversationsUiState.Error(
-                        message = "Could not load conversations"
+                        message = CopyRules.failureLine("load conversations")
                     )
                 }
                 .collect { data ->
@@ -219,7 +220,7 @@ class ConversationsViewModel @Inject constructor(
             } catch (e: Exception) {
                 _events.emit(
                     ConversationsEvent.ShowSnackbar(
-                        message = "Could not create the conversation"
+                        message = CopyRules.failureLine("create the conversation")
                     )
                 )
             }
@@ -239,7 +240,7 @@ class ConversationsViewModel @Inject constructor(
             } catch (e: Exception) {
                 _events.emit(
                     ConversationsEvent.ShowSnackbar(
-                        message = "Could not create a temporary conversation"
+                        message = CopyRules.failureLine("create a temporary conversation")
                     )
                 )
             }
@@ -384,7 +385,7 @@ class ConversationsViewModel @Inject constructor(
             } catch (e: Exception) {
                 _events.emit(
                     ConversationsEvent.ShowSnackbar(
-                        message = "Could not archive the chat"
+                        message = CopyRules.failureLine("archive the chat")
                     )
                 )
             }
@@ -409,7 +410,7 @@ class ConversationsViewModel @Inject constructor(
             } catch (e: Exception) {
                 _events.emit(
                     ConversationsEvent.ShowSnackbar(
-                        message = "Could not restore the chat"
+                        message = CopyRules.failureLine("restore the chat")
                     )
                 )
             }
@@ -427,7 +428,7 @@ class ConversationsViewModel @Inject constructor(
         } catch (e: Exception) {
             _events.emit(
                 ConversationsEvent.ShowSnackbar(
-                    message = "Could not delete the conversation"
+                    message = CopyRules.failureLine("delete the conversation")
                 )
             )
         } finally {
@@ -534,7 +535,7 @@ class ConversationsViewModel @Inject constructor(
             } catch (e: Exception) {
                 _events.emit(
                     ConversationsEvent.ShowSnackbar(
-                        message = "Could not update the title"
+                        message = CopyRules.failureLine("update the title")
                     )
                 )
             }
@@ -574,7 +575,7 @@ class ConversationsViewModel @Inject constructor(
                     onFailure = { error ->
                         _events.emit(
                             ConversationsEvent.ShowSnackbar(
-                                message = "Could not generate a title"
+                                message = CopyRules.failureLine("generate a title")
                             )
                         )
                     }
@@ -582,7 +583,7 @@ class ConversationsViewModel @Inject constructor(
             } catch (e: Exception) {
                 _events.emit(
                     ConversationsEvent.ShowSnackbar(
-                        message = "Could not generate a title"
+                        message = CopyRules.failureLine("generate a title")
                     )
                 )
             }

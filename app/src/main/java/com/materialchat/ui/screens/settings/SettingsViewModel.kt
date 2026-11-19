@@ -1,6 +1,7 @@
 package com.materialchat.ui.screens.settings
 
 import android.app.Activity
+import com.materialchat.ui.theme.CopyRules
 import android.content.Context
 import android.content.Intent
 import android.os.Build
@@ -139,7 +140,7 @@ class SettingsViewModel @Inject constructor(
             }.onFailure {
                 _events.emit(
                     SettingsEvent.ShowSnackbar(
-                        message = "Could not open assistant settings"
+                        message = CopyRules.failureLine("open assistant settings")
                     )
                 )
             }
@@ -190,7 +191,7 @@ class SettingsViewModel @Inject constructor(
                 hasLoaded = true,
                 modelsByProvider = results,
                 error = if (results.isEmpty() && failures.isNotEmpty()) {
-                    "Could not fetch models from ${failures.joinToString(", ")}"
+                    CopyRules.failureLine("fetch models from ${failures.joinToString(", ")}")
                 } else null
             )
         }
@@ -337,7 +338,7 @@ class SettingsViewModel @Inject constructor(
                 .distinctUntilChanged()
                 .catch { e ->
                     _uiState.value = SettingsUiState.Error(
-                        message = "Could not load settings"
+                        message = CopyRules.failureLine("load settings")
                     )
                 }
                 .collect { data ->
@@ -600,10 +601,10 @@ class SettingsViewModel @Inject constructor(
             } catch (e: Exception) {
                 _formState.value = _formState.value.copy(
                     isAuthenticating = false,
-                    authStatus = "Could not sign in",
-                    apiKeyError = "Could not sign in"
+                    authStatus = CopyRules.failureLine("sign in"),
+                    apiKeyError = CopyRules.failureLine("sign in")
                 )
-                _events.emit(SettingsEvent.ShowSnackbar("Could not sign in"))
+                _events.emit(SettingsEvent.ShowSnackbar(CopyRules.failureLine("sign in")))
             }
         }
     }
@@ -711,11 +712,11 @@ class SettingsViewModel @Inject constructor(
             }.onFailure { error ->
                 _formState.value = _formState.value.copy(
                     isFetchingModels = false,
-                    modelsError = "Could not fetch models"
+                    modelsError = CopyRules.failureLine("fetch models")
                 )
                 // Neither the inline field error nor the snackbar shows exception text
                 // (cross-surface audit W6 #2).
-                _events.emit(SettingsEvent.ShowSnackbar("Could not fetch models"))
+                _events.emit(SettingsEvent.ShowSnackbar(CopyRules.failureLine("fetch models")))
             }
         }
     }
@@ -820,7 +821,7 @@ class SettingsViewModel @Inject constructor(
                     _uiState.value = updatedState.copy(isSaving = false)
                 }
                 _events.emit(SettingsEvent.ShowSnackbar(
-                    message = "Could not save the provider"
+                    message = CopyRules.failureLine("save the provider")
                 ))
             }
         }
@@ -837,7 +838,7 @@ class SettingsViewModel @Inject constructor(
                 _events.emit(SettingsEvent.ProviderActivated(provider?.name ?: "Provider"))
             } catch (e: Exception) {
                 _events.emit(SettingsEvent.ShowSnackbar(
-                    message = "Could not activate the provider"
+                    message = CopyRules.failureLine("activate the provider")
                 ))
             }
         }
@@ -874,7 +875,7 @@ class SettingsViewModel @Inject constructor(
                 _events.emit(SettingsEvent.ProviderDeleted(provider.name))
             } catch (e: Exception) {
                 _events.emit(SettingsEvent.ShowSnackbar(
-                    message = "Could not delete the provider"
+                    message = CopyRules.failureLine("delete the provider")
                 ))
             }
         }
@@ -905,7 +906,7 @@ class SettingsViewModel @Inject constructor(
                 )
             } catch (e: Exception) {
                 _events.emit(SettingsEvent.ShowSnackbar(
-                    message = "Could not test the connection"
+                    message = CopyRules.failureLine("test the connection")
                 ))
             }
         }
@@ -922,7 +923,7 @@ class SettingsViewModel @Inject constructor(
                 appPreferences.setSystemPrompt(prompt)
             } catch (e: Exception) {
                 _events.emit(SettingsEvent.ShowSnackbar(
-                    message = "Could not save system prompt"
+                    message = CopyRules.failureLine("save system prompt")
                 ))
             }
         }
@@ -937,7 +938,7 @@ class SettingsViewModel @Inject constructor(
                 appPreferences.setThemeMode(mode)
             } catch (e: Exception) {
                 _events.emit(SettingsEvent.ShowSnackbar(
-                    message = "Could not save theme setting"
+                    message = CopyRules.failureLine("save theme setting")
                 ))
             }
         }
@@ -952,7 +953,7 @@ class SettingsViewModel @Inject constructor(
                 appPreferences.setThemePalette(palette)
             } catch (e: Exception) {
                 _events.emit(SettingsEvent.ShowSnackbar(
-                    message = "Could not save color palette"
+                    message = CopyRules.failureLine("save color palette")
                 ))
             }
         }
@@ -967,7 +968,7 @@ class SettingsViewModel @Inject constructor(
                 appPreferences.setChatBubbleStyle(style)
             } catch (e: Exception) {
                 _events.emit(SettingsEvent.ShowSnackbar(
-                    message = "Could not save chat bubble style"
+                    message = CopyRules.failureLine("save chat bubble style")
                 ))
             }
         }
@@ -982,7 +983,7 @@ class SettingsViewModel @Inject constructor(
                 appPreferences.setControlShapeStyle(style)
             } catch (e: Exception) {
                 _events.emit(SettingsEvent.ShowSnackbar(
-                    message = "Could not save control shape style"
+                    message = CopyRules.failureLine("save control shape style")
                 ))
             }
         }
@@ -997,7 +998,7 @@ class SettingsViewModel @Inject constructor(
                 appPreferences.setDynamicColorEnabled(enabled)
             } catch (e: Exception) {
                 _events.emit(SettingsEvent.ShowSnackbar(
-                    message = "Could not save dynamic color setting"
+                    message = CopyRules.failureLine("save dynamic color setting")
                 ))
             }
         }
@@ -1010,7 +1011,7 @@ class SettingsViewModel @Inject constructor(
                 appPreferences.setNeuralExpressive(enabled)
             } catch (e: Exception) {
                 _events.emit(SettingsEvent.ShowSnackbar(
-                    message = "Could not save theme setting"
+                    message = CopyRules.failureLine("save theme setting")
                 ))
             }
         }
@@ -1023,7 +1024,7 @@ class SettingsViewModel @Inject constructor(
                 appPreferences.setPitchBlackDark(enabled)
             } catch (e: Exception) {
                 _events.emit(SettingsEvent.ShowSnackbar(
-                    message = "Could not save theme setting"
+                    message = CopyRules.failureLine("save theme setting")
                 ))
             }
         }
@@ -1038,7 +1039,7 @@ class SettingsViewModel @Inject constructor(
                 appPreferences.setHapticsEnabled(enabled)
             } catch (e: Exception) {
                 _events.emit(SettingsEvent.ShowSnackbar(
-                    message = "Could not save haptics setting"
+                    message = CopyRules.failureLine("save haptics setting")
                 ))
             }
         }
@@ -1053,7 +1054,7 @@ class SettingsViewModel @Inject constructor(
                 appPreferences.setNotificationsEnabled(enabled)
             } catch (e: Exception) {
                 _events.emit(SettingsEvent.ShowSnackbar(
-                    message = "Could not save notifications setting"
+                    message = CopyRules.failureLine("save notifications setting")
                 ))
             }
         }
@@ -1068,7 +1069,7 @@ class SettingsViewModel @Inject constructor(
                 appPreferences.setAiGeneratedTitlesEnabled(enabled)
             } catch (e: Exception) {
                 _events.emit(SettingsEvent.ShowSnackbar(
-                    message = "Could not save AI titles setting"
+                    message = CopyRules.failureLine("save AI titles setting")
                 ))
             }
         }
@@ -1083,7 +1084,7 @@ class SettingsViewModel @Inject constructor(
                 appPreferences.setPreferOnDeviceTitleModel(enabled)
             } catch (e: Exception) {
                 _events.emit(SettingsEvent.ShowSnackbar(
-                    message = "Could not save native title setting"
+                    message = CopyRules.failureLine("save native title setting")
                 ))
             }
         }
@@ -1098,7 +1099,7 @@ class SettingsViewModel @Inject constructor(
                 appPreferences.setTitleGenerationModel(model)
             } catch (e: Exception) {
                 _events.emit(SettingsEvent.ShowSnackbar(
-                    message = "Could not save title model setting"
+                    message = CopyRules.failureLine("save title model setting")
                 ))
             }
         }
@@ -1113,7 +1114,7 @@ class SettingsViewModel @Inject constructor(
                 appPreferences.setDefaultImageGenerationModel(model)
             } catch (e: Exception) {
                 _events.emit(SettingsEvent.ShowSnackbar(
-                    message = "Could not save image model setting"
+                    message = CopyRules.failureLine("save image model setting")
                 ))
             }
         }
@@ -1128,7 +1129,7 @@ class SettingsViewModel @Inject constructor(
                 appPreferences.setDefaultImageOutputFormat(format)
             } catch (e: Exception) {
                 _events.emit(SettingsEvent.ShowSnackbar(
-                    message = "Could not save image format setting"
+                    message = CopyRules.failureLine("save image format setting")
                 ))
             }
         }
@@ -1143,7 +1144,7 @@ class SettingsViewModel @Inject constructor(
                 appPreferences.setRememberLastModel(enabled)
             } catch (e: Exception) {
                 _events.emit(SettingsEvent.ShowSnackbar(
-                    message = "Could not save remember model setting"
+                    message = CopyRules.failureLine("save remember model setting")
                 ))
             }
         }
@@ -1158,7 +1159,7 @@ class SettingsViewModel @Inject constructor(
                 appPreferences.setBeautifulModelNamesEnabled(enabled)
             } catch (e: Exception) {
                 _events.emit(SettingsEvent.ShowSnackbar(
-                    message = "Could not save model names setting"
+                    message = CopyRules.failureLine("save model names setting")
                 ))
             }
         }
@@ -1173,7 +1174,7 @@ class SettingsViewModel @Inject constructor(
                 appPreferences.setAlwaysShowThinking(enabled)
             } catch (e: Exception) {
                 _events.emit(SettingsEvent.ShowSnackbar(
-                    message = "Could not save thinking setting"
+                    message = CopyRules.failureLine("save thinking setting")
                 ))
             }
         }
@@ -1188,7 +1189,7 @@ class SettingsViewModel @Inject constructor(
                 appPreferences.setShowTokenCounter(enabled)
             } catch (e: Exception) {
                 _events.emit(SettingsEvent.ShowSnackbar(
-                    message = "Could not save token counter setting"
+                    message = CopyRules.failureLine("save token counter setting")
                 ))
             }
         }
@@ -1205,7 +1206,7 @@ class SettingsViewModel @Inject constructor(
                 appPreferences.setAssistantEnabled(enabled)
             } catch (e: Exception) {
                 _events.emit(SettingsEvent.ShowSnackbar(
-                    message = "Could not save assistant setting"
+                    message = CopyRules.failureLine("save assistant setting")
                 ))
             }
         }
@@ -1220,7 +1221,7 @@ class SettingsViewModel @Inject constructor(
                 appPreferences.setAssistantVoiceEnabled(enabled)
             } catch (e: Exception) {
                 _events.emit(SettingsEvent.ShowSnackbar(
-                    message = "Could not save voice input setting"
+                    message = CopyRules.failureLine("save voice input setting")
                 ))
             }
         }
@@ -1235,7 +1236,7 @@ class SettingsViewModel @Inject constructor(
                 appPreferences.setAssistantTtsEnabled(enabled)
             } catch (e: Exception) {
                 _events.emit(SettingsEvent.ShowSnackbar(
-                    message = "Could not save text-to-speech setting"
+                    message = CopyRules.failureLine("save text-to-speech setting")
                 ))
             }
         }
@@ -1252,7 +1253,7 @@ class SettingsViewModel @Inject constructor(
                 appPreferences.setFontSizeScale(scale)
             } catch (e: Exception) {
                 _events.emit(SettingsEvent.ShowSnackbar(
-                    message = "Could not save font size setting"
+                    message = CopyRules.failureLine("save font size setting")
                 ))
             }
         }
@@ -1269,7 +1270,7 @@ class SettingsViewModel @Inject constructor(
                 appPreferences.setWebSearchEnabled(enabled)
             } catch (e: Exception) {
                 _events.emit(SettingsEvent.ShowSnackbar(
-                    message = "Could not save web search setting"
+                    message = CopyRules.failureLine("save web search setting")
                 ))
             }
         }
@@ -1284,7 +1285,7 @@ class SettingsViewModel @Inject constructor(
                 appPreferences.setWebSearchProvider(provider)
             } catch (e: Exception) {
                 _events.emit(SettingsEvent.ShowSnackbar(
-                    message = "Could not save search provider setting"
+                    message = CopyRules.failureLine("save search provider setting")
                 ))
             }
         }
@@ -1300,7 +1301,7 @@ class SettingsViewModel @Inject constructor(
                 _events.emit(SettingsEvent.ShowSnackbar(message = "Exa API key saved"))
             } catch (e: Exception) {
                 _events.emit(SettingsEvent.ShowSnackbar(
-                    message = "Could not save Exa API key"
+                    message = CopyRules.failureLine("save Exa API key")
                 ))
             }
         }
@@ -1315,7 +1316,7 @@ class SettingsViewModel @Inject constructor(
                 appPreferences.setSearxngBaseUrl(url)
             } catch (e: Exception) {
                 _events.emit(SettingsEvent.ShowSnackbar(
-                    message = "Could not save SearXNG URL"
+                    message = CopyRules.failureLine("save SearXNG URL")
                 ))
             }
         }
@@ -1330,7 +1331,7 @@ class SettingsViewModel @Inject constructor(
                 appPreferences.setWebSearchMaxResults(maxResults)
             } catch (e: Exception) {
                 _events.emit(SettingsEvent.ShowSnackbar(
-                    message = "Could not save max results setting"
+                    message = CopyRules.failureLine("save max results setting")
                 ))
             }
         }
@@ -1347,7 +1348,7 @@ class SettingsViewModel @Inject constructor(
                 appPreferences.setAutoCheckUpdates(enabled)
             } catch (e: Exception) {
                 _events.emit(SettingsEvent.ShowSnackbar(
-                    message = "Could not save auto-update setting"
+                    message = CopyRules.failureLine("save auto-update setting")
                 ))
             }
         }

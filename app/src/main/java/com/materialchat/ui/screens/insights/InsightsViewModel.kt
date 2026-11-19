@@ -1,6 +1,7 @@
 package com.materialchat.ui.screens.insights
 
 import androidx.lifecycle.ViewModel
+import com.materialchat.ui.theme.CopyRules
 import androidx.lifecycle.viewModelScope
 import com.materialchat.di.IoDispatcher
 import com.materialchat.domain.model.InsightsTimeRange
@@ -55,7 +56,7 @@ class InsightsViewModel @Inject constructor(
                 _uiState.value = InsightsUiState.Success(data)
             } catch (e: Exception) {
                 _uiState.value = InsightsUiState.Error(
-                    "Could not load insights"
+                    CopyRules.failureLine("load insights")
                 )
             }
         }

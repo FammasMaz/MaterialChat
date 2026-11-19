@@ -17,6 +17,7 @@ import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import com.materialchat.ui.theme.CopyRules
 
 /**
  * ViewModel for the Workflows list screen.
@@ -85,7 +86,7 @@ class WorkflowsViewModel @Inject constructor(
                 manageWorkflowsUseCase.delete(id)
             } catch (_: Exception) {
                 // The list keeps showing the workflow; tell the user instead of failing silently.
-                _events.emit(WorkflowsEvent.ShowSnackbar("Could not delete workflow"))
+                _events.emit(WorkflowsEvent.ShowSnackbar(CopyRules.failureLine("delete workflow")))
             }
         }
     }

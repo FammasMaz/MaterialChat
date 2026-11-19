@@ -1,6 +1,7 @@
 package com.materialchat.ui.screens.settings
 
 import androidx.lifecycle.ViewModel
+import com.materialchat.ui.theme.CopyRules
 import androidx.lifecycle.viewModelScope
 import com.materialchat.data.local.preferences.AppPreferences
 import com.materialchat.data.localmodel.LocalModelCatalog
@@ -153,7 +154,7 @@ class ModelAssignmentsViewModel @Inject constructor(
                     hasLoaded = true,
                     modelsByProvider = results,
                     error = if (results.isEmpty() && failures.isNotEmpty()) {
-                        "Could not fetch models from ${failures.joinToString(", ")}"
+                        CopyRules.failureLine("fetch models from ${failures.joinToString(", ")}")
                     } else null
                 )
             }

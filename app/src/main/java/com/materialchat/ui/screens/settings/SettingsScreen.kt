@@ -155,10 +155,9 @@ import com.materialchat.ui.screens.settings.components.SystemPromptField
 import com.materialchat.ui.components.HapticPattern
 import com.materialchat.ui.components.rememberHapticFeedback
 import androidx.compose.ui.graphics.Shape
-import com.materialchat.ui.screens.chat.MessageGroupPosition
-import com.materialchat.ui.screens.chat.components.bubbleShapeFor
 import com.materialchat.ui.theme.CustomShapes
 import com.materialchat.ui.theme.ExpressiveMotion
+import com.materialchat.ui.theme.MessageBubbleShapes
 import com.materialchat.ui.theme.ExpressiveShapes
 import com.materialchat.ui.theme.ExpressiveSizes
 import com.materialchat.ui.theme.MaterialChatThemePalettes
@@ -1972,19 +1971,23 @@ private fun AppPreferences.ControlShapeStyle.prettyName(): String {
 }
 
 /**
- * The bubble-style preview draws the real chat bubble family: a single (ungrouped) user or
- * assistant bubble from chat's [bubbleShapeFor]. There is no local radii table any more, so the
- * picker cannot show a shape the chat never renders (W6 cross-surface audit #1).
+ * The bubble-style preview reads the theme's bubble radii record ([ExpressiveShapes.Bubble]),
+ * the same table chat's `bubbleShapeFor` draws for a single (ungrouped) user or assistant bubble,
+ * so the picker cannot show a shape the chat never renders (W6 cross-surface audit #1; W7 theme
+ * H1). `EXPRESSIVE` is the theme's [MessageBubbleShapes] pair. No local radii table.
  */
 private fun previewBubbleShape(
     style: AppPreferences.ChatBubbleStyle,
     isUser: Boolean
-): Shape = bubbleShapeFor(
-    style = style,
-    isUser = isUser,
-    isAssistant = !isUser,
-    groupPosition = MessageGroupPosition.Single
-)
+): Shape = when (style) {
+    AppPreferences.ChatBubbleStyle.EXPRESSIVE ->
+        if (isUser) MessageBubbleShapes.UserBubble else MessageBubbleShapes.AssistantBubble
+    AppPreferences.ChatBubbleStyle.ROUNDED -> ExpressiveShapes.Bubble.Rounded
+    AppPreferences.ChatBubbleStyle.COMPACT ->
+        if (isUser) ExpressiveShapes.Bubble.Compact.User else ExpressiveShapes.Bubble.Compact.Assistant
+    AppPreferences.ChatBubbleStyle.GEOMETRIC ->
+        if (isUser) ExpressiveShapes.Bubble.Geometric.User else ExpressiveShapes.Bubble.Geometric.Assistant
+}
 
 @Composable
 private fun FontSizeSelector(

@@ -1,6 +1,7 @@
 package com.materialchat.ui.screens.bookmarks
 
 import androidx.lifecycle.ViewModel
+import com.materialchat.ui.theme.CopyRules
 import androidx.lifecycle.viewModelScope
 import com.materialchat.di.IoDispatcher
 import com.materialchat.domain.model.Bookmark
@@ -56,7 +57,7 @@ class BookmarksViewModel @Inject constructor(
                 searchBookmarksUseCase.observeAllBookmarks()
                     .catch { e ->
                         _uiState.value = BookmarksUiState.Error(
-                            message = "Could not load bookmarks"
+                            message = CopyRules.failureLine("load bookmarks")
                         )
                     }
                     .collectLatest { bookmarks ->
@@ -78,7 +79,7 @@ class BookmarksViewModel @Inject constructor(
                     }
             } catch (e: Exception) {
                 _uiState.value = BookmarksUiState.Error(
-                    message = "Could not load bookmarks"
+                    message = CopyRules.failureLine("load bookmarks")
                 )
             }
         }
@@ -108,7 +109,7 @@ class BookmarksViewModel @Inject constructor(
 
                 flow.catch { e ->
                     _uiState.value = BookmarksUiState.Error(
-                        message = "Could not filter bookmarks"
+                        message = CopyRules.failureLine("filter bookmarks")
                     )
                 }.collectLatest { bookmarks ->
                     val bookmarkItems = buildBookmarkItems(bookmarks)
@@ -122,7 +123,7 @@ class BookmarksViewModel @Inject constructor(
                 }
             } catch (e: Exception) {
                 _uiState.value = BookmarksUiState.Error(
-                    message = "Could not filter bookmarks"
+                    message = CopyRules.failureLine("filter bookmarks")
                 )
             }
         }
@@ -151,7 +152,7 @@ class BookmarksViewModel @Inject constructor(
 
                 flow.catch { e ->
                     _uiState.value = BookmarksUiState.Error(
-                        message = "Could not filter bookmarks"
+                        message = CopyRules.failureLine("filter bookmarks")
                     )
                 }.collectLatest { bookmarks ->
                     val bookmarkItems = buildBookmarkItems(bookmarks)
@@ -165,7 +166,7 @@ class BookmarksViewModel @Inject constructor(
                 }
             } catch (e: Exception) {
                 _uiState.value = BookmarksUiState.Error(
-                    message = "Could not filter bookmarks"
+                    message = CopyRules.failureLine("filter bookmarks")
                 )
             }
         }
@@ -190,7 +191,7 @@ class BookmarksViewModel @Inject constructor(
                 manageBookmarksUseCase.removeBookmark(bookmarkId)
             } catch (_: Exception) {
                 // The list keeps showing the bookmark; tell the user instead of failing silently.
-                _events.emit(BookmarksEvent.ShowSnackbar("Could not delete bookmark"))
+                _events.emit(BookmarksEvent.ShowSnackbar(CopyRules.failureLine("delete bookmark")))
             }
         }
     }
@@ -203,7 +204,7 @@ class BookmarksViewModel @Inject constructor(
             try {
                 manageBookmarksUseCase.updateBookmark(bookmark)
             } catch (_: Exception) {
-                _events.emit(BookmarksEvent.ShowSnackbar("Could not update bookmark"))
+                _events.emit(BookmarksEvent.ShowSnackbar(CopyRules.failureLine("update bookmark")))
             }
         }
     }

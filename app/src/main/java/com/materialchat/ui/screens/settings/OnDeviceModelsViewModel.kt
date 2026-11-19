@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import com.materialchat.ui.theme.CopyRules
 
 data class OnDeviceModelsUiState(
     val models: List<LocalModelState> = emptyList(),
@@ -100,7 +101,7 @@ class OnDeviceModelsViewModel @Inject constructor(
             _uiState.value = _uiState.value.copy(activeModelId = modelId)
             localModelRepository.delete(modelId)
                 .onSuccess { _events.emit(OnDeviceModelsEvent.ShowSnackbar("Downloaded model deleted")) }
-                .onFailure { _events.emit(OnDeviceModelsEvent.ShowSnackbar("Could not delete model")) }
+                .onFailure { _events.emit(OnDeviceModelsEvent.ShowSnackbar(CopyRules.failureLine("delete model"))) }
             _uiState.value = _uiState.value.copy(activeModelId = null)
         }
     }
@@ -110,7 +111,7 @@ class OnDeviceModelsViewModel @Inject constructor(
             _uiState.value = _uiState.value.copy(activeModelId = modelId)
             localModelRepository.unmount(modelId)
                 .onSuccess { _events.emit(OnDeviceModelsEvent.ShowSnackbar("Model unmounted from RAM")) }
-                .onFailure { _events.emit(OnDeviceModelsEvent.ShowSnackbar("Could not unmount model")) }
+                .onFailure { _events.emit(OnDeviceModelsEvent.ShowSnackbar(CopyRules.failureLine("unmount model"))) }
             _uiState.value = _uiState.value.copy(activeModelId = null)
         }
     }

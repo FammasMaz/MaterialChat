@@ -1,6 +1,7 @@
 package com.materialchat.ui.screens.personas
 
 import androidx.lifecycle.ViewModel
+import com.materialchat.ui.theme.CopyRules
 import androidx.lifecycle.viewModelScope
 import com.materialchat.domain.model.Persona
 import com.materialchat.domain.usecase.ManagePersonasUseCase
@@ -49,7 +50,7 @@ class PersonaStudioViewModel @Inject constructor(
             managePersonasUseCase.observeAllPersonas()
                 .catch { e ->
                     _uiState.value = PersonaStudioUiState.Error(
-                        message = "Could not load personas"
+                        message = CopyRules.failureLine("load personas")
                     )
                 }
                 .collect { personas ->
@@ -130,7 +131,7 @@ class PersonaStudioViewModel @Inject constructor(
             } catch (e: Exception) {
                 _events.emit(
                     PersonaStudioEvent.ShowSnackbar(
-                        "Could not save the persona"
+                        CopyRules.failureLine("save the persona")
                     )
                 )
             }
@@ -148,7 +149,7 @@ class PersonaStudioViewModel @Inject constructor(
             } catch (e: Exception) {
                 _events.emit(
                     PersonaStudioEvent.ShowSnackbar(
-                        "Could not delete the persona"
+                        CopyRules.failureLine("delete the persona")
                     )
                 )
             }
