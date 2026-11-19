@@ -31,8 +31,12 @@ fun interface SherpaArtifactFetcher {
     suspend fun fetch(url: String, expectedBytes: Long, target: File, onProgress: (Long) -> Unit)
 }
 
-/** A user-facing install failure; the message is shown verbatim in settings. */
-class SherpaInstallException(message: String) : IOException(message)
+/**
+ * A user-facing install failure. [line] is shown verbatim in voice settings and inside the pill's
+ * fallback notice, so it is a [VoiceCopy] sentence or one of the fetcher's fixed lines, never an
+ * exception's text; it is non-null by type so no site needs a fallback (W9 part 5).
+ */
+class SherpaInstallException(val line: String) : IOException(line)
 
 /**
  * Owns `rootDir/<model id>/` for every [SherpaTtsModel]: download, verify, unpack, delete.
@@ -169,7 +173,7 @@ class SherpaModelStore(
         } catch (cancelled: CancellationException) {
             throw cancelled // The job's completion handler reports Cancelled.
         } catch (failure: SherpaInstallException) {
-            apply(model, SherpaInstallEvent.Failed(failure.message ?: VoiceCopy.INSTALL_FAILED))
+            apply(model, SherpaInstallEvent.Failed(failure.line))
         } catch (failure: IOException) {
             apply(model, SherpaInstallEvent.Failed(describe(failure)))
         } catch (_: RuntimeException) {

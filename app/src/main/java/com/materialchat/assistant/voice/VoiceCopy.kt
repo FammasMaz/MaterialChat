@@ -45,6 +45,8 @@ object VoiceCopy {
     const val SPEECH_FAILED = "Speech output failed. Try again."
     const val AUDIO_PLAYBACK_FAILED = "Audio playback failed."
     const val ANDROID_VOICE_UNAVAILABLE = "The Android voice is not available. Check voice settings."
+    /** `configure` rejected the chosen voice, language or rate; the engine's reason is logged, not shown. */
+    const val VOICE_CONFIGURATION_FAILED = "The selected voice or language could not be applied. Check voice settings."
 
     // Gemini speech.
     const val GEMINI_KEY_MISSING = "No Gemini speech key is set. Add one in voice settings."
@@ -89,6 +91,7 @@ object VoiceCopy {
             MIC_PERMISSION, RECOGNIZER_UNAVAILABLE, RECOGNITION_FAILED, NO_MATCH, SPEECH_TIMEOUT,
             RECOGNITION_NEEDS_CONNECTION, MICROPHONE_FAILED, SPEECH_SERVICE_FAILED, SPEECH_SERVICE_BUSY,
             SPEECH_UNAVAILABLE, SPEECH_NOT_READY, SPEECH_FAILED, AUDIO_PLAYBACK_FAILED, ANDROID_VOICE_UNAVAILABLE,
+            VOICE_CONFIGURATION_FAILED,
             GEMINI_KEY_MISSING, GEMINI_TIMED_OUT, GEMINI_FAILED, GEMINI_AUTHENTICATION, GEMINI_PERMISSION,
             GEMINI_QUOTA, GEMINI_NO_QUOTA, GEMINI_MODEL_UNAVAILABLE, GEMINI_TRANSPORT, GEMINI_INVALID_AUDIO,
             NEURAL_UNAVAILABLE_BUILD, USING_ANDROID_VOICE, neuralNotDownloaded(label), neuralInstalling(label),

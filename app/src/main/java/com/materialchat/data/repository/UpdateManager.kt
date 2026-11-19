@@ -5,12 +5,14 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
+import android.util.Log
 import androidx.core.content.FileProvider
 import com.materialchat.BuildConfig
 import com.materialchat.data.local.preferences.AppPreferences
 import com.materialchat.data.remote.api.GitHubReleaseApiClient
 import com.materialchat.domain.model.AppUpdate
 import com.materialchat.domain.model.UpdateState
+import com.materialchat.ui.theme.CopyRules
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -22,6 +24,7 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.io.File
 import java.io.FileOutputStream
+import java.io.IOException
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -93,16 +96,18 @@ class UpdateManager @Inject constructor(
                     _updateState.value
                 },
                 onFailure = { error ->
+                    Log.e(TAG, "Update check failed", error)
                     _updateState.value = UpdateState.Error(
-                        message = error.message ?: "Failed to check for updates",
+                        message = failureNotice(error, "check for updates"),
                         canRetry = true
                     )
                     _updateState.value
                 }
             )
         } catch (e: Exception) {
+            Log.e(TAG, "Update check failed", e)
             _updateState.value = UpdateState.Error(
-                message = e.message ?: "Failed to check for updates",
+                message = failureNotice(e, "check for updates"),
                 canRetry = true
             )
             _updateState.value
@@ -172,8 +177,9 @@ class UpdateManager @Inject constructor(
                 apkPath = apkFile.absolutePath
             )
         } catch (e: Exception) {
+            Log.e(TAG, "Update download failed", e)
             _updateState.value = UpdateState.Error(
-                message = e.message ?: "Download failed",
+                message = failureNotice(e, "download the update"),
                 canRetry = true
             )
         }
@@ -196,7 +202,7 @@ class UpdateManager @Inject constructor(
             val apkFile = File(currentState.apkPath)
             if (!apkFile.exists()) {
                 _updateState.value = UpdateState.Error(
-                    message = "APK file not found. Please download again.",
+                    message = UPDATE_FILE_MISSING,
                     canRetry = false
                 )
                 return
@@ -222,12 +228,22 @@ class UpdateManager @Inject constructor(
                 apkPath = currentState.apkPath
             )
         } catch (e: Exception) {
+            Log.e(TAG, "Update install failed", e)
             _updateState.value = UpdateState.Error(
-                message = e.message ?: "Installation failed",
+                message = failureNotice(e, "open the installer"),
                 canRetry = true
             )
         }
     }
+
+    /**
+     * The notice the settings update card shows under its status line (W9 part 5): no
+     * connection anywhere in the cause chain is [CopyRules.NO_CONNECTION]; anything else is
+     * "Could not <action>. Try again." The exception itself stays in the log at each call site.
+     */
+    private fun failureNotice(error: Throwable, action: String): String =
+        if (generateSequence(error) { it.cause }.any { it is IOException }) CopyRules.NO_CONNECTION
+        else "${CopyRules.failureLine(action)}. ${CopyRules.TRY_AGAIN}."
 
     private fun launchSystemInstaller(apkFile: File) {
         val uri = FileProvider.getUriForFile(
@@ -355,5 +371,15 @@ class UpdateManager @Inject constructor(
                 file.delete()
             }
         }
+    }
+
+    private companion object {
+        const val TAG = "MaterialChatUpdates"
+
+        /**
+         * The downloaded APK is gone before install (cache cleared): a notice the settings update
+         * card shows; the card's own action is the download, so the line names it (W9 part 5).
+         */
+        const val UPDATE_FILE_MISSING = "The downloaded update is no longer on this device. Download it again."
     }
 }

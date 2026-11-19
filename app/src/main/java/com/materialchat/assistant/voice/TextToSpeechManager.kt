@@ -5,6 +5,7 @@ import android.os.Handler
 import android.os.Looper
 import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
+import android.util.Log
 import com.materialchat.data.local.preferences.AssistantVoiceSettings
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.delay
@@ -115,17 +116,19 @@ class TextToSpeechManager internal constructor(
     private fun initialized(token: Int, success: Boolean) {
         if (token != generation || ready) return
         val result = try {
-            if (!success) error("Failed to initialize text-to-speech")
+            if (!success) error("engine reported an initialization failure")
             val current = checkNotNull(engine)
             voices.value = current.voices().sortedWith(compareBy({ it.languageTag }, { it.id }))
             ready = true
             TtsInitResult.Success
         } catch (error: RuntimeException) {
+            Log.w(TAG, "Text-to-speech initialization failed", error)
             runCatching { engine?.shutdown() }
             engine = null
             generation++
             voices.value = emptyList()
-            TtsInitResult.Error(error.message ?: "Failed to initialize text-to-speech")
+            // W9 part 5: a fixed VoiceCopy line; the engine's wording stays in the log above.
+            TtsInitResult.Error(VoiceCopy.SPEECH_UNAVAILABLE)
         }
         val callbacks = waiters.values.toList()
         waiters.clear()
@@ -153,7 +156,8 @@ class TextToSpeechManager internal constructor(
                 check(current.rate(value.speechRate)) { "Speech rate rejected" }
                 TtsInitResult.Success
             } catch (error: RuntimeException) {
-                TtsInitResult.Error(error.message ?: "Voice configuration failed")
+                Log.w(TAG, "Voice configuration rejected", error)
+                TtsInitResult.Error(VoiceCopy.VOICE_CONFIGURATION_FAILED)
             }
             trySend(result)
             close()
@@ -271,8 +275,11 @@ private class AndroidTtsEngine(
     override fun shutdown() { tts.shutdown() }
 }
 
+private const val TAG = "MaterialChatSpeech"
+
 sealed class TtsInitResult {
     data object Success : TtsInitResult()
+    /** [message] is a fixed [VoiceCopy] sentence, never the engine's or an exception's text (W9 part 5). */
     data class Error(val message: String) : TtsInitResult()
 }
 sealed class TtsEvent {
