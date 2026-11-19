@@ -71,10 +71,11 @@ class SseEventParser(
                 tryParseOpenAiError(data)?.let { return it }
             }
             parseOpenAiChunk(chunk)
-        } catch (e: Exception) {
-            // Try to parse as error response
+        } catch (_: Exception) {
+            // Try to parse as error response. The serialization exception's text is not a user
+            // diagnostic; the unclassified snackbar shows this message as-is (ChatErrorCopy.snackbar).
             tryParseOpenAiError(data) ?: StreamingEvent.Error(
-                message = "Failed to parse SSE event: ${e.message}",
+                message = "Failed to parse SSE event",
                 code = StreamingEvent.Companion.ErrorCode.PARSE_ERROR,
                 isRecoverable = false
             )
@@ -109,10 +110,10 @@ class SseEventParser(
                 tryParseOllamaError(trimmedLine)?.let { return it }
             }
             parseOllamaResponse(response)
-        } catch (e: Exception) {
-            // Try to parse as error response
+        } catch (_: Exception) {
+            // Try to parse as error response (same note as the OpenAI path above).
             tryParseOllamaError(trimmedLine) ?: StreamingEvent.Error(
-                message = "Failed to parse NDJSON event: ${e.message}",
+                message = "Failed to parse NDJSON event",
                 code = StreamingEvent.Companion.ErrorCode.PARSE_ERROR,
                 isRecoverable = false
             )

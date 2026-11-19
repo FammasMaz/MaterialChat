@@ -278,9 +278,9 @@ fun ChatScreen(
                         context.startActivity(
                             Intent.createChooser(shareIntent, "Export conversation")
                         )
-                    } catch (e: Exception) {
+                    } catch (_: Exception) {
                         coroutineScope.launch {
-                            snackbarHostState.showSnackbar("Failed to share: ${e.message}")
+                            snackbarHostState.showSnackbar(ChatErrorCopy.COULD_NOT_SHARE)
                         }
                     }
                 }

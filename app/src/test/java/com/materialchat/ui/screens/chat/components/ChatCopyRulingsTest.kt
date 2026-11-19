@@ -14,6 +14,12 @@ import java.io.File
  * The scan reads the files on disk (same path resolution as `AssistantKeyboardSpacingTest`),
  * so a regression in any chat-owned file fails here even when the label is built inline
  * instead of through [ChatErrorCopy].
+ *
+ * W7 part 1 adds the exception-text rule: no `${x.message}` template and no `x.message ?:`
+ * fallback on any non-comment line under chat ownership. Snackbars, error cards and notices
+ * take classified copy from [ChatErrorCopy.action] / [ChatErrorCopy.notice]; the one documented
+ * pass-through is [ChatErrorCopy.snackbar] for an unclassified reply failure, which reads
+ * `error.error.message?.takeIf { … }` and matches neither pattern on purpose.
  */
 class ChatCopyRulingsTest {
 
@@ -91,5 +97,70 @@ class ChatCopyRulingsTest {
     @Test
     fun `the retry action label is Try again`() {
         assertEquals("Try again", ChatErrorCopy.TRY_AGAIN)
+    }
+
+    /**
+     * `"…${e.message}…"` and `e.message ?: "…"` (any receiver, `localizedMessage` too) are the
+     * two shapes through which an exception's text reached a snackbar or an error card.
+     */
+    private val exceptionTextInTemplate = Regex("\\$\\{[^}]*\\.(?:localizedM|m)essage\\b[^}]*}")
+    // The fallback must be a string literal: `item?.message ?: return` on a domain `Message` is not copy.
+    private val exceptionTextAsFallback = Regex("\\.(?:localizedM|m)essage\\s*\\?:\\s*\"")
+
+    /**
+     * The rule applies to the UI layer (files under `ui/`), where a string becomes a snackbar, a
+     * notice or an error card. The `data/remote` layer builds exception / event messages that the view model
+     * classifies before display (an `IOException` is [ChatErrorCopy.NO_CONNECTION], a failed
+     * `Result` goes through [ChatErrorCopy.action], an in-stream provider error body is the
+     * documented unclassified-snackbar diagnostic), so its `${e.message}` lines are inputs, not copy.
+     */
+    private fun uiFiles(): List<File> = ownedFiles().filter { it.canonicalPath.contains("/ui/") }
+
+    @Test
+    fun `no exception text reaches a user-visible string under chat ownership`() {
+        val files = uiFiles()
+        assertTrue("expected UI files under chat ownership, got ${files.size}", files.size >= 10)
+        val hits = files.flatMap { file ->
+            file.readLines().mapIndexedNotNull { index, line ->
+                if (isComment(line)) return@mapIndexedNotNull null
+                val code = line.substringBefore(" // ")
+                if (exceptionTextInTemplate.containsMatchIn(code) || exceptionTextAsFallback.containsMatchIn(code)) {
+                    "${file.name}:${index + 1} ${code.trim()}"
+                } else null
+            }
+        }
+        assertEquals(
+            "exception text in copy; classify through ChatErrorCopy.action/notice instead:\n${hits.joinToString("\n")}",
+            emptyList<String>(),
+            hits
+        )
+    }
+
+    @Test
+    fun `failed-action snackbar lines are one phrase in the Could not family`() {
+        val lines = listOf(
+            ChatErrorCopy.COULD_NOT_LOAD_MODELS,
+            ChatErrorCopy.COULD_NOT_CHANGE_MODEL,
+            ChatErrorCopy.COULD_NOT_BRANCH,
+            ChatErrorCopy.COULD_NOT_RESEND_EDIT,
+            ChatErrorCopy.COULD_NOT_EXPORT,
+            ChatErrorCopy.COULD_NOT_SHARE,
+            ChatErrorCopy.COULD_NOT_REDO,
+            ChatErrorCopy.COULD_NOT_UPDATE_BOOKMARK,
+            ChatErrorCopy.COULD_NOT_RUN_FUSION,
+            ChatErrorCopy.couldNotLoadModels("OpenAI")
+        )
+        for (line in lines) {
+            assertTrue(line, line.startsWith("Could not "))
+            assertTrue("snackbar lines carry no trailing period: $line", !line.endsWith("."))
+            assertTrue("no ASCII ellipsis: $line", !line.contains("..."))
+        }
+        assertEquals(ChatErrorCopy.COULD_NOT_LOAD_MODELS, ChatErrorCopy.couldNotLoadModels(null))
+        assertEquals(ChatErrorCopy.COULD_NOT_LOAD_MODELS, ChatErrorCopy.couldNotLoadModels(" "))
+        // The error card's supporting line is a notice: full stops, the last sentence names the action.
+        val card = ChatErrorCopy.COULD_NOT_LOAD_CONVERSATION
+        assertTrue(card, card.startsWith("Could not "))
+        assertTrue(card, card.endsWith("."))
+        assertTrue(card, card.contains("Try again"))
     }
 }

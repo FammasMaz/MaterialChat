@@ -93,6 +93,23 @@ class ChatErrorCopyTest {
     }
 
     @Test
+    fun `a failed action classifies a typed status or connectivity and otherwise uses its own line`() {
+        val typed = RuntimeException("wrapper", ProviderHttpException(429, "raw provider body"))
+        assertEquals(ChatErrorCopy.RATE_LIMITED, ChatErrorCopy.action(typed, ChatErrorCopy.COULD_NOT_BRANCH))
+        assertEquals(ChatErrorCopy.UNAUTHORIZED, ChatErrorCopy.action(ProviderHttpException(401, "x"), ChatErrorCopy.COULD_NOT_REDO))
+        assertEquals(ChatErrorCopy.SERVER_ERROR, ChatErrorCopy.action(ProviderHttpException(502, "x"), ChatErrorCopy.COULD_NOT_REDO))
+
+        val offline = IllegalStateException("outer", ConnectException("refused"))
+        assertEquals(ChatErrorCopy.NO_CONNECTION, ChatErrorCopy.action(offline, ChatErrorCopy.COULD_NOT_EXPORT))
+
+        val raw = IllegalStateException("SQLiteConstraintException: UNIQUE constraint failed")
+        val line = ChatErrorCopy.action(raw, ChatErrorCopy.COULD_NOT_UPDATE_BOOKMARK)
+        assertEquals(ChatErrorCopy.COULD_NOT_UPDATE_BOOKMARK, line)
+        assertTrue(line, !line.contains("SQLite"))
+        assertEquals(ChatErrorCopy.COULD_NOT_RUN_FUSION, ChatErrorCopy.action(null, ChatErrorCopy.COULD_NOT_RUN_FUSION))
+    }
+
+    @Test
     fun `the shared lines and the retry label match the assistant notice model`() {
         assertEquals(AssistantCopy.RATE_LIMITED, ChatErrorCopy.RATE_LIMITED)
         assertEquals(AssistantCopy.NO_CONNECTION, ChatErrorCopy.NO_CONNECTION)
