@@ -52,6 +52,42 @@ class SquircleShape(
 }
 
 /**
+ * [SquircleShape] on the two top corners only, square at the bottom where a modal bottom
+ * sheet meets the screen edge. Same G2 smoothing as [SquircleShape] so a sheet's contour is
+ * in the same family as the dialog and card tokens. Built once; [createOutline] allocates
+ * only the polygon path.
+ *
+ * @param cornerRadius Top corner radius; clamped to half the shorter side.
+ * @param smoothing 0 = plain circular corner, 1 = maximum G2 smoothing.
+ */
+@Stable
+class TopSquircleShape(
+    private val cornerRadius: Dp,
+    private val smoothing: Float = 0.65f
+) : Shape {
+    override fun createOutline(size: Size, layoutDirection: LayoutDirection, density: Density): Outline {
+        if (size.width <= 0f || size.height <= 0f) return Outline.Rectangle(size.toRect())
+        val radiusPx = with(density) { cornerRadius.toPx() }
+            .coerceIn(0f, minOf(size.width, size.height) / 2f)
+        val rounded = CornerRounding(radius = radiusPx, smoothing = smoothing.coerceIn(0f, 1f))
+        // RoundedPolygon.rectangle vertex order: bottom-right, bottom-left, top-left, top-right.
+        val polygon = RoundedPolygon.rectangle(
+            width = size.width,
+            height = size.height,
+            perVertexRounding = listOf(CornerRounding.Unrounded, CornerRounding.Unrounded, rounded, rounded),
+            centerX = size.width / 2f,
+            centerY = size.height / 2f
+        )
+        return Outline.Generic(polygon.toPath().asComposePath())
+    }
+
+    override fun equals(other: Any?): Boolean =
+        other is TopSquircleShape && other.cornerRadius == cornerRadius && other.smoothing == smoothing
+
+    override fun hashCode(): Int = cornerRadius.hashCode() * 31 + smoothing.hashCode() + 1
+}
+
+/**
  * Expressive container shape tokens. Use these for cards, sheets and leading tiles
  * where a squircle fits; keep [MaterialChatShapes] for component defaults.
  */
@@ -62,8 +98,15 @@ object ExpressiveShapes {
     /** Cards and grouped list containers. */
     val Card = SquircleShape(28.dp)
 
-    /** Modal and bottom sheets. */
+    /** Floating sheets rounded on every corner (a sheet that does not touch a screen edge). */
     val Sheet = SquircleShape(32.dp)
+
+    /**
+     * Modal bottom sheets: the 32dp squircle on the two top corners only, square where the
+     * sheet meets the bottom screen edge. The one bottom-sheet contour; the settings
+     * `SettingsSheetShape` and [CustomShapes.BottomSheet] are this shape.
+     */
+    val BottomSheet: Shape = TopSquircleShape(32.dp)
 
     /** Selected menu/list rows inside a sheet or dropdown. */
     val MenuSelection = SquircleShape(16.dp)
@@ -254,14 +297,14 @@ object CustomShapes {
     val FabPressed = RoundedCornerShape(12.dp)
 
     /**
-     * Shape for bottom sheets - very rounded top corners.
+     * Shape for bottom sheets. Delegates to [ExpressiveShapes.BottomSheet] (top-only 32dp
+     * squircle) so the app has one bottom-sheet contour; kept as an alias for existing call sites.
      */
-    val BottomSheet = RoundedCornerShape(
-        topStart = 32.dp,
-        topEnd = 32.dp,
-        bottomStart = 0.dp,
-        bottomEnd = 0.dp
+    @Deprecated(
+        message = "Use ExpressiveShapes.BottomSheet: the one bottom-sheet shape (top-only 32dp squircle).",
+        replaceWith = ReplaceWith("ExpressiveShapes.BottomSheet")
     )
+    val BottomSheet: Shape get() = ExpressiveShapes.BottomSheet
 
     /**
      * Shape for code blocks in chat messages. Superseded by [ExpressiveShapes.ContentBlock],
@@ -304,9 +347,14 @@ object CustomShapes {
     val SendButton = CircleShape
 
     /**
-     * Shape for provider cards in settings.
+     * Shape for provider cards in settings. Delegates to [ExpressiveShapes.Card] (28dp squircle)
+     * so settings cards share the one card geometry; kept as an alias for existing call sites.
      */
-    val ProviderCard = RoundedCornerShape(28.dp)
+    @Deprecated(
+        message = "Use ExpressiveShapes.Card: the one card shape (28dp squircle).",
+        replaceWith = ReplaceWith("ExpressiveShapes.Card")
+    )
+    val ProviderCard: Shape get() = ExpressiveShapes.Card
 
     /**
      * Shape for conversation list items - rounded like Google Messages.

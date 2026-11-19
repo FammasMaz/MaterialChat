@@ -5,6 +5,8 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
+import com.materialchat.assistant.ui.AssistantContrast
+import com.materialchat.assistant.ui.AssistantSurfacePalette
 import com.materialchat.data.local.preferences.AppPreferences
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -180,6 +182,39 @@ class ThemeContrastTest {
         )
     }
 
+    @Test fun pickMatchesHandComputedExpectations() {
+        // Fixed colours with known WCAG ratios, so these numbers come from the spec, not from
+        // the implementation under test. #777777 is the classic 4.48:1-on-white near miss.
+        val grey = Color(0xFF777777)
+        assertEquals(4.48, ThemeContrast.contrastRatio(grey, Color.White), 0.01)
+        assertEquals(4.68, ThemeContrast.contrastRatio(grey, Color.Black), 0.01)
+
+        // Single fill: the preferred candidate is skipped at 4.5 (4.48 < 4.5) and kept at 3.0.
+        assertEquals(Color.Black, ThemeContrast.pick(Color.White, listOf(grey), ThemeContrast.BODY_TEXT))
+        assertEquals(grey, ThemeContrast.pick(Color.White, listOf(grey), ThemeContrast.ICON))
+        assertEquals(grey, ThemeContrast.pick(Color.Black, listOf(grey), ThemeContrast.BODY_TEXT))
+
+        // Two fills of opposite tone: white and black each read on one fill only (21 vs 1), so
+        // neither reaches 4.5 on both; grey's worst is 4.48, which also misses, and it wins as
+        // the least-bad candidate. At 3.0 it reads on both and is simply chosen.
+        val opposite = listOf(Color.White, Color.Black)
+        assertEquals(4.48, ThemeContrast.contrastRatio(grey, opposite), 0.01)
+        assertEquals(1.0, ThemeContrast.contrastRatio(Color.White, opposite), 1e-9)
+        assertEquals(1.0, ThemeContrast.contrastRatio(Color.Black, opposite), 1e-9)
+        assertEquals(grey, ThemeContrast.pick(opposite, listOf(grey), ThemeContrast.BODY_TEXT))
+        assertEquals(grey, ThemeContrast.pick(opposite, listOf(grey), ThemeContrast.ICON))
+        // With no candidate at all, the appended white/black tie at 1.0 and the first wins.
+        assertEquals(Color.White, ThemeContrast.pick(opposite, emptyList(), ThemeContrast.ICON))
+
+        // A translucent candidate is composited on each fill before it is judged: 60 % black on
+        // white is #666666 (5.74:1), on black it is black (1:1), so it fails the pair at 3.0.
+        val translucent = Color.Black.copy(alpha = 0.6f)
+        assertEquals(Color(0xFF666666).red, ThemeContrast.compositeOver(translucent, Color.White).red, 1e-6f)
+        assertEquals(5.74, ThemeContrast.contrastRatio(translucent, Color.White), 0.01)
+        assertEquals(1.0, ThemeContrast.contrastRatio(translucent, Color.Black), 1e-9)
+        assertEquals(grey, ThemeContrast.pick(opposite, listOf(translucent, grey), ThemeContrast.ICON))
+    }
+
     @Test(expected = IllegalArgumentException::class)
     fun pickOnNoFillsIsRejected() {
         ThemeContrast.pick(emptyList(), listOf(Color.Black), ThemeContrast.BODY_TEXT)
@@ -204,41 +239,64 @@ class ThemeContrastTest {
     }
 
     @Test fun themeAndAssistantContrastAgree() {
-        // The assistant keeps a private copy of the arithmetic; the two must not drift.
+        // The assistant's AssistantContrast delegates here (W2); this pins that the delegate
+        // still exposes the same thresholds and the same hand-computed results, so a future
+        // re-fork of the arithmetic on the assistant side cannot drift silently.
+        assertEquals(ThemeContrast.BODY_TEXT, AssistantContrast.BODY_TEXT, 0.0)
+        assertEquals(ThemeContrast.ICON, AssistantContrast.ICON, 0.0)
+        val grey = Color(0xFF777777)
+        val opposite = listOf(Color.White, Color.Black)
+        assertEquals(4.48, AssistantContrast.contrastRatio(grey, Color.White), 0.01)
+        assertEquals(4.48, AssistantContrast.contrastRatio(grey, opposite), 0.01)
+        assertEquals(Color.Black, AssistantContrast.pick(Color.White, listOf(grey), AssistantContrast.BODY_TEXT))
+        assertEquals(grey, AssistantContrast.pick(Color.White, listOf(grey), AssistantContrast.ICON))
+        assertEquals(grey, AssistantContrast.pick(opposite, listOf(grey), AssistantContrast.BODY_TEXT))
         val samples = listOf(
             Color(0xFF6C4FF5) to Color(0xFFFCF8FF),
             Color(0xFFD2C2FF) to Color(0xFF15101D),
             Color(0x99FFFFFF) to Color(0xFF30263D)
         )
         for ((fg, bg) in samples) {
-            assertEquals(
-                com.materialchat.assistant.ui.AssistantContrast.contrastRatio(fg, bg),
-                ThemeContrast.contrastRatio(fg, bg),
-                1e-9
-            )
+            assertEquals(AssistantContrast.contrastRatio(fg, bg), ThemeContrast.contrastRatio(fg, bg), 1e-9)
         }
-        // The multi-fill pick must agree too, so the assistant copy can delegate to this one.
         val fills = samples.map { it.second }
         val candidates = samples.map { it.first }
         for (minimum in listOf(ThemeContrast.ICON, ThemeContrast.BODY_TEXT)) {
-            assertEquals(
-                com.materialchat.assistant.ui.AssistantContrast.pick(fills, candidates, minimum),
-                ThemeContrast.pick(fills, candidates, minimum)
-            )
+            assertEquals(AssistantContrast.pick(fills, candidates, minimum), ThemeContrast.pick(fills, candidates, minimum))
             for (fill in fills) {
-                assertEquals(
-                    com.materialchat.assistant.ui.AssistantContrast.pick(fill, candidates, minimum),
-                    ThemeContrast.pick(fill, candidates, minimum)
-                )
+                assertEquals(AssistantContrast.pick(fill, candidates, minimum), ThemeContrast.pick(fill, candidates, minimum))
             }
         }
-        for (fg in candidates) {
-            assertEquals(
-                com.materialchat.assistant.ui.AssistantContrast.contrastRatio(fg, fills),
-                ThemeContrast.contrastRatio(fg, fills),
-                1e-9
-            )
+    }
+
+    @Test fun assistantSurfacePaletteReadsOnEveryFillInEveryTheme() {
+        // The assistant resolves every text/icon colour through ThemeContrast.pick against the
+        // fill(s) its container can present. Read-only, through the palette's public API: every
+        // pair it reports must meet its own threshold on every theme in this matrix, including
+        // the pitch-black ramp and the three wallpaper-dynamic shapes.
+        val failures = buildList {
+            for (theme in themes) {
+                val palette = AssistantSurfacePalette.resolve(theme.scheme)
+                val pairs = palette.pairs()
+                assertTrue(theme.name, pairs.size >= 40)
+                for (pair in pairs) {
+                    if (!pair.passes) add("${theme.name}: ${pair.name} ${pair.ratio.fmt()} < ${pair.minimum}")
+                }
+                // The pick semantics hold on the resolved outputs, not only on the pair list.
+                for (c in listOf(palette.pill, palette.answer, palette.thinking, palette.toolbar, palette.notice)) {
+                    assertTrue(theme.name, ThemeContrast.contrastRatio(c.body, c.fills) >= ThemeContrast.BODY_TEXT)
+                    assertTrue(theme.name, ThemeContrast.contrastRatio(c.muted, c.fills) >= ThemeContrast.BODY_TEXT)
+                    assertTrue(theme.name, ThemeContrast.contrastRatio(c.accent, c.fills) >= ThemeContrast.ICON)
+                    assertTrue(theme.name, ThemeContrast.contrastRatio(c.error, c.fills) >= ThemeContrast.BODY_TEXT)
+                    assertTrue(theme.name, ThemeContrast.contrastRatio(c.indicator, c.fills) >= ThemeContrast.ICON)
+                    // Body keeps the theme role whenever that role reads (no needless repaint).
+                    if (ThemeContrast.contrastRatio(theme.scheme.onSurface, c.fills) >= ThemeContrast.BODY_TEXT) {
+                        assertEquals(theme.name, theme.scheme.onSurface, c.body)
+                    }
+                }
+            }
         }
+        assertTrue("${failures.size} assistant pair(s) below threshold:\n" + failures.joinToString("\n"), failures.isEmpty())
     }
 
     @Test fun printContrastTable() {

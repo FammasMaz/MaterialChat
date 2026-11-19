@@ -227,6 +227,18 @@ object ExpressiveMotion {
         )
 
         /**
+         * Data reveal on the insights screen: the count-up of a stat card's number and the
+         * grow-in of its chart bars on data arrival. Deliberately far slower than [slow]
+         * (stiffness 50 vs 200) so the figure is seen arriving rather than snapping; damping
+         * 0.8 so a count-up never overshoots its final value by a visible digit. Pinned to
+         * what `StatCard` and `ModelUsageChart` draw today.
+         */
+        fun <T> dataReveal(): SpringSpec<T> = spring(
+            dampingRatio = 0.8f,
+            stiffness = 50f
+        )
+
+        /**
          * Slow decorative rotation of an ornament: one full turn (0 -> 360) per
          * [periodMillis] on a linear easing, restarting seamlessly. The home banner gear
          * spins at [MaterialChatMotion.Durations.DecorativeSpin] (16 s); the empty-state
@@ -579,6 +591,37 @@ object MaterialChatMotion {
 
         /** Period of a slow backdrop spin (empty-state cluster, explore backdrop). */
         const val BackdropSpin = 48_000
+
+        /**
+         * How long a message's stats pill stays auto-expanded after a reply completes before
+         * it collapses on its own (`MessageBubble`).
+         */
+        const val StatsPillHold = 3_500
+
+        /**
+         * Cycle lengths of the indeterminate loading indicators (`ExpressiveLoadingIndicator`):
+         * every loop runs only behind the particle motion gate and holds a static frame
+         * otherwise. Each value is one period of a linear or ease-in-out tween.
+         */
+        object Indicator {
+            /** One full rotation of the morphing shape. */
+            const val MorphRotation = 4000
+
+            /** Soft-burst -> pentagon -> hexagon -> soft-burst. */
+            const val MorphShape = 3000
+
+            /** One rotation of the circular arc (M3 circular indicator spec: 1332 ms). */
+            const val ArcRotation = 1332
+
+            /** Arc sweep grow/shrink, half the rotation so the two phases stay in step. */
+            const val ArcSweep = ArcRotation / 2
+
+            /** One pass of the linear bar across the track. */
+            const val LinearPass = 1500
+
+            /** Linear bar width grow/shrink, half the pass. */
+            const val LinearWidth = LinearPass / 2
+        }
     }
 
     /**
