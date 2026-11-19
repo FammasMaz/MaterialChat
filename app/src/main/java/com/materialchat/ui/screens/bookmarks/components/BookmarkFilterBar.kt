@@ -2,6 +2,7 @@ package com.materialchat.ui.screens.bookmarks.components
 
 import androidx.compose.animation.animateColorAsState
 import com.materialchat.ui.theme.ExpressiveMotion
+import com.materialchat.ui.theme.ExpressiveShapes
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -79,6 +80,7 @@ fun BookmarkFilterBar(
 
                 FilterChip(
                     selected = isSelected,
+                    shape = ExpressiveShapes.Chip,
                     onClick = {
                         haptics.perform(HapticPattern.SEGMENT_TICK)
                         if (isSelected) {
@@ -133,6 +135,7 @@ fun BookmarkFilterBar(
 
                     FilterChip(
                         selected = isSelected,
+                        shape = ExpressiveShapes.Chip,
                         onClick = {
                             haptics.perform(HapticPattern.SEGMENT_TICK)
                             if (isSelected) {

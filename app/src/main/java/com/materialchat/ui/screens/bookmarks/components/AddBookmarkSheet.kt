@@ -120,6 +120,7 @@ fun AddBookmarkSheet(
 
                     FilterChip(
                         selected = isSelected,
+                        shape = ExpressiveShapes.Chip,
                         onClick = { selectedCategory = category },
                         label = {
                             Text(
@@ -161,6 +162,7 @@ fun AddBookmarkSheet(
                     tags.forEach { tag ->
                         FilterChip(
                             selected = true,
+                            shape = ExpressiveShapes.Chip,
                             onClick = { tags = tags.filter { it != tag } },
                             label = {
                                 Text(

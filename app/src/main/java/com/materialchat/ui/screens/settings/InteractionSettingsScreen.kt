@@ -207,6 +207,7 @@ private fun HapticPatternDemoRow() {
         demos.forEach { (label, pattern) ->
             FilterChip(
                 selected = false,
+                shape = ExpressiveShapes.Chip,
                 onClick = { haptics.perform(pattern) },
                 label = { Text(label) },
                 colors = FilterChipDefaults.filterChipColors(
@@ -235,6 +236,7 @@ private fun ShapeSelector(
             AppPreferences.ComponentButtonShape.entries.forEach { shape ->
                 FilterChip(
                     selected = selectedShape == shape,
+                    shape = ExpressiveShapes.Chip,
                     onClick = {
                         haptics.perform(HapticPattern.SEGMENT_TICK)
                         onShapeSelected(shape)

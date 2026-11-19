@@ -55,7 +55,6 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.materialchat.ui.theme.CustomShapes
 import com.materialchat.ui.theme.ExpressiveMotion
 import com.materialchat.ui.theme.ExpressiveShapes
 import com.materialchat.ui.components.HomeSettingsSlot
@@ -119,7 +118,7 @@ fun SystemPromptField(
                     Box(
                         modifier = Modifier
                             .size(40.dp)
-                            .clip(CustomShapes.Fab)
+                            .clip(ExpressiveShapes.Tile)
                             .background(MaterialTheme.colorScheme.tertiaryContainer),
                         contentAlignment = Alignment.Center
                     ) {

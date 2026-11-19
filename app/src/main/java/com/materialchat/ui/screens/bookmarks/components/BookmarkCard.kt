@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import com.materialchat.ui.theme.CustomShapes
+import com.materialchat.ui.theme.ExpressiveShapes
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.Code
@@ -152,6 +153,7 @@ fun BookmarkCard(
                     bookmark.tags.forEach { tag ->
                         AssistChip(
                             onClick = { },
+                            shape = ExpressiveShapes.Chip,
                             label = {
                                 Text(
                                     text = tag,

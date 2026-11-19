@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.Icon
@@ -24,6 +23,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.materialchat.ui.theme.ExpressiveShapes
+import com.materialchat.ui.theme.ExpressiveSizes
 
 /**
  * Editor row for a single workflow step.
@@ -62,9 +62,9 @@ fun StepEditor(
             ) {
                 // Step number badge
                 Surface(
-                    shape = RoundedCornerShape(14.dp),
+                    shape = ExpressiveShapes.TileBadge,
                     color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(32.dp)
+                    modifier = Modifier.size(ExpressiveSizes.Compact)
                 ) {
                     Text(
                         text = "$stepNumber",

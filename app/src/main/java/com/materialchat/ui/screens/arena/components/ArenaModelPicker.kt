@@ -29,6 +29,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.materialchat.domain.model.AiModel
+import com.materialchat.ui.theme.ExpressiveShapes
 import com.materialchat.ui.screens.arena.ContenderUi
 import com.materialchat.domain.model.Provider
 
@@ -74,6 +75,7 @@ fun ArenaModelPicker(
         ) {
             AssistChip(
                 onClick = { if (enabled) providerMenuOpen = true },
+                shape = ExpressiveShapes.Chip,
                 label = {
                     Text(providerName, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 },
@@ -133,6 +135,7 @@ fun ArenaModelPicker(
                 val contender = selectedContenders.firstOrNull { it.modelName == model.id }
                 FilterChip(
                     selected = contender != null,
+                    shape = ExpressiveShapes.Chip,
                     onClick = { if (enabled || contender != null) onToggleContender(model) },
                     label = {
                         Text(

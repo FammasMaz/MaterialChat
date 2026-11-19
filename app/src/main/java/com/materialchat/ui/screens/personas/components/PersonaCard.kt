@@ -184,6 +184,7 @@ fun PersonaCard(
                     persona.expertiseTags.take(3).forEach { tag ->
                         SuggestionChip(
                             onClick = { },
+                            shape = ExpressiveShapes.Chip,
                             label = {
                                 Text(
                                     text = tag,
@@ -194,7 +195,6 @@ fun PersonaCard(
                                 containerColor = accentColor.copy(alpha = 0.4f),
                                 labelColor = MaterialTheme.colorScheme.onSurface
                             ),
-                            shape = ExpressiveShapes.Badge,
                             border = null
                         )
                     }

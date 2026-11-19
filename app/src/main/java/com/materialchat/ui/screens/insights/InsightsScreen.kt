@@ -147,6 +147,7 @@ private fun TimeRangeFilterRow(
         InsightsTimeRange.entries.forEach { range ->
             FilterChip(
                 selected = selectedRange == range,
+                shape = ExpressiveShapes.Chip,
                 onClick = { onRangeSelected(range) },
                 label = { Text(range.label) },
                 colors = FilterChipDefaults.filterChipColors(

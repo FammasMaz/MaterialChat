@@ -1029,7 +1029,7 @@ private fun LoadingContent(modifier: Modifier = Modifier) {
         contentAlignment = Alignment.Center
     ) {
         LoadingIndicator(
-            modifier = Modifier.size(48.dp),
+            modifier = Modifier.size(ExpressiveSizes.IndicatorHero),
             color = MaterialTheme.colorScheme.primary
         )
     }
@@ -1382,7 +1382,7 @@ private fun SearchLoadingContent() {
         contentAlignment = Alignment.Center
     ) {
         LoadingIndicator(
-            modifier = Modifier.size(48.dp),
+            modifier = Modifier.size(ExpressiveSizes.IndicatorHero),
             color = MaterialTheme.colorScheme.primary
         )
     }

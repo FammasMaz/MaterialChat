@@ -37,6 +37,7 @@ import androidx.compose.ui.unit.dp
 import com.materialchat.ui.components.ExpressiveSwitch
 import androidx.compose.material3.Surface
 import com.materialchat.ui.theme.ExpressiveShapes
+import com.materialchat.ui.theme.ExpressiveSizes
 import com.materialchat.ui.theme.MaterialChatExpressiveTitleFontFamily
 
 /**
@@ -67,7 +68,7 @@ fun SettingsSectionHeader(
         // Cookie tile: section headers are the one place on Settings that carries an
         // expressive silhouette, so they stay scannable as landmarks.
         Surface(
-            modifier = Modifier.size(44.dp),
+            modifier = Modifier.size(ExpressiveSizes.CompactTarget),
             shape = MaterialShapes.Cookie9Sided.toShape(),
             color = MaterialTheme.colorScheme.primaryContainer,
             contentColor = MaterialTheme.colorScheme.onPrimaryContainer

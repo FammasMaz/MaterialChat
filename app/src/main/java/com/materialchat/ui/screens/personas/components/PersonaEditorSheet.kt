@@ -36,7 +36,6 @@ import com.materialchat.domain.model.Persona
 import com.materialchat.domain.model.PersonaTone
 import com.materialchat.ui.components.HapticPattern
 import com.materialchat.ui.components.rememberHapticFeedback
-import com.materialchat.ui.theme.CustomShapes
 import com.materialchat.ui.theme.ExpressiveShapes
 import com.materialchat.ui.components.SheetGutter
 import com.materialchat.ui.components.SheetHeader
@@ -169,14 +168,14 @@ fun PersonaEditorSheet(
                 PersonaTone.entries.forEach { toneOption ->
                     FilterChip(
                         selected = tone == toneOption,
+                        shape = ExpressiveShapes.Chip,
                         onClick = { tone = toneOption },
                         label = {
                             Text(
                                 text = toneOption.name.lowercase()
                                     .replaceFirstChar { it.uppercase() }
                             )
-                        },
-                        shape = CustomShapes.Pill
+                        }
                     )
                 }
             }

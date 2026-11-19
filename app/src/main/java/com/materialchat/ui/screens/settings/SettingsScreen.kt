@@ -804,7 +804,7 @@ private fun LoadingContent() {
         contentAlignment = Alignment.Center
     ) {
         LoadingIndicator(
-            modifier = Modifier.size(48.dp),
+            modifier = Modifier.size(ExpressiveSizes.IndicatorHero),
             color = MaterialTheme.colorScheme.primary
         )
     }
@@ -2316,7 +2316,7 @@ private fun TitleGenerationModelField(
                     enabled = !pickerState.isLoading
                 ) {
                     if (pickerState.isLoading) {
-                        LoadingIndicator(modifier = Modifier.size(18.dp))
+                        LoadingIndicator(modifier = Modifier.size(ExpressiveSizes.IndicatorInline))
                     } else {
                         Icon(
                             imageVector = Icons.Outlined.Refresh,
@@ -2424,7 +2424,7 @@ private fun TitleGenerationModelField(
                                 DropdownMenuItem(
                                     text = {
                                         Row(verticalAlignment = Alignment.CenterVertically) {
-                                            LoadingIndicator(modifier = Modifier.size(16.dp))
+                                            LoadingIndicator(modifier = Modifier.size(ExpressiveSizes.IndicatorInline))
                                             Spacer(modifier = Modifier.width(12.dp))
                                             Text("Loading models…")
                                         }
@@ -2568,6 +2568,7 @@ private fun DefaultImageGenerationModelField(
                     val tier = model.substringAfterLast('-').replaceFirstChar { it.uppercase() }
                     FilterChip(
                         selected = currentModel == model,
+                        shape = ExpressiveShapes.Chip,
                         onClick = {
                             text = model
                             onModelChange(model)
@@ -2669,6 +2670,7 @@ private fun DefaultImageOutputFormatField(
                 AppPreferences.SUPPORTED_IMAGE_OUTPUT_FORMATS.forEach { format ->
                     FilterChip(
                         selected = currentFormat == format,
+                        shape = ExpressiveShapes.Chip,
                         onClick = { onFormatChange(format) },
                         label = { Text(format.uppercase()) },
                         modifier = Modifier.weight(1f),

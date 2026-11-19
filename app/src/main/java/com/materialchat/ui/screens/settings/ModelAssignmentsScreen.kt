@@ -64,6 +64,7 @@ import com.materialchat.ui.components.ExpressiveSwitch
 import androidx.compose.material3.LoadingIndicator
 import com.materialchat.ui.components.ExpressiveTopBarTitle
 import com.materialchat.ui.theme.ExpressiveShapes
+import com.materialchat.ui.theme.ExpressiveSizes
 
 /**
  * Pre-computed display tiers for the constant image-generation model list so the
@@ -434,7 +435,7 @@ private fun TaskAssignmentCard(
             verticalAlignment = Alignment.CenterVertically
         ) {
             if (pickerState.isLoading) {
-                LoadingIndicator(modifier = Modifier.size(20.dp))
+                LoadingIndicator(modifier = Modifier.size(ExpressiveSizes.IndicatorInline))
                 Spacer(modifier = Modifier.width(8.dp))
             }
             Text(
@@ -666,6 +667,7 @@ private fun ImageGenerationAssignmentCard(
             IMAGE_MODEL_TIERS.forEach { (model, tier) ->
                 FilterChip(
                     selected = currentModel == model,
+                    shape = ExpressiveShapes.Chip,
                     onClick = {
                         text = model
                         onModelChange(model)
@@ -695,6 +697,7 @@ private fun ImageGenerationAssignmentCard(
             AppPreferences.SUPPORTED_IMAGE_OUTPUT_FORMATS.forEach { format ->
                 FilterChip(
                     selected = currentFormat == format,
+                    shape = ExpressiveShapes.Chip,
                     onClick = { onFormatChange(format) },
                     label = { Text(format.uppercase()) },
                     modifier = Modifier
