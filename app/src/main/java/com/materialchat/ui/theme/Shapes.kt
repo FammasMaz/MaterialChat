@@ -1,6 +1,5 @@
 package com.materialchat.ui.theme
 
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Shapes
 import androidx.compose.runtime.Stable
@@ -219,8 +218,8 @@ object ExpressiveShapes {
 
     /**
      * Modal bottom sheets: the 32dp squircle on the two top corners only, square where the
-     * sheet meets the bottom screen edge. The one bottom-sheet contour; the settings
-     * [CustomShapes.BottomSheet] delegates to this shape (the old settings-private sheet shape was removed).
+     * sheet meets the bottom screen edge. The one bottom-sheet contour (the deprecated
+     * `CustomShapes.BottomSheet` alias and the old settings-private sheet shape were removed).
      */
     val BottomSheet: Shape = TopSquircleShape(32.dp)
 
@@ -229,7 +228,7 @@ object ExpressiveShapes {
 
     /**
      * Dialogs: M3 extraLarge (28dp) as a squircle so they match [Card]. The one dialog
-     * token; [CustomShapes.Dialog] delegates here.
+     * token (the deprecated `CustomShapes.Dialog` alias was removed).
      */
     val Dialog = SquircleShape(28.dp)
 
@@ -440,49 +439,16 @@ object MessageBubbleShapes {
  * Updated for M3 Expressive with larger, friendlier radii.
  */
 object CustomShapes {
-    /**
-     * Former FAB token. No FAB draws it: the real FABs are the M3 defaults
-     * (`MaterialChatNavBar`, `ScrollToBottomFab`); its one consumer is a 40dp inline button
-     * (`SystemPromptField`), which should clip to [ExpressiveShapes.Tile]. Value-identical
-     * alias of [MaterialChatShapes.medium] (16dp round) until that site moves.
-     * `ExtendedFab` and `FabPressed` had no consumer and were removed.
-     */
-    @Deprecated(
-        message = "No FAB draws this. For an inline tile use ExpressiveShapes.Tile; for an M3 FAB use the component default.",
-        replaceWith = ReplaceWith("ExpressiveShapes.Tile")
-    )
-    val Fab: Shape get() = MaterialChatShapes.medium
-
-    /**
-     * Shape for bottom sheets. Delegates to [ExpressiveShapes.BottomSheet] (top-only 32dp
-     * squircle) so the app has one bottom-sheet contour; kept as an alias for existing call sites.
-     */
-    @Deprecated(
-        message = "Use ExpressiveShapes.BottomSheet: the one bottom-sheet shape (top-only 32dp squircle).",
-        replaceWith = ReplaceWith("ExpressiveShapes.BottomSheet")
-    )
-    val BottomSheet: Shape get() = ExpressiveShapes.BottomSheet
-
-    /**
-     * Shape for code blocks in chat messages. Superseded by [ExpressiveShapes.ContentBlock],
-     * which is what every in-bubble block (code, table, math) should clip to.
-     */
-    @Deprecated(
-        message = "Use ExpressiveShapes.ContentBlock: the one in-bubble content block shape.",
-        replaceWith = ReplaceWith("ExpressiveShapes.ContentBlock")
-    )
-    val CodeBlock: Shape get() = ExpressiveShapes.ContentBlock
+    // W7 (audit F5 / F9): the deprecated aliases `Fab`, `BottomSheet`, `CodeBlock`,
+    // `ProviderCard`, `Dialog` and the never-drawn `MessageActionButton`, `SendButton` were
+    // removed; each had zero consumers outside the theme tests. The surviving members below
+    // are drawn by at least one site (grep before removing any of them).
 
     /**
      * Shape for inline code spans.
      */
     val InlineCode = RoundedCornerShape(6.dp)
 
-    /**
-     * Shape for action buttons on message bubbles.
-     */
-    val MessageActionButton = RoundedCornerShape(24.dp)
-    
     /**
      * Button shape - M3 Expressive round buttons use pill-like corners.
      */
@@ -497,21 +463,6 @@ object CustomShapes {
      * Shape for the message input field container - matches FAB for consistency.
      */
     val MessageInputContainer = RoundedCornerShape(28.dp)
-
-    /**
-     * Shape for the send button - circle.
-     */
-    val SendButton = CircleShape
-
-    /**
-     * Shape for provider cards in settings. Delegates to [ExpressiveShapes.Card] (28dp squircle)
-     * so settings cards share the one card geometry; kept as an alias for existing call sites.
-     */
-    @Deprecated(
-        message = "Use ExpressiveShapes.Card: the one card shape (28dp squircle).",
-        replaceWith = ReplaceWith("ExpressiveShapes.Card")
-    )
-    val ProviderCard: Shape get() = ExpressiveShapes.Card
 
     /**
      * Shape for conversation list items - rounded like Google Messages.
@@ -535,16 +486,6 @@ object CustomShapes {
      * Pill shape for tags and badges; [ExpressiveShapes.Chip] is the chip-class alias.
      */
     val Pill = RoundedCornerShape(50)
-
-    /**
-     * Shape for dialogs. Delegates to [ExpressiveShapes.Dialog] (28dp squircle) so the app
-     * has one dialog geometry; kept as an alias for existing call sites.
-     */
-    @Deprecated(
-        message = "Use ExpressiveShapes.Dialog: the one dialog shape (28dp squircle).",
-        replaceWith = ReplaceWith("ExpressiveShapes.Dialog")
-    )
-    val Dialog: Shape get() = ExpressiveShapes.Dialog
 
     /**
      * Shape for top app bar (when using shape).

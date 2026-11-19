@@ -21,29 +21,19 @@ import org.junit.Test
  */
 class ShapeTokensTest {
 
-    @Suppress("DEPRECATION")
-    @Test fun customDialogIsTheExpressiveDialog() {
-        assertSame(ExpressiveShapes.Dialog, CustomShapes.Dialog)
+    // W7 part 2: the deprecated CustomShapes aliases (Fab, BottomSheet, CodeBlock, ProviderCard,
+    // Dialog) and the unused MessageActionButton / SendButton are gone; the value pins below
+    // keep the surviving ExpressiveShapes tokens where they were.
+
+    @Test fun dialogIsTheCardSquircle() {
         assertEquals(SquircleShape(28.dp), ExpressiveShapes.Dialog)
+        assertEquals(ExpressiveShapes.Card, ExpressiveShapes.Dialog)
     }
 
-    @Suppress("DEPRECATION")
-    @Test fun codeBlockIsTheContentBlock() {
-        assertSame(ExpressiveShapes.ContentBlock, CustomShapes.CodeBlock)
-    }
-
-    @Suppress("DEPRECATION")
-    @Test fun customBottomSheetIsTheExpressiveBottomSheet() {
-        assertSame(ExpressiveShapes.BottomSheet, CustomShapes.BottomSheet)
+    @Test fun bottomSheetIsTheTopOnlySquircleAtTheSheetRadius() {
         // Top-only 32dp squircle, same radius as the floating Sheet and the same G2 family.
         assertEquals(TopSquircleShape(32.dp), ExpressiveShapes.BottomSheet)
         assertEquals(SquircleShape(32.dp), ExpressiveShapes.Sheet)
-    }
-
-    @Suppress("DEPRECATION")
-    @Test fun providerCardIsTheExpressiveCard() {
-        assertSame(ExpressiveShapes.Card, CustomShapes.ProviderCard)
-        assertEquals(SquircleShape(28.dp), CustomShapes.ProviderCard)
     }
 
     @Test fun topSquircleIsNotTheAllCornerSquircleAtTheSameRadius() {
@@ -233,11 +223,5 @@ class ShapeTokensTest {
         assertNotEquals(ExpressiveShapes.Bubble.Geometric.User, ExpressiveShapes.Bubble.Geometric.Assistant)
         // Circular corners, like every bubble: not a squircle token.
         assertNotEquals(SquircleShape(34.dp), ExpressiveShapes.Bubble.Rounded)
-    }
-
-    @Suppress("DEPRECATION")
-    @Test fun fabAliasIsTheMediumRoundCornerUntilItsLastSiteMoves() {
-        assertSame(MaterialChatShapes.medium, CustomShapes.Fab)
-        assertEquals(RoundedCornerShape(16.dp), CustomShapes.Fab)
     }
 }
