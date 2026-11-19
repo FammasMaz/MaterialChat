@@ -79,6 +79,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
@@ -1242,6 +1243,19 @@ private fun AssistantResponseSurface(
         tonalElevation = 4.dp,
         shadowElevation = 12.dp
     ) {
+        // W5: the notice is measured before the answer list, at its natural height up to the
+        // cap AssistantAnswerFit derives from the surface's measured height (toolbar, marker,
+        // gaps and a 48dp floor for the exchange taken out), and the list takes the rest. The
+        // W4 1:1 weights left the notice exactly its own chrome with the keyboard up on a 640dp
+        // window (260dp surface -> 74dp share = 24 inset + 10 gap + 40 chip): no message at all.
+        BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+        val markerHeight = if (screenContextUsed) {
+            // One row: the 16dp icon beside one line of the notice style (26dp at font scale 1.3).
+            with(LocalDensity.current) { AssistantTypography.notice(MaterialTheme.typography).lineHeight.toDp() }
+        } else 0.dp
+        val noticeCap = if (constraints.hasBoundedHeight) {
+            AssistantAnswerFit.noticeCap(maxHeight - AssistantAnswerFit.SurfaceInsets, markerHeight)
+        } else Dp.Infinity
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -1282,14 +1296,13 @@ private fun AssistantResponseSurface(
             if (notice != null) {
                 // The same notice surface the pill shows on its own: a message is never a bare
                 // line of coloured text on the answer fill, and its action lives inside it.
-                // W4: it shares the surface's remaining height with the answer list (1:1,
-                // neither forced to fill) so a five-line notice at font scale 1.3 with the
-                // keyboard up (answer surface ~260dp) cannot push the toolbar past the clip;
-                // the message scrolls inside its share and the action chip stays reachable.
+                // Capped, not weighted (see the surface comment): inside the cap the message
+                // scrolls and the action chip keeps its 40dp; the toolbar never leaves the clip
+                // because the cap already subtracts it.
                 AssistantNoticeSurface(
                     notice = notice,
                     onAction = onNoticeAction,
-                    modifier = Modifier.weight(1f, fill = false)
+                    modifier = Modifier.heightIn(max = noticeCap)
                 )
             }
             AssistantAnswerToolbar(
@@ -1300,6 +1313,7 @@ private fun AssistantResponseSurface(
                 onCopy = onCopy,
                 onClose = onClose
             )
+        }
         }
     }
 }
