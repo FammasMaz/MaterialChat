@@ -75,11 +75,13 @@ import com.materialchat.util.AttachmentImporter
 import com.materialchat.util.AttachmentLimits
 import com.materialchat.util.CameraCapture
 import com.materialchat.domain.model.MessageRole
+import com.materialchat.domain.model.StreamingState
 import com.materialchat.domain.model.ReasoningEffort
 import com.materialchat.ui.components.HapticPattern
 import com.materialchat.ui.components.rememberHapticFeedback
 import com.materialchat.ui.screens.bookmarks.components.AddBookmarkSheet
 import com.materialchat.ui.screens.chat.components.ChatEmptyState
+import com.materialchat.ui.screens.chat.components.ChatErrorCopy
 import com.materialchat.ui.screens.chat.components.ChatEmptyStateCopy
 import com.materialchat.ui.screens.chat.components.ChatTopBar
 import com.materialchat.ui.screens.chat.components.MessageArrivalTracker
@@ -592,7 +594,7 @@ private fun ErrorContent(
 
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             ExpressiveButton(onClick = { onNavigateBack() }, text = "Go back", style = ExpressiveButtonStyle.Text)
-            ExpressiveButton(onClick = { onRetry() }, text = "Retry", style = ExpressiveButtonStyle.Text)
+            ExpressiveButton(onClick = { onRetry() }, text = ChatErrorCopy.TRY_AGAIN, style = ExpressiveButtonStyle.Text)
         }
     }
 }
@@ -866,6 +868,9 @@ private fun ChatContent(
                 onOpenCanvas = onOpenCanvas,
                 onQuoteMessage = onQuoteMessage,
                 hapticsEnabled = state.hapticsEnabled,
+                // The errored bubble names the failure class (401/403/429/5xx/connectivity)
+                // from the typed streaming state; after a reload it falls back to the generic line.
+                errorNotice = (state.streamingState as? StreamingState.Error)?.let { ChatErrorCopy.notice(it) },
                 emptyStateCopy = if (state.messages.isEmpty()) {
                     chatEmptyStateCopy(
                         modelName = state.modelName,
@@ -993,6 +998,7 @@ internal fun MessageList(
     onQuoteMessage: (String) -> Unit = {},
     hapticsEnabled: Boolean = true,
     emptyStateCopy: ChatEmptyStateCopy? = null,
+    errorNotice: String? = null,
     modifier: Modifier = Modifier
 ) {
     // Which bubbles arrive with the entrance animation: only ids created after the first
@@ -1093,6 +1099,7 @@ internal fun MessageList(
                 onRetry = if (messageItem.isLastAssistantMessage && messageItem.isErrored && !messageItem.message.isStreaming) {
                     { onRegenerateResponse() }
                 } else null,
+                errorNotice = if (messageItem.isLastAssistantMessage && messageItem.isErrored) errorNotice else null,
                 onEdit = if (messageItem.message.role == MessageRole.USER && !messageItem.message.isStreaming) {
                     { onStartEditing(messageItem.message.id) }
                 } else null,

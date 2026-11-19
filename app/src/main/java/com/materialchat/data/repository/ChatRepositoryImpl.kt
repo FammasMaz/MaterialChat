@@ -28,6 +28,7 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import java.io.File
+import java.io.IOException
 import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -131,10 +132,17 @@ class ChatRepositoryImpl @Inject constructor(
                     val normalized = normalizedAccumulation()
                     android.util.Log.e("ChatRepository", "Stream error: ${event.message}")
                     // An HTTP refusal keeps its status typed on the exception and the state;
-                    // the message text is the parsed body, unchanged.
+                    // a transport failure stays an IOException so consumers recognise
+                    // connectivity by type; the message text is the parsed body, unchanged.
                     val status = event.httpStatus
+                    val cause = when {
+                        status != null -> ProviderHttpException(status, event.message)
+                        event.code == StreamingEvent.Companion.ErrorCode.CONNECTION_FAILED ||
+                            event.code == StreamingEvent.Companion.ErrorCode.TIMEOUT -> IOException(event.message)
+                        else -> Exception(event.message)
+                    }
                     emit(StreamingState.Error(
-                        error = if (status != null) ProviderHttpException(status, event.message) else Exception(event.message),
+                        error = cause,
                         partialContent = normalized.content.takeIf { it.isNotEmpty() },
                         messageId = messageId,
                         httpStatus = status

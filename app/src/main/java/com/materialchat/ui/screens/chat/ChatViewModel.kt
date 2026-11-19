@@ -32,6 +32,7 @@ import com.materialchat.domain.usecase.RunFusionUseCase
 import com.materialchat.domain.usecase.SendMessageUseCase
 import com.materialchat.notifications.AppNotificationManager
 import com.materialchat.ui.navigation.Screen
+import com.materialchat.ui.screens.chat.components.ChatErrorCopy
 import com.materialchat.util.AttachmentImporter
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -909,9 +910,11 @@ class ChatViewModel @Inject constructor(
         // Show error message to user when streaming error occurs
         if (state is StreamingState.Error) {
             viewModelScope.launch {
+                // Classified failures (HTTP status, connectivity) show the class line the
+                // bubble shows; unclassified ones keep their own text as the only diagnostic.
                 _events.emit(
                     ChatEvent.ShowSnackbar(
-                        message = state.error?.message ?: "An error occurred"
+                        message = ChatErrorCopy.snackbar(state)
                     )
                 )
             }

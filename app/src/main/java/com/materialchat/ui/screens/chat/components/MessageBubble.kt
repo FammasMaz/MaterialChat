@@ -177,6 +177,7 @@ fun MessageBubble(
     onNavigateNext: (() -> Unit)? = null,
     alwaysShowThinking: Boolean = false,
     onRetry: (() -> Unit)? = null,
+    errorNotice: String? = null,
     onEdit: (() -> Unit)? = null,
     isEditing: Boolean = false,
     editingText: String = "",
@@ -471,7 +472,7 @@ fun MessageBubble(
                             onCancelEdit = onCancelEdit ?: {}
                         )
                     } else if (isAssistant && !message.isStreaming && displayContent.isEmpty() && messageItem.isErrored) {
-                        ErrorStateContent()
+                        ErrorStateContent(notice = errorNotice ?: ChatErrorCopy.REQUEST_FAILED)
                     } else if (message.isStreaming && displayContent.isEmpty() &&
                         displayThinkingContent.isNullOrEmpty() && isImageGenerationMessage
                     ) {
@@ -1690,7 +1691,11 @@ private fun isImageGenerationModel(modelName: String?): Boolean {
  * Error state content shown inside assistant bubble when response fails.
  */
 @Composable
-private fun ErrorStateContent() {
+private fun ErrorStateContent(notice: String) {
+    // Error tone resolved against the errored bubble fill (ChatSurfacePalette.assistantError,
+    // gated at 4.5:1 on both the plain and the errored fill); the role colour by name was
+    // the one slot the palette already carried but nothing consumed.
+    val palette = rememberChatSurfacePalette()
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -1699,12 +1704,13 @@ private fun ErrorStateContent() {
             imageVector = Icons.Outlined.ErrorOutline,
             contentDescription = null,
             modifier = Modifier.size(18.dp),
-            tint = MaterialTheme.colorScheme.error
+            tint = palette.assistantError
         )
         Text(
-            text = "Response failed",
+            text = notice,
             style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.error
+            color = palette.assistantError,
+            modifier = Modifier.weight(1f, fill = false)
         )
     }
 }
@@ -1717,7 +1723,7 @@ private fun ErrorStateContent() {
 private fun RetryButton(onRetry: () -> Unit) {
     ExpressiveButton(
         onClick = { onRetry() },
-        text = "Retry",
+        text = ChatErrorCopy.TRY_AGAIN,
         leadingIcon = Icons.Default.Refresh,
         style = ExpressiveButtonStyle.FilledTonal
     )
