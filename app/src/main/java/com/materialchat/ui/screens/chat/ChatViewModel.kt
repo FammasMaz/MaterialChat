@@ -207,9 +207,10 @@ class ChatViewModel @Inject constructor(
                         Triple(currentId, conversation, messages)
                     }
                 }
-                    .catch { e ->
+                    .catch { _ ->
+                        // Classified copy only: a Room / flow failure has no user-readable text.
                         _uiState.value = ChatUiState.Error(
-                            message = e.message ?: "Failed to load messages"
+                            message = ChatErrorCopy.COULD_NOT_LOAD_CONVERSATION
                         )
                     }
                     .collect { (observedId, conversation, messages) ->
@@ -387,9 +388,9 @@ class ChatViewModel @Inject constructor(
                     }
             } catch (e: CancellationException) {
                 throw e
-            } catch (e: Exception) {
+            } catch (_: Exception) {
                 _uiState.value = ChatUiState.Error(
-                    message = e.message ?: "Failed to load conversation"
+                    message = ChatErrorCopy.COULD_NOT_LOAD_CONVERSATION
                 )
             }
         }
@@ -1084,10 +1085,12 @@ class ChatViewModel @Inject constructor(
                 modelsResult.exceptionOrNull()?.let { error ->
                     _events.emit(
                         ChatEvent.ShowSnackbar(
-                            message = "Failed to load models for ${provider.name}: ${error.message ?: "fetch failed"}"
+                            message = ChatErrorCopy.action(error, ChatErrorCopy.couldNotLoadModels(provider.name))
                         )
                     )
                 }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 val updatedState = _uiState.value
                 if (updatedState is ChatUiState.Success) {
@@ -1095,7 +1098,7 @@ class ChatViewModel @Inject constructor(
                 }
                 _events.emit(
                     ChatEvent.ShowSnackbar(
-                        message = "Failed to load models: ${e.message}"
+                        message = ChatErrorCopy.action(e, ChatErrorCopy.COULD_NOT_LOAD_MODELS)
                     )
                 )
             }
@@ -1125,10 +1128,12 @@ class ChatViewModel @Inject constructor(
                 }
 
                 _events.emit(ChatEvent.ModelChanged(model.name))
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 _events.emit(
                     ChatEvent.ShowSnackbar(
-                        message = "Failed to change model: ${e.message}"
+                        message = ChatErrorCopy.action(e, ChatErrorCopy.COULD_NOT_CHANGE_MODEL)
                     )
                 )
             }
@@ -1234,10 +1239,12 @@ class ChatViewModel @Inject constructor(
                     upToMessageId = messageId
                 )
                 _events.emit(ChatEvent.NavigateToBranch(newConversationId))
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 _events.emit(
                     ChatEvent.ShowSnackbar(
-                        message = e.message ?: "Failed to create branch"
+                        message = ChatErrorCopy.action(e, ChatErrorCopy.COULD_NOT_BRANCH)
                     )
                 )
             }
@@ -1307,7 +1314,8 @@ class ChatViewModel @Inject constructor(
         if (editingIndex == 0) {
             viewModelScope.launch {
                 _events.emit(ChatEvent.ShowSnackbar(
-                    message = "Cannot edit the first message"
+                    // CopyRules: a phrase never opens with "Cannot" (banned verb family).
+                    message = "The first message cannot be edited"
                 ))
             }
             return
@@ -1320,11 +1328,12 @@ class ChatViewModel @Inject constructor(
 
         // Clear editing state
         _uiState.value = currentState.copy(editingMessageId = null, editingText = "")
+        val sourceConversationId = activeConversationId.value
 
         viewModelScope.launch {
             try {
                 val newConversationId = branchConversationUseCase(
-                    sourceConversationId = activeConversationId.value,
+                    sourceConversationId = sourceConversationId,
                     upToMessageId = branchFromId
                 )
 
@@ -1341,9 +1350,21 @@ class ChatViewModel @Inject constructor(
                     conversationId = newConversationId,
                     autoSend = true
                 ))
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
+                // The editor was closed optimistically above; a failed branch must hand the
+                // edited text back instead of discarding it with the snackbar (W7 walk).
+                _uiState.update { state ->
+                    if (state is ChatUiState.Success &&
+                        state.conversationId == sourceConversationId &&
+                        state.editingMessageId == null
+                    ) {
+                        state.copy(editingMessageId = editingMessageId, editingText = currentState.editingText)
+                    } else state
+                }
                 _events.emit(ChatEvent.ShowSnackbar(
-                    message = e.message ?: "Failed to submit edited message"
+                    message = ChatErrorCopy.action(e, ChatErrorCopy.COULD_NOT_RESEND_EDIT)
                 ))
             }
         }
@@ -1410,7 +1431,7 @@ class ChatViewModel @Inject constructor(
                         }
                         _events.emit(
                             ChatEvent.ShowSnackbar(
-                                message = "Export failed: ${error.message}"
+                                message = ChatErrorCopy.action(error, ChatErrorCopy.COULD_NOT_EXPORT)
                             )
                         )
                     }
@@ -1422,7 +1443,7 @@ class ChatViewModel @Inject constructor(
                 }
                 _events.emit(
                     ChatEvent.ShowSnackbar(
-                        message = "Export failed: ${e.message}"
+                        message = ChatErrorCopy.action(e, ChatErrorCopy.COULD_NOT_EXPORT)
                     )
                 )
             }
@@ -1628,10 +1649,12 @@ class ChatViewModel @Inject constructor(
                     autoSend = true,
                     overrideModel = model.id
                 ))
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 _events.emit(
                     ChatEvent.ShowSnackbar(
-                        message = e.message ?: "Failed to redo with model"
+                        message = ChatErrorCopy.action(e, ChatErrorCopy.COULD_NOT_REDO)
                     )
                 )
             }
@@ -1708,10 +1731,12 @@ class ChatViewModel @Inject constructor(
                         message = if (isNowBookmarked) "Message bookmarked" else "Bookmark removed"
                     )
                 )
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 _events.emit(
                     ChatEvent.ShowSnackbar(
-                        message = "Failed to toggle bookmark: ${e.message}"
+                        message = ChatErrorCopy.action(e, ChatErrorCopy.COULD_NOT_UPDATE_BOOKMARK)
                     )
                 )
             }
@@ -1784,10 +1809,12 @@ class ChatViewModel @Inject constructor(
                     } else state
                 }
                 _events.emit(ChatEvent.ShowSnackbar(message = "Message bookmarked"))
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 _events.emit(
                     ChatEvent.ShowSnackbar(
-                        message = "Failed to add bookmark: ${e.message}"
+                        message = ChatErrorCopy.action(e, ChatErrorCopy.COULD_NOT_UPDATE_BOOKMARK)
                     )
                 )
             }
@@ -2022,7 +2049,9 @@ class ChatViewModel @Inject constructor(
                     } else state
                 }
                 if (activeConversationId.value == targetConversationId) {
-                    _events.emit(ChatEvent.ShowSnackbar(message = e.message ?: "Fusion failed"))
+                    _events.emit(
+                        ChatEvent.ShowSnackbar(message = ChatErrorCopy.action(e, ChatErrorCopy.COULD_NOT_RUN_FUSION))
+                    )
                 }
             }
         }.also { job ->

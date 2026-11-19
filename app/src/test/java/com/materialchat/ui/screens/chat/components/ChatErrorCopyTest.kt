@@ -93,11 +93,29 @@ class ChatErrorCopyTest {
     }
 
     @Test
+    fun `a failed action classifies a typed status or connectivity and otherwise uses its own line`() {
+        val typed = RuntimeException("wrapper", ProviderHttpException(429, "raw provider body"))
+        assertEquals(ChatErrorCopy.RATE_LIMITED, ChatErrorCopy.action(typed, ChatErrorCopy.COULD_NOT_BRANCH))
+        assertEquals(ChatErrorCopy.UNAUTHORIZED, ChatErrorCopy.action(ProviderHttpException(401, "x"), ChatErrorCopy.COULD_NOT_REDO))
+        assertEquals(ChatErrorCopy.SERVER_ERROR, ChatErrorCopy.action(ProviderHttpException(502, "x"), ChatErrorCopy.COULD_NOT_REDO))
+
+        val offline = IllegalStateException("outer", ConnectException("refused"))
+        assertEquals(ChatErrorCopy.NO_CONNECTION, ChatErrorCopy.action(offline, ChatErrorCopy.COULD_NOT_EXPORT))
+
+        val raw = IllegalStateException("SQLiteConstraintException: UNIQUE constraint failed")
+        val line = ChatErrorCopy.action(raw, ChatErrorCopy.COULD_NOT_UPDATE_BOOKMARK)
+        assertEquals(ChatErrorCopy.COULD_NOT_UPDATE_BOOKMARK, line)
+        assertTrue(line, !line.contains("SQLite"))
+        assertEquals(ChatErrorCopy.COULD_NOT_RUN_FUSION, ChatErrorCopy.action(null, ChatErrorCopy.COULD_NOT_RUN_FUSION))
+    }
+
+    @Test
     fun `the shared lines and the retry label match the assistant notice model`() {
+        // REQUEST_FAILED and TRY_AGAIN are aliases of CopyRules on both sides; the theme's
+        // CopyRulesTest pins them, so those two cross-owner pins live there (W7 theme C11).
+        // The two class lines below have no CopyRules constant yet, so chat still pins them.
         assertEquals(AssistantCopy.RATE_LIMITED, ChatErrorCopy.RATE_LIMITED)
         assertEquals(AssistantCopy.NO_CONNECTION, ChatErrorCopy.NO_CONNECTION)
-        assertEquals(AssistantCopy.REQUEST_FAILED, ChatErrorCopy.REQUEST_FAILED)
-        assertEquals(AssistantCopy.AFTER_ERROR, ChatErrorCopy.TRY_AGAIN)
         assertNotEquals("Retry", ChatErrorCopy.TRY_AGAIN)
     }
 }

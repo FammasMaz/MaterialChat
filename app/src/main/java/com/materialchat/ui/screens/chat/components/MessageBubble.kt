@@ -922,10 +922,11 @@ private fun getBubbleStyle(
  * settings bubble-style preview can draw the real shapes instead of its own copy of the radii
  * (W6 theme inventory, `SettingsScreen.kt:1977-1990`).
  *
- * The radii here are the family's record: `EXPRESSIVE` reads the theme's [MessageBubbleShapes];
- * `ROUNDED` 34, `COMPACT` 20 / 18-6 and `GEOMETRIC` 16 / 18-4-10 have no theme token
- * (`ExpressiveShapes.Bubble.*` is a pending theme decision), and the family stays on circular
- * corners together with the composer (W4 ruling, `Shapes.kt` `MessageBubbleShapes` KDoc).
+ * This is the family function; the radii are the theme's: `EXPRESSIVE` reads
+ * [MessageBubbleShapes], `ROUNDED` / `COMPACT` / `GEOMETRIC` read [ExpressiveShapes.Bubble]
+ * (W7 theme, pinned value-for-value in `ShapeTokensTest`), so the settings preview and the
+ * bubble cannot drift apart. The family stays on circular corners together with the composer
+ * (W4 ruling, `Shapes.kt` `MessageBubbleShapes` KDoc).
  */
 internal fun bubbleShapeFor(
     style: AppPreferences.ChatBubbleStyle,
@@ -935,8 +936,8 @@ internal fun bubbleShapeFor(
 ): Shape {
     if (!isUser && !isAssistant) {
         return when (style) {
-            AppPreferences.ChatBubbleStyle.COMPACT -> RoundedCornerShape(20.dp)
-            AppPreferences.ChatBubbleStyle.GEOMETRIC -> RoundedCornerShape(16.dp)
+            AppPreferences.ChatBubbleStyle.COMPACT -> ExpressiveShapes.Bubble.Compact.System
+            AppPreferences.ChatBubbleStyle.GEOMETRIC -> ExpressiveShapes.Bubble.Geometric.System
             else -> MessageBubbleShapes.SystemBubble
         }
     }
@@ -956,35 +957,11 @@ internal fun bubbleShapeFor(
                 MessageGroupPosition.Single -> MessageBubbleShapes.AssistantBubble
             }
         }
-        AppPreferences.ChatBubbleStyle.ROUNDED -> RoundedCornerShape(34.dp)
-        AppPreferences.ChatBubbleStyle.COMPACT -> when {
-            isUser -> RoundedCornerShape(
-                topStart = 18.dp,
-                topEnd = 6.dp,
-                bottomStart = 18.dp,
-                bottomEnd = 18.dp
-            )
-            else -> RoundedCornerShape(
-                topStart = 6.dp,
-                topEnd = 18.dp,
-                bottomStart = 18.dp,
-                bottomEnd = 18.dp
-            )
-        }
-        AppPreferences.ChatBubbleStyle.GEOMETRIC -> when {
-            isUser -> RoundedCornerShape(
-                topStart = 18.dp,
-                topEnd = 4.dp,
-                bottomStart = 18.dp,
-                bottomEnd = 10.dp
-            )
-            else -> RoundedCornerShape(
-                topStart = 4.dp,
-                topEnd = 18.dp,
-                bottomStart = 10.dp,
-                bottomEnd = 18.dp
-            )
-        }
+        AppPreferences.ChatBubbleStyle.ROUNDED -> ExpressiveShapes.Bubble.Rounded
+        AppPreferences.ChatBubbleStyle.COMPACT ->
+            if (isUser) ExpressiveShapes.Bubble.Compact.User else ExpressiveShapes.Bubble.Compact.Assistant
+        AppPreferences.ChatBubbleStyle.GEOMETRIC ->
+            if (isUser) ExpressiveShapes.Bubble.Geometric.User else ExpressiveShapes.Bubble.Geometric.Assistant
     }
 }
 
@@ -1248,6 +1225,7 @@ private fun MemoryDisclosure(
 ) {
     var expanded by remember { mutableStateOf(false) }
     val haptics = rememberHapticFeedback()
+    val palette = rememberChatSurfacePalette()
 
     Column(
         modifier = modifier
@@ -1309,8 +1287,11 @@ private fun MemoryDisclosure(
         ) {
             Surface(
                 shape = ExpressiveShapes.DisclosurePanel,
-                color = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.86f),
-                contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                // The palette's memoryPanel slot: surfaceContainerHighest at 0.86 composited over
+                // the assistant bubble this panel sits in, so the fill is the opaque colour the
+                // alpha wash produced and its content colour is gated on it (W7 chat part 3).
+                color = palette.memoryPanel.container,
+                contentColor = palette.memoryPanel.content,
                 tonalElevation = 2.dp
             ) {
                 Column(
@@ -1335,6 +1316,16 @@ private fun MemoryDisclosure(
     }
 }
 
+/**
+ * The "Saved" / "Used" memory disclosure header under an assistant bubble.
+ *
+ * Ruling (W7 chat, audit F4): this is a **row, not a chip**. It is [ExpressiveSizes.Target]
+ * (48dp) tall, not `ExpressiveSizes.Chip.Height` (40), and its corner is the action group's
+ * animated 20 / 16 / 14dp radius (`MessageActionOuterCorner`, open, `MessageActionPressedCorner`)
+ * rather than the static `ExpressiveShapes.Chip` capsule, because it sits in the same shape
+ * language as the action row beneath the bubble and opens a panel in place like the thinking
+ * header. Only the leading glyph takes the chip-class size ([ExpressiveSizes.Chip.Icon]).
+ */
 @Composable
 private fun MemoryIndicatorChip(
     label: String,
@@ -1373,7 +1364,7 @@ private fun MemoryIndicatorChip(
     Surface(
         onClick = deliver,
         modifier = Modifier
-            .height(48.dp)
+            .height(ExpressiveSizes.Target)
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
@@ -1642,8 +1633,10 @@ private fun ImageGenerationLoadingCard(
             .fillMaxWidth()
             .aspectRatio(1f),
         shape = ExpressiveShapes.Card,
-        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.55f),
-        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+        // The palette's imageLoadingCard slot: primaryContainer at 0.55 composited over the
+        // assistant bubble, with the content colour gated on that fill (W7 chat part 3).
+        color = palette.imageLoadingCard.container,
+        contentColor = palette.imageLoadingCard.content,
         tonalElevation = 3.dp
     ) {
         Box(contentAlignment = Alignment.Center) {
@@ -1672,12 +1665,12 @@ private fun ImageGenerationLoadingCard(
                         imageVector = Icons.Filled.AutoAwesome,
                         contentDescription = null,
                         modifier = Modifier.size(20.dp),
-                        tint = MaterialTheme.colorScheme.onPrimaryContainer
+                        tint = palette.imageLoadingCard.content
                     )
                     Text(
                         text = "Creating image",
                         style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                        color = palette.imageLoadingCard.content
                     )
                 }
                 if (!modelName.isNullOrBlank()) {

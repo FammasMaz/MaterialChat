@@ -43,10 +43,25 @@ import androidx.graphics.shapes.Morph
 import androidx.graphics.shapes.toPath
 import com.materialchat.R
 import com.materialchat.ui.theme.ExpressiveMotion
+import com.materialchat.ui.theme.ExpressiveSizes
 import com.materialchat.ui.theme.SquircleShape
 
-/** Squircle contour of the composer text field, matching the app's card contour. */
-internal val ComposerFieldShape = SquircleShape(28.dp)
+/**
+ * The composer text field's resting corner radius: 28dp, the same value as [ExpressiveShapes.Card]
+ * and the former `CustomShapes.MessageInputContainer`.
+ *
+ * Ruling (W7 chat, audit #6 / W4): **the composer stays at 28dp**. The field draws it as a
+ * [SquircleShape] (the app's card contour), tightening to [ComposerFieldFocusedRadius] on the
+ * spatial shape spring while focused, and it is not migrated to a chip capsule or to the bubble
+ * family's circular corners. `MessageInput` reads these two values; nothing else may restate them.
+ */
+internal val ComposerFieldRadius = 28.dp
+
+/** The composer field's corner radius while it has focus (the focus morph target). */
+internal val ComposerFieldFocusedRadius = 20.dp
+
+/** Squircle contour of the composer text field at rest, matching the app's card contour. */
+internal val ComposerFieldShape = SquircleShape(ComposerFieldRadius)
 
 /** The three states of the composer's primary control. */
 internal enum class ComposerSendState { Idle, Ready, Streaming }
@@ -108,6 +123,13 @@ internal class ComposerSendTrackShape(
  * glyph swap and the press morph.
  *
  * Behaviour: tap sends when ready, cancels when streaming, and is disabled otherwise.
+ *
+ * Deliberately a raw M3 [Button], not `ExpressiveButton` (W7 chat part 2, audit F9/F11):
+ * the shared button animates a single `RoundedCornerShape` corner radius on press, while this
+ * control's contour is a [Morph] track over `MaterialShapes` (cookie → scalloped cookie →
+ * square) that also encodes the Idle/Ready/Streaming state, so the shared button cannot carry
+ * it. The glyphs are [ExpressiveSizes.IconLarge] (24dp, the M3 glyph inside a 48dp filled
+ * control; W7 theme icon ladder) — they were a bespoke 22dp before.
  */
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -213,13 +235,13 @@ internal fun ComposerSendButton(
                     Icon(
                         imageVector = Icons.Default.Stop,
                         contentDescription = null,
-                        modifier = Modifier.size(22.dp)
+                        modifier = Modifier.size(ExpressiveSizes.IconLarge)
                     )
                 } else {
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.Send,
                         contentDescription = null,
-                        modifier = Modifier.size(22.dp)
+                        modifier = Modifier.size(ExpressiveSizes.IconLarge)
                     )
                 }
             }
