@@ -237,7 +237,7 @@ fun SettingsScreen(
                 }
                 .onFailure { error ->
                     snackbarHostState.showSnackbar(
-                        message = error.message ?: "Could not save backup",
+                        message = "Could not save the backup",
                         duration = SnackbarDuration.Short
                     )
                 }
@@ -260,7 +260,7 @@ fun SettingsScreen(
                 }
                 .onFailure { error ->
                     snackbarHostState.showSnackbar(
-                        message = error.message ?: "Could not read backup",
+                        message = "Could not read the backup",
                         duration = SnackbarDuration.Short
                     )
                 }
@@ -319,7 +319,7 @@ fun SettingsScreen(
                     val message = if (event.success) {
                         "Connected to ${event.providerName}"
                     } else {
-                        "Connection failed: ${event.errorMessage ?: "Unknown error"}"
+                        "Could not connect to ${event.providerName}"
                     }
                     coroutineScope.launch {
                         snackbarHostState.showSnackbar(
@@ -537,7 +537,7 @@ fun SettingsScreen(
                         }
                         .onFailure { error ->
                             snackbarHostState.showSnackbar(
-                                message = error.message ?: "Could not create backup",
+                                message = "Could not create the backup",
                                 duration = SnackbarDuration.Short
                             )
                         }
@@ -571,7 +571,7 @@ fun SettingsScreen(
                         }
                         .onFailure { error ->
                             snackbarHostState.showSnackbar(
-                                message = error.message ?: "Could not unlock backup",
+                                message = "Could not unlock the backup",
                                 duration = SnackbarDuration.Short
                             )
                         }
@@ -606,7 +606,7 @@ fun SettingsScreen(
                         }
                         .onFailure { error ->
                             snackbarHostState.showSnackbar(
-                                message = error.message ?: "Could not restore backup",
+                                message = "Could not restore the backup",
                                 duration = SnackbarDuration.Short
                             )
                         }
@@ -2432,7 +2432,7 @@ private fun TitleGenerationModelField(
                                         Column {
                                             Text(
                                                 text = if (pickerState.error != null)
-                                                    "Couldn't fetch models"
+                                                    "Could not fetch models"
                                                 else "No models available",
                                                 style = MaterialTheme.typography.bodyMedium
                                             )
@@ -2499,7 +2499,7 @@ private fun TitleGenerationModelField(
                 if (pickerState.error != null && allModels.isNotEmpty()) {
                     Spacer(modifier = Modifier.height(6.dp))
                     Text(
-                        text = "Some providers failed: ${pickerState.error}",
+                        text = pickerState.error,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

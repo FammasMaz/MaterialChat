@@ -49,7 +49,7 @@ class PersonaStudioViewModel @Inject constructor(
             managePersonasUseCase.observeAllPersonas()
                 .catch { e ->
                     _uiState.value = PersonaStudioUiState.Error(
-                        message = e.message ?: "Failed to load personas"
+                        message = "Could not load personas"
                     )
                 }
                 .collect { personas ->
@@ -130,7 +130,7 @@ class PersonaStudioViewModel @Inject constructor(
             } catch (e: Exception) {
                 _events.emit(
                     PersonaStudioEvent.ShowSnackbar(
-                        "Failed to save persona: ${e.message}"
+                        "Could not save the persona"
                     )
                 )
             }
@@ -148,7 +148,7 @@ class PersonaStudioViewModel @Inject constructor(
             } catch (e: Exception) {
                 _events.emit(
                     PersonaStudioEvent.ShowSnackbar(
-                        "Failed to delete persona: ${e.message}"
+                        "Could not delete the persona"
                     )
                 )
             }

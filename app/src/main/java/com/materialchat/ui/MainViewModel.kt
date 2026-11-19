@@ -57,7 +57,7 @@ class MainViewModel @Inject constructor(
             } catch (e: IllegalStateException) {
                 _showError.emit("No provider configured")
             } catch (e: Exception) {
-                _showError.emit(e.message ?: "Failed to create conversation")
+                _showError.emit("Could not create the conversation")
             }
         }
     }
@@ -70,7 +70,7 @@ class MainViewModel @Inject constructor(
             } catch (e: IllegalStateException) {
                 _showError.emit("No provider configured")
             } catch (e: Exception) {
-                _showError.emit(e.message ?: "Failed to create temporary conversation")
+                _showError.emit("Could not create a temporary conversation")
             }
         }
     }
@@ -83,7 +83,7 @@ class MainViewModel @Inject constructor(
             } catch (e: IllegalStateException) {
                 _showError.emit("No provider configured")
             } catch (e: Exception) {
-                _showError.emit(e.message ?: "Failed to create conversation")
+                _showError.emit("Could not create the conversation")
             }
             _showPersonaPicker.value = false
         }

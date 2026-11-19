@@ -315,7 +315,7 @@ class ArenaViewModel @Inject constructor(
                     if (state is ArenaUiState.Ready) state.copy(revealed = true)
                     else state
                 }
-                _events.emit(ArenaEvent.ShowSnackbar("Vote recorded — identities revealed!"))
+                _events.emit(ArenaEvent.ShowSnackbar("Vote recorded, identities revealed"))
             } catch (e: Exception) {
                 _events.emit(ArenaEvent.ShowSnackbar("Could not record the vote"))
                 _uiState.update { state ->

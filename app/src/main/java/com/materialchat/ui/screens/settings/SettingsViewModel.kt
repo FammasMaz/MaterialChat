@@ -181,7 +181,7 @@ class SettingsViewModel @Inject constructor(
                         results[provider.id] = models.sortedBy { it.name }
                     }
                 }.onFailure { err ->
-                    failures += "${provider.name}: ${err.message ?: "fetch failed"}"
+                    failures += provider.name
                 }
             }
 
@@ -190,7 +190,7 @@ class SettingsViewModel @Inject constructor(
                 hasLoaded = true,
                 modelsByProvider = results,
                 error = if (results.isEmpty() && failures.isNotEmpty()) {
-                    failures.joinToString("; ")
+                    "Could not fetch models from ${failures.joinToString(", ")}"
                 } else null
             )
         }
@@ -337,7 +337,7 @@ class SettingsViewModel @Inject constructor(
                 .distinctUntilChanged()
                 .catch { e ->
                     _uiState.value = SettingsUiState.Error(
-                        message = e.message ?: "Failed to load settings"
+                        message = "Could not load settings"
                     )
                 }
                 .collect { data ->
@@ -600,10 +600,10 @@ class SettingsViewModel @Inject constructor(
             } catch (e: Exception) {
                 _formState.value = _formState.value.copy(
                     isAuthenticating = false,
-                    authStatus = e.message ?: "Authentication failed",
-                    apiKeyError = e.message ?: "Authentication failed"
+                    authStatus = "Could not sign in",
+                    apiKeyError = "Could not sign in"
                 )
-                _events.emit(SettingsEvent.ShowSnackbar("Authentication failed"))
+                _events.emit(SettingsEvent.ShowSnackbar("Could not sign in"))
             }
         }
     }
@@ -650,7 +650,7 @@ class SettingsViewModel @Inject constructor(
                 apiKey = credentialJson,
                 hasExistingKey = true,
                 isAuthenticating = false,
-                authStatus = e.message ?: "Sign-in complete. Tap Save to finish."
+                authStatus = "Signed in, but could not save the provider. Tap Save to try again."
             )
             false
         }
@@ -709,13 +709,12 @@ class SettingsViewModel @Inject constructor(
                     _events.emit(SettingsEvent.ShowSnackbar("No models were returned by the provider"))
                 }
             }.onFailure { error ->
-                val message = error.message ?: "Failed to fetch models."
                 _formState.value = _formState.value.copy(
                     isFetchingModels = false,
-                    modelsError = message
+                    modelsError = "Could not fetch models"
                 )
-                // The form's inline modelsError keeps the provider's diagnostic; the snackbar
-                // never shows exception text (cross-surface audit F6).
+                // Neither the inline field error nor the snackbar shows exception text
+                // (cross-surface audit W6 #2).
                 _events.emit(SettingsEvent.ShowSnackbar("Could not fetch models"))
             }
         }
@@ -821,7 +820,7 @@ class SettingsViewModel @Inject constructor(
                     _uiState.value = updatedState.copy(isSaving = false)
                 }
                 _events.emit(SettingsEvent.ShowSnackbar(
-                    message = e.message ?: "Failed to save provider"
+                    message = "Could not save the provider"
                 ))
             }
         }
@@ -838,7 +837,7 @@ class SettingsViewModel @Inject constructor(
                 _events.emit(SettingsEvent.ProviderActivated(provider?.name ?: "Provider"))
             } catch (e: Exception) {
                 _events.emit(SettingsEvent.ShowSnackbar(
-                    message = e.message ?: "Failed to activate provider"
+                    message = "Could not activate the provider"
                 ))
             }
         }
@@ -875,7 +874,7 @@ class SettingsViewModel @Inject constructor(
                 _events.emit(SettingsEvent.ProviderDeleted(provider.name))
             } catch (e: Exception) {
                 _events.emit(SettingsEvent.ShowSnackbar(
-                    message = e.message ?: "Failed to delete provider"
+                    message = "Could not delete the provider"
                 ))
             }
         }
@@ -900,14 +899,13 @@ class SettingsViewModel @Inject constructor(
                     onFailure = { e ->
                         _events.emit(SettingsEvent.ConnectionTestResult(
                             providerName = provider.name,
-                            success = false,
-                            errorMessage = e.message
+                            success = false
                         ))
                     }
                 )
             } catch (e: Exception) {
                 _events.emit(SettingsEvent.ShowSnackbar(
-                    message = e.message ?: "Connection test failed"
+                    message = "Could not test the connection"
                 ))
             }
         }
@@ -924,7 +922,7 @@ class SettingsViewModel @Inject constructor(
                 appPreferences.setSystemPrompt(prompt)
             } catch (e: Exception) {
                 _events.emit(SettingsEvent.ShowSnackbar(
-                    message = "Failed to save system prompt"
+                    message = "Could not save system prompt"
                 ))
             }
         }
@@ -939,7 +937,7 @@ class SettingsViewModel @Inject constructor(
                 appPreferences.setThemeMode(mode)
             } catch (e: Exception) {
                 _events.emit(SettingsEvent.ShowSnackbar(
-                    message = "Failed to save theme setting"
+                    message = "Could not save theme setting"
                 ))
             }
         }
@@ -954,7 +952,7 @@ class SettingsViewModel @Inject constructor(
                 appPreferences.setThemePalette(palette)
             } catch (e: Exception) {
                 _events.emit(SettingsEvent.ShowSnackbar(
-                    message = "Failed to save color palette"
+                    message = "Could not save color palette"
                 ))
             }
         }
@@ -969,7 +967,7 @@ class SettingsViewModel @Inject constructor(
                 appPreferences.setChatBubbleStyle(style)
             } catch (e: Exception) {
                 _events.emit(SettingsEvent.ShowSnackbar(
-                    message = "Failed to save chat bubble style"
+                    message = "Could not save chat bubble style"
                 ))
             }
         }
@@ -984,7 +982,7 @@ class SettingsViewModel @Inject constructor(
                 appPreferences.setControlShapeStyle(style)
             } catch (e: Exception) {
                 _events.emit(SettingsEvent.ShowSnackbar(
-                    message = "Failed to save control shape style"
+                    message = "Could not save control shape style"
                 ))
             }
         }
@@ -999,7 +997,7 @@ class SettingsViewModel @Inject constructor(
                 appPreferences.setDynamicColorEnabled(enabled)
             } catch (e: Exception) {
                 _events.emit(SettingsEvent.ShowSnackbar(
-                    message = "Failed to save dynamic color setting"
+                    message = "Could not save dynamic color setting"
                 ))
             }
         }
@@ -1012,7 +1010,7 @@ class SettingsViewModel @Inject constructor(
                 appPreferences.setNeuralExpressive(enabled)
             } catch (e: Exception) {
                 _events.emit(SettingsEvent.ShowSnackbar(
-                    message = "Failed to save theme setting"
+                    message = "Could not save theme setting"
                 ))
             }
         }
@@ -1025,7 +1023,7 @@ class SettingsViewModel @Inject constructor(
                 appPreferences.setPitchBlackDark(enabled)
             } catch (e: Exception) {
                 _events.emit(SettingsEvent.ShowSnackbar(
-                    message = "Failed to save theme setting"
+                    message = "Could not save theme setting"
                 ))
             }
         }
@@ -1040,7 +1038,7 @@ class SettingsViewModel @Inject constructor(
                 appPreferences.setHapticsEnabled(enabled)
             } catch (e: Exception) {
                 _events.emit(SettingsEvent.ShowSnackbar(
-                    message = "Failed to save haptics setting"
+                    message = "Could not save haptics setting"
                 ))
             }
         }
@@ -1055,7 +1053,7 @@ class SettingsViewModel @Inject constructor(
                 appPreferences.setNotificationsEnabled(enabled)
             } catch (e: Exception) {
                 _events.emit(SettingsEvent.ShowSnackbar(
-                    message = "Failed to save notifications setting"
+                    message = "Could not save notifications setting"
                 ))
             }
         }
@@ -1070,7 +1068,7 @@ class SettingsViewModel @Inject constructor(
                 appPreferences.setAiGeneratedTitlesEnabled(enabled)
             } catch (e: Exception) {
                 _events.emit(SettingsEvent.ShowSnackbar(
-                    message = "Failed to save AI titles setting"
+                    message = "Could not save AI titles setting"
                 ))
             }
         }
@@ -1085,7 +1083,7 @@ class SettingsViewModel @Inject constructor(
                 appPreferences.setPreferOnDeviceTitleModel(enabled)
             } catch (e: Exception) {
                 _events.emit(SettingsEvent.ShowSnackbar(
-                    message = "Failed to save native title setting"
+                    message = "Could not save native title setting"
                 ))
             }
         }
@@ -1100,7 +1098,7 @@ class SettingsViewModel @Inject constructor(
                 appPreferences.setTitleGenerationModel(model)
             } catch (e: Exception) {
                 _events.emit(SettingsEvent.ShowSnackbar(
-                    message = "Failed to save title model setting"
+                    message = "Could not save title model setting"
                 ))
             }
         }
@@ -1115,7 +1113,7 @@ class SettingsViewModel @Inject constructor(
                 appPreferences.setDefaultImageGenerationModel(model)
             } catch (e: Exception) {
                 _events.emit(SettingsEvent.ShowSnackbar(
-                    message = "Failed to save image model setting"
+                    message = "Could not save image model setting"
                 ))
             }
         }
@@ -1130,7 +1128,7 @@ class SettingsViewModel @Inject constructor(
                 appPreferences.setDefaultImageOutputFormat(format)
             } catch (e: Exception) {
                 _events.emit(SettingsEvent.ShowSnackbar(
-                    message = "Failed to save image format setting"
+                    message = "Could not save image format setting"
                 ))
             }
         }
@@ -1145,7 +1143,7 @@ class SettingsViewModel @Inject constructor(
                 appPreferences.setRememberLastModel(enabled)
             } catch (e: Exception) {
                 _events.emit(SettingsEvent.ShowSnackbar(
-                    message = "Failed to save remember model setting"
+                    message = "Could not save remember model setting"
                 ))
             }
         }
@@ -1160,7 +1158,7 @@ class SettingsViewModel @Inject constructor(
                 appPreferences.setBeautifulModelNamesEnabled(enabled)
             } catch (e: Exception) {
                 _events.emit(SettingsEvent.ShowSnackbar(
-                    message = "Failed to save model names setting"
+                    message = "Could not save model names setting"
                 ))
             }
         }
@@ -1175,7 +1173,7 @@ class SettingsViewModel @Inject constructor(
                 appPreferences.setAlwaysShowThinking(enabled)
             } catch (e: Exception) {
                 _events.emit(SettingsEvent.ShowSnackbar(
-                    message = "Failed to save thinking setting"
+                    message = "Could not save thinking setting"
                 ))
             }
         }
@@ -1190,7 +1188,7 @@ class SettingsViewModel @Inject constructor(
                 appPreferences.setShowTokenCounter(enabled)
             } catch (e: Exception) {
                 _events.emit(SettingsEvent.ShowSnackbar(
-                    message = "Failed to save token counter setting"
+                    message = "Could not save token counter setting"
                 ))
             }
         }
@@ -1207,7 +1205,7 @@ class SettingsViewModel @Inject constructor(
                 appPreferences.setAssistantEnabled(enabled)
             } catch (e: Exception) {
                 _events.emit(SettingsEvent.ShowSnackbar(
-                    message = "Failed to save assistant setting"
+                    message = "Could not save assistant setting"
                 ))
             }
         }
@@ -1222,7 +1220,7 @@ class SettingsViewModel @Inject constructor(
                 appPreferences.setAssistantVoiceEnabled(enabled)
             } catch (e: Exception) {
                 _events.emit(SettingsEvent.ShowSnackbar(
-                    message = "Failed to save voice input setting"
+                    message = "Could not save voice input setting"
                 ))
             }
         }
@@ -1237,7 +1235,7 @@ class SettingsViewModel @Inject constructor(
                 appPreferences.setAssistantTtsEnabled(enabled)
             } catch (e: Exception) {
                 _events.emit(SettingsEvent.ShowSnackbar(
-                    message = "Failed to save text-to-speech setting"
+                    message = "Could not save text-to-speech setting"
                 ))
             }
         }
@@ -1254,7 +1252,7 @@ class SettingsViewModel @Inject constructor(
                 appPreferences.setFontSizeScale(scale)
             } catch (e: Exception) {
                 _events.emit(SettingsEvent.ShowSnackbar(
-                    message = "Failed to save font size setting"
+                    message = "Could not save font size setting"
                 ))
             }
         }
@@ -1271,7 +1269,7 @@ class SettingsViewModel @Inject constructor(
                 appPreferences.setWebSearchEnabled(enabled)
             } catch (e: Exception) {
                 _events.emit(SettingsEvent.ShowSnackbar(
-                    message = "Failed to save web search setting"
+                    message = "Could not save web search setting"
                 ))
             }
         }
@@ -1286,7 +1284,7 @@ class SettingsViewModel @Inject constructor(
                 appPreferences.setWebSearchProvider(provider)
             } catch (e: Exception) {
                 _events.emit(SettingsEvent.ShowSnackbar(
-                    message = "Failed to save search provider setting"
+                    message = "Could not save search provider setting"
                 ))
             }
         }
@@ -1302,7 +1300,7 @@ class SettingsViewModel @Inject constructor(
                 _events.emit(SettingsEvent.ShowSnackbar(message = "Exa API key saved"))
             } catch (e: Exception) {
                 _events.emit(SettingsEvent.ShowSnackbar(
-                    message = "Failed to save Exa API key"
+                    message = "Could not save Exa API key"
                 ))
             }
         }
@@ -1317,7 +1315,7 @@ class SettingsViewModel @Inject constructor(
                 appPreferences.setSearxngBaseUrl(url)
             } catch (e: Exception) {
                 _events.emit(SettingsEvent.ShowSnackbar(
-                    message = "Failed to save SearXNG URL"
+                    message = "Could not save SearXNG URL"
                 ))
             }
         }
@@ -1332,7 +1330,7 @@ class SettingsViewModel @Inject constructor(
                 appPreferences.setWebSearchMaxResults(maxResults)
             } catch (e: Exception) {
                 _events.emit(SettingsEvent.ShowSnackbar(
-                    message = "Failed to save max results setting"
+                    message = "Could not save max results setting"
                 ))
             }
         }
@@ -1349,7 +1347,7 @@ class SettingsViewModel @Inject constructor(
                 appPreferences.setAutoCheckUpdates(enabled)
             } catch (e: Exception) {
                 _events.emit(SettingsEvent.ShowSnackbar(
-                    message = "Failed to save auto-update setting"
+                    message = "Could not save auto-update setting"
                 ))
             }
         }

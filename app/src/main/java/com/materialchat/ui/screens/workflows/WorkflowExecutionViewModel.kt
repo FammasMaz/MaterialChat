@@ -97,7 +97,7 @@ class WorkflowExecutionViewModel @Inject constructor(
                 _uiState.update {
                     it.copy(
                         isLoading = false,
-                        error = e.message ?: "Failed to load workflow"
+                        error = "Could not load the workflow"
                     )
                 }
             }
@@ -146,7 +146,7 @@ class WorkflowExecutionViewModel @Inject constructor(
                         execution = WorkflowExecution(
                             workflowId = workflowId,
                             status = WorkflowStatus.FAILED,
-                            error = e.message ?: "Execution failed"
+                            error = "Could not run the workflow"
                         )
                     )
                 }

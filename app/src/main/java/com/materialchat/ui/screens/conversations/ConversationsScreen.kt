@@ -364,7 +364,7 @@ fun ConversationsScreen(
                             renameConversation = null
                         }
                     ) {
-                        Text("Retry with AI")
+                        Text("Try again with AI")
                     }
                     TextButton(
                         colors = dialogDestructiveButtonColors(),
@@ -876,7 +876,7 @@ private fun ConversationMetadataDialog(
             append(titleModel)
         }
     } else {
-        "Not recorded yet — retry/regenerate the title to capture the source"
+        "Not recorded yet. Generate the title again to capture the source"
     }
 
     AlertDialog(

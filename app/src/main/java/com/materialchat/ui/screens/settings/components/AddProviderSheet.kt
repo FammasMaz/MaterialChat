@@ -328,7 +328,7 @@ private fun AddProviderSheetContent(
                             "API key (leave blank to keep existing)"
                         else -> "API key"
                     },
-                    placeholder = "sk-...",
+                    placeholder = "sk-…",
                     leadingIcon = Icons.Outlined.Key,
                     error = formState.apiKeyError,
                     enabled = !isSaving,

@@ -55,7 +55,7 @@ class InsightsViewModel @Inject constructor(
                 _uiState.value = InsightsUiState.Success(data)
             } catch (e: Exception) {
                 _uiState.value = InsightsUiState.Error(
-                    e.message ?: "Failed to load insights"
+                    "Could not load insights"
                 )
             }
         }

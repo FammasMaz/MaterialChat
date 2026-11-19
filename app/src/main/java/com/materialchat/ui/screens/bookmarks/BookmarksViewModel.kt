@@ -56,7 +56,7 @@ class BookmarksViewModel @Inject constructor(
                 searchBookmarksUseCase.observeAllBookmarks()
                     .catch { e ->
                         _uiState.value = BookmarksUiState.Error(
-                            message = e.message ?: "Failed to load bookmarks"
+                            message = "Could not load bookmarks"
                         )
                     }
                     .collectLatest { bookmarks ->
@@ -78,7 +78,7 @@ class BookmarksViewModel @Inject constructor(
                     }
             } catch (e: Exception) {
                 _uiState.value = BookmarksUiState.Error(
-                    message = e.message ?: "Failed to load bookmarks"
+                    message = "Could not load bookmarks"
                 )
             }
         }
@@ -108,7 +108,7 @@ class BookmarksViewModel @Inject constructor(
 
                 flow.catch { e ->
                     _uiState.value = BookmarksUiState.Error(
-                        message = e.message ?: "Failed to filter bookmarks"
+                        message = "Could not filter bookmarks"
                     )
                 }.collectLatest { bookmarks ->
                     val bookmarkItems = buildBookmarkItems(bookmarks)
@@ -122,7 +122,7 @@ class BookmarksViewModel @Inject constructor(
                 }
             } catch (e: Exception) {
                 _uiState.value = BookmarksUiState.Error(
-                    message = e.message ?: "Failed to filter bookmarks"
+                    message = "Could not filter bookmarks"
                 )
             }
         }
@@ -151,7 +151,7 @@ class BookmarksViewModel @Inject constructor(
 
                 flow.catch { e ->
                     _uiState.value = BookmarksUiState.Error(
-                        message = e.message ?: "Failed to filter bookmarks"
+                        message = "Could not filter bookmarks"
                     )
                 }.collectLatest { bookmarks ->
                     val bookmarkItems = buildBookmarkItems(bookmarks)
@@ -165,7 +165,7 @@ class BookmarksViewModel @Inject constructor(
                 }
             } catch (e: Exception) {
                 _uiState.value = BookmarksUiState.Error(
-                    message = e.message ?: "Failed to filter bookmarks"
+                    message = "Could not filter bookmarks"
                 )
             }
         }

@@ -144,7 +144,7 @@ class ModelAssignmentsViewModel @Inject constructor(
                         }
                     }
                     .onFailure { err ->
-                        failures += "${provider.name}: ${err.message ?: "fetch failed"}"
+                        failures += provider.name
                     }
             }
             _pickerState.update {
@@ -153,7 +153,7 @@ class ModelAssignmentsViewModel @Inject constructor(
                     hasLoaded = true,
                     modelsByProvider = results,
                     error = if (results.isEmpty() && failures.isNotEmpty()) {
-                        failures.joinToString("; ")
+                        "Could not fetch models from ${failures.joinToString(", ")}"
                     } else null
                 )
             }

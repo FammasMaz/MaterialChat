@@ -114,7 +114,7 @@ class ConversationsViewModel @Inject constructor(
                 .distinctUntilChanged()
                 .catch { e ->
                     _uiState.value = ConversationsUiState.Error(
-                        message = e.message ?: "Failed to load conversations"
+                        message = "Could not load conversations"
                     )
                 }
                 .collect { data ->
@@ -219,7 +219,7 @@ class ConversationsViewModel @Inject constructor(
             } catch (e: Exception) {
                 _events.emit(
                     ConversationsEvent.ShowSnackbar(
-                        message = e.message ?: "Failed to create conversation"
+                        message = "Could not create the conversation"
                     )
                 )
             }
@@ -239,7 +239,7 @@ class ConversationsViewModel @Inject constructor(
             } catch (e: Exception) {
                 _events.emit(
                     ConversationsEvent.ShowSnackbar(
-                        message = e.message ?: "Failed to create temporary conversation"
+                        message = "Could not create a temporary conversation"
                     )
                 )
             }
@@ -384,7 +384,7 @@ class ConversationsViewModel @Inject constructor(
             } catch (e: Exception) {
                 _events.emit(
                     ConversationsEvent.ShowSnackbar(
-                        message = "Failed to archive chat: ${e.message}"
+                        message = "Could not archive the chat"
                     )
                 )
             }
@@ -409,7 +409,7 @@ class ConversationsViewModel @Inject constructor(
             } catch (e: Exception) {
                 _events.emit(
                     ConversationsEvent.ShowSnackbar(
-                        message = "Failed to restore chat: ${e.message}"
+                        message = "Could not restore the chat"
                     )
                 )
             }
@@ -427,7 +427,7 @@ class ConversationsViewModel @Inject constructor(
         } catch (e: Exception) {
             _events.emit(
                 ConversationsEvent.ShowSnackbar(
-                    message = "Failed to delete conversation: ${e.message}"
+                    message = "Could not delete the conversation"
                 )
             )
         } finally {
@@ -534,7 +534,7 @@ class ConversationsViewModel @Inject constructor(
             } catch (e: Exception) {
                 _events.emit(
                     ConversationsEvent.ShowSnackbar(
-                        message = "Failed to update title: ${e.message}"
+                        message = "Could not update the title"
                     )
                 )
             }
@@ -574,7 +574,7 @@ class ConversationsViewModel @Inject constructor(
                     onFailure = { error ->
                         _events.emit(
                             ConversationsEvent.ShowSnackbar(
-                                message = error.message ?: "Title generation failed"
+                                message = "Could not generate a title"
                             )
                         )
                     }
@@ -582,7 +582,7 @@ class ConversationsViewModel @Inject constructor(
             } catch (e: Exception) {
                 _events.emit(
                     ConversationsEvent.ShowSnackbar(
-                        message = "Failed to generate title: ${e.message}"
+                        message = "Could not generate a title"
                     )
                 )
             }
