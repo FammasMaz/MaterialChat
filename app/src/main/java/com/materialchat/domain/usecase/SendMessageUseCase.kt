@@ -822,7 +822,7 @@ class SendMessageUseCase @Inject constructor(
         }
 
         if (cleaned.length > 60) {
-            cleaned = cleaned.take(57) + "..."
+            cleaned = cleaned.take(59) + "\u2026"
         }
 
         return cleaned.ifBlank { "Branch" }
@@ -1061,7 +1061,7 @@ MaterialChat image generation tool:
         return if (cleaned.length <= maxLength) {
             cleaned
         } else {
-            cleaned.take(maxLength - 3) + "..."
+            cleaned.take(maxLength - 1) + "\u2026"
         }
     }
 

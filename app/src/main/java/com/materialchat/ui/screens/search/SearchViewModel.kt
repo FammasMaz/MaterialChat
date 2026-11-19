@@ -79,6 +79,21 @@ class SearchViewModel @Inject constructor(
     }
 
     /**
+     * Re-runs the current query after [SearchUiState.Error] (the error card's "Try again").
+     * Shows [SearchUiState.Loading] synchronously so the card leaves at once; a query that
+     * became too short meanwhile returns to idle.
+     */
+    fun retry() {
+        val query = _searchQuery.value
+        if (query.length < MIN_QUERY_LENGTH) {
+            _uiState.value = SearchUiState.Idle
+        } else {
+            _uiState.value = SearchUiState.Loading
+            performSearch(query)
+        }
+    }
+
+    /**
      * Performs the search operation.
      */
     private fun performSearch(query: String) {
@@ -151,7 +166,7 @@ class SearchViewModel @Inject constructor(
         private const val MIN_QUERY_LENGTH = 2
         private const val MAX_RESULTS = 10
 
-        /** Supporting line under the inline "Search failed" notice. */
+        /** Body of the search error card (`ErrorContent`, W6 audit #10); the headline is fixed in the screen. */
         const val SEARCH_UNAVAILABLE = "Something went wrong while searching your chats"
     }
 }

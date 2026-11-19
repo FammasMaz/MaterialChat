@@ -24,7 +24,14 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import com.materialchat.ui.components.HapticPattern
 import com.materialchat.ui.components.rememberHapticFeedback
-import com.materialchat.ui.theme.CustomShapes
+
+/**
+ * The arena composer's corner geometry: round 28dp, the same corner class as the chat
+ * composer (W4 ruling, `Shapes.kt` `MessageBubbleShapes` KDoc: bubbles and the composer sit
+ * under each other and share circular corners; squircles are for cards and sheets). Held here
+ * rather than on `CustomShapes.MessageInputContainer`, which chat no longer reads (W6 audit #8).
+ */
+private val ArenaComposerShape = RoundedCornerShape(28.dp)
 
 /**
  * Prompt text field for the arena screen.
@@ -58,7 +65,7 @@ fun ArenaPromptInput(
                 Text("Enter a prompt for the models…")
             },
             enabled = enabled,
-            shape = CustomShapes.MessageInputContainer,
+            shape = ArenaComposerShape,
             colors = OutlinedTextFieldDefaults.colors(
                 focusedBorderColor = MaterialTheme.colorScheme.primary,
                 unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant

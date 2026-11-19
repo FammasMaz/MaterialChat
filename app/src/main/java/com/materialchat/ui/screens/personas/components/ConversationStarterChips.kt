@@ -14,7 +14,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.text.style.TextOverflow
-import com.materialchat.ui.theme.CustomShapes
+import com.materialchat.ui.theme.ExpressiveShapes
 
 /**
  * Horizontally scrollable row of suggestion chips for persona conversation starters.
@@ -51,7 +51,7 @@ fun ConversationStarterChips(
                         overflow = TextOverflow.Ellipsis
                     )
                 },
-                shape = CustomShapes.Pill,
+                shape = ExpressiveShapes.Chip,
                 colors = SuggestionChipDefaults.suggestionChipColors(
                     containerColor = MaterialTheme.colorScheme.secondaryContainer,
                     labelColor = MaterialTheme.colorScheme.onSecondaryContainer

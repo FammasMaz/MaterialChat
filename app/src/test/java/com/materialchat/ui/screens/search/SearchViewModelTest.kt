@@ -50,6 +50,34 @@ class SearchViewModelTest {
     }
 
     @Test
+    fun `retry after an error shows loading at once and re-runs the same query`() = runTest {
+        Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+        coEvery { useCase("boom", any()) } throws IOException("fts table missing") andThen emptyList()
+
+        val viewModel = SearchViewModel(useCase)
+        viewModel.onQueryChange("boom")
+        advanceUntilIdle()
+        assertEquals(SearchUiState.Error(SearchViewModel.SEARCH_UNAVAILABLE), viewModel.uiState.value)
+
+        viewModel.retry()
+        assertEquals("the error card leaves synchronously", SearchUiState.Loading, viewModel.uiState.value)
+        advanceUntilIdle()
+        assertEquals(SearchUiState.Empty("boom"), viewModel.uiState.value)
+    }
+
+    @Test
+    fun `retry with a query that is now too short returns to idle without searching`() = runTest {
+        Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+
+        val viewModel = SearchViewModel(useCase)
+        viewModel.onQueryChange("a")
+        viewModel.retry()
+        advanceUntilIdle()
+
+        assertEquals(SearchUiState.Idle, viewModel.uiState.value)
+    }
+
+    @Test
     fun `no hits is the empty state carrying the query`() = runTest {
         Dispatchers.setMain(StandardTestDispatcher(testScheduler))
         coEvery { useCase("zzzz", any()) } returns emptyList()
