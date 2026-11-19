@@ -78,6 +78,8 @@ class ChatContrastTest {
             "assistant error[0]", "assistant link", "system bubble",
             "thinking title[0]", "thinking preview[1]", "thinking chevron[0]", "thinking body",
             "memory saved chip", "memory used chip", "memory panel", "memory panel title",
+            "sources header collapsed", "sources header expanded",
+            "sources header muted collapsed", "sources header muted expanded",
             "action standard", "action primary", "action selected", "action stats text", "meta label",
             "date pill", "header chip Temporary", "header chip ContextCritical",
             "model picker[0]", "model picker disabled[1]", "composer text[0]", "composer placeholder[1]",

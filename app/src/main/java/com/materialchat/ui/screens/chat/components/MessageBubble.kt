@@ -106,6 +106,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
@@ -1411,12 +1412,33 @@ private fun MemoryReferenceList(
             style = MaterialTheme.typography.labelMedium,
             color = palette.memoryPanelTitle
         )
-        memories.take(3).forEach { memory ->
-            Text(
-                text = "• ${memory.label}",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+        // Same list treatment as the web-search source cards: an indexed primary-container
+        // badge leading each row instead of a typed bullet.
+        memories.take(3).forEachIndexed { index, memory ->
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Surface(
+                    shape = MaterialTheme.shapes.extraSmall,
+                    color = MaterialTheme.colorScheme.primaryContainer
+                ) {
+                    Text(
+                        text = "${index + 1}",
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.dp)
+                    )
+                }
+                Text(
+                    text = memory.label,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = palette.memoryPanel.content,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
         }
         if (memories.size > 3) {
             Text(

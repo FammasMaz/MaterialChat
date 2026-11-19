@@ -125,6 +125,12 @@ internal data class ChatSurfacePalette(
     /** The expanded memory panel (translucent highest container over the bubble) and its body. */
     val memoryPanel: ChatTonal,
     val memoryPanelTitle: Color,
+    /** The web-search sources header: collapsed (surfaceContainerHigh) and expanded (secondaryContainer at 0.72 over the bubble). */
+    val sourcesHeaderCollapsed: ChatTonal,
+    val sourcesHeaderExpanded: ChatTonal,
+    /** The secondary line / duration on the sources header, per state. */
+    val sourcesHeaderMutedCollapsed: Color,
+    val sourcesHeaderMutedExpanded: Color,
     /** Action row segments: standard, the primary (regenerate), toggled (bookmarked / stats). */
     val actionStandard: ChatTonal,
     val actionPrimary: ChatTonal,
@@ -214,6 +220,10 @@ internal data class ChatSurfacePalette(
         text("memory used chip", memoryUsedChip)
         text("memory panel", memoryPanel)
         add("memory panel title", memoryPanel.fill, memoryPanelTitle, ChatContrast.BODY_TEXT)
+        text("sources header collapsed", sourcesHeaderCollapsed)
+        text("sources header expanded", sourcesHeaderExpanded)
+        add("sources header muted collapsed", sourcesHeaderCollapsed.fill, sourcesHeaderMutedCollapsed, ChatContrast.BODY_TEXT)
+        add("sources header muted expanded", sourcesHeaderExpanded.fill, sourcesHeaderMutedExpanded, ChatContrast.BODY_TEXT)
         icon("action standard", actionStandard)
         icon("action primary", actionPrimary)
         icon("action selected", actionSelected)
@@ -299,6 +309,9 @@ internal data class ChatSurfacePalette(
                 ChatContrast.over(assistant.content.copy(alpha = 0.04f), assistantFill)
             )
             val memoryPanelFill = ChatContrast.over(scheme.surfaceContainerHighest.copy(alpha = 0.86f), assistantFill)
+            val sourcesExpandedFill = ChatContrast.over(scheme.secondaryContainer.copy(alpha = 0.72f), assistantFill)
+            val sourcesCollapsed = tonal(scheme.surfaceContainerHigh, scheme.onSurfaceVariant, body)
+            val sourcesExpanded = tonal(sourcesExpandedFill, scheme.onSecondaryContainer, body)
             val modelPickerFills = listOf(
                 ChatContrast.over(scheme.secondaryContainer.copy(alpha = 0.72f), headerFill),
                 scheme.secondaryContainer
@@ -357,6 +370,10 @@ internal data class ChatSurfacePalette(
                 memoryUsedChip = tonal(scheme.secondaryContainer, scheme.onSecondaryContainer, body),
                 memoryPanel = tonal(memoryPanelFill, scheme.onSurfaceVariant, body),
                 memoryPanelTitle = faded(listOf(memoryPanelFill), scheme.onSurfaceVariant, 0.72f, body),
+                sourcesHeaderCollapsed = sourcesCollapsed,
+                sourcesHeaderExpanded = sourcesExpanded,
+                sourcesHeaderMutedCollapsed = faded(listOf(sourcesCollapsed.fill), sourcesCollapsed.content, 0.72f, body),
+                sourcesHeaderMutedExpanded = faded(listOf(sourcesExpandedFill), sourcesExpanded.content, 0.72f, body),
                 actionStandard = tonal(scheme.surfaceContainerHigh, scheme.onSurfaceVariant, icon),
                 actionPrimary = tonal(scheme.secondaryContainer, scheme.onSecondaryContainer, icon),
                 actionSelected = tonal(scheme.primaryContainer, scheme.onPrimaryContainer, body),

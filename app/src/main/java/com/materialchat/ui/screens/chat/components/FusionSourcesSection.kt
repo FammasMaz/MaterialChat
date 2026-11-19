@@ -71,9 +71,8 @@ fun FusionSourcesSection(
                 imageVector = if (isExpanded) Icons.Default.KeyboardArrowUp
                 else Icons.Default.KeyboardArrowDown,
                 contentDescription = if (isExpanded) "Collapse sources" else "Expand sources",
-                modifier = Modifier
-                    .size(16.dp)
-                    .alpha(0.6f),
+                // Solid secondary role: a 0.6-alpha icon on the bubble fell under 3:1 on light palettes.
+                modifier = Modifier.size(16.dp),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant
             )
 

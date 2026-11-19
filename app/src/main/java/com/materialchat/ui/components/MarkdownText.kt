@@ -458,9 +458,12 @@ private fun MathDocumentWebView(
     val textColor = style.color.takeIf { it != Color.Unspecified }
         ?: MaterialTheme.colorScheme.onSurface
     val backgroundColor = "transparent"
-    val surfaceContainer = MaterialTheme.colorScheme.surfaceContainer
+    // Same tiers as the native table below (and ChatSurfacePalette.tableBody / tableAlternate /
+    // tableHeader): body rows on surfaceContainerLow, zebra rows one tier up, header two up.
+    // Previously the WebView path had body and zebra swapped relative to the native path.
+    val surfaceContainer = MaterialTheme.colorScheme.surfaceContainerLow
     val headerBackground = MaterialTheme.colorScheme.surfaceContainerHigh
-    val alternateRowColor = MaterialTheme.colorScheme.surfaceContainerLow
+    val alternateRowColor = MaterialTheme.colorScheme.surfaceContainer
     val outlineColor = MaterialTheme.colorScheme.outlineVariant
     val linkColor = MaterialTheme.colorScheme.primary
     val fontSize = style.fontSize.takeIf { it != TextUnit.Unspecified } ?: 16.sp
