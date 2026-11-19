@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import com.materialchat.ui.theme.CustomShapes
-import com.materialchat.ui.theme.ExpressiveShapes
 import com.materialchat.ui.theme.ExpressiveSizes
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bookmark
@@ -25,7 +24,6 @@ import androidx.compose.material.icons.automirrored.outlined.OpenInNew
 import androidx.compose.material.icons.filled.School
 import androidx.compose.material.icons.outlined.BookmarkBorder
 import androidx.compose.material.icons.outlined.Build
-import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -43,6 +41,7 @@ import com.materialchat.domain.model.BookmarkCategory
 import com.materialchat.ui.components.HapticPattern
 import com.materialchat.ui.components.rememberHapticFeedback
 import com.materialchat.ui.screens.bookmarks.BookmarkWithMessage
+import com.materialchat.ui.components.ExpressiveAssistChip
 
 /**
  * A card displaying a bookmarked message in the knowledge base.
@@ -152,9 +151,8 @@ fun BookmarkCard(
                     verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     bookmark.tags.forEach { tag ->
-                        AssistChip(
+                        ExpressiveAssistChip(
                             onClick = { },
-                            shape = ExpressiveShapes.Chip,
                             label = {
                                 Text(
                                     text = tag,

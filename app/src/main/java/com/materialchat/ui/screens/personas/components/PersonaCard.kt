@@ -27,7 +27,6 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.SuggestionChip
 import androidx.compose.material3.SuggestionChipDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -45,6 +44,7 @@ import com.materialchat.ui.components.HapticPattern
 import com.materialchat.ui.components.rememberHapticFeedback
 import com.materialchat.ui.theme.ExpressiveMotion
 import kotlin.math.absoluteValue
+import com.materialchat.ui.components.ExpressiveSuggestionChip
 
 /**
  * Generates a persona colour from the color seed or name hash.
@@ -177,9 +177,8 @@ fun PersonaCard(
                     verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     persona.expertiseTags.take(3).forEach { tag ->
-                        SuggestionChip(
+                        ExpressiveSuggestionChip(
                             onClick = { },
-                            shape = ExpressiveShapes.Chip,
                             label = {
                                 Text(
                                     text = tag,

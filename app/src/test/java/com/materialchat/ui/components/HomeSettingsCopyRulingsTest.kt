@@ -46,6 +46,17 @@ class HomeSettingsCopyRulingsTest {
         "data/auth/NativeAuthManager.kt"
     )
 
+    /**
+     * Copy that reaches the user from below the UI layer: persona starters, conversation previews
+     * and generated titles, failure lines built in the data layer (W8 part 3). Raw strings
+     * (`"""…"""`) are model prompts and JSON templates, never shown as copy; log lines are
+     * diagnostics. Both are skipped by [userFacingLiterals].
+     */
+    private val copyDirectories = listOf(
+        "domain/usecase",
+        "data"
+    )
+
     /** `ui/components` files that belong to the theme or chat owner. */
     private val notOwnedComponents = setOf(
         "MathWebViewTouch.kt",
@@ -98,6 +109,33 @@ class HomeSettingsCopyRulingsTest {
 
     private fun literals(file: File): List<Pair<Int, String>> = codeLines(file).flatMap { (line, text) ->
         literal.findAll(text).map { line to it.groupValues[1] }.toList()
+    }
+
+    private fun copySources(): List<File> {
+        val root = mainSourceRoot()
+        val files = copyDirectories.flatMap { entry ->
+            val dir = File(root, entry)
+            if (!dir.isDirectory) emptyList() else dir.walkTopDown().filter { it.isFile && it.extension == "kt" }.toList()
+        }.distinctBy { it.canonicalPath }
+        assertTrue("expected the domain/data copy set to contain sources, got ${files.size}", files.size >= 20)
+        return files
+    }
+
+    private val rawQuote = Regex("\"\"\"")
+    private val logLine = Regex("\\bLog\\.[a-z]+\\(|\\bTimber\\.")
+
+    /** Plain string literals outside comments, raw strings and log calls. */
+    private fun userFacingLiterals(file: File): List<Pair<Int, String>> {
+        var inRaw = false
+        return file.readLines().flatMapIndexed { index, line ->
+            val wasRaw = inRaw
+            if (rawQuote.findAll(line).count() % 2 == 1) inRaw = !inRaw
+            if (wasRaw || inRaw || isComment(line) || logLine.containsMatchIn(line)) {
+                emptyList()
+            } else {
+                literal.findAll(line.substringBefore(" // ")).map { (index + 1) to it.groupValues[1] }.toList()
+            }
+        }
     }
 
     private fun report(hits: List<String>, rule: String) =
@@ -155,6 +193,29 @@ class HomeSettingsCopyRulingsTest {
                 .map { (line, text) -> "${file.name}:$line \"$text\"" }
         }
         report(hits, "ASCII ... in copy; use \u2026")
+    }
+
+    @Test
+    fun `no domain or data copy literal carries an ASCII ellipsis`() {
+        val hits = copySources().flatMap { file ->
+            userFacingLiterals(file).filter { (_, text) -> text.contains("...") }
+                .map { (line, text) -> "${file.name}:$line \"$text\"" }
+        }
+        report(hits, "ASCII ... in copy shown to users below the UI layer; use \u2026 (CopyRules.ELLIPSIS)")
+    }
+
+    @Test
+    fun `the raw string and log exemptions do not hide ordinary literals`() {
+        val personas = File(mainSourceRoot(), "domain/usecase/GetBuiltinPersonasUseCase.kt")
+        assertTrue(personas.isFile)
+        val starters = userFacingLiterals(personas).map { it.second }
+        assertTrue("the persona starters must be scanned", starters.any { it.startsWith("Challenge my argument that") })
+        val memories = File(mainSourceRoot(), "domain/usecase/ExtractMemoriesUseCase.kt")
+        assertTrue(memories.isFile)
+        assertTrue(
+            "the JSON template inside the extraction prompt is a raw string and must be skipped",
+            userFacingLiterals(memories).none { it.second == "..." }
+        )
     }
 
     @Test

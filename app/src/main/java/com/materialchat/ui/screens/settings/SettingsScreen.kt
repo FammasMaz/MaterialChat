@@ -77,7 +77,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Slider
@@ -165,6 +164,7 @@ import com.materialchat.ui.theme.ExpressiveSizes
 import com.materialchat.ui.theme.MaterialChatThemePalettes
 import com.materialchat.ui.theme.dialogActionColor
 import com.materialchat.ui.theme.dialogDestructiveColor
+import com.materialchat.ui.components.ExpressiveFilterChip
 
 /**
  * Settings screen for managing providers, theme, and app preferences.
@@ -2565,9 +2565,8 @@ private fun DefaultImageGenerationModelField(
             ) {
                 AppPreferences.SUPPORTED_IMAGE_GENERATION_MODELS.forEach { model ->
                     val tier = model.substringAfterLast('-').replaceFirstChar { it.uppercase() }
-                    FilterChip(
+                    ExpressiveFilterChip(
                         selected = currentModel == model,
-                        shape = ExpressiveShapes.Chip,
                         onClick = {
                             text = model
                             onModelChange(model)
@@ -2667,9 +2666,8 @@ private fun DefaultImageOutputFormatField(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 AppPreferences.SUPPORTED_IMAGE_OUTPUT_FORMATS.forEach { format ->
-                    FilterChip(
+                    ExpressiveFilterChip(
                         selected = currentFormat == format,
-                        shape = ExpressiveShapes.Chip,
                         onClick = { onFormatChange(format) },
                         label = { Text(format.uppercase()) },
                         modifier = Modifier.weight(1f),
@@ -3145,39 +3143,39 @@ private fun AssistantSection(
             }
         }
 
-        // Assistant toggles: one segmented group whose row count follows the
-        // enabled state so voice and read-aloud join the group when they appear.
-        val rowCount = if (assistantEnabled) 3 else 1
+        // Assistant toggles: one segmented group of three. The two dependent rows stay in
+        // place and are disabled while the assistant is off (W8 part 2): the group's shape no
+        // longer reflows on the parent toggle, and the user can see what turning it on unlocks.
         SettingsGroup {
             SettingsToggleRow(
                 index = 0,
-                count = rowCount,
+                count = 3,
                 title = "System assistant",
                 supporting = "Replace default assistant on your device",
                 icon = Icons.Outlined.SmartToy,
                 checked = assistantEnabled,
                 onCheckedChange = onAssistantEnabledChange
             )
-            if (assistantEnabled) {
-                SettingsToggleRow(
-                    index = 1,
-                    count = rowCount,
-                    title = "Voice input",
-                    supporting = "Use microphone for voice queries",
-                    icon = Icons.Outlined.Mic,
-                    checked = voiceEnabled,
-                    onCheckedChange = onVoiceEnabledChange
-                )
-                SettingsToggleRow(
-                    index = 2,
-                    count = rowCount,
-                    title = "Read aloud",
-                    supporting = "Use text-to-speech for responses",
-                    icon = Icons.Outlined.RecordVoiceOver,
-                    checked = ttsEnabled,
-                    onCheckedChange = onTtsEnabledChange
-                )
-            }
+            SettingsToggleRow(
+                index = 1,
+                count = 3,
+                title = "Voice input",
+                supporting = "Use microphone for voice queries",
+                icon = Icons.Outlined.Mic,
+                checked = voiceEnabled,
+                onCheckedChange = onVoiceEnabledChange,
+                enabled = assistantEnabled
+            )
+            SettingsToggleRow(
+                index = 2,
+                count = 3,
+                title = "Read aloud",
+                supporting = "Use text-to-speech for responses",
+                icon = Icons.Outlined.RecordVoiceOver,
+                checked = ttsEnabled,
+                onCheckedChange = onTtsEnabledChange,
+                enabled = assistantEnabled
+            )
         }
 
         // Set as Default Assistant button

@@ -101,7 +101,7 @@ class GetBuiltinPersonasUseCase @Inject constructor() {
                 expertiseTags = listOf("debate", "critical-thinking", "logic"),
                 tone = PersonaTone.PROFESSIONAL,
                 conversationStarters = listOf(
-                    "Challenge my argument that...",
+                    "Challenge my argument that\u2026",
                     "Play devil's advocate on this topic",
                     "Find the logical flaws in my reasoning",
                     "Help me strengthen this position"

@@ -11,11 +11,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ArrowDropDown
 import androidx.compose.material.icons.outlined.Check
-import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -29,9 +27,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.materialchat.domain.model.AiModel
-import com.materialchat.ui.theme.ExpressiveShapes
 import com.materialchat.ui.screens.arena.ContenderUi
 import com.materialchat.domain.model.Provider
+import com.materialchat.ui.components.ExpressiveFilterChip
+import com.materialchat.ui.components.ExpressiveAssistChip
 
 /**
  * Blind-battle roster picker.
@@ -73,9 +72,8 @@ fun ArenaModelPicker(
                 .padding(top = 6.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            AssistChip(
+            ExpressiveAssistChip(
                 onClick = { if (enabled) providerMenuOpen = true },
-                shape = ExpressiveShapes.Chip,
                 label = {
                     Text(providerName, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 },
@@ -133,9 +131,8 @@ fun ArenaModelPicker(
             }
             sorted.forEach { model ->
                 val contender = selectedContenders.firstOrNull { it.modelName == model.id }
-                FilterChip(
+                ExpressiveFilterChip(
                     selected = contender != null,
-                    shape = ExpressiveShapes.Chip,
                     onClick = { if (enabled || contender != null) onToggleContender(model) },
                     label = {
                         Text(

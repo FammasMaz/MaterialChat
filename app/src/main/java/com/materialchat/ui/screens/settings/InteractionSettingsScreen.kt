@@ -19,7 +19,6 @@ import androidx.compose.material.icons.filled.SmartButton
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -42,6 +41,7 @@ import com.materialchat.ui.components.ExpressiveTopBarTitle
 import com.materialchat.ui.components.HapticPattern
 import com.materialchat.ui.components.rememberHapticFeedback
 import com.materialchat.ui.theme.ExpressiveShapes
+import com.materialchat.ui.components.ExpressiveFilterChip
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -205,9 +205,8 @@ private fun HapticPatternDemoRow() {
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         demos.forEach { (label, pattern) ->
-            FilterChip(
+            ExpressiveFilterChip(
                 selected = false,
-                shape = ExpressiveShapes.Chip,
                 onClick = { haptics.perform(pattern) },
                 label = { Text(label) },
                 colors = FilterChipDefaults.filterChipColors(
@@ -234,9 +233,8 @@ private fun ShapeSelector(
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             AppPreferences.ComponentButtonShape.entries.forEach { shape ->
-                FilterChip(
+                ExpressiveFilterChip(
                     selected = selectedShape == shape,
-                    shape = ExpressiveShapes.Chip,
                     onClick = {
                         haptics.perform(HapticPattern.SEGMENT_TICK)
                         onShapeSelected(shape)

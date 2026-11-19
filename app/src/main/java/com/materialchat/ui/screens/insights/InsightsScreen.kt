@@ -20,7 +20,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
@@ -44,6 +43,7 @@ import com.materialchat.ui.screens.insights.components.ResponseTimeChart
 import com.materialchat.ui.screens.insights.components.StatCard
 import com.materialchat.ui.theme.ExpressiveShapes
 import com.materialchat.ui.theme.ExpressiveSizes
+import com.materialchat.ui.components.ExpressiveFilterChip
 
 /**
  * Conversation Intelligence Dashboard screen.
@@ -146,9 +146,8 @@ private fun TimeRangeFilterRow(
         modifier = modifier.horizontalScroll(rememberScrollState())
     ) {
         InsightsTimeRange.entries.forEach { range ->
-            FilterChip(
+            ExpressiveFilterChip(
                 selected = selectedRange == range,
-                shape = ExpressiveShapes.Chip,
                 onClick = { onRangeSelected(range) },
                 label = { Text(range.label) },
                 colors = FilterChipDefaults.filterChipColors(
