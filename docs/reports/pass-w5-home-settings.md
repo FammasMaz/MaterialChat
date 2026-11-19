@@ -126,3 +126,60 @@ To do after `git fetch origin && git rebase origin/main` once `docs/reports/pass
 - Masthead at font scale 1.3: `heightIn` math (52dp line in a ≥44dp row) is reasoned, not rendered; the collapsed-bar alignment with the icon buttons at scale 1.3 may shift by the extra 8dp.
 - RTL transform origin: not exercised under `LayoutDirection.Rtl`.
 - `Error*` contrast slots are numeric WCAG checks on the resolved scheme; rendered elevation tint is not covered.
+
+## Part 7 — theme rows (after rebase onto `c22e062`)
+
+Rebased with nothing to replay (the six W5 commits were already on `origin/main`). `MainActivity.kt` (`17170a9`, OPEN_SETTINGS routing) untouched.
+
+### Commits
+
+| Commit | Part |
+|---|---|
+| `17e37b2` | 7a — `ErrorContent` repoint, retry hooks, `ContrastSlotSet`, dialog action colours, masthead target token |
+| `60dff1f` | 7b — chip shape, size tokens, `TileBadge`/`Tile`, indicator tokens |
+
+### Gates (at `60dff1f`)
+
+`:app:compileGithubDebugKotlin` and `:app:compileGithubDebugAndroidTestKotlin` rc=0 before each commit; `:app:testGithubDebugUnitTest` **746 tests, 0 failures** (3 test files added in 7a: `PersonaStudioViewModelTest` (1), `WorkflowExecutionViewModelRetryTest` (1), `HomeSettingsContrastSlotsTest` (1)). No existing test, testTag, contentDescription, `scripts/` or `.github/` file touched; no italics.
+
+### 7a (`17e37b2`)
+
+| File:line | Change |
+|---|---|
+| `ui/components/LoadError.kt:31-47` | `LoadErrorContent` is a thin alias over the shared `ui/components/ErrorContent` (error tile on `errorContainer`, `headlineSmall` Bold, `bodyMedium`, Card on `surfaceContainer`); `onRetry` is now required, `onBack` maps to `secondaryLabel = "Go back"` / `onSecondary` so the order is always Try again, then Go back; `ERROR_RETRY_LABEL = ErrorContentCopy.TRY_AGAIN` |
+| `personas/PersonaStudioViewModel.kt` (`retry()`), `personas/PersonaStudioScreen.kt:139` | Personas had no reload; `retry()` returns to `Loading` and re-observes, the screen passes `onRetry = viewModel::retry` plus `onBack` |
+| `workflows/WorkflowExecutionViewModel.kt` (`retry()`), `workflows/WorkflowExecutionScreen.kt:139` | `retry()` clears `error`, sets `isLoading` and reloads the workflow; screen passes it plus `onBack` |
+| `conversations/ConversationsScreen.kt:847`, `bookmarks/BookmarksScreen.kt:121`, `settings/SettingsScreen.kt:785` | unchanged call sites, now render the shared card through the alias |
+| `conversations/HomeEmptyState.kt` | `secondaryAction` (added in `5aa1f9b` for the fold) removed again: no consumer after the repoint |
+| `ui/components/HomeSettingsContrast.kt` | `HomeSettingsPalette` implements `ContrastSlotSet` (`surfaceName = "home-settings"`, `slots = pairs()`); new `HomeSettingsContrastSlots : ContrastSlotResolver` so the theme gate can drop its adapter at `ThemeContrastTest.kt:55-58` |
+| `ui/components/DialogActionColors.kt` (new) | `dialogActionButtonColors()` / `dialogDestructiveButtonColors()` = `ButtonDefaults.textButtonColors(contentColor = dialogActionColor() / dialogDestructiveColor())` |
+| `ui/components/ExpressiveButton.kt:64-66,77,166-170` | optional `contentColor` for the Text style (filled styles ignore it) so `AlertDialog` hosts built on `ExpressiveButton` can draw the resolved colour |
+| `memories/MemoriesScreen.kt:162,173` | Delete all → `dialogDestructiveButtonColors()` (raw `Text(color = error)` dropped), Cancel → `dialogActionButtonColors()` |
+| `settings/SettingsScreen.kt:2694,2745,2795` | backup-passphrase, restore-confirmation and delete-provider dialog buttons on `dialogActionColor()`; the Delete action on `dialogDestructiveColor()` |
+| `conversations/ConversationsScreen.kt:336-425` (rename dialog: Retry with AI, Delete, Archive, Save, Cancel), `:904` (info dialog Done), `:918` (`MetadataRow` label) | `dialogActionButtonColors()` / `dialogDestructiveButtonColors()` / `dialogActionColor()`; the `HomeSettingsSlot.DialogLabel` read is replaced by the theme-level resolution (same value, one source) |
+| `settings/OnDeviceModelsScreen.kt:183-215` | not in the brief's list but the same dialog container: Delete / Got it / Cancel on the resolved colours |
+| `conversations/ConversationsScreen.kt:589` | masthead row `heightIn(min = ExpressiveSizes.CompactTarget)` |
+
+### 7b (`60dff1f`)
+
+| File:line | Change |
+|---|---|
+| `settings/SettingsScreen.kt:2566,2667`; `settings/ModelAssignmentsScreen.kt:667,696`; `settings/InteractionSettingsScreen.kt:208,236`; `insights/InsightsScreen.kt:148`; `bookmarks/components/BookmarkFilterBar.kt:80,134`; `bookmarks/components/BookmarkCard.kt:153`; `bookmarks/components/AddBookmarkSheet.kt:121,162`; `personas/components/PersonaEditorSheet.kt:170` (was `CustomShapes.Pill`); `personas/components/PersonaCard.kt:185` (was `ExpressiveShapes.Badge`); `arena/components/ArenaModelPicker.kt:75,134` | 16 M3 chip sites → `shape = ExpressiveShapes.Chip` (the brief counted 14; the two persona chips already carried a non-default shape and were migrated too) |
+| `conversations/HomeEmptyState.kt:222`, `settings/components/SettingsExpressive.kt:70` | 44dp → `ExpressiveSizes.CompactTarget` |
+| `workflows/components/StepEditor.kt:65-67` | `RoundedCornerShape(14.dp)` / `size(32.dp)` → `ExpressiveShapes.TileBadge` / `ExpressiveSizes.Compact` |
+| `settings/components/SystemPromptField.kt:122` | `CustomShapes.Fab` → `ExpressiveShapes.Tile` (last consumer of the deprecated token) |
+| `settings/SettingsScreen.kt:2319` (18), `:2427` (16), `settings/ModelAssignmentsScreen.kt:438` (20) | → `ExpressiveSizes.IndicatorInline` (20; two sites grow by 2–4dp) |
+| `settings/SettingsScreen.kt:807`, `conversations/ConversationsScreen.kt:1032,1385` | 48 → `ExpressiveSizes.IndicatorHero` |
+
+### Deviation from the brief
+
+- `HomeSettingsSlot.Snackbar*` / `Dialog*` slots were **kept**, not dropped: the theme-owned `ThemeContrastTest.kt:133-137,164-165` and `HomeSettingsContrastTest.kt:66` pin them by name, so removing them would mean editing tests I may not weaken. The theme report's own migration row also says keep them. **Needs theme owner**: delete the pins, then this owner removes the five slots.
+- `ThemeContrastTest.kt:55-58` adapter can now collapse to `HomeSettingsContrastSlots` — theme-owned test file, not edited here.
+
+### Not verifiable without a device
+
+- The shared `ErrorContent` card inside each of the five screens (home list weight slot, settings content surface, bookmarks, personas on the scaffold, workflow execution) at 360dp / font scale 1.3.
+- Dialog action labels on VIOLET light / CITRUS light: the resolved colour falls back to `onSurface` there (pinned numerically), the rendered look of a non-primary dialog button was not seen.
+- Capsule chips next to their neighbours (settings model/format pickers, bookmark filter bar, arena picker, persona tag chips) — rendered only in the JVM's absence.
+- `StepEditor` badge: 12dp squircle on a 32dp tile; `SystemPromptField` 18dp squircle on a 40dp box.
+- Indicator growth 16/18 → 20 inside the two settings rows.
