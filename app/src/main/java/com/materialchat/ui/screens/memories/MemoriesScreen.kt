@@ -58,6 +58,7 @@ import com.materialchat.ui.components.ExpressiveEmptyState
 import com.materialchat.ui.screens.conversations.EmptyStateAccent
 import com.materialchat.ui.components.ExpressiveFilledIconButton
 import com.materialchat.ui.components.ExpressiveTopBarTitle
+import com.materialchat.ui.components.LoadErrorContent
 import com.materialchat.ui.components.dialogEntrance
 import com.materialchat.ui.theme.ExpressiveMotion
 import com.materialchat.ui.theme.ExpressiveShapes
@@ -116,6 +117,11 @@ fun MemoriesScreen(
         ) {
             when {
                 state.isLoading -> MemoriesLoadingContent()
+                state.error != null -> LoadErrorContent(
+                    title = "Memories could not be loaded",
+                    message = "Something went wrong while reading what your assistant remembers",
+                    onRetry = viewModel::retry
+                )
                 state.memories.isEmpty() -> EmptyMemoriesContent()
                 else -> MemoriesListContent(
                     state = state,

@@ -2,6 +2,7 @@ package com.materialchat.ui.screens.arena.components
 
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -10,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -20,7 +22,7 @@ import androidx.compose.material3.LinearWavyProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -40,6 +42,7 @@ import com.materialchat.domain.model.ModelRating
 import com.materialchat.ui.components.ExpressiveFilledIconButton
 import com.materialchat.ui.components.ExpressiveTopBarTitle
 import com.materialchat.ui.components.HapticPattern
+import com.materialchat.ui.components.LoadErrorContent
 import com.materialchat.ui.components.rememberHapticFeedback
 import com.materialchat.ui.theme.ExpressiveMotion
 import com.materialchat.ui.theme.ExpressiveShapes
@@ -61,7 +64,8 @@ fun ArenaLeaderboard(
     modifier: Modifier = Modifier,
     viewModel: ArenaLeaderboardViewModel = hiltViewModel()
 ) {
-    val ratings by viewModel.ratings.collectAsStateWithLifecycle()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val ratings = uiState.ratings
     val haptics = rememberHapticFeedback()
 
     Scaffold(
@@ -87,7 +91,27 @@ fun ArenaLeaderboard(
         },
         modifier = modifier
     ) { innerPadding ->
-        if (ratings.isEmpty()) {
+        if (uiState.isLoading) {
+            @OptIn(ExperimentalMaterial3ExpressiveApi::class)
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding),
+                contentAlignment = Alignment.Center
+            ) {
+                LoadingIndicator(
+                    modifier = Modifier.size(48.dp),
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+        } else if (uiState.error != null) {
+            LoadErrorContent(
+                title = "Leaderboard could not be loaded",
+                message = "Something went wrong while reading the arena ratings",
+                onRetry = viewModel::retry,
+                modifier = Modifier.padding(innerPadding)
+            )
+        } else if (ratings.isEmpty()) {
             Column(
                 modifier = Modifier
                     .fillMaxSize()

@@ -3,11 +3,15 @@ package com.materialchat.ui.screens.workflows
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.materialchat.domain.usecase.ManageWorkflowsUseCase
+import com.materialchat.ui.components.LoadError
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -25,24 +29,42 @@ class WorkflowsViewModel @Inject constructor(
     private val _uiState = MutableStateFlow<WorkflowsUiState>(WorkflowsUiState.Loading)
     val uiState: StateFlow<WorkflowsUiState> = _uiState.asStateFlow()
 
+    private var observeJob: Job? = null
+
     init {
+        load()
+    }
+
+    /** Seeds templates (best effort) and starts observing the workflow list. */
+    private fun load() {
         viewModelScope.launch {
-            manageWorkflowsUseCase.seedTemplatesIfNeeded()
+            // Seeding must not take the list down with it: the observation below reports
+            // the store's real state either way.
+            runCatching { manageWorkflowsUseCase.seedTemplatesIfNeeded() }
         }
         observeWorkflows()
     }
 
     /**
-     * Observes all workflows from the repository and updates UI state.
+     * Observes all workflows from the repository and updates UI state. A failure anywhere
+     * in the observation (including a synchronous throw from the use case) lands in
+     * [WorkflowsUiState.Error] instead of leaving the screen on its loading indicator.
      */
     private fun observeWorkflows() {
-        viewModelScope.launch {
-            manageWorkflowsUseCase.observeAll()
-                .catch { /* Silently handle — list remains empty */ }
+        observeJob?.cancel()
+        observeJob = viewModelScope.launch {
+            flow { emitAll(manageWorkflowsUseCase.observeAll()) }
+                .catch { _uiState.value = WorkflowsUiState.Error(LoadError.Unavailable) }
                 .collect { workflows ->
                     _uiState.value = WorkflowsUiState.Success(workflows = workflows)
                 }
         }
+    }
+
+    /** Returns to [WorkflowsUiState.Loading] and observes the store again. */
+    fun retry() {
+        _uiState.value = WorkflowsUiState.Loading
+        load()
     }
 
     /**

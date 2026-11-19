@@ -48,6 +48,7 @@ import com.materialchat.ui.components.ExpressiveContentSurface
 import com.materialchat.ui.components.ExpressiveFilledIconButton
 import com.materialchat.ui.components.ExpressiveTopBarTitle
 import com.materialchat.ui.components.HapticPattern
+import com.materialchat.ui.components.LoadErrorContent
 import com.materialchat.ui.components.rememberHapticFeedback
 import com.materialchat.ui.screens.workflows.components.WorkflowCard
 
@@ -112,6 +113,14 @@ fun WorkflowsScreen(
             when (val state = uiState) {
                 is WorkflowsUiState.Loading -> {
                     WorkflowsLoadingContent()
+                }
+
+                is WorkflowsUiState.Error -> {
+                    LoadErrorContent(
+                        title = "Workflows could not be loaded",
+                        message = "Something went wrong while reading your saved workflows",
+                        onRetry = viewModel::retry
+                    )
                 }
 
                 is WorkflowsUiState.Success -> {

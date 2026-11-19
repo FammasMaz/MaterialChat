@@ -1,6 +1,7 @@
 package com.materialchat.ui.screens.workflows
 
 import com.materialchat.domain.model.Workflow
+import com.materialchat.ui.components.LoadError
 
 /**
  * UI state for the Workflows list screen.
@@ -19,5 +20,14 @@ sealed interface WorkflowsUiState {
      */
     data class Success(
         val workflows: List<Workflow> = emptyList()
+    ) : WorkflowsUiState
+
+    /**
+     * The workflow store could not be observed. Retrying returns to [Loading].
+     *
+     * @property error Why the list is unavailable
+     */
+    data class Error(
+        val error: LoadError
     ) : WorkflowsUiState
 }

@@ -28,7 +28,9 @@ import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -57,6 +59,7 @@ import com.materialchat.ui.theme.ExpressiveShapes
 import com.materialchat.ui.components.ExpressiveFilledIconButton
 import com.materialchat.ui.components.ExpressiveTopBarTitle
 import com.materialchat.ui.components.HapticPattern
+import com.materialchat.ui.components.LoadErrorContent
 import com.materialchat.ui.components.rememberHapticFeedback
 import com.materialchat.util.GeneratedImageActions
 import kotlinx.coroutines.launch
@@ -101,11 +104,17 @@ fun GeneratedImagesScreen(
         ExpressiveContentSurface(
             padding = PaddingValues(top = paddingValues.calculateTopPadding())
         ) {
-            if (uiState.images.isEmpty()) {
-                EmptyGeneratedImages(
+            when {
+                uiState.isLoading -> GeneratedImagesLoadingContent()
+                uiState.error != null -> LoadErrorContent(
+                    title = "Images could not be loaded",
+                    message = "Something went wrong while reading your generated images",
+                    onRetry = viewModel::retry
+                )
+                uiState.images.isEmpty() -> EmptyGeneratedImages(
                     modifier = Modifier.fillMaxSize()
                 )
-            } else {
+                else -> {
                 LazyVerticalGrid(
                 columns = GridCells.Adaptive(minSize = 164.dp),
                 contentPadding = PaddingValues(
@@ -125,8 +134,24 @@ fun GeneratedImagesScreen(
                         )
                     }
                 }
+                }
             }
         }
+    }
+}
+
+/** Same loading treatment as the memories and workflows lists. */
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun GeneratedImagesLoadingContent() {
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center
+    ) {
+        LoadingIndicator(
+            modifier = Modifier.size(48.dp),
+            color = MaterialTheme.colorScheme.primary
+        )
     }
 }
 
