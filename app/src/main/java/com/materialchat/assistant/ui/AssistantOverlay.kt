@@ -77,8 +77,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
@@ -87,6 +89,7 @@ import com.materialchat.assistant.ui.components.AssistantResponseCard
 import com.materialchat.assistant.voice.VoiceState
 import com.materialchat.data.local.preferences.AppPreferences
 import com.materialchat.ui.theme.ExpressiveMotion
+import com.materialchat.ui.theme.ExpressiveShapes
 import com.materialchat.ui.theme.MaterialChatTheme
 import com.materialchat.ui.theme.isDynamicColorSupported
 import com.materialchat.ui.theme.particles.CapsuleBackdropBlur
@@ -802,12 +805,12 @@ internal fun AssistantOverlayContent(
                     visible = attachExpanded,
                     enter = fadeIn(animationSpec = AssistantMotion.effect()) +
                         expandVertically(
-                            animationSpec = AssistantMotion.surfaceReveal(),
+                            animationSpec = ExpressiveMotion.Disclosure.Expand,
                             expandFrom = Alignment.Bottom
                         ),
                     exit = fadeOut(animationSpec = AssistantMotion.effect()) +
                         shrinkVertically(
-                            animationSpec = AssistantMotion.surfaceReveal(),
+                            animationSpec = ExpressiveMotion.Disclosure.Shrink,
                             shrinkTowards = Alignment.Bottom
                         )
                 ) {
@@ -848,7 +851,7 @@ internal fun AssistantOverlayContent(
                     val glyphCorner by animateDpAsState(
                         targetValue = if (phase == AssistantPhase.Thinking) AssistantShapes.GlyphSquareCorner
                         else AssistantShapes.GlyphRoundCorner,
-                        animationSpec = AssistantMotion.morph(),
+                        animationSpec = ExpressiveMotion.Press.Shape,
                         label = "glyphCorner"
                     )
                     val glyphContainer by animateColorAsState(
@@ -1031,17 +1034,17 @@ internal fun AssistantOverlayContent(
                     ) {
                         val affordanceRotation by animateFloatAsState(
                             targetValue = if (attachReveal.open) 45f else 0f,
-                            animationSpec = AssistantMotion.morph(),
+                            animationSpec = ExpressiveMotion.Press.Progress,
                             label = "attachAffordance"
                         )
                         // + -> x is a shape morph as well as a rotation: the 40dp container
                         // goes from a transparent circle to the tonal rounded square of an M3
-                        // selected icon button, on the fast spatial spring; the geometry the
-                        // hosted gate measures (40dp, inside the 76dp row) is unchanged.
+                        // selected icon button, on the shared press-morph token; the geometry
+                        // the hosted gate measures (40dp, inside the 76dp row) is unchanged.
                         val affordanceCorner by animateDpAsState(
                             targetValue = if (attachReveal.open) AssistantShapes.ConnectedPressedCorner
                             else AssistantShapes.GlyphRoundCorner,
-                            animationSpec = AssistantMotion.morph(),
+                            animationSpec = ExpressiveMotion.Press.Shape,
                             label = "attachAffordanceCorner"
                         )
                         val affordanceFill by animateColorAsState(
@@ -1236,12 +1239,26 @@ private fun AssistantResponseSurface(
         modifier = Modifier
             .fillMaxWidth()
             .heightIn(max = maxHeight),
-        shape = AssistantShapes.Answer,
+        // W5: the theme's per-corner squircle with AssistantShapes.Answer's radii.
+        shape = ExpressiveShapes.AnswerSurface,
         color = palette.answer.fill,
         contentColor = palette.answer.body,
         tonalElevation = 4.dp,
         shadowElevation = 12.dp
     ) {
+        // W5: the notice is measured before the answer list, at its natural height up to the
+        // cap AssistantAnswerFit derives from the surface's measured height (toolbar, marker,
+        // gaps and a 48dp floor for the exchange taken out), and the list takes the rest. The
+        // W4 1:1 weights left the notice exactly its own chrome with the keyboard up on a 640dp
+        // window (260dp surface -> 74dp share = 24 inset + 10 gap + 40 chip): no message at all.
+        BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+        val markerHeight = if (screenContextUsed) {
+            // One row: the 16dp icon beside one line of the notice style (26dp at font scale 1.3).
+            with(LocalDensity.current) { AssistantTypography.notice(MaterialTheme.typography).lineHeight.toDp() }
+        } else 0.dp
+        val noticeCap = if (constraints.hasBoundedHeight) {
+            AssistantAnswerFit.noticeCap(maxHeight - AssistantAnswerFit.SurfaceInsets, markerHeight)
+        } else Dp.Infinity
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -1282,14 +1299,13 @@ private fun AssistantResponseSurface(
             if (notice != null) {
                 // The same notice surface the pill shows on its own: a message is never a bare
                 // line of coloured text on the answer fill, and its action lives inside it.
-                // W4: it shares the surface's remaining height with the answer list (1:1,
-                // neither forced to fill) so a five-line notice at font scale 1.3 with the
-                // keyboard up (answer surface ~260dp) cannot push the toolbar past the clip;
-                // the message scrolls inside its share and the action chip stays reachable.
+                // Capped, not weighted (see the surface comment): inside the cap the message
+                // scrolls and the action chip keeps its 40dp; the toolbar never leaves the clip
+                // because the cap already subtracts it.
                 AssistantNoticeSurface(
                     notice = notice,
                     onAction = onNoticeAction,
-                    modifier = Modifier.weight(1f, fill = false)
+                    modifier = Modifier.heightIn(max = noticeCap)
                 )
             }
             AssistantAnswerToolbar(
@@ -1300,6 +1316,7 @@ private fun AssistantResponseSurface(
                 onCopy = onCopy,
                 onClose = onClose
             )
+        }
         }
     }
 }
@@ -1439,9 +1456,9 @@ private fun AssistantAttachRevealContent(
         AnimatedVisibility(
             visible = attachments.isNotEmpty() || screenAttachment != null,
             enter = fadeIn(animationSpec = AssistantMotion.effect()) +
-                expandVertically(animationSpec = AssistantMotion.surfaceReveal(), expandFrom = Alignment.Bottom),
+                expandVertically(animationSpec = ExpressiveMotion.Disclosure.Expand, expandFrom = Alignment.Bottom),
             exit = fadeOut(animationSpec = AssistantMotion.effect()) +
-                shrinkVertically(animationSpec = AssistantMotion.surfaceReveal(), shrinkTowards = Alignment.Bottom)
+                shrinkVertically(animationSpec = ExpressiveMotion.Disclosure.Shrink, shrinkTowards = Alignment.Bottom)
         ) {
             Column(modifier = Modifier.fillMaxWidth()) {
                 if (screenAttachment != null) {
@@ -1470,9 +1487,9 @@ private fun AssistantAttachRevealContent(
         AnimatedVisibility(
             visible = showActions,
             enter = fadeIn(animationSpec = AssistantMotion.effect()) +
-                expandVertically(animationSpec = AssistantMotion.surfaceReveal(), expandFrom = Alignment.Bottom),
+                expandVertically(animationSpec = ExpressiveMotion.Disclosure.Expand, expandFrom = Alignment.Bottom),
             exit = fadeOut(animationSpec = AssistantMotion.effect()) +
-                shrinkVertically(animationSpec = AssistantMotion.surfaceReveal(), shrinkTowards = Alignment.Bottom)
+                shrinkVertically(animationSpec = ExpressiveMotion.Disclosure.Shrink, shrinkTowards = Alignment.Bottom)
         ) {
             Row(
                 modifier = Modifier
@@ -1513,7 +1530,7 @@ private fun AssistantActionChip(
     label: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    shape: RoundedCornerShape = AssistantShapes.Chip
+    shape: Shape = AssistantShapes.Chip
 ) {
     val palette = rememberAssistantSurfacePalette()
     FilledTonalButton(
@@ -1639,7 +1656,8 @@ private fun AssistantNoticeSurface(
     val content = if (notice.isError) palette.errorNotice.content else palette.notice.muted
     Surface(
         modifier = modifier.fillMaxWidth(),
-        shape = AssistantShapes.Notice,
+        // W5: the theme's per-corner squircle with AssistantShapes.Notice's radii.
+        shape = ExpressiveShapes.NoticeSurface,
         color = container,
         contentColor = content,
         tonalElevation = 2.dp

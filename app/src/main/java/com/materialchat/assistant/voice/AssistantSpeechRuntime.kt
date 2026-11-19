@@ -78,7 +78,7 @@ class AssistantSpeechRuntime(
             throw cancelled
         } catch (_: Exception) {
             // Credentials and engine exceptions must not cancel sibling generation or leak details.
-            event(TtsEvent.Error("Speech unavailable. Check voice settings and retry."))
+            event(TtsEvent.Error("Speech unavailable. Check voice settings and try again."))
         }
     }
 

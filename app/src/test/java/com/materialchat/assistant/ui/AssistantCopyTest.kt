@@ -1,5 +1,6 @@
 package com.materialchat.assistant.ui
 
+import com.materialchat.assistant.voice.SpeechRecognitionErrors
 import com.materialchat.assistant.voice.VoiceState
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -97,6 +98,62 @@ class AssistantCopyTest {
         assertTrue(AssistantCopy.PROVIDER_REJECTED != AssistantCopy.RATE_LIMITED)
         assertTrue(AssistantCopy.PROVIDER_REJECTED != AssistantCopy.NO_CONNECTION)
         assertTrue(AssistantNoticeAction.OpenSettings.label != AssistantNoticeAction.OpenApp.label)
+    }
+
+    @Test fun theErrorVerbIsTryAgainNeverRetry() {
+        // W5 orchestrator ruling: "Try again" is the error verb. A change to "Retry" fails here.
+        assertEquals("Try again", AssistantCopy.ERROR_VERB)
+        assertEquals(AssistantCopy.ERROR_VERB, AssistantCopy.AFTER_ERROR)
+        assertEquals(AssistantCopy.ERROR_VERB, AssistantNoticeAction.RetryRequest.label)
+        assertEquals(AssistantCopy.ERROR_VERB, AssistantNoticeAction.RetryListening.label)
+        val everything = AssistantCopy.NOTICES + AssistantCopy.PHRASES +
+            AssistantNoticeAction.values().map { it.label } +
+            listOf(
+                SpeechRecognitionErrors.ERROR_NO_MATCH, SpeechRecognitionErrors.ERROR_SPEECH_TIMEOUT,
+                SpeechRecognitionErrors.ERROR_NETWORK, SpeechRecognitionErrors.ERROR_AUDIO,
+                SpeechRecognitionErrors.ERROR_SERVER, SpeechRecognitionErrors.ERROR_RECOGNIZER_BUSY,
+                SpeechRecognitionErrors.ERROR_CLIENT
+            ).map { AssistantCopy.recognitionError(it, "") }
+        for (text in everything) {
+            assertFalse(text, text.contains("retry", ignoreCase = true))
+        }
+        // The verb inside a sentence is the same verb (lower case mid-sentence, capitalised when
+        // it opens the sentence, as in REQUEST_FAILED's "Try again.").
+        for (text in listOf(AssistantCopy.NO_CONNECTION, AssistantCopy.RATE_LIMITED, AssistantCopy.REQUEST_FAILED)) {
+            assertTrue(text, text.contains("try again", ignoreCase = true))
+        }
+    }
+
+    @Test fun noticesAreSentencesWithFullStopsAndPhrasesCarryNone() {
+        // W5 orchestrator ruling: one-phrase notices no period, multi-sentence full stops.
+        for (notice in AssistantCopy.NOTICES) {
+            assertTrue(notice, notice.endsWith("."))
+            assertTrue(notice, notice.first().isUpperCase())
+            // Every sentence boundary is a full stop followed by a space and a capital.
+            for (sentence in notice.split(". ")) assertTrue("$notice -> $sentence", sentence.first().isUpperCase())
+            assertFalse(notice, notice.contains(".."))
+            assertFalse(notice, notice.contains(" ."))
+        }
+        for (phrase in AssistantCopy.PHRASES) {
+            assertFalse(phrase, phrase.endsWith("."))
+            assertTrue(phrase, phrase.first().isUpperCase())
+        }
+        for (label in AssistantNoticeAction.values().map { it.label }) {
+            assertFalse(label, label.endsWith("."))
+            assertTrue(label, label.first().isUpperCase())
+            assertTrue(label, label.drop(1).none { it.isUpperCase() })
+        }
+        // The recognizer table: every entry is a sentence or two with full stops.
+        for (code in listOf(
+            SpeechRecognitionErrors.ERROR_NO_MATCH, SpeechRecognitionErrors.ERROR_SPEECH_TIMEOUT,
+            SpeechRecognitionErrors.ERROR_NETWORK, SpeechRecognitionErrors.ERROR_AUDIO,
+            SpeechRecognitionErrors.ERROR_SERVER, SpeechRecognitionErrors.ERROR_RECOGNIZER_BUSY,
+            SpeechRecognitionErrors.ERROR_INSUFFICIENT_PERMISSIONS, SpeechRecognitionErrors.ERROR_CLIENT
+        )) {
+            val text = AssistantCopy.recognitionError(code, "")
+            assertTrue(text, text.endsWith("."))
+            assertFalse(text, text.contains("please", ignoreCase = true))
+        }
     }
 
     @Test fun everyNewNoticeFollowsTheCopyRules() {

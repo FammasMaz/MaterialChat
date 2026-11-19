@@ -22,6 +22,7 @@ import com.materialchat.ui.components.ExpressiveButtonStyle
 import com.materialchat.ui.components.ExpressiveSlider
 import com.materialchat.ui.components.dialogEntrance
 import com.materialchat.ui.theme.ExpressiveShapes
+import com.materialchat.ui.theme.dialogActionColor
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
@@ -283,13 +284,25 @@ fun AssistantVoiceSettingsPanel(viewModel: AssistantVoiceSettingsViewModel = hil
             }
         },
         confirmButton = {
-            TextButton(enabled = !saving, onClick = {
-                viewModel.save(draft, if (removeKey) "" else key.takeIf { it.isNotBlank() })
-                key = ""
-                removeKey = false
-            }) { Text(if (saving) "Saving\u2026" else "Save") }
+            // W5: the dialog action colour resolved against the dialog container (raw `primary`
+            // on surfaceContainerHigh reads 4.07:1 on VIOLET light; the theme falls back there).
+            TextButton(
+                enabled = !saving,
+                colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.dialogActionColor()),
+                onClick = {
+                    viewModel.save(draft, if (removeKey) "" else key.takeIf { it.isNotBlank() })
+                    key = ""
+                    removeKey = false
+                }
+            ) { Text(if (saving) "Saving\u2026" else "Save") }
         },
-        dismissButton = { TextButton(enabled = !saving, onClick = { open = false }) { Text("Close") } }
+        dismissButton = {
+            TextButton(
+                enabled = !saving,
+                colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.dialogActionColor()),
+                onClick = { open = false }
+            ) { Text("Close") }
+        }
     )
 }
 

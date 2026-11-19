@@ -41,6 +41,7 @@ import com.materialchat.assistant.ui.rememberAssistantSurfacePalette
 import com.materialchat.domain.model.MessageRole
 import com.materialchat.ui.components.MarkdownText
 import com.materialchat.ui.screens.chat.components.TypingIndicator
+import com.materialchat.ui.theme.ExpressiveShapes
 import com.materialchat.ui.theme.MessageBubbleShapes
 
 /**
@@ -248,7 +249,8 @@ private fun AssistantThinkingSurface() {
                     scaleY = entrance.value
                     transformOrigin = TransformOrigin(0f, 1f)
                 },
-            shape = AssistantShapes.Thinking,
+            // W5: the theme's per-corner squircle with AssistantShapes.Thinking's radii.
+            shape = ExpressiveShapes.ThinkingSurface,
             color = palette.thinking.fill,
             contentColor = palette.thinking.body,
             tonalElevation = 2.dp

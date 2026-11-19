@@ -59,5 +59,5 @@ fun sherpaFallbackMessage(state: SherpaModelState, model: SherpaTtsModel): Strin
     SherpaModelState.NotDownloaded ->
         "${model.label} isn't downloaded. Using the Android voice until you download it in voice settings."
     is SherpaModelState.Downloading -> "${model.label} is still installing. Using the Android voice for now."
-    is SherpaModelState.Failed -> "${model.label} failed to install (${state.message}) Using the Android voice."
+    is SherpaModelState.Failed -> "${model.label} failed to install (${state.message}). Using the Android voice."
 }

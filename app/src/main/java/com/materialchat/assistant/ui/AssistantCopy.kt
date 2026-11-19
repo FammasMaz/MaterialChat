@@ -9,10 +9,14 @@ import java.io.IOException
  *
  * Rules:
  * - Phase lines are a present participle with an ellipsis: "Listening…", "Thinking…", "Speaking…".
- *   The resting prompt is the imperative "Ask anything"; after a failure it is "Try again".
- * - Notices are one or two short sentences in sentence case, addressed to the user, with no
- *   "please", no exception text and no engine or API names. Each ends with a period. The last
- *   sentence names what the user can do; the notice's action chip offers the same thing.
+ *   The resting prompt is the imperative "Ask anything"; after a failure it is [ERROR_VERB].
+ * - The error verb is "Try again" (W5 orchestrator ruling), never "Retry": in the resting line,
+ *   in every action label and inside every notice sentence ("... and try again.").
+ * - Period rule (W5 orchestrator ruling): a notice is one or more complete sentences and every
+ *   sentence ends with a full stop; a phrase (a phase line, a status line, a marker, a chip
+ *   label) is not a sentence and carries no period. Notices are sentence case, addressed to the
+ *   user, with no "please", no exception text and no engine or API names. The last sentence
+ *   names what the user can do; the notice's action chip offers the same thing.
  * - Action labels are sentence-case verbs without a trailing period ("Try again", "Type instead").
  *
  * Pure Kotlin so the JVM tests can check the mapping without a device.
@@ -24,7 +28,9 @@ internal object AssistantCopy {
     /** The reply is arriving (streaming): distinct from waiting for it. */
     const val ANSWERING = "Answering\u2026"
     const val SPEAKING = "Speaking\u2026"
-    const val AFTER_ERROR = "Try again"
+    /** The one verb for trying a failed thing again. Chip labels and the resting line use it as is. */
+    const val ERROR_VERB = "Try again"
+    const val AFTER_ERROR = ERROR_VERB
 
     /** The thinking surface inside the answer: the phase word without the pill's ellipsis, over one status line. */
     const val THINKING_TITLE = "Thinking"
@@ -54,6 +60,18 @@ internal object AssistantCopy {
     const val ATTACH_PHOTO = "Attach photo"
     const val SCREEN_CHIP = "Screen"
     const val RECOGNITION_FAILED = "Speech recognition stopped early. Try again."
+
+    /** Every fixed notice (sentences: full stops), for the copy-rule test. */
+    val NOTICES: List<String> = listOf(
+        MIC_PERMISSION, VOICE_DISABLED, RECOGNIZER_UNAVAILABLE, NO_PROVIDER, NO_CONNECTION,
+        RATE_LIMITED, PROVIDER_REJECTED, REQUEST_FAILED, RECOGNITION_FAILED
+    )
+
+    /** Every fixed phrase (not a sentence: no period), for the copy-rule test. */
+    val PHRASES: List<String> = listOf(
+        PROMPT, LISTENING, THINKING, ANSWERING, SPEAKING, ERROR_VERB, THINKING_TITLE, THINKING_STATUS,
+        USING_SCREEN, OPEN_IN_APP, CONTINUE_IN_APP, TAKE_PHOTO, ATTACH_PHOTO, SCREEN_CHIP
+    )
 
     /**
      * The notice for a recognizer failure, by the platform's error code. The recognizer's own
