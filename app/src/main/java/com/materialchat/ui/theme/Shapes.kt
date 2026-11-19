@@ -18,37 +18,102 @@ import androidx.graphics.shapes.RoundedPolygon
 import androidx.graphics.shapes.rectangle
 import androidx.graphics.shapes.toPath
 
+/** The G2 corner smoothing every squircle token in the app draws (0 = circular, 1 = maximum). */
+const val SquircleSmoothing = 0.65f
+
 /**
  * M3 Expressive squircle: a rounded rectangle whose corners are smoothed with a
  * continuous curve instead of a circular arc. Reads softer than [RoundedCornerShape]
  * at the same radius, which is what M3E uses for cards, sheets and leading tiles.
  *
- * @param cornerRadius Corner radius; clamped to half the shorter side.
- * @param smoothing 0 = plain circular corner, 1 = maximum G2 smoothing.
+ * The primary constructor takes one radius per corner in the same positional order as
+ * [RoundedCornerShape] (`topStart, topEnd, bottomEnd, bottomStart`), so an asymmetric
+ * container (the assistant's answer, notice and thinking surfaces) can sit in the same G2
+ * family as the symmetric cards. `topStart`/`topEnd` follow the layout direction exactly as
+ * [RoundedCornerShape] does: under RTL the start corners are drawn on the right. A 0dp corner
+ * is left sharp. The one-radius constructor is the symmetric form; the two are equal when the
+ * four radii agree, and produce identical outlines (pinned in `ShapeTokensTest`).
+ *
+ * @param smoothing 0 = plain circular corner, 1 = maximum G2 smoothing. Radii are clamped to
+ * half the shorter side.
  */
 @Stable
 class SquircleShape(
-    private val cornerRadius: Dp,
-    private val smoothing: Float = 0.65f
+    private val topStart: Dp,
+    private val topEnd: Dp,
+    private val bottomEnd: Dp,
+    private val bottomStart: Dp,
+    private val smoothing: Float = SquircleSmoothing
 ) : Shape {
+    /** Symmetric squircle: the same [cornerRadius] on every corner. */
+    constructor(cornerRadius: Dp, smoothing: Float = SquircleSmoothing) :
+        this(cornerRadius, cornerRadius, cornerRadius, cornerRadius, smoothing)
+
+    private val symmetric: Boolean =
+        topStart == topEnd && topEnd == bottomEnd && bottomEnd == bottomStart
+
     override fun createOutline(size: Size, layoutDirection: LayoutDirection, density: Density): Outline {
         if (size.width <= 0f || size.height <= 0f) return Outline.Rectangle(size.toRect())
-        val radiusPx = with(density) { cornerRadius.toPx() }
-            .coerceIn(0f, minOf(size.width, size.height) / 2f)
-        val polygon = RoundedPolygon.rectangle(
-            width = size.width,
-            height = size.height,
-            rounding = CornerRounding(radius = radiusPx, smoothing = smoothing.coerceIn(0f, 1f)),
-            centerX = size.width / 2f,
-            centerY = size.height / 2f
-        )
-        return Outline.Generic(polygon.toPath().asComposePath())
+        return Outline.Generic(roundedPolygon(size, layoutDirection, density).toPath().asComposePath())
+    }
+
+    /**
+     * The polygon [createOutline] turns into a path. Exposed so the JVM shape tests can compare
+     * geometry (`cubics`) without touching `android.graphics.Path`.
+     */
+    internal fun roundedPolygon(size: Size, layoutDirection: LayoutDirection, density: Density): RoundedPolygon {
+        val limit = minOf(size.width, size.height) / 2f
+        val s = smoothing.coerceIn(0f, 1f)
+        fun rounding(radius: Dp): CornerRounding {
+            val px = with(density) { radius.toPx() }.coerceIn(0f, limit)
+            return if (px <= 0f) CornerRounding.Unrounded else CornerRounding(radius = px, smoothing = s)
+        }
+        return if (symmetric) {
+            RoundedPolygon.rectangle(
+                width = size.width,
+                height = size.height,
+                rounding = rounding(topStart),
+                centerX = size.width / 2f,
+                centerY = size.height / 2f
+            )
+        } else {
+            // Physical corners: start is on the left under LTR and on the right under RTL.
+            val ltr = layoutDirection == LayoutDirection.Ltr
+            val topLeft = if (ltr) topStart else topEnd
+            val topRight = if (ltr) topEnd else topStart
+            val bottomRight = if (ltr) bottomEnd else bottomStart
+            val bottomLeft = if (ltr) bottomStart else bottomEnd
+            // RoundedPolygon.rectangle vertex order: bottom-right, bottom-left, top-left, top-right.
+            RoundedPolygon.rectangle(
+                width = size.width,
+                height = size.height,
+                perVertexRounding = listOf(
+                    rounding(bottomRight), rounding(bottomLeft), rounding(topLeft), rounding(topRight)
+                ),
+                centerX = size.width / 2f,
+                centerY = size.height / 2f
+            )
+        }
     }
 
     override fun equals(other: Any?): Boolean =
-        other is SquircleShape && other.cornerRadius == cornerRadius && other.smoothing == smoothing
+        other is SquircleShape &&
+            other.topStart == topStart && other.topEnd == topEnd &&
+            other.bottomEnd == bottomEnd && other.bottomStart == bottomStart &&
+            other.smoothing == smoothing
 
-    override fun hashCode(): Int = cornerRadius.hashCode() * 31 + smoothing.hashCode()
+    override fun hashCode(): Int {
+        var h = topStart.hashCode()
+        h = h * 31 + topEnd.hashCode()
+        h = h * 31 + bottomEnd.hashCode()
+        h = h * 31 + bottomStart.hashCode()
+        h = h * 31 + smoothing.hashCode()
+        return h
+    }
+
+    override fun toString(): String =
+        if (symmetric) "SquircleShape($topStart, smoothing=$smoothing)"
+        else "SquircleShape(topStart=$topStart, topEnd=$topEnd, bottomEnd=$bottomEnd, bottomStart=$bottomStart, smoothing=$smoothing)"
 }
 
 /**
@@ -63,22 +128,26 @@ class SquircleShape(
 @Stable
 class TopSquircleShape(
     private val cornerRadius: Dp,
-    private val smoothing: Float = 0.65f
+    private val smoothing: Float = SquircleSmoothing
 ) : Shape {
     override fun createOutline(size: Size, layoutDirection: LayoutDirection, density: Density): Outline {
         if (size.width <= 0f || size.height <= 0f) return Outline.Rectangle(size.toRect())
+        return Outline.Generic(roundedPolygon(size, density).toPath().asComposePath())
+    }
+
+    /** The polygon [createOutline] draws; exposed for the JVM geometry tests. */
+    internal fun roundedPolygon(size: Size, density: Density): RoundedPolygon {
         val radiusPx = with(density) { cornerRadius.toPx() }
             .coerceIn(0f, minOf(size.width, size.height) / 2f)
         val rounded = CornerRounding(radius = radiusPx, smoothing = smoothing.coerceIn(0f, 1f))
         // RoundedPolygon.rectangle vertex order: bottom-right, bottom-left, top-left, top-right.
-        val polygon = RoundedPolygon.rectangle(
+        return RoundedPolygon.rectangle(
             width = size.width,
             height = size.height,
             perVertexRounding = listOf(CornerRounding.Unrounded, CornerRounding.Unrounded, rounded, rounded),
             centerX = size.width / 2f,
             centerY = size.height / 2f
         )
-        return Outline.Generic(polygon.toPath().asComposePath())
     }
 
     override fun equals(other: Any?): Boolean =
@@ -92,11 +161,56 @@ class TopSquircleShape(
  * where a squircle fits; keep [MaterialChatShapes] for component defaults.
  */
 object ExpressiveShapes {
-    /** Leading icon tiles in list rows (48dp). */
+    /** Leading icon tiles in list rows (48dp, [ExpressiveSizes.Tile]). */
     val Tile = SquircleShape(18.dp)
+
+    /**
+     * Leading tile of a compact (32dp, [ExpressiveSizes.Compact]) row: the workflow step-number
+     * badge (`StepEditor`). 12dp keeps the [Tile] proportion (18 / 48 = 0.375; 32 * 0.375 = 12)
+     * so a 32dp tile and a 48dp tile beside each other read as the same shape at two sizes, and
+     * 12dp is the M3 shape scale's medium step ([MaterialChatShapes.small]), one step above
+     * [Badge] (8dp). Still a squircle: at 12dp on a 32dp box the G2 ease is visible, which it
+     * is not at the 8dp badge.
+     */
+    val TileBadge = SquircleShape(12.dp)
 
     /** Cards and grouped list containers. */
     val Card = SquircleShape(28.dp)
+
+    /**
+     * Snackbars and one-line notices: the squircle at 20dp. The one notice contour
+     * (`ExpressiveSnackbar` draws it; the assistant's floating notice uses the per-corner
+     * [NoticeSurface] because it sits on the pill). Replaces the removed
+     * `CustomShapes.Snackbar` (24dp round), which the shared snackbar never drew.
+     */
+    val Notice = SquircleShape(20.dp)
+
+    /**
+     * The assistant answer surface: wide top corners that sit against the pill below it
+     * (36 / 36 / 28 / 28), as a squircle. Value-identical to the radii of
+     * `AssistantShapes.Answer`; the assistant swaps the class, not the geometry.
+     */
+    val AnswerSurface = SquircleShape(topStart = 36.dp, topEnd = 36.dp, bottomEnd = 28.dp, bottomStart = 28.dp)
+
+    /** The assistant's one-line notice above the pill (24 / 24 / 18 / 18) as a squircle. */
+    val NoticeSurface = SquircleShape(topStart = 24.dp, topEnd = 24.dp, bottomEnd = 18.dp, bottomStart = 18.dp)
+
+    /**
+     * The assistant thinking surface: an asymmetric container whose tight bottom-START corner
+     * (8dp) points at the pill it will answer into; every other corner 20dp. Radii match
+     * `AssistantShapes.Thinking` (`topStart = 20, topEnd = 20, bottomStart = 8, bottomEnd = 20`).
+     */
+    val ThinkingSurface = SquircleShape(topStart = 20.dp, topEnd = 20.dp, bottomEnd = 20.dp, bottomStart = 8.dp)
+
+    /**
+     * Chips (assist, filter, suggestion, the assistant's labelled chips, chat's compact badges):
+     * a full capsule, [CustomShapes.Pill]. Chip sites pass `shape = ExpressiveShapes.Chip`.
+     * Not applied through `MaterialChatShapes.small` (which is what `ChipDefaults.shape` reads)
+     * because that key also shapes small/extra-small buttons, list items, segmented menus and
+     * the time picker in material3 1.5.0-alpha15; a capsule there would change surfaces this
+     * pass has not audited.
+     */
+    val Chip: Shape get() = CustomShapes.Pill
 
     /** Floating sheets rounded on every corner (a sheet that does not touch a screen edge). */
     val Sheet = SquircleShape(32.dp)
@@ -215,6 +329,12 @@ val MaterialChatShapes = Shapes(
 /**
  * Custom shape for message bubbles.
  * Uses larger radii (28dp) for the M3 Expressive friendly feel.
+ *
+ * Decision (W5 theme, audit F2): the bubble family stays on circular corners, and so does the
+ * chat composer ([CustomShapes.MessageInputContainer], 28dp round). Bubbles are user-selectable
+ * geometry (`AppPreferences.ChatBubbleStyle`), and the composer sits directly under the last
+ * bubble, so the two must share one corner class; the squircle tokens are for the cards and
+ * blocks *inside* a bubble (28 -> 16 -> 8 ladder). Changing both at once is a chat decision.
  */
 object MessageBubbleShapes {
     /**
@@ -290,21 +410,17 @@ object MessageBubbleShapes {
  */
 object CustomShapes {
     /**
-     * Shape for FAB (Floating Action Button) - M3 Expressive spec.
-     * 16dp corners for standard FAB (56dp container).
+     * Former FAB token. No FAB draws it: the real FABs are the M3 defaults
+     * (`MaterialChatNavBar`, `ScrollToBottomFab`); its one consumer is a 40dp inline button
+     * (`SystemPromptField`), which should clip to [ExpressiveShapes.Tile]. Value-identical
+     * alias of [MaterialChatShapes.medium] (16dp round) until that site moves.
+     * `ExtendedFab` and `FabPressed` had no consumer and were removed.
      */
-    val Fab = RoundedCornerShape(16.dp)
-
-    /**
-     * Extended FAB shape - M3 Expressive spec.
-     * 16dp corners matching standard FAB.
-     */
-    val ExtendedFab = RoundedCornerShape(16.dp)
-
-    /**
-     * FAB shape when pressed - slightly less rounded for shape morphing.
-     */
-    val FabPressed = RoundedCornerShape(12.dp)
+    @Deprecated(
+        message = "No FAB draws this. For an inline tile use ExpressiveShapes.Tile; for an M3 FAB use the component default.",
+        replaceWith = ReplaceWith("ExpressiveShapes.Tile")
+    )
+    val Fab: Shape get() = MaterialChatShapes.medium
 
     /**
      * Shape for bottom sheets. Delegates to [ExpressiveShapes.BottomSheet] (top-only 32dp
@@ -381,13 +497,11 @@ object CustomShapes {
      */
     val ModelPicker = RoundedCornerShape(24.dp)
 
-    /**
-     * Shape for snackbars.
-     */
-    val Snackbar = RoundedCornerShape(24.dp)
+    // `Snackbar` (24dp round) was removed: zero consumers after W4, and the shared
+    // `ExpressiveSnackbar` draws `ExpressiveShapes.Notice` (20dp squircle).
 
     /**
-     * Pill shape for tags and badges.
+     * Pill shape for tags and badges; [ExpressiveShapes.Chip] is the chip-class alias.
      */
     val Pill = RoundedCornerShape(50)
 
