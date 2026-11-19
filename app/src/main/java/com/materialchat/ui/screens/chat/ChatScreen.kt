@@ -34,7 +34,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Snackbar
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -43,6 +42,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import com.materialchat.ui.components.ExpressiveButton
 import com.materialchat.ui.components.ExpressiveButtonStyle
+import com.materialchat.ui.components.ExpressiveSnackbar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -102,7 +102,6 @@ import com.materialchat.ui.screens.chat.components.StreamingArrivalBar
 import com.materialchat.ui.screens.chat.components.StreamingArrivalPhase
 import com.materialchat.ui.screens.chat.components.shouldShowDateSeparator
 import com.materialchat.ui.screens.personas.components.ConversationStarterChips
-import com.materialchat.ui.theme.CustomShapes
 import com.materialchat.ui.theme.ExpressiveMotion
 import com.materialchat.ui.theme.ExpressiveShapes
 import kotlinx.coroutines.Dispatchers
@@ -400,14 +399,10 @@ fun ChatScreen(
             }
         },
         snackbarHost = {
+            // Same snackbar as home and settings (squircle, inverse surface, pill action with
+            // the shared press physics) so chat no longer draws its own round variant.
             SnackbarHost(hostState = snackbarHostState) { snackbarData ->
-                Snackbar(
-                    snackbarData = snackbarData,
-                    shape = CustomShapes.Snackbar,
-                    containerColor = MaterialTheme.colorScheme.inverseSurface,
-                    contentColor = MaterialTheme.colorScheme.inverseOnSurface,
-                    actionColor = MaterialTheme.colorScheme.inversePrimary
-                )
+                ExpressiveSnackbar(snackbarData = snackbarData)
             }
         }
     ) { paddingValues ->

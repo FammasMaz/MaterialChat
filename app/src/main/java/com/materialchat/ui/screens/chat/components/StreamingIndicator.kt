@@ -147,8 +147,15 @@ fun M3StreamingDots(
     dotSpacing: Dp = 6.dp
 ) {
     val dots = remember { listOf(Animatable(0.3f), Animatable(0.3f), Animatable(0.3f)) }
+    val motionAllowed = rememberParticleMotionGate().motionAllowed
 
-    LaunchedEffect(Unit) {
+    // Continuous motion honours the decoration motion gate (same pattern as
+    // M3ExpressivePulsingDots): with motion denied the dots rest at their dim state.
+    LaunchedEffect(motionAllowed) {
+        if (!motionAllowed) {
+            dots.forEach { it.snapTo(0.3f) }
+            return@LaunchedEffect
+        }
         while (true) {
             dots.forEachIndexed { index, animatable ->
                 launch {

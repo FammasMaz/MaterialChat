@@ -1,10 +1,6 @@
 package com.materialchat.ui.screens.chat.components
 
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.MaterialTheme
@@ -16,6 +12,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.materialchat.ui.theme.ExpressiveMotion
+import com.materialchat.ui.theme.MaterialChatMotion
 import com.materialchat.ui.theme.particles.rememberParticleMotionGate
 import kotlinx.coroutines.launch
 import kotlin.math.cos
@@ -50,11 +47,13 @@ fun FusionAnimation(
         if (isActive) {
             if (motionGate.motionAllowed) {
                 launch {
+                    // One linear 0 -> 360 orbit per period on the sanctioned ornament spin spec.
+                    // 3 000 ms is the morphing-indicator shape cycle; there is no dedicated
+                    // fusion-orbit duration token yet (theme owner, see REPORT.md).
                     rotation.animateTo(
                         targetValue = 360f,
-                        animationSpec = infiniteRepeatable(
-                            animation = tween(durationMillis = 3000, easing = LinearEasing),
-                            repeatMode = RepeatMode.Restart
+                        animationSpec = ExpressiveMotion.Spatial.decorativeSpin(
+                            MaterialChatMotion.Durations.Indicator.MorphShape
                         )
                     )
                 }
