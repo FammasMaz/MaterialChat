@@ -96,16 +96,11 @@ object SpeechRecognitionErrors {
     const val ERROR_RECOGNIZER_BUSY = 8
     const val ERROR_INSUFFICIENT_PERMISSIONS = 9
 
-    fun getErrorMessage(errorCode: Int): String = when (errorCode) {
-        ERROR_NETWORK_TIMEOUT -> "Network timeout. Please check your connection."
-        ERROR_NETWORK -> "Network error. Please check your internet connection."
-        ERROR_AUDIO -> "Audio recording error. Please try again."
-        ERROR_SERVER -> "Server error. Please try again later."
-        ERROR_CLIENT -> "Client error occurred."
-        ERROR_SPEECH_TIMEOUT -> "No speech detected. Please try again."
-        ERROR_NO_MATCH -> "Didn't catch that. Please try again."
-        ERROR_RECOGNIZER_BUSY -> "Speech recognizer is busy."
-        ERROR_INSUFFICIENT_PERMISSIONS -> "Microphone permission required."
-        else -> "An error occurred. Please try again."
-    }
+    /**
+     * The sentence for a code, from the voice layer's one copy table ([VoiceCopy]): the same
+     * words the pill shows, so a code this table does not know can no longer reach the user
+     * as engine wording (W6: the old default said "please").
+     */
+    fun getErrorMessage(errorCode: Int): String =
+        VoiceCopy.recognition(errorCode) ?: VoiceCopy.RECOGNITION_FAILED
 }

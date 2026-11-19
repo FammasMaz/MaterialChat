@@ -52,14 +52,14 @@ class GeminiTtsBackend(
         } catch (_: TimeoutCancellationException) {
             // A synthesis deadline is a speech failure, not cancellation of the voice turn.
             currentCoroutineContext().ensureActive()
-            emit(TtsEvent.Error("Gemini speech timed out. Try again, or use Android speech."))
+            emit(TtsEvent.Error(VoiceCopy.GEMINI_TIMED_OUT))
         } catch (cancelled: CancellationException) {
             throw cancelled
         } catch (failure: GeminiTtsException) {
             emit(TtsEvent.Error(failure.message!!))
         } catch (_: Exception) {
             // Never expose server bodies, request URLs, credentials or exception messages.
-            emit(TtsEvent.Error("Gemini speech failed. Check voice settings, quota and connectivity."))
+            emit(TtsEvent.Error(VoiceCopy.GEMINI_FAILED))
         }
     }
 
@@ -250,15 +250,15 @@ class OkHttpGeminiTtsTransport internal constructor(private val calls: Call.Fact
     }
 }
 
-/** Fixed diagnostics only: never retain a provider body, URL, credential or underlying cause. */
+/** Fixed diagnostics only ([VoiceCopy]): never retain a provider body, URL, credential or underlying cause. */
 enum class GeminiTtsFailure(val diagnostic: String) {
-    AUTHENTICATION("Gemini speech authentication failed. Check the speech API key."),
-    PERMISSION("Gemini speech permission denied. Check project and API access."),
-    QUOTA("Gemini speech quota or rate limit reached. Check this model's quota in Google AI Studio, or use Android speech."),
-    NO_QUOTA("This Gemini speech model has no available project quota. Check model access and billing in Google AI Studio, or use Android speech."),
-    MODEL_UNAVAILABLE("Gemini speech model unavailable. Check the selected model."),
-    TRANSPORT("Gemini speech service or connection failed. Try again later."),
-    INVALID_AUDIO("Gemini speech returned invalid or unsupported audio.");
+    AUTHENTICATION(VoiceCopy.GEMINI_AUTHENTICATION),
+    PERMISSION(VoiceCopy.GEMINI_PERMISSION),
+    QUOTA(VoiceCopy.GEMINI_QUOTA),
+    NO_QUOTA(VoiceCopy.GEMINI_NO_QUOTA),
+    MODEL_UNAVAILABLE(VoiceCopy.GEMINI_MODEL_UNAVAILABLE),
+    TRANSPORT(VoiceCopy.GEMINI_TRANSPORT),
+    INVALID_AUDIO(VoiceCopy.GEMINI_INVALID_AUDIO);
 
     companion object {
         internal fun fromQuotaResponse(bytes: ByteArray): GeminiTtsFailure = try {

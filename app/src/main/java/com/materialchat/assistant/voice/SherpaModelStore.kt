@@ -130,7 +130,7 @@ class SherpaModelStore(
             rootDir.mkdirs()
             val needed = model.downloadBytes * 2 + 50_000_000L
             if (rootDir.usableSpace in 1 until needed) {
-                throw SherpaInstallException("Not enough free storage. About ${formatModelBytes(needed)} is needed.")
+                throw SherpaInstallException(VoiceCopy.notEnoughStorage(formatModelBytes(needed)))
             }
             staging.deleteRecursively()
             check(staging.mkdirs()) { "Could not create the model directory." }
@@ -142,7 +142,7 @@ class SherpaModelStore(
                 val base = completed
                 fetcher.fetch(artifact.url, artifact.sizeBytes, part) { apply(model, SherpaInstallEvent.Progress(base + it)) }
                 if (part.length() != artifact.sizeBytes) {
-                    throw SherpaInstallException("Download was incomplete. Check the connection and try again.")
+                    throw SherpaInstallException(VoiceCopy.DOWNLOAD_INCOMPLETE)
                 }
                 completed += artifact.sizeBytes
             }
@@ -150,7 +150,7 @@ class SherpaModelStore(
             model.artifacts.forEachIndexed { index, artifact ->
                 currentCoroutineContext().ensureActive()
                 if (sha256(parts[index]) != artifact.sha256) {
-                    throw SherpaInstallException("Downloaded file failed verification (checksum mismatch). Try again.")
+                    throw SherpaInstallException(VoiceCopy.CHECKSUM_MISMATCH)
                 }
             }
             apply(model, SherpaInstallEvent.Installing)
@@ -159,21 +159,21 @@ class SherpaModelStore(
                 else parts[index].copyTo(File(staging, artifact.fileName), overwrite = true)
             }
             val missing = model.files.filter { !File(staging, it).isFile }
-            if (missing.isNotEmpty()) throw SherpaInstallException("Model package is missing ${missing.first()}.")
+            if (missing.isNotEmpty()) throw SherpaInstallException(VoiceCopy.packageMissing(missing.first()))
             File(staging, MANIFEST).writeText(model.manifest)
             currentCoroutineContext().ensureActive()
             val target = installDir(model)
             target.deleteRecursively()
-            if (!staging.renameTo(target)) throw SherpaInstallException("Could not move the model into app storage.")
+            if (!staging.renameTo(target)) throw SherpaInstallException(VoiceCopy.MOVE_FAILED)
             apply(model, SherpaInstallEvent.Installed)
         } catch (cancelled: CancellationException) {
             throw cancelled // The job's completion handler reports Cancelled.
         } catch (failure: SherpaInstallException) {
-            apply(model, SherpaInstallEvent.Failed(failure.message ?: "Model install failed."))
+            apply(model, SherpaInstallEvent.Failed(failure.message ?: VoiceCopy.INSTALL_FAILED))
         } catch (failure: IOException) {
             apply(model, SherpaInstallEvent.Failed(describe(failure)))
         } catch (_: RuntimeException) {
-            apply(model, SherpaInstallEvent.Failed("Model install failed unexpectedly. Try again."))
+            apply(model, SherpaInstallEvent.Failed(VoiceCopy.INSTALL_FAILED_UNEXPECTED))
         } finally {
             parts.forEach { it.delete() }
             staging.deleteRecursively()
@@ -201,9 +201,8 @@ class SherpaModelStore(
     }
 
     private fun describe(failure: IOException): String = when (failure) {
-        is UnknownHostException, is ConnectException, is SocketTimeoutException ->
-            "No internet connection. Connect to a network and try again."
-        else -> "Download failed. Check the connection and try again."
+        is UnknownHostException, is ConnectException, is SocketTimeoutException -> VoiceCopy.NO_INTERNET
+        else -> VoiceCopy.DOWNLOAD_FAILED
     }
 
     companion object {

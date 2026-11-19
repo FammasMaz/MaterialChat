@@ -70,7 +70,7 @@ class SherpaTtsBackend(
         }
         val dir = store.installedDir(model)
         if (dir == null) {
-            emit(TtsEvent.Error(unavailableReason(model) ?: "${model.label} is unavailable."))
+            emit(TtsEvent.Error(unavailableReason(model) ?: VoiceCopy.neuralUnavailable(model.label)))
             return@flow
         }
         val value = settings.normalized()
@@ -109,11 +109,11 @@ class SherpaTtsBackend(
         } catch (cancelled: CancellationException) {
             throw cancelled
         } catch (_: SherpaLoadException) {
-            emit(TtsEvent.Error("${model.label} could not be loaded. Delete and re-download it in voice settings."))
+            emit(TtsEvent.Error(VoiceCopy.neuralLoadFailed(model.label)))
         } catch (_: SherpaSynthesisException) {
-            emit(TtsEvent.Error("${model.label} failed to synthesise speech."))
+            emit(TtsEvent.Error(VoiceCopy.neuralSynthesisFailed(model.label)))
         } catch (_: Exception) {
-            emit(TtsEvent.Error("Audio playback failed."))
+            emit(TtsEvent.Error(VoiceCopy.AUDIO_PLAYBACK_FAILED))
         }
     }
 

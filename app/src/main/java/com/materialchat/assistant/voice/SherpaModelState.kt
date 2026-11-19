@@ -56,8 +56,7 @@ fun SherpaModelState.reduce(event: SherpaInstallEvent): SherpaModelState = when 
  */
 fun sherpaFallbackMessage(state: SherpaModelState, model: SherpaTtsModel): String? = when (state) {
     SherpaModelState.Installed -> null
-    SherpaModelState.NotDownloaded ->
-        "${model.label} isn't downloaded. Using the Android voice until you download it in voice settings."
-    is SherpaModelState.Downloading -> "${model.label} is still installing. Using the Android voice for now."
-    is SherpaModelState.Failed -> "${model.label} failed to install (${state.message}). Using the Android voice."
+    SherpaModelState.NotDownloaded -> VoiceCopy.neuralNotDownloaded(model.label)
+    is SherpaModelState.Downloading -> VoiceCopy.neuralInstalling(model.label)
+    is SherpaModelState.Failed -> VoiceCopy.neuralInstallFailed(model.label, state.message)
 }
