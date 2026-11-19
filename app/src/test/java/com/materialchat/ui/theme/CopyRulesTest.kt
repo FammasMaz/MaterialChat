@@ -32,10 +32,25 @@ class CopyRulesTest {
         assertTrue(CopyRules.isNotice(CopyRules.REQUEST_FAILED))
     }
 
+    @Test fun theClassLinesChatAndTheAssistantShareAreTheThemeConstants() {
+        // W8 part 1: the last two chat <-> assistant cross-owner pins (ChatErrorCopyTest) can
+        // move here; both surfaces alias these constants.
+        assertEquals("The model is busy right now. Wait a moment and try again.", CopyRules.RATE_LIMITED)
+        assertEquals("No connection. Check your network and try again.", CopyRules.NO_CONNECTION)
+        assertEquals(CopyRules.RATE_LIMITED, ChatErrorCopy.RATE_LIMITED)
+        assertEquals(CopyRules.RATE_LIMITED, AssistantCopy.RATE_LIMITED)
+        assertEquals(CopyRules.NO_CONNECTION, ChatErrorCopy.NO_CONNECTION)
+        assertEquals(CopyRules.NO_CONNECTION, AssistantCopy.NO_CONNECTION)
+        assertTrue(CopyRules.isNotice(CopyRules.RATE_LIMITED))
+        assertTrue(CopyRules.isNotice(CopyRules.NO_CONNECTION))
+    }
+
     @Test fun failureLinesOpenWithCouldNot() {
         assertEquals("Could not", CopyRules.FAILURE_VERB)
         assertEquals("Could not save backup", CopyRules.failureLine("save backup"))
         assertEquals("Could not save backup", CopyRules.failureLine("  save backup "))
+        assertEquals(CopyRules.failureLine("share"), CopyRules.COULD_NOT_SHARE)
+        assertTrue(CopyRules.isPhrase(CopyRules.COULD_NOT_SHARE))
         assertTrue(CopyRules.isPhrase(CopyRules.failureLine("share image")))
         for (verb in listOf("Failed to", "Unable to", "Couldn't")) {
             assertTrue(verb, verb in CopyRules.BANNED_FAILURE_VERBS)
