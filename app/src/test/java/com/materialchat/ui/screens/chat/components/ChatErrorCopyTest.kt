@@ -1,8 +1,8 @@
 package com.materialchat.ui.screens.chat.components
 
-import com.materialchat.assistant.ui.AssistantCopy
 import com.materialchat.domain.model.ProviderHttpException
 import com.materialchat.domain.model.StreamingState
+import com.materialchat.ui.theme.CopyRules
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
@@ -111,11 +111,13 @@ class ChatErrorCopyTest {
 
     @Test
     fun `the shared lines and the retry label match the assistant notice model`() {
-        // REQUEST_FAILED and TRY_AGAIN are aliases of CopyRules on both sides; the theme's
-        // CopyRulesTest pins them, so those two cross-owner pins live there (W7 theme C11).
-        // The two class lines below have no CopyRules constant yet, so chat still pins them.
-        assertEquals(AssistantCopy.RATE_LIMITED, ChatErrorCopy.RATE_LIMITED)
-        assertEquals(AssistantCopy.NO_CONNECTION, ChatErrorCopy.NO_CONNECTION)
+        // REQUEST_FAILED, TRY_AGAIN, RATE_LIMITED and NO_CONNECTION are aliases of CopyRules on
+        // both sides; the theme's CopyRulesTest pins chat == assistant for all four (W7 theme
+        // C11, W8 theme C1-C2), so no cross-owner pin lives here any more. Chat pins only
+        // that its constants are the theme's.
+        assertEquals(CopyRules.RATE_LIMITED, ChatErrorCopy.RATE_LIMITED)
+        assertEquals(CopyRules.NO_CONNECTION, ChatErrorCopy.NO_CONNECTION)
+        assertEquals(CopyRules.COULD_NOT_SHARE, ChatErrorCopy.COULD_NOT_SHARE)
         assertNotEquals("Retry", ChatErrorCopy.TRY_AGAIN)
     }
 }

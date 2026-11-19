@@ -288,8 +288,12 @@ class ChatViewModel @Inject constructor(
                                 siblingInfo = if (isSiblingTarget) siblingInfo else null,
                                 showModelLabel = message.modelName != null &&
                                         message.modelName != conversation.modelName,
-                                isErrored = message.role == MessageRole.ASSISTANT &&
-                                        message.content.isEmpty() && !message.hasAttachments && !message.isStreaming
+                                isErrored = isErroredReply(
+                                    message = message,
+                                    isLastAssistantMessage = index == lastAssistantIndex &&
+                                        message.role == MessageRole.ASSISTANT,
+                                    streamingState = streamingStateAtCollect
+                                )
                             )
                         }
 
@@ -905,7 +909,18 @@ class ChatViewModel @Inject constructor(
             if (currentState is ChatUiState.Success &&
                 (expectedConversationId == null || currentState.conversationId == expectedConversationId)
             ) {
-                currentState.copy(streamingState = stateForUi)
+                // An Error re-derives the errored flag of every item: the use case's Room
+                // write (isStreaming = false) and this emission race, and whichever lands
+                // last must leave a thinking-only failed reply marked errored (isErroredReply).
+                val messages = if (stateForUi is StreamingState.Error) {
+                    currentState.messages.map { item ->
+                        val errored = isErroredReply(item.message, item.isLastAssistantMessage, stateForUi)
+                        if (errored == item.isErrored) item else item.copy(isErrored = errored)
+                    }
+                } else {
+                    currentState.messages
+                }
+                currentState.copy(streamingState = stateForUi, messages = messages)
             } else {
                 currentState
             }

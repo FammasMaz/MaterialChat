@@ -19,7 +19,6 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.ui.draw.drawWithContent
@@ -1722,9 +1721,9 @@ private fun TableView(
     val headerBackground = MaterialTheme.colorScheme.surfaceContainerHigh
     val alternateRowColor = MaterialTheme.colorScheme.surfaceContainer
     // M3E: 16dp outer container; the header strip is its own tonal container whose bottom
-    // edge carries the 8dp inner radius.
+    // edge carries the 8dp inner radius (ExpressiveShapes.ContentBlockHeader, W8 theme C4).
     val tableShape = MarkdownBlockOuterShape
-    val headerShape = RoundedCornerShape(bottomStart = 8.dp, bottomEnd = 8.dp)
+    val headerShape = ExpressiveShapes.ContentBlockHeader
 
     val numCols = maxOf(
         headers.size,

@@ -5,6 +5,7 @@ import com.materialchat.domain.model.Attachment
 import com.materialchat.domain.model.FusionConfig
 import com.materialchat.domain.model.FusionResult
 import com.materialchat.domain.model.Message
+import com.materialchat.domain.model.MessageRole
 import com.materialchat.domain.model.Persona
 import com.materialchat.domain.model.ReasoningEffort
 import com.materialchat.domain.model.StreamingState
@@ -142,6 +143,33 @@ data class MessageUiItem(
     val showModelLabel: Boolean = false,
     val isErrored: Boolean = false
 )
+
+/**
+ * Whether an assistant reply is drawn as a failed one: the "Request failed" / class-line notice
+ * inside the bubble, `Try again` below it, and no action row (W8 chat part 4).
+ *
+ * A reply with no content and no attachments once its stream has stopped is errored when it also
+ * has no thinking (nothing arrived at all). A reply that holds only thinking is errored only
+ * when it is the last assistant reply and the stream of this conversation has actually failed
+ * ([StreamingState.Error] for that message, or an error that carries no message id): the same
+ * shape is what a user Stop leaves behind after the first thinking token
+ * (`ChatViewModel.cancelStreaming` keeps a placeholder whose thinking is not blank), and that
+ * reply is cancelled, not failed, so it gets the action row with Regenerate instead of a
+ * failure notice. Re-derived both when the message list arrives and when an Error lands, so
+ * the order of the Room write and the error emission does not decide what the bubble shows.
+ */
+internal fun isErroredReply(
+    message: Message,
+    isLastAssistantMessage: Boolean,
+    streamingState: StreamingState
+): Boolean {
+    if (message.role != MessageRole.ASSISTANT) return false
+    if (message.isStreaming || message.content.isNotEmpty() || message.hasAttachments) return false
+    if (message.thinkingContent.isNullOrBlank()) return true
+    if (!isLastAssistantMessage) return false
+    val error = streamingState as? StreamingState.Error ?: return false
+    return error.messageId == null || error.messageId == message.id
+}
 
 /**
  * Indicates where a message sits within a consecutive group from the same sender.
