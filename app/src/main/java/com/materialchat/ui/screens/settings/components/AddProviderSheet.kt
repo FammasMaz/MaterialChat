@@ -68,8 +68,8 @@ import com.materialchat.ui.components.HapticPattern
 import com.materialchat.ui.components.rememberHapticFeedback
 import com.materialchat.ui.screens.chat.components.ModelPickerDropdown
 import com.materialchat.ui.screens.settings.ProviderFormState
-import com.materialchat.ui.theme.CustomShapes
 import com.materialchat.ui.theme.ExpressiveMotion
+import com.materialchat.ui.theme.ExpressiveShapes
 
 /**
  * Bottom sheet for adding or editing a provider.
@@ -118,7 +118,7 @@ fun AddProviderSheet(
         ModalBottomSheet(
             onDismissRequest = onDismiss,
             sheetState = sheetState,
-            shape = SettingsSheetShape,
+            shape = ExpressiveShapes.BottomSheet,
             containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
             contentColor = MaterialTheme.colorScheme.onSurface
         ) {

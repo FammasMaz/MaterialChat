@@ -24,6 +24,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import com.materialchat.ui.components.HapticPattern
 import com.materialchat.ui.components.rememberHapticFeedback
+import com.materialchat.ui.theme.CustomShapes
 
 /**
  * Prompt text field for the arena screen.
@@ -57,7 +58,7 @@ fun ArenaPromptInput(
                 Text("Enter a prompt for both models...")
             },
             enabled = enabled,
-            shape = RoundedCornerShape(28.dp),
+            shape = CustomShapes.MessageInputContainer,
             colors = OutlinedTextFieldDefaults.colors(
                 focusedBorderColor = MaterialTheme.colorScheme.primary,
                 unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant

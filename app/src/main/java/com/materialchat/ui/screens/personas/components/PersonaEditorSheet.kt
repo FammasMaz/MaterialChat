@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import com.materialchat.ui.screens.settings.components.SettingsSheetShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
@@ -37,6 +36,8 @@ import com.materialchat.domain.model.Persona
 import com.materialchat.domain.model.PersonaTone
 import com.materialchat.ui.components.HapticPattern
 import com.materialchat.ui.components.rememberHapticFeedback
+import com.materialchat.ui.theme.CustomShapes
+import com.materialchat.ui.theme.ExpressiveShapes
 
 /**
  * Modal bottom sheet for creating or editing a persona.
@@ -70,7 +71,7 @@ fun PersonaEditorSheet(
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
-        shape = SettingsSheetShape,
+        shape = ExpressiveShapes.BottomSheet,
         containerColor = MaterialTheme.colorScheme.surfaceContainerLow
     ) {
         Column(
@@ -101,7 +102,7 @@ fun PersonaEditorSheet(
                     onValueChange = { if (it.length <= 4) emoji = it },
                     label = { Text("Emoji") },
                     singleLine = true,
-                    shape = RoundedCornerShape(20.dp),
+                    shape = MaterialTheme.shapes.medium,
                     modifier = Modifier.weight(0.25f)
                 )
                 OutlinedTextField(
@@ -109,7 +110,7 @@ fun PersonaEditorSheet(
                     onValueChange = { name = it },
                     label = { Text("Name") },
                     singleLine = true,
-                    shape = RoundedCornerShape(20.dp),
+                    shape = MaterialTheme.shapes.medium,
                     modifier = Modifier.weight(0.75f)
                 )
             }
@@ -122,7 +123,7 @@ fun PersonaEditorSheet(
                 onValueChange = { description = it },
                 label = { Text("Description") },
                 singleLine = true,
-                shape = RoundedCornerShape(20.dp),
+                shape = MaterialTheme.shapes.medium,
                 modifier = Modifier.fillMaxWidth()
             )
 
@@ -135,7 +136,7 @@ fun PersonaEditorSheet(
                 label = { Text("System Prompt") },
                 minLines = 3,
                 maxLines = 6,
-                shape = RoundedCornerShape(20.dp),
+                shape = MaterialTheme.shapes.medium,
                 modifier = Modifier.fillMaxWidth()
             )
 
@@ -147,7 +148,7 @@ fun PersonaEditorSheet(
                 onValueChange = { tagsText = it },
                 label = { Text("Expertise Tags (comma-separated)") },
                 singleLine = true,
-                shape = RoundedCornerShape(20.dp),
+                shape = MaterialTheme.shapes.medium,
                 modifier = Modifier.fillMaxWidth()
             )
 
@@ -174,7 +175,7 @@ fun PersonaEditorSheet(
                                     .replaceFirstChar { it.uppercase() }
                             )
                         },
-                        shape = RoundedCornerShape(16.dp)
+                        shape = CustomShapes.Pill
                     )
                 }
             }
@@ -188,7 +189,7 @@ fun PersonaEditorSheet(
                 label = { Text("Conversation Starters (one per line)") },
                 minLines = 3,
                 maxLines = 5,
-                shape = RoundedCornerShape(20.dp),
+                shape = MaterialTheme.shapes.medium,
                 modifier = Modifier.fillMaxWidth()
             )
 

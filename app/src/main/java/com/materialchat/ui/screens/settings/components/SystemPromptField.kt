@@ -57,6 +57,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.materialchat.ui.theme.CustomShapes
 import com.materialchat.ui.theme.ExpressiveMotion
+import com.materialchat.ui.theme.ExpressiveShapes
 import com.materialchat.ui.components.HomeSettingsSlot
 import com.materialchat.ui.components.rememberHomeSettingsPalette
 
@@ -98,7 +99,7 @@ fun SystemPromptField(
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerLow
         ),
-        shape = CustomShapes.ProviderCard
+        shape = ExpressiveShapes.Card
     ) {
         Column(
             modifier = Modifier

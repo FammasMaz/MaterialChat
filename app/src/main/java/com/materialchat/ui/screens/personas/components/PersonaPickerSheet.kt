@@ -20,7 +20,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import com.materialchat.ui.screens.settings.components.SettingsSheetShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
@@ -36,6 +35,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.materialchat.domain.model.Persona
 import kotlin.math.absoluteValue
+import com.materialchat.ui.theme.ExpressiveShapes
 
 /**
  * Quick-picker bottom sheet for selecting a persona when starting a new conversation.
@@ -62,7 +62,7 @@ fun PersonaPickerSheet(
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
-        shape = SettingsSheetShape,
+        shape = ExpressiveShapes.BottomSheet,
         containerColor = MaterialTheme.colorScheme.surfaceContainerLow
     ) {
         Column(
@@ -87,7 +87,7 @@ fun PersonaPickerSheet(
                     .fillMaxWidth()
                     .clickable { onDismiss() }
                     .padding(horizontal = 16.dp, vertical = 4.dp),
-                shape = RoundedCornerShape(20.dp),
+                shape = ExpressiveShapes.MenuSelection,
                 color = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.5f)
             ) {
                 Row(
@@ -160,7 +160,7 @@ private fun PersonaPickerItem(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick),
-        shape = RoundedCornerShape(20.dp),
+        shape = ExpressiveShapes.MenuSelection,
         color = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.5f)
     ) {
         Row(

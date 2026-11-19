@@ -138,7 +138,7 @@ fun OnDeviceModelsScreen(
                 .fillMaxSize()
                 .padding(top = padding.calculateTopPadding()),
             color = MaterialTheme.colorScheme.surfaceContainerLow,
-            shape = CustomShapes.BottomSheet
+            shape = ExpressiveShapes.BottomSheet
         ) {
             LazyColumn(
                 modifier = Modifier

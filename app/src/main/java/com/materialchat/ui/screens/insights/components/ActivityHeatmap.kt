@@ -1,7 +1,7 @@
 package com.materialchat.ui.screens.insights.components
 
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.spring
+import com.materialchat.ui.theme.ExpressiveMotion
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -53,10 +53,7 @@ fun ActivityHeatmap(
         animationProgress.snapTo(0f)
         animationProgress.animateTo(
             targetValue = 1f,
-            animationSpec = spring(
-                dampingRatio = 0.9f,
-                stiffness = 40f
-            )
+            animationSpec = ExpressiveMotion.Spatial.dataReveal()
         )
     }
 

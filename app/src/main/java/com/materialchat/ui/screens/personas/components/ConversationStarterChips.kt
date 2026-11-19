@@ -13,6 +13,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.materialchat.ui.theme.CustomShapes
 
 /**
  * Horizontally scrollable row of suggestion chips for persona conversation starters.
@@ -48,7 +49,7 @@ fun ConversationStarterChips(
                         maxLines = 2
                     )
                 },
-                shape = RoundedCornerShape(20.dp),
+                shape = CustomShapes.Pill,
                 colors = SuggestionChipDefaults.suggestionChipColors(
                     containerColor = MaterialTheme.colorScheme.secondaryContainer,
                     labelColor = MaterialTheme.colorScheme.onSecondaryContainer

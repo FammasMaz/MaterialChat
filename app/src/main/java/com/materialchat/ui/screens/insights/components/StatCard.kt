@@ -1,7 +1,7 @@
 package com.materialchat.ui.screens.insights.components
 
 import androidx.compose.animation.core.animateIntAsState
-import androidx.compose.animation.core.spring
+import com.materialchat.ui.theme.ExpressiveMotion
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -23,7 +23,7 @@ import com.materialchat.ui.theme.ExpressiveShapes
  * Features an animated counter using spring physics for the value,
  * a label above, and an optional subtitle below.
  *
- * Uses surfaceContainerHigh for the card surface and RoundedCornerShape(24.dp)
+ * Uses surfaceContainerHigh for the card surface and ExpressiveShapes.Card
  * for M3 Expressive shape language.
  *
  * @param label The metric label (e.g., "Total Messages")
@@ -40,10 +40,7 @@ fun StatCard(
 ) {
     val animatedValue by animateIntAsState(
         targetValue = value,
-        animationSpec = spring(
-            dampingRatio = 0.8f,
-            stiffness = 50f
-        ),
+        animationSpec = ExpressiveMotion.Spatial.dataReveal(),
         label = "stat_counter"
     )
 

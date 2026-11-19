@@ -65,6 +65,7 @@ import com.materialchat.ui.components.HapticPattern
 import com.materialchat.ui.components.rememberHapticFeedback
 import java.text.DateFormat
 import java.util.Date
+import com.materialchat.ui.theme.CustomShapes
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -236,7 +237,7 @@ private fun MemorySearchField(
             }
         },
         singleLine = true,
-        shape = RoundedCornerShape(24.dp),
+        shape = CustomShapes.SearchBar,
         colors = OutlinedTextFieldDefaults.colors(
             focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
             unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh

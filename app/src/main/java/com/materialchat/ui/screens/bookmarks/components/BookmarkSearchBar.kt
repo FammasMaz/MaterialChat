@@ -15,6 +15,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.materialchat.ui.theme.CustomShapes
 
 /**
  * Search bar for filtering bookmarks in the Knowledge Base.
@@ -62,7 +63,7 @@ fun BookmarkSearchBar(
             }
         },
         singleLine = true,
-        shape = RoundedCornerShape(24.dp),
+        shape = CustomShapes.SearchBar,
         colors = OutlinedTextFieldDefaults.colors(
             focusedBorderColor = MaterialTheme.colorScheme.primary,
             unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,

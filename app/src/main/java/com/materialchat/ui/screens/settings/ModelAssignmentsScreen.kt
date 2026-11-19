@@ -281,7 +281,7 @@ private fun AssignmentSectionCard(
 private fun OnDeviceModelStatusRow(row: OnDeviceModelRow) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
+        shape = ExpressiveShapes.MenuSelection,
         color = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.55f)
     ) {
         Row(
@@ -465,7 +465,7 @@ private fun TaskAssignmentCard(
                     .fillMaxWidth()
                     .defaultMinSize(minHeight = 48.dp)
                     .clickable(enabled = enabled) { providerMenuExpanded = true },
-                shape = RoundedCornerShape(16.dp),
+                shape = MaterialTheme.shapes.medium,
                 color = MaterialTheme.colorScheme.surfaceContainerHighest,
                 tonalElevation = 0.dp
             ) {
@@ -524,7 +524,7 @@ private fun TaskAssignmentCard(
                 value = manualModel,
                 onValueChange = { manualModel = it },
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp),
+                shape = MaterialTheme.shapes.medium,
                 label = { Text("Model id") },
                 placeholder = { Text("e.g., gpt-4o-mini or llama3.2:1b") },
                 singleLine = true,
@@ -557,7 +557,7 @@ private fun TaskAssignmentCard(
                     .fillMaxWidth()
                     .defaultMinSize(minHeight = 48.dp)
                     .clickable(enabled = enabled) { menuExpanded = true },
-                shape = RoundedCornerShape(16.dp),
+                shape = MaterialTheme.shapes.medium,
                 color = MaterialTheme.colorScheme.surfaceContainerHighest,
                 tonalElevation = 0.dp
             ) {
@@ -653,7 +653,7 @@ private fun ImageGenerationAssignmentCard(
             value = text,
             onValueChange = { text = it },
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp),
+            shape = MaterialTheme.shapes.medium,
             label = { Text("Model id") },
             placeholder = { Text(AppPreferences.DEFAULT_IMAGE_GENERATION_MODEL) },
             singleLine = true

@@ -2339,7 +2339,7 @@ private fun TitleGenerationModelField(
                     },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(16.dp),
+                    shape = MaterialTheme.shapes.medium,
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = MaterialTheme.colorScheme.primary,
                         unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
@@ -2371,7 +2371,7 @@ private fun TitleGenerationModelField(
                             .fillMaxWidth()
                             .defaultMinSize(minHeight = 56.dp)
                             .clickable { dropdownExpanded = true },
-                        shape = RoundedCornerShape(16.dp),
+                        shape = MaterialTheme.shapes.medium,
                         color = MaterialTheme.colorScheme.surface,
                         contentColor = MaterialTheme.colorScheme.onSurface,
                         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
@@ -2589,7 +2589,7 @@ private fun DefaultImageGenerationModelField(
                 },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp),
+                shape = MaterialTheme.shapes.medium,
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = MaterialTheme.colorScheme.primary,
                     unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
@@ -3351,7 +3351,7 @@ private fun WebSearchSection(
                             placeholder = { Text("Enter your Exa API key") },
                             modifier = Modifier.fillMaxWidth(),
                             singleLine = true,
-                            shape = RoundedCornerShape(16.dp)
+                            shape = MaterialTheme.shapes.medium
                         )
                         if (apiKeyText.isNotBlank()) {
                             Spacer(modifier = Modifier.height(8.dp))
@@ -3377,13 +3377,13 @@ private fun WebSearchSection(
                             placeholder = { Text("https://searx.be") },
                             modifier = Modifier.fillMaxWidth(),
                             singleLine = true,
-                            shape = RoundedCornerShape(16.dp)
+                            shape = MaterialTheme.shapes.medium
                         )
                     }
                     "NATIVE" -> {
                         Surface(
                             modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(18.dp),
+                            shape = ExpressiveShapes.DisclosurePanel,
                             color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.58f),
                             contentColor = MaterialTheme.colorScheme.onSecondaryContainer
                         ) {

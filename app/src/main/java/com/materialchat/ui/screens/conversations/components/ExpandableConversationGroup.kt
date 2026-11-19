@@ -195,14 +195,14 @@ fun ExpandableConversationGroup(
                                 },
                                 onLongClick = { onParentLongClick(group.parent) }
                             )
-                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                            .padding(horizontal = 16.dp, vertical = 14.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         // Tonal squircle tile for the icon or emoji: the same leading
                         // treatment as ConversationItem so both row kinds read as one list.
                         Box(
                             modifier = Modifier
-                                .size(44.dp)
+                                .size(48.dp)
                                 .clip(tileShape)
                                 .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f)),
                             contentAlignment = Alignment.Center
@@ -217,12 +217,12 @@ fun ExpandableConversationGroup(
                                     imageVector = Icons.AutoMirrored.Outlined.Chat,
                                     contentDescription = null,
                                     tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                                    modifier = Modifier.size(24.dp)
+                                    modifier = Modifier.size(26.dp)
                                 )
                             }
                         }
 
-                        Spacer(modifier = Modifier.width(16.dp))
+                        Spacer(modifier = Modifier.width(14.dp))
 
                         // Content
                         Column(

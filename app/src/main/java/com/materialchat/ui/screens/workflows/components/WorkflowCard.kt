@@ -104,7 +104,7 @@ fun WorkflowCard(
 
                 // Step count badge
                 Surface(
-                    shape = RoundedCornerShape(16.dp),
+                    shape = CustomShapes.Pill,
                     color = MaterialTheme.colorScheme.secondaryContainer
                 ) {
                     Text(

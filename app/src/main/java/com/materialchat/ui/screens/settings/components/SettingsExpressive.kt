@@ -30,50 +30,27 @@ import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.geometry.toRect
-import androidx.compose.ui.graphics.Outline
 import androidx.compose.ui.graphics.Shape
-import androidx.compose.ui.graphics.asComposePath
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.Density
-import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
-import androidx.graphics.shapes.CornerRounding
-import androidx.graphics.shapes.RoundedPolygon
-import androidx.graphics.shapes.rectangle
-import androidx.graphics.shapes.toPath
 import com.materialchat.ui.components.ExpressiveSwitch
 import androidx.compose.material3.Surface
 import com.materialchat.ui.theme.ExpressiveShapes
 import com.materialchat.ui.theme.MaterialChatExpressiveTitleFontFamily
 
 /**
- * Modal bottom sheet contour for the settings screen: the app's 32dp squircle on
- * the two top corners only, square at the bottom where the sheet meets the
- * screen edge. Built once; [createOutline] allocates only the polygon path.
+ * Modal bottom sheet contour for the settings screen. Delegates to
+ * [ExpressiveShapes.BottomSheet] (the one bottom-sheet token, geometry-identical to the
+ * private object this used to be). Kept only while chat's three sheets still import it;
+ * new consumers use [ExpressiveShapes.BottomSheet] directly.
  */
-val SettingsSheetShape: Shape = object : Shape {
-    private val topRounding = CornerRounding(radius = 0f, smoothing = 0.65f)
-
-    override fun createOutline(size: Size, layoutDirection: LayoutDirection, density: Density): Outline {
-        if (size.width <= 0f || size.height <= 0f) return Outline.Rectangle(size.toRect())
-        val radiusPx = with(density) { 32.dp.toPx() }
-            .coerceIn(0f, minOf(size.width, size.height) / 2f)
-        val rounded = CornerRounding(radius = radiusPx, smoothing = topRounding.smoothing)
-        // RoundedPolygon.rectangle vertex order: bottom-right, bottom-left, top-left, top-right.
-        val polygon = RoundedPolygon.rectangle(
-            width = size.width,
-            height = size.height,
-            perVertexRounding = listOf(CornerRounding.Unrounded, CornerRounding.Unrounded, rounded, rounded),
-            centerX = size.width / 2f,
-            centerY = size.height / 2f
-        )
-        return Outline.Generic(polygon.toPath().asComposePath())
-    }
-}
+@Deprecated(
+    message = "Use ExpressiveShapes.BottomSheet: the one bottom-sheet shape.",
+    replaceWith = ReplaceWith("ExpressiveShapes.BottomSheet", "com.materialchat.ui.theme.ExpressiveShapes")
+)
+val SettingsSheetShape: Shape get() = ExpressiveShapes.BottomSheet
 
 /**
  * M3 Expressive section header for the settings list: a tonal icon tile, an

@@ -1,8 +1,8 @@
 package com.materialchat.ui.screens.bookmarks.components
 
 import androidx.compose.animation.animateColorAsState
-import com.materialchat.ui.screens.settings.components.SettingsSheetShape
 import com.materialchat.ui.theme.ExpressiveMotion
+import com.materialchat.ui.theme.ExpressiveShapes
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -76,7 +76,7 @@ fun AddBookmarkSheet(
         sheetState = sheetState,
         containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
         // Same squircle sheet contour as the settings sheets.
-        shape = SettingsSheetShape
+        shape = ExpressiveShapes.BottomSheet
     ) {
         Column(
             modifier = Modifier
@@ -192,7 +192,7 @@ fun AddBookmarkSheet(
                     onValueChange = { tagInput = it },
                     placeholder = { Text("Add a tag") },
                     singleLine = true,
-                    shape = RoundedCornerShape(20.dp),
+                    shape = MaterialTheme.shapes.medium,
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = MaterialTheme.colorScheme.primary,
                         unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
@@ -244,7 +244,7 @@ fun AddBookmarkSheet(
                 placeholder = { Text("Why is this worth remembering?") },
                 minLines = 2,
                 maxLines = 4,
-                shape = RoundedCornerShape(20.dp),
+                shape = MaterialTheme.shapes.medium,
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = MaterialTheme.colorScheme.primary,
                     unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
