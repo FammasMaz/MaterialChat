@@ -187,8 +187,9 @@ object ExpressiveShapes {
 
     /**
      * The assistant answer surface: wide top corners that sit against the pill below it
-     * (36 / 36 / 28 / 28), as a squircle. Value-identical to the radii of
-     * `AssistantShapes.Answer`; the assistant swaps the class, not the geometry.
+     * (36 / 36 / 28 / 28), as a squircle. This token is the record of those radii (the
+     * assistant's `AssistantShapes.Answer` was the same values as a round corner and is no
+     * longer drawn); `ShapeTokensTest` pins them.
      */
     val AnswerSurface = SquircleShape(topStart = 36.dp, topEnd = 36.dp, bottomEnd = 28.dp, bottomStart = 28.dp)
 
@@ -197,8 +198,9 @@ object ExpressiveShapes {
 
     /**
      * The assistant thinking surface: an asymmetric container whose tight bottom-START corner
-     * (8dp) points at the pill it will answer into; every other corner 20dp. Radii match
-     * `AssistantShapes.Thinking` (`topStart = 20, topEnd = 20, bottomStart = 8, bottomEnd = 20`).
+     * (8dp) points at the pill it will answer into; every other corner 20dp
+     * (`topStart = 20, topEnd = 20, bottomStart = 8, bottomEnd = 20`, the radii the assistant's
+     * former `AssistantShapes.Thinking` recorded; `ShapeTokensTest` pins them).
      */
     val ThinkingSurface = SquircleShape(topStart = 20.dp, topEnd = 20.dp, bottomEnd = 20.dp, bottomStart = 8.dp)
 

@@ -235,7 +235,8 @@ fun ColorScheme.standardContrastPairs(): List<ThemeContrastPair> = buildList {
  * them rather than by role: the snackbar ([ExpressiveSnackbar]: inverse surface), the dialog
  * (`ExpressiveShapes.Dialog` on M3's `surfaceContainerHigh` dialog container) and the loading
  * row (an inline indicator beside muted text on a list row). These were gated on one surface
- * only (`HomeSettingsSlot.SnackbarBody/SnackbarAction/DialogBody/DialogLabel/DialogDestructive`)
+ * only (the home/settings palette's snackbar and dialog slots; W6 lets that owner delete the
+ * duplicates, since `ThemeContrastTest` asserts these pairs are present in its slot set by value)
  * while chat, memories and the assistant settings panel painted the same pairs ungated (W4
  * audit F5); asserting them here gates every host at once. Dialog label and destructive text
  * are body-sized text (`labelLarge` buttons), so they are held to [ThemeContrast.BODY_TEXT].
@@ -279,7 +280,8 @@ fun ColorScheme.componentContrastPairs(): List<ThemeContrastPair> = buildList {
 /**
  * The colour of a dialog's confirm/dismiss `TextButton` label on the M3 dialog container
  * (`surfaceContainerHigh`): `primary` wherever it reaches 4.5:1 (every appearance but VIOLET
- * light and CITRUS light), else `onSurface`. Same resolution as `HomeSettingsSlot.DialogLabel`;
+ * light and CITRUS light), else `onSurface`. The same resolution the home/settings palette
+ * reaches for its dialog label;
  * exposed at theme level so the chat, memories and assistant dialogs draw the same value
  * (`ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.dialogActionColor())`).
  */
@@ -288,8 +290,8 @@ fun ColorScheme.dialogActionColor(): Color =
 
 /**
  * The colour of a dialog's destructive action label on `surfaceContainerHigh`: `error` where it
- * reads at 4.5:1, then `onErrorContainer`, then `onSurface`. Same resolution as
- * `HomeSettingsSlot.DialogDestructive`.
+ * reads at 4.5:1, then `onErrorContainer`, then `onSurface`. The same resolution the
+ * home/settings palette reaches for its destructive dialog label.
  */
 fun ColorScheme.dialogDestructiveColor(): Color =
     readableOn(surfaceContainerHigh, ThemeContrast.BODY_TEXT, listOf(error, onErrorContainer))

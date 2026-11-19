@@ -8,6 +8,7 @@ import androidx.compose.ui.graphics.lerp
 import com.materialchat.assistant.ui.AssistantContrast
 import com.materialchat.assistant.ui.AssistantSurfacePalette
 import com.materialchat.data.local.preferences.AppPreferences
+import com.materialchat.ui.components.HomeSettingsContrastSlots
 import com.materialchat.ui.components.HomeSettingsPalette
 import com.materialchat.ui.components.HomeSettingsSlot
 import com.materialchat.ui.screens.chat.components.ChatSurfacePalette
@@ -46,23 +47,15 @@ class ThemeContrastTest {
 
     /**
      * Every surface that exposes its slots through the theme's [ContrastSlot] vocabulary. The
-     * theme foundation implements [ContrastSlotResolver] itself; the three surface palettes are
-     * adapted here (their files belong to the home-settings / chat / assistant owners) until each
-     * implements [ContrastSlotSet] on its resolved instance, at which point its adapter line
-     * collapses to the palette's own resolver. Adding a surface means adding one line here.
+     * theme foundation implements [ContrastSlotResolver] itself, and since W5 each surface
+     * palette implements [ContrastSlotSet] on its resolved instance, so every line here is the
+     * palette's own resolver (no adapter). Adding a surface means adding one line here.
      */
     private val surfaces: List<Pair<String, ContrastSlotResolver>> by lazy {
         listOf(
             ThemeContrastSlots.SURFACE to (ThemeContrastSlots as ContrastSlotResolver),
-            "home-settings" to ContrastSlotResolver { scheme ->
-                ContrastSlotList("home-settings", HomeSettingsPalette.resolve(scheme).pairs())
-            },
-            "assistant" to ContrastSlotResolver { scheme ->
-                ContrastSlotList(
-                    "assistant",
-                    AssistantSurfacePalette.resolve(scheme).pairs().map { ThemeContrastPair(it.name, it.container, it.content, it.minimum) }
-                )
-            }
+            HomeSettingsContrastSlots.SURFACE to (HomeSettingsContrastSlots as ContrastSlotResolver),
+            AssistantSurfacePalette.SURFACE to ContrastSlotResolver(AssistantSurfacePalette::resolve)
         ) + AppPreferences.ChatBubbleStyle.values().map { family ->
             // ChatSurfacePalette implements ContrastSlotSet itself (W5 chat): its slots are the
             // chat pairs plus the shared component pairs (snackbar, error card, loading rows).
@@ -123,15 +116,20 @@ class ThemeContrastTest {
             }
         }
         assertTrue("${failures.size} component pair(s) below WCAG AA:\n" + failures.joinToString("\n"), failures.isEmpty())
-        // The home slots that used to be the only gate still describe the same fill/role pairs,
-        // so the two gates cannot drift apart.
+        // W6: the home/settings surface must still gate the same snackbar and dialog pairs the
+        // component list does, by VALUE (fill, resolved content, minimum), not by slot name: the
+        // home-settings owner can delete its duplicate Snackbar*/Dialog* slots as long as the
+        // pairs remain reachable through its slot set, and the two gates still cannot drift.
+        val componentNames = listOf("snackbar body", "snackbar action", "dialog body", "dialog label", "dialog destructive")
         for (theme in themes) {
             val s = theme.scheme
-            assertEquals(s.inverseSurface, HomeSettingsSlot.SnackbarBody.fill(s)); assertEquals(s.inverseOnSurface, HomeSettingsSlot.SnackbarBody.preferred(s))
-            assertEquals(s.inverseSurface, HomeSettingsSlot.SnackbarAction.fill(s)); assertEquals(s.inversePrimary, HomeSettingsSlot.SnackbarAction.preferred(s))
-            assertEquals(s.surfaceContainerHigh, HomeSettingsSlot.DialogBody.fill(s)); assertEquals(s.onSurface, HomeSettingsSlot.DialogBody.preferred(s))
-            assertEquals(s.surfaceContainerHigh, HomeSettingsSlot.DialogLabel.fill(s)); assertEquals(s.primary, HomeSettingsSlot.DialogLabel.preferred(s))
-            assertEquals(s.surfaceContainerHigh, HomeSettingsSlot.DialogDestructive.fill(s)); assertEquals(s.error, HomeSettingsSlot.DialogDestructive.preferred(s))
+            val home = HomeSettingsContrastSlots.resolve(s).slots
+            for (pair in s.componentContrastPairs().filter { it.name in componentNames }) {
+                assertTrue(
+                    "${theme.name}: home-settings slot set has no slot equal to component pair '${pair.name}' (fill ${pair.container}, content ${pair.content}, min ${pair.minimum})",
+                    home.any { it.fill == pair.container && it.content == pair.content && it.minimum == pair.minimum }
+                )
+            }
         }
     }
 
@@ -157,9 +155,18 @@ class ThemeContrastTest {
             if (ThemeContrast.contrastRatio(s.error, s.surfaceContainerHigh) >= ThemeContrast.BODY_TEXT) {
                 assertEquals(theme.name, s.error, destructive)
             }
-            val home = HomeSettingsPalette.resolve(s)
-            assertEquals(theme.name, home[HomeSettingsSlot.DialogLabel], action)
-            assertEquals(theme.name, home[HomeSettingsSlot.DialogDestructive], destructive)
+            // W6: the home/settings surface resolves the same two dialog colours, checked by
+            // value through its slot set (not by the Snackbar*/Dialog* slot names, which the
+            // home-settings owner may delete now that componentContrastPairs() gates them).
+            val home = HomeSettingsContrastSlots.resolve(s).slots
+            assertTrue(
+                "${theme.name}: home-settings has no body-text slot drawing $action on surfaceContainerHigh (dialog label)",
+                home.any { it.fill == s.surfaceContainerHigh && it.content == action && it.minimum == ThemeContrast.BODY_TEXT }
+            )
+            assertTrue(
+                "${theme.name}: home-settings has no body-text slot drawing $destructive on surfaceContainerHigh (dialog destructive)",
+                home.any { it.fill == s.surfaceContainerHigh && it.content == destructive && it.minimum == ThemeContrast.BODY_TEXT }
+            )
         }
         assertEquals(setOf("VIOLET light", "CITRUS light"), fallbacks.toSet())
         // Dynamic-like schemes: the resolved colour still reads even though the roles are the system's.
