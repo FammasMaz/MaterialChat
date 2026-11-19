@@ -357,6 +357,7 @@ class MaterialChatVoiceInteractionSession(
             onOpenInApp = { conversationId ->
                 openInApp(conversationId)
             },
+            onOpenSettings = { openSettings() },
             onOpenClock = { event ->
                 // startAssistantActivity only succeeds while this session is the active and
                 // shown one, so fall back to a plain launch rather than failing whenever the
@@ -427,6 +428,20 @@ class MaterialChatVoiceInteractionSession(
                 runCatching { context.startActivity(intent) }
             }
         hide()
+    }
+
+    /**
+     * The provider rejected the key (401/403): open the app on its settings. The action is
+     * delivered to MainActivity exactly like OPEN_CHAT; until MainActivity routes it to the
+     * Settings screen the app opens on its start destination, which still holds the settings
+     * tab (see REPORT.md, "Needs another owner").
+     */
+    private fun openSettings() {
+        val intent = Intent(context, MainActivity::class.java).apply {
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+            action = ACTION_OPEN_SETTINGS
+        }
+        assistantLauncher().launch(intent)?.let { Log.w(TAG, "open settings: $it") }
     }
 
     @Deprecated("Deprecated in API level 30")
@@ -502,5 +517,7 @@ class MaterialChatVoiceInteractionSession(
 
     private companion object {
         const val TAG = "MaterialChatAssistant"
+        /** MainActivity action for the provider settings (not yet routed there; see openSettings). */
+        const val ACTION_OPEN_SETTINGS = "com.materialchat.OPEN_SETTINGS"
     }
 }

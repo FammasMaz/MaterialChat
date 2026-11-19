@@ -40,6 +40,11 @@ internal object AssistantCopy {
     const val NO_CONNECTION = "No connection. Check your network and try again."
     /** HTTP 429 / quota exhaustion (Gemini, OpenAI, OpenRouter): retrying later is the right move. */
     const val RATE_LIMITED = "The model is busy right now. Wait a moment and try again."
+    /**
+     * HTTP 401 / 403: the provider refused the key or the account. Retrying changes nothing;
+     * the key lives in the app's provider settings, which the notice's action opens.
+     */
+    const val PROVIDER_REJECTED = "The provider rejected the request. Check the API key in settings."
     const val REQUEST_FAILED = "Something went wrong. Try again."
 
     /** Labelled actions of the answer surface and the opened pill. */
@@ -74,17 +79,28 @@ internal object AssistantCopy {
 
     /**
      * The notice for a failed request. Connectivity is named first (an [IOException] anywhere in
-     * the cause chain). A provider's HTTP failure reaches the assistant as a plain exception
-     * carrying the parsed error body (ChatRepositoryImpl wraps `StreamingEvent.Error.message`),
-     * so the one state a user acts on differently is recognised from that text: a rate limit
-     * (429, quota exhaustion) invites waiting before the retry. Everything else, including an
-     * HTTP 401/403, stays generic (W2 pins that); the exception's own text never reaches the pill.
+     * the cause chain). Then the typed HTTP status, when the stream delivered one ([httpStatus],
+     * the W4 chat delegate's `StreamingState.Error.httpStatus`): 401 and 403 are the provider
+     * rejecting the key or account ([PROVIDER_REJECTED], action: open the provider settings),
+     * 429 is a rate limit ([RATE_LIMITED], wait before the retry). Without a typed status the
+     * provider's failure is only a plain exception carrying the parsed error body
+     * (ChatRepositoryImpl wraps `StreamingEvent.Error.message`), and the one state recognised
+     * from that text is the rate limit (429, quota exhaustion). A 401/403 is NEVER recognised
+     * from text: "HTTP 401" in a body stays generic (W2 pins that), so a provider echoing a
+     * status in an unrelated message cannot send the user to the key settings by accident.
+     * The exception's own text never reaches the pill.
      */
-    fun requestFailure(error: Throwable?): String = when {
+    fun requestFailure(error: Throwable?, httpStatus: Int? = null): String = when {
         isConnectivity(error) -> NO_CONNECTION
+        httpStatus in PROVIDER_REJECTED_STATUSES -> PROVIDER_REJECTED
+        httpStatus == HTTP_TOO_MANY_REQUESTS -> RATE_LIMITED
         mentionsAny(error, RATE_LIMIT_MARKERS) -> RATE_LIMITED
         else -> REQUEST_FAILED
     }
+
+    /** The statuses that mean "your key or account", not "try again". */
+    private val PROVIDER_REJECTED_STATUSES = setOf(401, 403)
+    private const val HTTP_TOO_MANY_REQUESTS = 429
 
     private val RATE_LIMIT_MARKERS = listOf(
         "429", "rate limit", "rate_limit", "ratelimit", "too many requests", "quota",

@@ -12,7 +12,10 @@ import java.io.IOException
  * exception whose message is the parsed error body (ChatRepositoryImpl), so the one state a
  * user acts on differently (a rate limit: wait, then retry) is recognised from that text;
  * connectivity is an [IOException] anywhere in the chain; everything else stays generic,
- * including rejected keys (AssistantNoticesTest pins HTTP 401 to the generic copy).
+ * including rejected keys named only in text (AssistantNoticesTest pins HTTP 401 in a body to
+ * the generic copy). W4: a typed HTTP status (StreamingState.Error.httpStatus, read through the
+ * ViewModel's adapter) is authoritative: 401/403 is the provider rejecting the key, 429 the
+ * rate limit; the text path only ever adds the rate limit.
  */
 class AssistantCopyTest {
 
@@ -56,8 +59,48 @@ class AssistantCopyTest {
         assertEquals(AssistantCopy.RATE_LIMITED, AssistantCopy.requestFailure(a))
     }
 
+    @Test fun aTypedStatusIsAuthoritativeForRejectionAndRateLimit() {
+        assertEquals(AssistantCopy.PROVIDER_REJECTED, AssistantCopy.requestFailure(Exception("{}"), httpStatus = 401))
+        assertEquals(AssistantCopy.PROVIDER_REJECTED, AssistantCopy.requestFailure(Exception("Forbidden"), httpStatus = 403))
+        assertEquals(AssistantCopy.PROVIDER_REJECTED, AssistantCopy.requestFailure(null, httpStatus = 401))
+        assertEquals(AssistantCopy.RATE_LIMITED, AssistantCopy.requestFailure(Exception("{}"), httpStatus = 429))
+        for (status in listOf(400, 404, 408, 500, 502, 503)) {
+            assertEquals("$status", AssistantCopy.REQUEST_FAILED, AssistantCopy.requestFailure(Exception("{}"), httpStatus = status))
+        }
+        // A typed status that is not one of the three leaves the text path in charge: a quota
+        // body on a 5xx still names the limit.
+        assertEquals(AssistantCopy.RATE_LIMITED, AssistantCopy.requestFailure(Exception("quota exceeded"), httpStatus = 500))
+        // Connectivity outranks any status.
+        assertEquals(AssistantCopy.NO_CONNECTION, AssistantCopy.requestFailure(IOException("x"), httpStatus = 401))
+        // The rejection notice never carries the body.
+        assertFalse(AssistantCopy.requestFailure(Exception("sk-live-123"), httpStatus = 401).contains("sk-live"))
+    }
+
+    @Test fun withoutATypedStatusTheTextPathNeverSelectsRejection() {
+        for (body in listOf(
+            "HTTP 401: {\"error\":\"bad key\"}", "HTTP 403: Forbidden", "Unauthorized",
+            "Incorrect API key provided", "PERMISSION_DENIED", "invalid_api_key"
+        )) {
+            assertEquals(body, AssistantCopy.REQUEST_FAILED, AssistantCopy.requestFailure(Exception(body)))
+            assertEquals(body, AssistantCopy.REQUEST_FAILED, AssistantCopy.requestFailure(Exception(body), httpStatus = null))
+        }
+    }
+
+    @Test fun aRejectedKeyOpensSettingsAndInvitesNoRetry() {
+        // handleError mirrors the message into the voice state exactly as for any failure, and
+        // the resolution still picks settings over the retry: re-sending cannot fix a key.
+        val rejected = resolve(AssistantCopy.PROVIDER_REJECTED, VoiceState.Error(AssistantCopy.PROVIDER_REJECTED))
+        assertTrue(rejected.isError)
+        assertEquals(AssistantNoticeAction.OpenSettings, rejected.action)
+        assertEquals(AssistantCopy.PROMPT, rejected.restingLine)
+        // Distinct from the two states it must not be confused with.
+        assertTrue(AssistantCopy.PROVIDER_REJECTED != AssistantCopy.RATE_LIMITED)
+        assertTrue(AssistantCopy.PROVIDER_REJECTED != AssistantCopy.NO_CONNECTION)
+        assertTrue(AssistantNoticeAction.OpenSettings.label != AssistantNoticeAction.OpenApp.label)
+    }
+
     @Test fun everyNewNoticeFollowsTheCopyRules() {
-        for (notice in listOf(AssistantCopy.RATE_LIMITED)) {
+        for (notice in listOf(AssistantCopy.RATE_LIMITED, AssistantCopy.PROVIDER_REJECTED)) {
             assertTrue(notice, notice.endsWith("."))
             assertFalse(notice, notice.contains("please", ignoreCase = true))
             assertTrue(notice, notice.first().isUpperCase())

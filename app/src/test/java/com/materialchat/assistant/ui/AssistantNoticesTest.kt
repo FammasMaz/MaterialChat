@@ -134,6 +134,12 @@ class AssistantNoticesTest {
         assertEquals(AssistantCopy.NO_CONNECTION, AssistantCopy.requestFailure(RuntimeException("wrapped", IOException("timeout"))))
         assertEquals(AssistantCopy.REQUEST_FAILED, AssistantCopy.requestFailure(IllegalStateException("HTTP 401 {\"error\":\"bad key\"}")))
         assertEquals(AssistantCopy.REQUEST_FAILED, AssistantCopy.requestFailure(null))
+        // W4: a rejected key is a state only when the stream delivered the status as a typed
+        // value. The same words inside a body (above) still never select it, an absent typed
+        // status falls back to the text path, and connectivity outranks even a typed status.
+        assertEquals(AssistantCopy.PROVIDER_REJECTED, AssistantCopy.requestFailure(IllegalStateException("{\"error\":\"bad key\"}"), httpStatus = 401))
+        assertEquals(AssistantCopy.REQUEST_FAILED, AssistantCopy.requestFailure(IllegalStateException("HTTP 401 {\"error\":\"bad key\"}"), httpStatus = null))
+        assertEquals(AssistantCopy.NO_CONNECTION, AssistantCopy.requestFailure(IOException("HTTP 401"), httpStatus = 401))
     }
 
     @Test fun copyIsOneSystem() {
@@ -153,7 +159,8 @@ class AssistantNoticesTest {
         // Notices: full sentences, no "please", no engine names.
         for (notice in listOf(
             AssistantCopy.MIC_PERMISSION, AssistantCopy.VOICE_DISABLED, AssistantCopy.RECOGNIZER_UNAVAILABLE,
-            AssistantCopy.NO_PROVIDER, AssistantCopy.NO_CONNECTION, AssistantCopy.REQUEST_FAILED, AssistantCopy.RECOGNITION_FAILED
+            AssistantCopy.NO_PROVIDER, AssistantCopy.NO_CONNECTION, AssistantCopy.REQUEST_FAILED, AssistantCopy.RECOGNITION_FAILED,
+            AssistantCopy.RATE_LIMITED, AssistantCopy.PROVIDER_REJECTED
         )) {
             assertTrue(notice, notice.endsWith("."))
             assertFalse(notice, notice.contains("please", ignoreCase = true))

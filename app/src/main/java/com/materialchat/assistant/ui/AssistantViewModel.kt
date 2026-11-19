@@ -696,8 +696,9 @@ class AssistantViewModel(
                             is StreamingState.Error -> {
                                 queue.cancel()
                                 // Never the exception's own text: the copy system names
-                                // connectivity and keeps everything else generic.
-                                handleError(AssistantCopy.requestFailure(state.error))
+                                // connectivity, a typed 401/403/429 when the stream carries
+                                // one, the rate limit from the body, and keeps the rest generic.
+                                handleError(AssistantCopy.requestFailure(state.error, httpStatus = streamingErrorStatus(state)))
                             }
                             is StreamingState.Cancelled -> {
                                 queue.cancel()
@@ -915,6 +916,18 @@ class AssistantViewModel(
         }
     }
 
+    /** The provider rejected the key: open the app's settings (the notice's "Open settings"). */
+    fun openSettings() {
+        viewModelScope.launch { _events.emit(AssistantEvent.OpenSettings) }
+    }
+
+    /**
+     * The typed HTTP status of a failed stream. `StreamingState.Error.httpStatus` is being added
+     * by the chat delegate (W4); until it lands this is the one place the assistant reads it, so
+     * the switch is a one-line change here and the copy mapping is already tested for both paths.
+     */
+    private fun streamingErrorStatus(@Suppress("UNUSED_PARAMETER") state: StreamingState.Error): Int? = null
+
     /** The session delivers each half of the capture as it arrives, and null when it hides. */
     fun onScreenContext(context: ScreenContext?) {
         _screenContext.value = context
@@ -1107,6 +1120,8 @@ data class AssistantUiState(
 sealed class AssistantEvent {
     data class OpenClock(val command: ClockCommand, val token: Long) : AssistantEvent()
     data class OpenInApp(val conversationId: String?) : AssistantEvent()
+    /** Open the app's settings: the provider rejected the request (HTTP 401/403). */
+    data object OpenSettings : AssistantEvent()
     /** Open the camera or photo picker; [room] is how many more images this message can take. */
     data class Attach(val mode: AssistantAttachMode, val room: Int) : AssistantEvent()
     data object Dismiss : AssistantEvent()

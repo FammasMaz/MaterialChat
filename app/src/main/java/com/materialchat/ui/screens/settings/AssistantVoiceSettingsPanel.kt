@@ -21,6 +21,7 @@ import com.materialchat.ui.components.ExpressiveButton
 import com.materialchat.ui.components.ExpressiveButtonStyle
 import com.materialchat.ui.components.ExpressiveSlider
 import com.materialchat.ui.components.dialogEntrance
+import com.materialchat.ui.theme.ExpressiveShapes
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
@@ -74,8 +75,16 @@ fun AssistantVoiceSettingsPanel(viewModel: AssistantVoiceSettingsViewModel = hil
     val message by viewModel.message.collectAsStateWithLifecycle()
     val loaded = stored
     if (loaded == null) {
-        AlertDialog(onDismissRequest = { open = false }, title = { Text("Voice configuration") },
-            text = { VoiceHelp("Loading settings\u2026") }, confirmButton = {})
+        // W4: the one dialog shape and entrance, like the loaded dialog below and every other
+        // AlertDialog in Settings (docs/audit-cross-surface-w4.md, section 7).
+        AlertDialog(
+            onDismissRequest = { open = false },
+            modifier = Modifier.dialogEntrance(),
+            shape = ExpressiveShapes.Dialog,
+            title = { Text("Voice configuration") },
+            text = { VoiceHelp("Loading settings\u2026") },
+            confirmButton = {}
+        )
         return
     }
     var draft by remember(loaded) { mutableStateOf(VoiceGeminiChoices.draftDefaults(loaded)) }
@@ -85,6 +94,7 @@ fun AssistantVoiceSettingsPanel(viewModel: AssistantVoiceSettingsViewModel = hil
     AlertDialog(
         onDismissRequest = { if (!saving) open = false },
         modifier = Modifier.dialogEntrance(),
+        shape = ExpressiveShapes.Dialog,
         title = { Text("Voice configuration") },
         text = {
             Column(

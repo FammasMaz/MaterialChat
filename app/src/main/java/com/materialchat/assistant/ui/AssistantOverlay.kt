@@ -34,6 +34,8 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -175,7 +177,9 @@ fun AssistantOverlay(
     /** The user wants to add a photo; the session opens the camera or picker activity. */
     onRequestAttach: (AssistantEvent.Attach) -> Unit = {},
     /** The screen could not be read; the session opens the system's digital-assistant settings. */
-    onOpenScreenContextSettings: () -> Unit = {}
+    onOpenScreenContextSettings: () -> Unit = {},
+    /** The provider rejected the request; the session opens the app's settings. */
+    onOpenSettings: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val pendingAttachments by viewModel.pendingAttachments.collectAsStateWithLifecycle()
@@ -309,6 +313,7 @@ fun AssistantOverlay(
             when (event) {
                 is AssistantEvent.OpenClock -> onOpenClock(event)
                 is AssistantEvent.OpenInApp -> onOpenInApp(event.conversationId)
+                is AssistantEvent.OpenSettings -> onOpenSettings()
                 is AssistantEvent.Attach -> onRequestAttach(event)
                 is AssistantEvent.Dismiss -> {
                     leavingState.value = true
@@ -444,6 +449,7 @@ fun AssistantOverlay(
                     onSendClick = { viewModel.sendQuery() },
                     onRetry = viewModel::retryLastQuery,
                     onOpenInApp = viewModel::openInApp,
+                    onOpenSettings = viewModel::openSettings,
                     onDismiss = viewModel::dismiss,
                     onNewChat = viewModel::startNewChat,
                     pendingAttachments = pendingAttachments,
@@ -527,6 +533,8 @@ internal fun AssistantOverlayContent(
     onRemoveScreenContext: () -> Unit = {},
     /** The question wanted the screen and nothing arrived: opens the system's digital-assistant settings. */
     onOpenScreenContextSettings: () -> Unit = {},
+    /** The provider rejected the request (401/403): opens the app's settings. */
+    onOpenSettings: () -> Unit = {},
     /** Soft-edged pill: no own fill or shadow; the parent paints a blurred fill behind it. */
     softEdges: Boolean = false,
     /** The session is dismissing: the sheet drops and shrinks out before the window hides. */
@@ -622,6 +630,7 @@ internal fun AssistantOverlayContent(
             }
             AssistantNoticeAction.TypeInstead -> enterKeyboard()
             AssistantNoticeAction.OpenApp -> onOpenInApp()
+            AssistantNoticeAction.OpenSettings -> onOpenSettings()
             AssistantNoticeAction.ScreenSettings -> onOpenScreenContextSettings()
         }
     }
@@ -749,12 +758,18 @@ internal fun AssistantOverlayContent(
             // notice is kept for the exit transition so the surface leaves with its text.
             var lastNotice by remember { mutableStateOf(notice) }
             LaunchedEffect(notice) { if (notice != null) lastNotice = notice }
+            // W4: the notice yields height to the pill, never the other way round. With the
+            // keyboard up on a 640dp screen the sheet has ~344dp; an opened pill (Screen chip,
+            // four thumbnails, the two attach actions) is 268dp and the five-line screen notice
+            // at font scale 1.3 another ~200dp, so without a weight the column overran the top
+            // of the window. The notice's message scrolls inside its share; its chip stays.
             AnimatedVisibility(
                 visible = !hasResponse && notice != null,
                 enter = fadeIn(animationSpec = AssistantMotion.effect()) +
                     scaleIn(animationSpec = AssistantMotion.stateSwitch(), initialScale = 0.9f),
                 exit = fadeOut(animationSpec = AssistantMotion.effect()) +
-                    scaleOut(animationSpec = AssistantMotion.stateSwitch(), targetScale = 0.9f)
+                    scaleOut(animationSpec = AssistantMotion.stateSwitch(), targetScale = 0.9f),
+                modifier = Modifier.weight(1f, fill = false)
             ) {
                 (notice ?: lastNotice)?.let { AssistantNoticeSurface(notice = it, onAction = onNoticeAction) }
             }
@@ -1267,7 +1282,15 @@ private fun AssistantResponseSurface(
             if (notice != null) {
                 // The same notice surface the pill shows on its own: a message is never a bare
                 // line of coloured text on the answer fill, and its action lives inside it.
-                AssistantNoticeSurface(notice = notice, onAction = onNoticeAction)
+                // W4: it shares the surface's remaining height with the answer list (1:1,
+                // neither forced to fill) so a five-line notice at font scale 1.3 with the
+                // keyboard up (answer surface ~260dp) cannot push the toolbar past the clip;
+                // the message scrolls inside its share and the action chip stays reachable.
+                AssistantNoticeSurface(
+                    notice = notice,
+                    onAction = onNoticeAction,
+                    modifier = Modifier.weight(1f, fill = false)
+                )
             }
             AssistantAnswerToolbar(
                 showOpenInApp = showOpenInApp,
@@ -1626,6 +1649,9 @@ private fun AssistantNoticeSurface(
             verticalArrangement = Arrangement.spacedBy(AssistantSpacing.Row)
         ) {
             Row(
+                // The message row gives way before the action row below it: when the host
+                // squeezes the notice, the chip keeps its 40dp and the text scrolls.
+                modifier = Modifier.weight(1f, fill = false),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(AssistantSpacing.Row)
             ) {
@@ -1645,7 +1671,12 @@ private fun AssistantNoticeSurface(
                     maxLines = 6,
                     overflow = TextOverflow.Ellipsis,
                     style = AssistantTypography.notice(MaterialTheme.typography),
-                    color = content
+                    color = content,
+                    // Unbounded hosts leave this a no-op (six lines at most); a height-
+                    // constrained host scrolls the message instead of clipping it.
+                    modifier = Modifier
+                        .weight(1f)
+                        .verticalScroll(rememberScrollState())
                 )
             }
             val action = notice.action
@@ -1657,6 +1688,7 @@ private fun AssistantNoticeSurface(
                             AssistantNoticeAction.RetryListening -> Icons.Default.Refresh
                             AssistantNoticeAction.TypeInstead -> Icons.Default.Keyboard
                             AssistantNoticeAction.OpenApp -> Icons.AutoMirrored.Filled.OpenInNew
+                            AssistantNoticeAction.OpenSettings,
                             AssistantNoticeAction.ScreenSettings -> Icons.Outlined.Settings
                         },
                         label = action.label,
