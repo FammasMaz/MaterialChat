@@ -52,7 +52,7 @@ class GeminiTtsBackend(
         } catch (_: TimeoutCancellationException) {
             // A synthesis deadline is a speech failure, not cancellation of the voice turn.
             currentCoroutineContext().ensureActive()
-            emit(TtsEvent.Error("Gemini speech timed out. Try Android speech or retry."))
+            emit(TtsEvent.Error("Gemini speech timed out. Try again, or use Android speech."))
         } catch (cancelled: CancellationException) {
             throw cancelled
         } catch (failure: GeminiTtsException) {
@@ -257,7 +257,7 @@ enum class GeminiTtsFailure(val diagnostic: String) {
     QUOTA("Gemini speech quota or rate limit reached. Check this model's quota in Google AI Studio, or use Android speech."),
     NO_QUOTA("This Gemini speech model has no available project quota. Check model access and billing in Google AI Studio, or use Android speech."),
     MODEL_UNAVAILABLE("Gemini speech model unavailable. Check the selected model."),
-    TRANSPORT("Gemini speech service or connection failed. Retry later."),
+    TRANSPORT("Gemini speech service or connection failed. Try again later."),
     INVALID_AUDIO("Gemini speech returned invalid or unsupported audio.");
 
     companion object {

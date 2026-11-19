@@ -6,9 +6,9 @@ import com.materialchat.assistant.voice.VoiceState
 /** The one action a notice can offer. Every label is a sentence-case verb (see [AssistantCopy]). */
 internal enum class AssistantNoticeAction(val label: String) {
     /** Re-send the question the failure interrupted. */
-    RetryRequest("Try again"),
+    RetryRequest(AssistantCopy.ERROR_VERB),
     /** Open the microphone again. */
-    RetryListening("Try again"),
+    RetryListening(AssistantCopy.ERROR_VERB),
     /** Switch the pill to keyboard mode. */
     TypeInstead("Type instead"),
     /** Open the main app (the provider list lives in its settings). */
