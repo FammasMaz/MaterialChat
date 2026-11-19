@@ -3,8 +3,11 @@ package com.materialchat.ui.components
 import androidx.compose.ui.unit.dp
 import com.materialchat.assistant.ui.AssistantCopy
 import com.materialchat.ui.screens.chat.components.ChatErrorCopy
+import com.materialchat.ui.theme.ExpressiveShapes
+import com.materialchat.ui.theme.SquircleShape
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -34,5 +37,12 @@ class ErrorContentCopyTest {
         // ChatEmptyState: 24dp inner padding, 360dp width cap.
         assertEquals(24.dp, StateCardPadding)
         assertEquals(360.dp, StateCardMaxWidth)
+    }
+
+    @Test fun emptyAndErrorStatesShareTheCardSquircle() {
+        // W7 part 1 (audit F3): ExpressiveEmptyState and ErrorContent both draw ExpressiveStateCard,
+        // whose container is the one card token, not a round corner.
+        assertSame(ExpressiveShapes.Card, StateCardShape)
+        assertEquals(SquircleShape(28.dp), StateCardShape)
     }
 }

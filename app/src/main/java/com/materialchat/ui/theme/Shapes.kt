@@ -256,6 +256,35 @@ object ExpressiveShapes {
     val Badge = RoundedCornerShape(8.dp)
 
     /**
+     * The radii record of the three non-expressive bubble families chat draws
+     * (`MessageBubble.bubbleShapeFor`, `AppPreferences.ChatBubbleStyle.ROUNDED / COMPACT /
+     * GEOMETRIC`), so the chat bubble and the settings bubble-style preview read one table
+     * (W6 audit F1). Plain circular corners like the rest of the bubble family
+     * ([MessageBubbleShapes] KDoc); the `EXPRESSIVE` style reads [MessageBubbleShapes]
+     * directly, and a `ROUNDED` system bubble is [MessageBubbleShapes.SystemBubble]. Per-corner
+     * values are written in chat's `topStart, topEnd, bottomStart, bottomEnd` order. Pinned in
+     * `ShapeTokensTest`.
+     */
+    object Bubble {
+        /** `ROUNDED`: one 34dp radius on user and assistant bubbles at every group position. */
+        val Rounded = RoundedCornerShape(34.dp)
+
+        /** `COMPACT`: 18dp with a 6dp origin corner; system bubbles 20dp. */
+        object Compact {
+            val User = RoundedCornerShape(topStart = 18.dp, topEnd = 6.dp, bottomStart = 18.dp, bottomEnd = 18.dp)
+            val Assistant = RoundedCornerShape(topStart = 6.dp, topEnd = 18.dp, bottomStart = 18.dp, bottomEnd = 18.dp)
+            val System = RoundedCornerShape(20.dp)
+        }
+
+        /** `GEOMETRIC`: 18dp with a 4dp origin corner and a 10dp bottom corner under it; system bubbles 16dp. */
+        object Geometric {
+            val User = RoundedCornerShape(topStart = 18.dp, topEnd = 4.dp, bottomStart = 18.dp, bottomEnd = 10.dp)
+            val Assistant = RoundedCornerShape(topStart = 4.dp, topEnd = 18.dp, bottomStart = 10.dp, bottomEnd = 18.dp)
+            val System = RoundedCornerShape(16.dp)
+        }
+    }
+
+    /**
      * Screen content surface that rounds into the top app bar. Only the top
      * corners are rounded, so this stays a [RoundedCornerShape].
      */

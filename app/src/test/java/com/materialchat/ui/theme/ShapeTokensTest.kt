@@ -205,6 +205,36 @@ class ShapeTokensTest {
         assertEquals(RoundedCornerShape(50), ExpressiveShapes.Chip)
     }
 
+    @Test fun bubbleFamilyTokensCarryTheChatRadiiExactly() {
+        // W7 part 1: the record of MessageBubble.bubbleShapeFor's ROUNDED / COMPACT / GEOMETRIC
+        // radii, in chat's topStart / topEnd / bottomStart / bottomEnd order. Chat and the
+        // settings bubble-style preview consume these; neither keeps its own table.
+        assertEquals(RoundedCornerShape(34.dp), ExpressiveShapes.Bubble.Rounded)
+        assertEquals(
+            RoundedCornerShape(topStart = 18.dp, topEnd = 6.dp, bottomStart = 18.dp, bottomEnd = 18.dp),
+            ExpressiveShapes.Bubble.Compact.User
+        )
+        assertEquals(
+            RoundedCornerShape(topStart = 6.dp, topEnd = 18.dp, bottomStart = 18.dp, bottomEnd = 18.dp),
+            ExpressiveShapes.Bubble.Compact.Assistant
+        )
+        assertEquals(RoundedCornerShape(20.dp), ExpressiveShapes.Bubble.Compact.System)
+        assertEquals(
+            RoundedCornerShape(topStart = 18.dp, topEnd = 4.dp, bottomStart = 18.dp, bottomEnd = 10.dp),
+            ExpressiveShapes.Bubble.Geometric.User
+        )
+        assertEquals(
+            RoundedCornerShape(topStart = 4.dp, topEnd = 18.dp, bottomStart = 10.dp, bottomEnd = 18.dp),
+            ExpressiveShapes.Bubble.Geometric.Assistant
+        )
+        assertEquals(RoundedCornerShape(16.dp), ExpressiveShapes.Bubble.Geometric.System)
+        // The origin corner mirrors between user and assistant; the two are never the same shape.
+        assertNotEquals(ExpressiveShapes.Bubble.Compact.User, ExpressiveShapes.Bubble.Compact.Assistant)
+        assertNotEquals(ExpressiveShapes.Bubble.Geometric.User, ExpressiveShapes.Bubble.Geometric.Assistant)
+        // Circular corners, like every bubble: not a squircle token.
+        assertNotEquals(SquircleShape(34.dp), ExpressiveShapes.Bubble.Rounded)
+    }
+
     @Suppress("DEPRECATION")
     @Test fun fabAliasIsTheMediumRoundCornerUntilItsLastSiteMoves() {
         assertSame(MaterialChatShapes.medium, CustomShapes.Fab)

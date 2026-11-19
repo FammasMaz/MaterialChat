@@ -115,7 +115,7 @@ internal fun ExpressiveStateCard(
     Box(modifier = modifier.fillMaxWidth().padding(ExpressiveSpacing.Gutter), contentAlignment = Alignment.Center) {
         Surface(
             modifier = Modifier.widthIn(max = StateCardMaxWidth),
-            shape = ExpressiveShapes.Card,
+            shape = StateCardShape,
             color = MaterialTheme.colorScheme.surfaceContainer,
             contentColor = MaterialTheme.colorScheme.onSurface,
             tonalElevation = 0.dp,
@@ -163,6 +163,13 @@ internal fun ExpressiveStateCard(
         }
     }
 }
+
+/**
+ * The one container of [ExpressiveEmptyState] and [ErrorContent]: [ExpressiveShapes.Card]
+ * (W6 audit F3; pinned in `ErrorContentCopyTest` so neither state can drift back to a round
+ * corner).
+ */
+internal val StateCardShape = ExpressiveShapes.Card
 
 /** Inner padding of the empty/error state card (chat `ChatEmptyState` uses the same 24dp). */
 internal val StateCardPadding = 24.dp
