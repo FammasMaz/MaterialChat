@@ -10,9 +10,10 @@ import kotlin.math.pow
  * WCAG 2.x contrast arithmetic for the theme foundation.
  *
  * Pure Kotlin (no composition, no Android) so the JVM contrast gate can enumerate every
- * palette the app ships. The assistant window keeps its own private copy
- * (`assistant/ui/AssistantContrast.kt`); the two agree to the last digit on the reference
- * values the tests pin.
+ * palette the app ships. The assistant window still carries a private copy
+ * (`assistant/ui/AssistantContrast.kt`); this object exposes the same single-fill and
+ * multi-fill [pick] semantics so that copy can delegate here, and the tests pin that the two
+ * agree to the last digit.
  */
 object ThemeContrast {
     /** WCAG AA for body-sized text. */
@@ -62,16 +63,39 @@ object ThemeContrast {
     }
 
     /**
+     * The lowest ratio [foreground] reaches against any of [fills]: the number a content
+     * colour is judged by when its container can present more than one colour (a feathered
+     * or translucent fill composited over different surfaces).
+     */
+    fun contrastRatio(foreground: Color, fills: List<Color>): Double {
+        require(fills.isNotEmpty()) { "a content colour needs at least one fill" }
+        return fills.minOf { contrastRatio(foreground, it) }
+    }
+
+    /**
+     * The first of [candidates] (in order of preference, pure white and black appended) that
+     * reaches [minimum] against EVERY one of [fills]; if none does, the candidate whose worst
+     * ratio is highest. For any single opaque fill the better of white/black is >= 4.58:1, so
+     * a readable colour always exists; with several fills of opposite tone no colour may reach
+     * [minimum] on all of them, and the least-bad candidate is returned.
+     *
+     * Same semantics as the assistant's `AssistantContrast.pick(fills, ...)`.
+     */
+    fun pick(fills: List<Color>, candidates: List<Color>, minimum: Double): Color {
+        require(fills.isNotEmpty()) { "a content colour needs at least one fill" }
+        val all = candidates + listOf(Color.White, Color.Black)
+        all.firstOrNull { contrastRatio(it, fills) >= minimum }?.let { return it }
+        return all.maxByOrNull { contrastRatio(it, fills) } ?: Color.Black
+    }
+
+    /**
      * The first of [candidates] (in order of preference, pure white and black appended) that
      * reaches [minimum] against [fill]; if none does, the candidate with the highest ratio.
      * For any opaque fill the better of white/black is >= 4.58:1, so a readable colour always
      * exists.
      */
-    fun pick(fill: Color, candidates: List<Color>, minimum: Double): Color {
-        val all = candidates + listOf(Color.White, Color.Black)
-        all.firstOrNull { contrastRatio(it, fill) >= minimum }?.let { return it }
-        return all.maxByOrNull { contrastRatio(it, fill) } ?: Color.Black
-    }
+    fun pick(fill: Color, candidates: List<Color>, minimum: Double): Color =
+        pick(listOf(fill), candidates, minimum)
 
     private fun opaque(color: Color): Color = if (color.alpha >= 1f) color else color.copy(alpha = 1f)
 
@@ -103,19 +127,36 @@ fun ColorScheme.readableOn(
     fill: Color,
     minimum: Double = ThemeContrast.BODY_TEXT,
     preferred: List<Color> = emptyList()
+): Color = readableOn(listOf(fill), minimum, preferred)
+
+/**
+ * [readableOn] for a container that can present several colours (a fill feathered or
+ * composited over more than one surface): the content colour must read on every one of
+ * [fills]. Candidate order is `preferred`, then `onSurface`, `inverseOnSurface`, white, black.
+ */
+fun ColorScheme.readableOn(
+    fills: List<Color>,
+    minimum: Double = ThemeContrast.BODY_TEXT,
+    preferred: List<Color> = emptyList()
 ): Color = ThemeContrast.pick(
-    fill,
+    fills,
     preferred + listOf(onSurface, inverseOnSurface),
     minimum
 )
 
 /** [readableOn] for secondary text: tries `onSurfaceVariant` first. */
-fun ColorScheme.readableMutedOn(fill: Color): Color =
-    readableOn(fill, ThemeContrast.BODY_TEXT, listOf(onSurfaceVariant))
+fun ColorScheme.readableMutedOn(fill: Color): Color = readableMutedOn(listOf(fill))
+
+/** [readableMutedOn] against every one of [fills]. */
+fun ColorScheme.readableMutedOn(fills: List<Color>): Color =
+    readableOn(fills, ThemeContrast.BODY_TEXT, listOf(onSurfaceVariant))
 
 /** [readableOn] for an accent icon: tries `primary` first at the icon threshold. */
-fun ColorScheme.readableAccentOn(fill: Color): Color =
-    readableOn(fill, ThemeContrast.ICON, listOf(primary, onPrimaryContainer))
+fun ColorScheme.readableAccentOn(fill: Color): Color = readableAccentOn(listOf(fill))
+
+/** [readableAccentOn] against every one of [fills]. */
+fun ColorScheme.readableAccentOn(fills: List<Color>): Color =
+    readableOn(fills, ThemeContrast.ICON, listOf(primary, onPrimaryContainer))
 
 /** The surface tiers text and icons are drawn on, in ascending tonal order. */
 fun ColorScheme.surfaceTiers(): List<Pair<String, Color>> = listOf(
