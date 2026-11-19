@@ -10,6 +10,7 @@ import com.materialchat.ui.theme.ContrastSlotResolver
 import com.materialchat.ui.theme.ContrastSlotSet
 import com.materialchat.ui.theme.ThemeContrast
 import com.materialchat.ui.theme.ThemeContrastPair
+import com.materialchat.ui.theme.componentContrastPairs
 import com.materialchat.ui.theme.readableOn
 
 /**
@@ -77,11 +78,8 @@ internal enum class HomeSettingsSlot(
     FastScrollThumb(ThemeContrast.ICON, { it.surfaceContainerLow }, { it.primary }, { listOf(it.onSurface) }),
     FastScrollThumbIcon(ThemeContrast.ICON, { it.primary }, { it.onPrimary }),
     FastScrollLabel(ThemeContrast.BODY_TEXT, { it.secondaryContainer }, { it.onSecondaryContainer }),
-    DialogBody(ThemeContrast.BODY_TEXT, { it.surfaceContainerHigh }, { it.onSurface }),
-    DialogLabel(ThemeContrast.BODY_TEXT, { it.surfaceContainerHigh }, { it.primary }, { listOf(it.onSurface) }),
-    DialogDestructive(ThemeContrast.BODY_TEXT, { it.surfaceContainerHigh }, { it.error }, { listOf(it.onErrorContainer, it.onSurface) }),
-    SnackbarBody(ThemeContrast.BODY_TEXT, { it.inverseSurface }, { it.inverseOnSurface }),
-    SnackbarAction(ThemeContrast.BODY_TEXT, { it.inverseSurface }, { it.inversePrimary }, { listOf(it.inverseOnSurface) }),
+    // Snackbar and dialog pairs are no longer enumerated here: `componentContrastPairs()` is the
+    // app-wide gate for them and [HomeSettingsPalette.slots] appends it (W6 part 1).
 
     // --- Settings ----------------------------------------------------------------------
     SectionTileIcon(ThemeContrast.ICON, { it.primaryContainer }, { it.onPrimaryContainer }),
@@ -119,6 +117,12 @@ internal enum class HomeSettingsSlot(
     SystemPromptPlaceholder(ThemeContrast.BODY_TEXT, { it.surfaceContainerLow }, { it.onSurfaceVariant }, { listOf(it.onSurface) }),
     AssistantDefaultCardText(ThemeContrast.BODY_TEXT, { over(it.primaryContainer, 0.5f, it.surfaceContainerLow) }, { it.onSurface }),
     SearchNativeNote(ThemeContrast.BODY_TEXT, { over(it.secondaryContainer, 0.58f, it.surfaceContainerHigh) }, { it.onSecondaryContainer }, { listOf(it.onSurface) }),
+    // Search result rows (SearchResultItem): match-type badge on a half-alpha container over the
+    // resting row fill, and the query highlight span on tertiaryContainer.
+    SearchMatchTitle(ThemeContrast.BODY_TEXT, { over(it.primaryContainer, 0.5f, it.surfaceContainerLow) }, { it.primary }, { listOf(it.onPrimaryContainer, it.onSurface) }),
+    SearchMatchContent(ThemeContrast.BODY_TEXT, { over(it.secondaryContainer, 0.5f, it.surfaceContainerLow) }, { it.secondary }, { listOf(it.onSecondaryContainer, it.onSurface) }),
+    SearchMatchBoth(ThemeContrast.BODY_TEXT, { over(it.tertiaryContainer, 0.5f, it.surfaceContainerLow) }, { it.tertiary }, { listOf(it.onTertiaryContainer, it.onSurface) }),
+    SearchHighlight(ThemeContrast.BODY_TEXT, { it.tertiaryContainer }, { it.onTertiaryContainer }, { listOf(it.onSurface) }),
     UpdateBannerMuted(ThemeContrast.BODY_TEXT, { it.primaryContainer }, { it.onPrimaryContainer }),
     MemoryMuted(ThemeContrast.BODY_TEXT, { it.secondaryContainer }, { it.onSecondaryContainer }),
 
@@ -166,9 +170,12 @@ internal class HomeSettingsPalette private constructor(
     fun pairs(): List<ThemeContrastPair> =
         HomeSettingsSlot.values().map { ThemeContrastPair(it.name, it.fill(scheme), this[it], it.minimum) }
 
-    // ContrastSlotSet: the theme gate walks this surface through the shared vocabulary.
+    // ContrastSlotSet: the theme gate walks this surface through the shared vocabulary. The
+    // slot set is the enum walk plus the shared component pairs (snackbar, dialog, loading row,
+    // error content), so the snackbar and dialog hosts on home/settings stay gated here by value
+    // without duplicating the pairs as enum members. [pairs] stays the enum walk alone.
     override val surfaceName: String get() = HomeSettingsContrastSlots.SURFACE
-    override val slots: List<ContrastSlot> get() = pairs()
+    override val slots: List<ContrastSlot> get() = pairs() + scheme.componentContrastPairs()
 
     companion object {
         /** Each slot exactly as its call site reads the theme role: the baseline. */
@@ -194,9 +201,10 @@ internal class HomeSettingsPalette private constructor(
 
 /**
  * The home/settings surface as a [ContrastSlotResolver], so `ThemeContrastTest` can register it
- * beside the theme foundation without an adapter. The `Snackbar*` / `Dialog*` slots stay in
- * [HomeSettingsSlot] even though `componentContrastPairs()` now gates the same pairs: the theme
- * test pins them equal by name so the two gates cannot drift.
+ * beside the theme foundation without an adapter. The snackbar and dialog pairs are not
+ * [HomeSettingsSlot] members: the resolved slot set appends `componentContrastPairs()`, and the
+ * theme test asserts by value that those pairs are reachable through it, so the two gates
+ * cannot drift.
  */
 internal object HomeSettingsContrastSlots : ContrastSlotResolver {
     const val SURFACE = "home-settings"

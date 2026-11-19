@@ -464,7 +464,7 @@ private fun TaskAssignmentCard(
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .defaultMinSize(minHeight = 48.dp)
+                    .defaultMinSize(minHeight = ExpressiveSizes.Target)
                     .clickable(enabled = enabled) { providerMenuExpanded = true },
                 shape = MaterialTheme.shapes.medium,
                 color = MaterialTheme.colorScheme.surfaceContainerHighest,
@@ -556,7 +556,7 @@ private fun TaskAssignmentCard(
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .defaultMinSize(minHeight = 48.dp)
+                    .defaultMinSize(minHeight = ExpressiveSizes.Target)
                     .clickable(enabled = enabled) { menuExpanded = true },
                 shape = MaterialTheme.shapes.medium,
                 color = MaterialTheme.colorScheme.surfaceContainerHighest,
@@ -675,7 +675,7 @@ private fun ImageGenerationAssignmentCard(
                     label = { Text(tier) },
                     modifier = Modifier
                         .weight(1f)
-                        .defaultMinSize(minHeight = 48.dp),
+                        .defaultMinSize(minHeight = ExpressiveSizes.Target),
                     colors = FilterChipDefaults.filterChipColors(
                         selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
                         selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
@@ -702,7 +702,7 @@ private fun ImageGenerationAssignmentCard(
                     label = { Text(format.uppercase()) },
                     modifier = Modifier
                         .weight(1f)
-                        .defaultMinSize(minHeight = 48.dp),
+                        .defaultMinSize(minHeight = ExpressiveSizes.Target),
                     colors = FilterChipDefaults.filterChipColors(
                         selectedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
                         selectedLabelColor = MaterialTheme.colorScheme.onSecondaryContainer

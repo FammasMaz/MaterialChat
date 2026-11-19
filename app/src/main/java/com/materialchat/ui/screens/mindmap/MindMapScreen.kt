@@ -10,7 +10,6 @@ import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -19,9 +18,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.materialchat.ui.components.LoadErrorContent
 import com.materialchat.ui.screens.mindmap.components.MindMapCanvas
 import com.materialchat.ui.screens.mindmap.components.MindMapTopBar
 import com.materialchat.ui.theme.ExpressiveShapes
+import com.materialchat.ui.theme.ExpressiveSizes
 
 /**
  * Full-screen Mind Map (Branch Visualizer) screen.
@@ -63,23 +64,20 @@ fun MindMapScreen(
                         modifier = Modifier.fillMaxSize()
                     ) {
                         LoadingIndicator(
-                            modifier = Modifier.size(48.dp),
+                            modifier = Modifier.size(ExpressiveSizes.IndicatorHero),
                             color = MaterialTheme.colorScheme.primary
                         )
                     }
                 }
 
                 is MindMapUiState.Error -> {
-                    Box(
-                        contentAlignment = Alignment.Center,
-                        modifier = Modifier.fillMaxSize()
-                    ) {
-                        Text(
-                            text = state.message,
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.error
-                        )
-                    }
+                    // Same full-screen error card as every other drawer screen: Try again, then Go back.
+                    LoadErrorContent(
+                        title = "Mind map could not be loaded",
+                        message = state.message,
+                        onRetry = viewModel::retry,
+                        onBack = onNavigateBack
+                    )
                 }
 
                 is MindMapUiState.Success -> {

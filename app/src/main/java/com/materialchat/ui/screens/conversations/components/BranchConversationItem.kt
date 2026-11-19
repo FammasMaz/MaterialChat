@@ -41,7 +41,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.materialchat.ui.screens.conversations.ConversationUiItem
 import com.materialchat.ui.theme.ExpressiveMotion
+import com.materialchat.ui.theme.ExpressiveSizes
 import com.materialchat.ui.components.HomeSettingsSlot
+import com.materialchat.ui.theme.ExpressiveShapes
 import com.materialchat.ui.components.rememberHomeSettingsPalette
 
 /**
@@ -204,7 +206,7 @@ fun BranchConversationItem(
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSecondaryContainer,
                                 modifier = Modifier
-                                    .clip(RoundedCornerShape(50))
+                                    .clip(ExpressiveShapes.Chip)
                                     .background(MaterialTheme.colorScheme.secondaryContainer)
                                     .padding(horizontal = 6.dp, vertical = 2.dp)
                             )
@@ -233,7 +235,7 @@ private fun BranchActiveIndicator() {
         verticalAlignment = Alignment.CenterVertically
     ) {
         LoadingIndicator(
-            modifier = Modifier.size(22.dp),
+            modifier = Modifier.size(ExpressiveSizes.IndicatorInline),
             color = MaterialTheme.colorScheme.primary
         )
         Text(

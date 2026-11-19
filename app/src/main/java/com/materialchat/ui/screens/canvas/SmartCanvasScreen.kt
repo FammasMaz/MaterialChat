@@ -103,7 +103,8 @@ fun SmartCanvasScreen(
             }
             Toast.makeText(context, "Saved to Downloads/MaterialChat/$fileName", Toast.LENGTH_SHORT).show()
         } catch (e: Exception) {
-            Toast.makeText(context, "Save failed: ${e.message}", Toast.LENGTH_SHORT).show()
+            // Fixed copy: the storage exception text never reaches the user.
+            Toast.makeText(context, "Could not save the artifact", Toast.LENGTH_SHORT).show()
         }
     }
 

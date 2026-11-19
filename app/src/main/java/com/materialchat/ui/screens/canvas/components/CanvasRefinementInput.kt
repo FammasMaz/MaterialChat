@@ -30,6 +30,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import com.materialchat.ui.theme.ExpressiveMotion
 import com.materialchat.ui.theme.ExpressiveShapes
+import com.materialchat.ui.theme.ExpressiveSizes
 
 /**
  * Refinement input bar at the bottom of the Smart Canvas screen.
@@ -136,7 +137,7 @@ fun CanvasRefinementInput(
             Surface(
                 onClick = { if (canSend) onSend() },
                 modifier = Modifier
-                    .size(48.dp)
+                    .size(ExpressiveSizes.Target)
                     .scale(sendButtonScale),
                 shape = CircleShape,
                 color = sendButtonColor,

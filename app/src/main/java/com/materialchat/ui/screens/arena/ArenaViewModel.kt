@@ -64,6 +64,12 @@ class ArenaViewModel @Inject constructor(
         loadProviders()
     }
 
+    /** Reloads providers after a failure; the screen shows loading meanwhile. */
+    fun retry() {
+        _uiState.value = ArenaUiState.Loading
+        loadProviders()
+    }
+
     /**
      * Loads available providers, personal model-usage ranking, and defaults.
      */
@@ -72,9 +78,7 @@ class ArenaViewModel @Inject constructor(
             try {
                 val providers = manageProvidersUseCase.getProviders()
                 if (providers.isEmpty()) {
-                    _uiState.value = ArenaUiState.Error(
-                        "No providers configured. Add a provider in Settings first."
-                    )
+                    _uiState.value = ArenaUiState.NoProviders
                     return@launch
                 }
 
@@ -99,9 +103,7 @@ class ArenaViewModel @Inject constructor(
 
                 loadModelsForProvider(defaultProviderId)
             } catch (e: Exception) {
-                _uiState.value = ArenaUiState.Error(
-                    message = "Could not load providers"
-                )
+                _uiState.value = ArenaUiState.Error(message = PROVIDERS_UNAVAILABLE)
             }
         }
     }
@@ -121,10 +123,15 @@ class ArenaViewModel @Inject constructor(
         }
 
         viewModelScope.launch {
-            try {
-                val result = manageProvidersUseCase.fetchModels(providerId)
-                val models = result.getOrElse { emptyList() }
-
+            // A failed fetch used to be cached as an empty list, which read exactly like a
+            // provider with no models and could never be retried. Now a failure (returned or
+            // thrown) leaves the cache untouched so re-selecting the provider fetches again.
+            val result = try {
+                manageProvidersUseCase.fetchModels(providerId)
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+            result.onSuccess { models ->
                 _uiState.update { state ->
                     if (state is ArenaUiState.Ready) {
                         state.copy(
@@ -133,12 +140,12 @@ class ArenaViewModel @Inject constructor(
                         )
                     } else state
                 }
-            } catch (e: Exception) {
+            }.onFailure {
                 _uiState.update { state ->
                     if (state is ArenaUiState.Ready) state.copy(isLoadingModels = false)
                     else state
                 }
-                _events.emit(ArenaEvent.ShowSnackbar("Could not load models"))
+                _events.emit(ArenaEvent.ShowSnackbar(MODELS_UNAVAILABLE))
             }
         }
     }
@@ -348,5 +355,11 @@ class ArenaViewModel @Inject constructor(
 
     companion object {
         const val MAX_CONTENDERS = 4
+
+        /** Supporting line of the full-screen error state (fixed copy, no exception text). */
+        const val PROVIDERS_UNAVAILABLE = "Something went wrong while reading your providers"
+
+        /** Snackbar shown when a provider's model list cannot be fetched. */
+        const val MODELS_UNAVAILABLE = "Could not load models"
     }
 }

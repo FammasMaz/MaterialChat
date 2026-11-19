@@ -42,6 +42,7 @@ import androidx.compose.ui.unit.dp
 import com.materialchat.ui.screens.conversations.ConversationUiItem
 import com.materialchat.ui.theme.CustomShapes
 import com.materialchat.ui.theme.ExpressiveMotion
+import com.materialchat.ui.theme.ExpressiveSizes
 import com.materialchat.ui.components.HomeSettingsSlot
 import com.materialchat.ui.components.rememberHomeSettingsPalette
 import com.materialchat.ui.theme.ExpressiveShapes
@@ -144,7 +145,7 @@ fun ConversationItem(
         ) {
             Box(
                 modifier = Modifier
-                    .size(48.dp)
+                    .size(ExpressiveSizes.Tile)
                     .clip(tileShape)
                     .background(MaterialTheme.colorScheme.primaryContainer),
                 contentAlignment = Alignment.Center
@@ -159,7 +160,7 @@ fun ConversationItem(
                         imageVector = Icons.AutoMirrored.Outlined.Chat,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                        modifier = Modifier.size(26.dp)
+                        modifier = Modifier.size(ExpressiveSizes.TileIcon)
                     )
                 }
             }
@@ -191,7 +192,7 @@ fun ConversationItem(
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onPrimaryContainer,
                         modifier = Modifier
-                            .clip(RoundedCornerShape(50)) // M3: full (pill)
+                            .clip(ExpressiveShapes.Chip) // M3: full (pill)
                             .background(MaterialTheme.colorScheme.primaryContainer)
                             .padding(horizontal = 8.dp, vertical = 2.dp)
                     )
@@ -216,7 +217,7 @@ fun ConversationItem(
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSecondaryContainer,
                             modifier = Modifier
-                                .clip(RoundedCornerShape(50))
+                                .clip(ExpressiveShapes.Chip)
                                 .background(MaterialTheme.colorScheme.secondaryContainer)
                                 .padding(horizontal = 6.dp, vertical = 2.dp)
                         )
@@ -269,7 +270,7 @@ private fun ActiveConversationIndicator() {
         verticalAlignment = Alignment.CenterVertically
     ) {
         LoadingIndicator(
-            modifier = Modifier.size(22.dp),
+            modifier = Modifier.size(ExpressiveSizes.IndicatorInline),
             color = MaterialTheme.colorScheme.primary
         )
         Text(

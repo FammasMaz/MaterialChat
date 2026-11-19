@@ -19,7 +19,6 @@ import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CheckCircle
@@ -65,6 +64,8 @@ import com.materialchat.ui.theme.CustomShapes
 import com.materialchat.ui.theme.ExpressiveMotion
 import com.materialchat.ui.theme.ExpressiveShapes
 import com.materialchat.ui.theme.MaterialChatExpressiveTitleFontFamily
+import com.materialchat.ui.theme.SquircleShape
+import com.materialchat.ui.theme.ExpressiveSizes
 
 @Composable
 fun OnboardingScreen(
@@ -192,7 +193,7 @@ private fun OnboardingContent(
                     onClick = onSkip,
                     modifier = Modifier
                         .align(Alignment.CenterHorizontally)
-                        .heightIn(min = 48.dp),
+                        .heightIn(min = ExpressiveSizes.Target),
                     shape = CustomShapes.Button
                 ) {
                     Icon(
@@ -386,7 +387,9 @@ private fun ProviderOptionCard(
         Row(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 18.dp),
+                // Vertical inset so a two-line subtitle at font scale 1.3 cannot touch the
+                // card edges once the row outgrows the 88dp minimum.
+                .padding(horizontal = 18.dp, vertical = 12.dp),
             horizontalArrangement = Arrangement.spacedBy(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -475,7 +478,9 @@ private fun DecorativeTonalShape(
             .size(132.dp)
             .background(
                 color = containerColor.copy(alpha = 0.36f),
-                shape = RoundedCornerShape(44.dp)
+                // Same G2 squircle family as every hero container (Sheet is 32dp; this 132dp
+                // backdrop keeps its 44dp radius, only the corner class changes).
+                shape = SquircleShape(44.dp)
             )
     )
 }

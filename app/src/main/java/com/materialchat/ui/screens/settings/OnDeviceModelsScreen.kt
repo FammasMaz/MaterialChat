@@ -506,7 +506,7 @@ private fun OnDeviceModelCard(
                             MaterialTheme.colorScheme.onSurfaceVariant
                         },
                         modifier = Modifier
-                            .clip(RoundedCornerShape(50))
+                            .clip(ExpressiveShapes.Chip)
                             .background(
                                 if (state.isMountedInRam) {
                                     MaterialTheme.colorScheme.tertiaryContainer

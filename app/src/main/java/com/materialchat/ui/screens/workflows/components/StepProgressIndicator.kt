@@ -58,7 +58,8 @@ fun StepProgressIndicator(
     val onPrimaryColor = MaterialTheme.colorScheme.onPrimary
     val pendingContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh
     val onSurfaceVariantColor = MaterialTheme.colorScheme.onSurfaceVariant
-    val outlineColor = MaterialTheme.colorScheme.outline
+    // Inactive connector and pending ring: the divider role at full alpha, never a wash.
+    val outlineVariantColor = MaterialTheme.colorScheme.outlineVariant
 
     // Pulse of the current step. Continuous, so it obeys the host motion gate like every
     // other decoration; when motion is off the current step is drawn fully opaque.
@@ -97,13 +98,15 @@ fun StepProgressIndicator(
                 onPrimaryColor = onPrimaryColor,
                 pendingContainerColor = pendingContainerColor,
                 onSurfaceVariantColor = onSurfaceVariantColor,
-                outlineColor = outlineColor
+                outlineVariantColor = outlineVariantColor
             )
 
             // Connector line (between circles)
             if (stepIndex < totalSteps - 1) {
                 val lineColor by animateColorAsState(
-                    targetValue = if (isCompleted) primaryColor else outlineColor.copy(alpha = 0.3f),
+                    // Inactive connector on the outlineVariant role at full alpha (a divider,
+                    // not a 30% wash of outline that no theme could guarantee to read).
+                    targetValue = if (isCompleted) primaryColor else outlineVariantColor,
                     animationSpec = ExpressiveMotion.Effects.color(),
                     label = "lineColor"
                 )
@@ -140,7 +143,7 @@ private fun StepCircle(
     onPrimaryColor: Color,
     pendingContainerColor: Color,
     onSurfaceVariantColor: Color,
-    outlineColor: Color
+    outlineVariantColor: Color
 ) {
     val circleSize = 32.dp
 
@@ -169,7 +172,7 @@ private fun StepCircle(
 
             if (!isCompleted && !isCurrent) {
                 drawCircle(
-                    color = outlineColor.copy(alpha = 0.4f),
+                    color = outlineVariantColor,
                     radius = radius,
                     style = Stroke(width = 1.5.dp.toPx())
                 )

@@ -37,6 +37,14 @@ class MindMapViewModel @Inject constructor(
         loadTree()
     }
 
+    /** Reloads the tree after a failure; the screen shows loading meanwhile. */
+    fun retry() {
+        // Synchronously, so the error card is replaced the moment the user taps Try again
+        // rather than when the load coroutine gets its first slice.
+        _uiState.value = MindMapUiState.Loading
+        loadTree()
+    }
+
     /**
      * Selects a node in the mind map by its ID.
      * Only applies when the current state is [MindMapUiState.Success].
@@ -65,15 +73,17 @@ class MindMapViewModel @Inject constructor(
                         selectedNodeId = conversationId
                     )
                 } else {
-                    _uiState.value = MindMapUiState.Error(
-                        "Could not build conversation tree"
-                    )
+                    _uiState.value = MindMapUiState.Error(TREE_UNAVAILABLE)
                 }
             } catch (e: Exception) {
-                _uiState.value = MindMapUiState.Error(
-                    e.message ?: "Failed to load conversation tree"
-                )
+                // Fixed copy: exception text never reaches the screen (W5 ruling).
+                _uiState.value = MindMapUiState.Error(TREE_UNAVAILABLE)
             }
         }
+    }
+
+    companion object {
+        /** Supporting line of the full-screen error state; the headline is the screen's. */
+        const val TREE_UNAVAILABLE = "Something went wrong while building the conversation tree"
     }
 }

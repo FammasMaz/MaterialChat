@@ -48,6 +48,7 @@ import com.materialchat.domain.model.UpdateState
 import com.materialchat.ui.MainViewModel
 import com.materialchat.ui.components.AdMobBannerAd
 import com.materialchat.ui.components.UpdateBanner
+import com.materialchat.ui.navigation.AssistantLaunchRoute
 import com.materialchat.ui.navigation.LocalAnimatedVisibilityScope
 import com.materialchat.ui.navigation.LocalSharedTransitionScope
 import com.materialchat.ui.navigation.MaterialChatNavBar
@@ -80,11 +81,11 @@ class MainActivity : ComponentActivity() {
     @Inject
     lateinit var updateManager: UpdateManager
 
-    /** Pending conversation ID from assistant intent, to be navigated after init */
-    private var pendingConversationId: String? = null
-
-    /** Set by the assistant's "Open settings" action; cleared once the nav host has routed there. */
-    private var pendingOpenSettings by mutableStateOf(false)
+    /**
+     * Pending route from the assistant's OPEN_CHAT / OPEN_SETTINGS launch. The rule lives in
+     * [AssistantLaunchRoute] (plain JVM, unit-tested); the activity only feeds it intents.
+     */
+    private val assistantRoute = AssistantLaunchRoute()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         // Install splash screen before calling super.onCreate()
@@ -186,9 +187,9 @@ class MainActivity : ComponentActivity() {
                     if (initComplete && startDestination != null) {
                         MaterialChatApp(
                             updateManager = updateManager,
-                            initialConversationId = pendingConversationId,
-                            openSettings = pendingOpenSettings,
-                            onOpenSettingsHandled = { pendingOpenSettings = false },
+                            initialConversationId = assistantRoute.pendingConversationId,
+                            openSettings = assistantRoute.pendingOpenSettings,
+                            onOpenSettingsHandled = assistantRoute::settingsHandled,
                             startDestination = startDestination ?: Screen.Conversations.route
                         )
                     }
@@ -206,16 +207,17 @@ class MainActivity : ComponentActivity() {
      * Handles the OPEN_CHAT and OPEN_SETTINGS intent actions from the assistant overlay.
      */
     private fun handleAssistantIntent(intent: Intent?) {
-        when (intent?.action) {
-            ACTION_OPEN_CHAT -> pendingConversationId = intent.getStringExtra(EXTRA_CONVERSATION_ID)
-            ACTION_OPEN_SETTINGS -> pendingOpenSettings = true
-        }
+        assistantRoute.accept(
+            action = intent?.action,
+            conversationId = intent?.getStringExtra(EXTRA_CONVERSATION_ID)
+        )
     }
 
     companion object {
-        const val ACTION_OPEN_CHAT = "com.materialchat.OPEN_CHAT"
-        const val ACTION_OPEN_SETTINGS = "com.materialchat.OPEN_SETTINGS"
-        const val EXTRA_CONVERSATION_ID = "conversation_id"
+        // Aliases so the assistant session keeps reading MainActivity.ACTION_OPEN_SETTINGS.
+        const val ACTION_OPEN_CHAT = AssistantLaunchRoute.ACTION_OPEN_CHAT
+        const val ACTION_OPEN_SETTINGS = AssistantLaunchRoute.ACTION_OPEN_SETTINGS
+        const val EXTRA_CONVERSATION_ID = AssistantLaunchRoute.EXTRA_CONVERSATION_ID
     }
 }
 

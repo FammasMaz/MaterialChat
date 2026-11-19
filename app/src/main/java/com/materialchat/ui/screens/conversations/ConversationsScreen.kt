@@ -703,7 +703,7 @@ private fun TopBarShapeAction(
     Surface(
         onClick = onClick,
         modifier = modifier
-            .size(48.dp)
+            .size(ExpressiveSizes.Target)
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale

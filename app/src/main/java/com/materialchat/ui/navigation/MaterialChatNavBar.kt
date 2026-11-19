@@ -53,7 +53,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.materialchat.ui.theme.ExpressiveMotion
 import com.materialchat.ui.theme.LocalNavigationHapticsEnabled
+import com.materialchat.ui.theme.ExpressiveSizes
 import com.materialchat.ui.components.HapticPattern
+import com.materialchat.ui.theme.ExpressiveShapes
 import com.materialchat.ui.components.rememberHapticFeedback
 import kotlinx.coroutines.withTimeoutOrNull
 
@@ -236,7 +238,7 @@ private fun ToolbarDestinationPill(
         label = "toolbarDestinationTint_${tab.name}"
     )
     val pillWidth by animateDpAsState(
-        targetValue = if (selected && expanded) 116.dp else 48.dp,
+        targetValue = if (selected && expanded) 116.dp else ExpressiveSizes.Target,
         animationSpec = ExpressiveMotion.Spatial.fabExpand(),
         label = "toolbarDestinationWidth_${tab.name}"
     )
@@ -251,12 +253,12 @@ private fun ToolbarDestinationPill(
         },
         modifier = Modifier
             .width(pillWidth)
-            .defaultMinSize(minHeight = 48.dp)
+            .defaultMinSize(minHeight = ExpressiveSizes.Target)
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
             },
-        shape = RoundedCornerShape(999.dp),
+        shape = ExpressiveShapes.Chip,
         color = outerContainer,
         contentColor = iconTint,
         interactionSource = interactionSource

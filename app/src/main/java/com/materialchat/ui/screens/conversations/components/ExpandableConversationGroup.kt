@@ -55,6 +55,7 @@ import com.materialchat.ui.components.rememberHomeSettingsPalette
 import com.materialchat.ui.theme.ExpressiveMotion
 import com.materialchat.ui.theme.ExpressiveShapes
 import com.materialchat.ui.theme.SquircleShape
+import com.materialchat.ui.theme.ExpressiveSizes
 
 /**
  * M3 Expressive expandable conversation group component.
@@ -202,7 +203,7 @@ fun ExpandableConversationGroup(
                         // treatment as ConversationItem so both row kinds read as one list.
                         Box(
                             modifier = Modifier
-                                .size(48.dp)
+                                .size(ExpressiveSizes.Tile)
                                 .clip(tileShape)
                                 .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f)),
                             contentAlignment = Alignment.Center
@@ -217,7 +218,7 @@ fun ExpandableConversationGroup(
                                     imageVector = Icons.AutoMirrored.Outlined.Chat,
                                     contentDescription = null,
                                     tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                                    modifier = Modifier.size(26.dp)
+                                    modifier = Modifier.size(ExpressiveSizes.TileIcon)
                                 )
                             }
                         }
@@ -249,7 +250,7 @@ fun ExpandableConversationGroup(
                                     style = MaterialTheme.typography.labelMedium,
                                     color = MaterialTheme.colorScheme.onPrimaryContainer,
                                     modifier = Modifier
-                                        .clip(RoundedCornerShape(50)) // M3: full (pill)
+                                        .clip(ExpressiveShapes.Chip) // M3: full (pill)
                                         .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f))
                                         .padding(horizontal = 8.dp, vertical = 2.dp)
                                 )
@@ -273,7 +274,7 @@ fun ExpandableConversationGroup(
                                         style = MaterialTheme.typography.labelSmall,
                                         color = MaterialTheme.colorScheme.onSecondaryContainer,
                                         modifier = Modifier
-                                            .clip(RoundedCornerShape(50))
+                                            .clip(ExpressiveShapes.Chip)
                                             .background(MaterialTheme.colorScheme.secondaryContainer)
                                             .padding(horizontal = 6.dp, vertical = 2.dp)
                                     )
@@ -286,7 +287,7 @@ fun ExpandableConversationGroup(
                                         style = MaterialTheme.typography.labelSmall,
                                         color = MaterialTheme.colorScheme.onSecondaryContainer,
                                         modifier = Modifier
-                                            .clip(RoundedCornerShape(50)) // M3: full (pill)
+                                            .clip(ExpressiveShapes.Chip) // M3: full (pill)
                                             .background(MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.7f))
                                             .padding(horizontal = 6.dp, vertical = 2.dp)
                                     )
@@ -424,7 +425,7 @@ private fun GroupActiveIndicator() {
         verticalAlignment = Alignment.CenterVertically
     ) {
         LoadingIndicator(
-            modifier = Modifier.size(24.dp),
+            modifier = Modifier.size(ExpressiveSizes.IndicatorInline),
             color = MaterialTheme.colorScheme.primary
         )
         Text(

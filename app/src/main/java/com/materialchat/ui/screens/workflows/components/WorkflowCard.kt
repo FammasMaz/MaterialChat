@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import com.materialchat.ui.theme.CustomShapes
 import com.materialchat.ui.theme.ExpressiveShapes
+import com.materialchat.ui.theme.ExpressiveSizes
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -64,14 +65,14 @@ fun WorkflowCard(
             Surface(
                 shape = ExpressiveShapes.Tile,
                 color = MaterialTheme.colorScheme.primaryContainer,
-                modifier = Modifier.size(48.dp)
+                modifier = Modifier.size(ExpressiveSizes.Tile)
             ) {
                 Text(
                     text = workflow.icon,
                     fontSize = 22.sp,
                     modifier = Modifier
                         .padding(8.dp)
-                        .size(48.dp),
+                        .size(ExpressiveSizes.Tile),
                     textAlign = androidx.compose.ui.text.style.TextAlign.Center
                 )
             }

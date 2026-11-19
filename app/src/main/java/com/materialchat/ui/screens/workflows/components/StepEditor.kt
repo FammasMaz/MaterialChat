@@ -90,7 +90,7 @@ fun StepEditor(
                 if (canDelete) {
                     IconButton(
                         onClick = onDelete,
-                        modifier = Modifier.size(48.dp)
+                        modifier = Modifier.size(ExpressiveSizes.Target)
                     ) {
                         Icon(
                             imageVector = Icons.Default.Delete,

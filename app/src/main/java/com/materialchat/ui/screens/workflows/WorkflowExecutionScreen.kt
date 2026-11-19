@@ -63,6 +63,7 @@ import com.materialchat.ui.screens.workflows.components.StepResultCard
 import com.materialchat.ui.theme.ExpressiveMotion
 import com.materialchat.ui.theme.ExpressiveShapes
 import com.materialchat.ui.theme.dialogActionColor
+import com.materialchat.ui.theme.ExpressiveSizes
 
 /**
  * Workflow Execution screen.
@@ -241,7 +242,7 @@ private fun ExecutionLoadingContent() {
         contentAlignment = Alignment.Center
     ) {
         LoadingIndicator(
-            modifier = Modifier.size(48.dp),
+            modifier = Modifier.size(ExpressiveSizes.IndicatorHero),
             color = MaterialTheme.colorScheme.primary
         )
     }
@@ -531,7 +532,7 @@ private fun CurrentStepLoadingCard(stepNumber: Int) {
             )
 
             LoadingIndicator(
-                modifier = Modifier.size(24.dp),
+                modifier = Modifier.size(ExpressiveSizes.IndicatorInline),
                 color = MaterialTheme.colorScheme.primary
             )
         }

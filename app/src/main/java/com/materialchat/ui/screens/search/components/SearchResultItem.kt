@@ -12,6 +12,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -46,8 +47,12 @@ import androidx.compose.ui.unit.dp
 import com.materialchat.domain.model.MatchType
 import com.materialchat.ui.screens.search.MessageSnippet
 import com.materialchat.ui.screens.search.SearchResultUiItem
+import com.materialchat.ui.components.HomeSettingsSlot
+import com.materialchat.ui.components.rememberHomeSettingsPalette
 import com.materialchat.ui.theme.CustomShapes
 import com.materialchat.ui.theme.ExpressiveMotion
+import com.materialchat.ui.theme.ExpressiveShapes
+import com.materialchat.ui.theme.ExpressiveSizes
 import com.materialchat.ui.theme.MaterialChatMotion
 
 /**
@@ -68,6 +73,7 @@ fun SearchResultItem(
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
+    val palette = rememberHomeSettingsPalette()
 
     // Press morph on the shared Press tokens, like every home row.
     val scale by animateFloatAsState(
@@ -102,20 +108,29 @@ fun SearchResultItem(
         Row(
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Icon or emoji
-            if (item.icon != null) {
-                Text(
-                    text = item.icon,
-                    style = MaterialTheme.typography.headlineMedium,
-                    modifier = Modifier.size(40.dp)
-                )
-            } else {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Outlined.Chat,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(40.dp)
-                )
+            // Leading tile: the same 48dp primaryContainer squircle as the home rows
+            // (ConversationItem), so a search hit reads as the row it opens. The emoji used to
+            // sit in a bare 40dp box where headlineMedium clipped at font scale 1.3.
+            Box(
+                modifier = Modifier
+                    .size(ExpressiveSizes.Tile)
+                    .clip(ExpressiveShapes.Tile)
+                    .background(MaterialTheme.colorScheme.primaryContainer),
+                contentAlignment = Alignment.Center
+            ) {
+                if (item.icon != null) {
+                    Text(
+                        text = item.icon,
+                        style = MaterialTheme.typography.headlineSmall
+                    )
+                } else {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Outlined.Chat,
+                        contentDescription = null,
+                        tint = palette[HomeSettingsSlot.RowTileIcon],
+                        modifier = Modifier.size(ExpressiveSizes.TileIcon)
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.width(16.dp))
@@ -145,10 +160,12 @@ fun SearchResultItem(
                             MatchType.BOTH -> "Title & content"
                         },
                         style = MaterialTheme.typography.labelSmall,
+                        // Resolved against the half-alpha container over the row fill
+                        // (HomeSettingsSlot.SearchMatch*), not the raw accent role.
                         color = when (item.matchType) {
-                            MatchType.TITLE -> MaterialTheme.colorScheme.primary
-                            MatchType.CONTENT -> MaterialTheme.colorScheme.secondary
-                            MatchType.BOTH -> MaterialTheme.colorScheme.tertiary
+                            MatchType.TITLE -> palette[HomeSettingsSlot.SearchMatchTitle]
+                            MatchType.CONTENT -> palette[HomeSettingsSlot.SearchMatchContent]
+                            MatchType.BOTH -> palette[HomeSettingsSlot.SearchMatchBoth]
                         },
                         modifier = Modifier
                             .clip(CustomShapes.Pill)
@@ -193,14 +210,17 @@ fun SearchResultItem(
                 fadeOut(animationSpec = ExpressiveMotion.Disclosure.FadeOut)
         ) {
             val highlightColor = MaterialTheme.colorScheme.tertiaryContainer
+            val highlightContentColor = palette[HomeSettingsSlot.SearchHighlight]
             Column(
                 modifier = Modifier
-                    .padding(start = 56.dp, top = 8.dp)
+                    // Tile width + the 16dp gap, so snippets align under the title column.
+                    .padding(start = ExpressiveSizes.Tile + 16.dp, top = 8.dp)
             ) {
                 item.matchingMessages.take(3).forEach { snippet ->
                     MessageSnippetItem(
                         snippet = snippet,
-                        highlightColor = highlightColor
+                        highlightColor = highlightColor,
+                        highlightContentColor = highlightContentColor
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                 }
@@ -216,10 +236,11 @@ fun SearchResultItem(
 private fun MessageSnippetItem(
     snippet: MessageSnippet,
     highlightColor: Color,
+    highlightContentColor: Color,
     modifier: Modifier = Modifier
 ) {
-    val highlightedText = remember(snippet.snippet, snippet.searchQuery, highlightColor) {
-        highlightMatch(snippet.snippet, snippet.searchQuery, highlightColor)
+    val highlightedText = remember(snippet.snippet, snippet.searchQuery, highlightColor, highlightContentColor) {
+        highlightMatch(snippet.snippet, snippet.searchQuery, highlightColor, highlightContentColor)
     }
 
     Row(
@@ -259,7 +280,12 @@ private fun MessageSnippetItem(
 /**
  * Creates an AnnotatedString with the query match highlighted using theme-aware colors.
  */
-private fun highlightMatch(text: String, query: String, highlightColor: Color): AnnotatedString {
+private fun highlightMatch(
+    text: String,
+    query: String,
+    highlightColor: Color,
+    highlightContentColor: Color
+): AnnotatedString {
     return buildAnnotatedString {
         val lowerText = text.lowercase()
         val lowerQuery = query.lowercase()
@@ -279,9 +305,12 @@ private fun highlightMatch(text: String, query: String, highlightColor: Color): 
             }
 
             // Append the match with highlighting
+            // The span's own content colour: the surrounding onSurfaceVariant text is resolved
+            // against the row, not against the tertiaryContainer wash behind the match.
             withStyle(
                 SpanStyle(
                     fontWeight = FontWeight.Bold,
+                    color = highlightContentColor,
                     background = highlightColor
                 )
             ) {

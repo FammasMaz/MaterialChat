@@ -108,7 +108,8 @@ fun ArenaBattleView(
         }
         Spacer(Modifier.height(4.dp))
         Text(
-            text = "Swipe for other responses →",
+            // No glyph arrow: it would point the wrong way under RTL.
+            text = "Swipe for other responses",
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier

@@ -43,6 +43,7 @@ import com.materialchat.ui.screens.insights.components.ModelUsageChart
 import com.materialchat.ui.screens.insights.components.ResponseTimeChart
 import com.materialchat.ui.screens.insights.components.StatCard
 import com.materialchat.ui.theme.ExpressiveShapes
+import com.materialchat.ui.theme.ExpressiveSizes
 
 /**
  * Conversation Intelligence Dashboard screen.
@@ -100,7 +101,7 @@ fun InsightsScreen(
                         modifier = Modifier.fillMaxSize()
                     ) {
                         LoadingIndicator(
-                            modifier = Modifier.size(48.dp),
+                            modifier = Modifier.size(ExpressiveSizes.IndicatorHero),
                             color = MaterialTheme.colorScheme.primary
                         )
                     }

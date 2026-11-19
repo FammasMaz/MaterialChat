@@ -22,13 +22,19 @@ data class ContenderUi(
         get() = when (streamState) {
             is StreamingState.Streaming -> streamState.content
             is StreamingState.Completed -> streamState.finalContent
-            is StreamingState.Error -> streamState.partialContent
-                ?: "Error: ${streamState.error.message}"
+            // Fixed copy: the provider's exception text never reaches the card.
+            is StreamingState.Error -> streamState.partialContent?.takeIf { it.isNotBlank() }
+                ?: FAILED_ANSWER
             else -> ""
         }
 
     val isFinished: Boolean
         get() = streamState is StreamingState.Completed || streamState is StreamingState.Error
+
+    companion object {
+        /** Body of a contender card whose model failed without any partial answer. */
+        const val FAILED_ANSWER = "This model could not answer"
+    }
 }
 
 /**
@@ -37,6 +43,9 @@ data class ContenderUi(
 sealed interface ArenaUiState {
 
     data object Loading : ArenaUiState
+
+    /** No provider is configured: an empty state with a way out, not a failure. */
+    data object NoProviders : ArenaUiState
 
     /**
      * Ready state with all arena configuration and battle data.
