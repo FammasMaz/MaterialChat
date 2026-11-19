@@ -95,6 +95,26 @@ class ChatContrastTest {
         )) assertTrue("missing pair $expected in $names", expected in names)
     }
 
+    @Test fun slotSetCarriesTheChatPairsAndTheSharedComponentPairs() {
+        // ChatSurfacePalette is a ContrastSlotSet: the gate walks chat's own pairs plus the
+        // shared component pairs (the ExpressiveSnackbar host, the shared ErrorContent card)
+        // under one surface name per bubble family.
+        for (family in families) {
+            val palette = ChatSurfacePalette.resolve(themes.first().scheme, family)
+            assertEquals("chat/$family", palette.surfaceName)
+            val slotNames = palette.slots.map { it.slotName }
+            for (own in palette.pairs()) assertTrue(own.name, own.name in slotNames)
+            for (shared in listOf("snackbar body", "snackbar action", "snackbar dismiss", "error content headline", "error content supporting", "error content glyph")) {
+                assertTrue("missing shared slot $shared", shared in slotNames)
+            }
+            assertEquals(palette.pairs().size + palette.sharedComponentSlots.size, palette.slots.size)
+        }
+        for (theme in themes) for (family in families) {
+            val failing = ChatSurfacePalette.resolve(theme.scheme, family).slots.filterNot { it.passes }
+            assertTrue("${theme.name} / $family: ${failing.map { "${it.slotName} ${it.ratio.fmt()}" }}", failing.isEmpty())
+        }
+    }
+
     @Test fun thePreferredRoleIsKeptWhereverItAlreadyReads() {
         // The resolver must not repaint themes that were fine: on the default palette the
         // bubbles keep the theme's own roles exactly.

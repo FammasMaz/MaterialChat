@@ -129,6 +129,7 @@ import com.materialchat.data.local.preferences.AppPreferences
 import com.materialchat.ui.theme.CustomShapes
 import com.materialchat.ui.theme.ExpressiveMotion
 import com.materialchat.ui.theme.ExpressiveShapes
+import com.materialchat.ui.theme.ExpressiveSizes
 import com.materialchat.ui.theme.LocalChatBubbleStyle
 import com.materialchat.ui.theme.MaterialChatMotion
 import com.materialchat.ui.theme.MessageBubbleShapes
@@ -1385,7 +1386,7 @@ private fun MemoryIndicatorChip(
             Icon(
                 imageVector = icon,
                 contentDescription = null,
-                modifier = Modifier.size(18.dp)
+                modifier = Modifier.size(ExpressiveSizes.Chip.Icon)
             )
             Text(
                 text = label,
@@ -1396,7 +1397,7 @@ private fun MemoryIndicatorChip(
             Icon(
                 imageVector = if (expanded) Icons.Filled.KeyboardArrowUp else Icons.Filled.KeyboardArrowDown,
                 contentDescription = if (expanded) "Hide memory details" else "Show memory details",
-                modifier = Modifier.size(18.dp)
+                modifier = Modifier.size(ExpressiveSizes.Chip.Icon)
             )
         }
     }
@@ -1612,7 +1613,7 @@ private fun GeneratedImageActionChip(
             horizontalArrangement = Arrangement.spacedBy(6.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(imageVector = icon, contentDescription = null, modifier = Modifier.size(18.dp))
+            Icon(imageVector = icon, contentDescription = null, modifier = Modifier.size(ExpressiveSizes.Chip.Icon))
             Text(text = label, style = MaterialTheme.typography.labelMedium)
         }
     }

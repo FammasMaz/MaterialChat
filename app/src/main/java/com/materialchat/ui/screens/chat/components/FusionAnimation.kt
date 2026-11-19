@@ -47,13 +47,12 @@ fun FusionAnimation(
         if (isActive) {
             if (motionGate.motionAllowed) {
                 launch {
-                    // One linear 0 -> 360 orbit per period on the sanctioned ornament spin spec.
-                    // 3 000 ms is the morphing-indicator shape cycle; there is no dedicated
-                    // fusion-orbit duration token yet (theme owner, see REPORT.md).
+                    // One linear 0 -> 360 orbit per period on the sanctioned ornament spin spec,
+                    // on the fusion orbit's own duration token (W5 theme).
                     rotation.animateTo(
                         targetValue = 360f,
                         animationSpec = ExpressiveMotion.Spatial.decorativeSpin(
-                            MaterialChatMotion.Durations.Indicator.MorphShape
+                            MaterialChatMotion.Durations.FusionOrbit
                         )
                     )
                 }

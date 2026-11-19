@@ -14,12 +14,9 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
@@ -40,8 +37,8 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import com.materialchat.ui.components.ExpressiveButton
-import com.materialchat.ui.components.ExpressiveButtonStyle
+import com.materialchat.ui.components.ErrorContent
+import com.materialchat.ui.components.ErrorContentCopy
 import com.materialchat.ui.components.ExpressiveSnackbar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -65,7 +62,6 @@ import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -86,7 +82,6 @@ import com.materialchat.ui.screens.chat.components.ChatEmptyStateCopy
 import com.materialchat.ui.screens.chat.components.ChatTopBar
 import com.materialchat.ui.screens.chat.components.MessageArrivalTracker
 import com.materialchat.ui.screens.chat.components.chatEmptyStateCopy
-import com.materialchat.ui.screens.chat.components.rememberChatSurfacePalette
 import com.materialchat.ui.screens.chat.components.rememberChatHeaderScrollState
 import com.materialchat.ui.screens.chat.components.rememberChatListFlingBehavior
 import com.materialchat.ui.screens.chat.components.ChatBackHandling
@@ -106,6 +101,7 @@ import com.materialchat.ui.screens.chat.components.shouldShowDateSeparator
 import com.materialchat.ui.screens.personas.components.ConversationStarterChips
 import com.materialchat.ui.theme.ExpressiveMotion
 import com.materialchat.ui.theme.ExpressiveShapes
+import com.materialchat.ui.theme.ExpressiveSizes
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -413,11 +409,17 @@ fun ChatScreen(
                 LoadingContent(paddingValues = paddingValues)
             }
             is ChatUiState.Error -> {
+                // Shared error card (W5 theme): error tile, headline, body, "Try again" first,
+                // "Go back" second; the component pairs gate its colours on surfaceContainer.
                 ErrorContent(
+                    title = ErrorContentCopy.GENERIC_HEADLINE,
                     message = state.message,
-                    paddingValues = paddingValues,
                     onRetry = { viewModel.retry() },
-                    onNavigateBack = onNavigateBack
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(paddingValues),
+                    secondaryLabel = "Go back",
+                    onSecondary = onNavigateBack
                 )
             }
             is ChatUiState.Success -> {
@@ -545,57 +547,10 @@ private fun LoadingContent(paddingValues: PaddingValues) {
         contentAlignment = Alignment.Center
     ) {
         ContainedLoadingIndicator(
-            modifier = Modifier.size(48.dp),
+            modifier = Modifier.size(ExpressiveSizes.IndicatorHero),
             containerColor = MaterialTheme.colorScheme.primaryContainer,
             indicatorColor = MaterialTheme.colorScheme.primary
         )
-    }
-}
-
-/**
- * Error state content with retry and back options.
- */
-@Composable
-private fun ErrorContent(
-    message: String,
-    paddingValues: PaddingValues,
-    onRetry: () -> Unit,
-    onNavigateBack: () -> Unit
-) {
-    val haptics = rememberHapticFeedback()
-    // The error screen sits on the scaffold's surfaceContainer; both lines are resolved on it.
-    val palette = rememberChatSurfacePalette()
-
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(paddingValues)
-            .padding(32.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        Text(
-            text = "Something went wrong",
-            style = MaterialTheme.typography.titleLarge,
-            color = palette.screenError.content,
-            textAlign = TextAlign.Center
-        )
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        Text(
-            text = message,
-            style = MaterialTheme.typography.bodyMedium,
-            color = palette.screenErrorMuted,
-            textAlign = TextAlign.Center
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            ExpressiveButton(onClick = { onNavigateBack() }, text = "Go back", style = ExpressiveButtonStyle.Text)
-            ExpressiveButton(onClick = { onRetry() }, text = ChatErrorCopy.TRY_AGAIN, style = ExpressiveButtonStyle.Text)
-        }
     }
 }
 
@@ -1012,11 +967,10 @@ internal fun MessageList(
     Box(modifier = modifier.fillMaxSize()) {
         // Empty thread: expressive hero card instead of a blank list.
         if (messages.isEmpty() && emptyStateCopy != null) {
+            // The shared state card carries its own screen gutter (ExpressiveSpacing.Gutter).
             ChatEmptyState(
                 copy = emptyStateCopy,
-                modifier = Modifier
-                    .align(Alignment.Center)
-                    .padding(horizontal = 24.dp)
+                modifier = Modifier.align(Alignment.Center)
             )
         }
         LazyColumn(
