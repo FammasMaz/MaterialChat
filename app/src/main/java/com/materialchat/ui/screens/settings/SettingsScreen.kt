@@ -3145,39 +3145,39 @@ private fun AssistantSection(
             }
         }
 
-        // Assistant toggles: one segmented group whose row count follows the
-        // enabled state so voice and read-aloud join the group when they appear.
-        val rowCount = if (assistantEnabled) 3 else 1
+        // Assistant toggles: one segmented group of three. The two dependent rows stay in
+        // place and are disabled while the assistant is off (W8 part 2): the group's shape no
+        // longer reflows on the parent toggle, and the user can see what turning it on unlocks.
         SettingsGroup {
             SettingsToggleRow(
                 index = 0,
-                count = rowCount,
+                count = 3,
                 title = "System assistant",
                 supporting = "Replace default assistant on your device",
                 icon = Icons.Outlined.SmartToy,
                 checked = assistantEnabled,
                 onCheckedChange = onAssistantEnabledChange
             )
-            if (assistantEnabled) {
-                SettingsToggleRow(
-                    index = 1,
-                    count = rowCount,
-                    title = "Voice input",
-                    supporting = "Use microphone for voice queries",
-                    icon = Icons.Outlined.Mic,
-                    checked = voiceEnabled,
-                    onCheckedChange = onVoiceEnabledChange
-                )
-                SettingsToggleRow(
-                    index = 2,
-                    count = rowCount,
-                    title = "Read aloud",
-                    supporting = "Use text-to-speech for responses",
-                    icon = Icons.Outlined.RecordVoiceOver,
-                    checked = ttsEnabled,
-                    onCheckedChange = onTtsEnabledChange
-                )
-            }
+            SettingsToggleRow(
+                index = 1,
+                count = 3,
+                title = "Voice input",
+                supporting = "Use microphone for voice queries",
+                icon = Icons.Outlined.Mic,
+                checked = voiceEnabled,
+                onCheckedChange = onVoiceEnabledChange,
+                enabled = assistantEnabled
+            )
+            SettingsToggleRow(
+                index = 2,
+                count = 3,
+                title = "Read aloud",
+                supporting = "Use text-to-speech for responses",
+                icon = Icons.Outlined.RecordVoiceOver,
+                checked = ttsEnabled,
+                onCheckedChange = onTtsEnabledChange,
+                enabled = assistantEnabled
+            )
         }
 
         // Set as Default Assistant button

@@ -6,6 +6,8 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
 import com.materialchat.ui.theme.ThemeContrast
+import com.materialchat.ui.theme.MaterialChatMotion
+import com.materialchat.ui.screens.settings.components.SettingsToggleRowDefaults
 import com.materialchat.data.local.preferences.AppPreferences
 import com.materialchat.ui.theme.MaterialChatThemePalettes
 import com.materialchat.ui.theme.componentContrastPairs
@@ -45,6 +47,34 @@ class HomeSettingsContrastTest {
     @Test fun themeMatrixCoversEveryAppearance() {
         assertEquals(39, themes.size)
         assertEquals(themes.size, themes.map { it.name }.distinct().size)
+    }
+
+    /**
+     * A disabled toggle row (W8 part 2) draws its title, supporting line and icon at the shared
+     * disabled alpha. WCAG 1.4.3 exempts inactive controls from the 4.5:1 floor, so the gate is
+     * narrower: the alpha is the one token every disabled surface uses, and the content
+     * composited over the row fill (surfaceContainerHigh) still separates from it on every
+     * appearance, so a disabled row reads as present-but-off rather than vanishing.
+     */
+    @Test fun disabledToggleRowContentUsesTheSharedAlphaAndStaysSeparable() {
+        assertEquals(MaterialChatMotion.Alphas.Disabled, SettingsToggleRowDefaults.DisabledAlpha, 0f)
+        val failures = buildList {
+            for (theme in themes) {
+                val fill = theme.scheme.surfaceContainerHigh
+                listOf(
+                    "DisabledTitle" to SettingsToggleRowDefaults.disabledTitle(theme.scheme),
+                    "DisabledSupporting" to SettingsToggleRowDefaults.disabledSupporting(theme.scheme),
+                    "DisabledIcon" to SettingsToggleRowDefaults.disabledIcon(theme.scheme)
+                ).forEach { (name, content) ->
+                    assertEquals(name, SettingsToggleRowDefaults.DisabledAlpha, content.alpha, 0.001f)
+                    val ratio = ThemeContrast.contrastRatio(ThemeContrast.compositeOver(content, fill), fill)
+                    if (ratio < SettingsToggleRowDefaults.DISABLED_SEPARATION) {
+                        add("${theme.name}: $name ${ratio.fmt()} < ${SettingsToggleRowDefaults.DISABLED_SEPARATION}")
+                    }
+                }
+            }
+        }
+        assertTrue("${failures.size} disabled slot(s) vanish into the row fill:\n" + failures.joinToString("\n"), failures.isEmpty())
     }
 
     @Test fun everyResolvedSlotMeetsWcagAaInEveryTheme() {

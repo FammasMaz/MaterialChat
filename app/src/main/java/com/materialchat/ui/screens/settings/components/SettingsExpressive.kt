@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material3.ButtonGroup
+import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
@@ -30,6 +31,7 @@ import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -39,6 +41,7 @@ import androidx.compose.material3.Surface
 import com.materialchat.ui.theme.ExpressiveShapes
 import com.materialchat.ui.theme.ExpressiveSizes
 import com.materialchat.ui.theme.MaterialChatExpressiveTitleFontFamily
+import com.materialchat.ui.theme.MaterialChatMotion
 
 /**
  * M3 Expressive section header for the settings list: a tonal icon tile, an
@@ -135,6 +138,10 @@ fun SettingsGroup(
  * @param modifier Modifier for the row container.
  * @param supporting Supporting text under the headline, if any.
  * @param icon Leading icon, if any.
+ * @param enabled Whether the row accepts input. A disabled row keeps its place in the group
+ *   (the segmented shapes do not reflow when a parent toggle turns it off) and draws its title,
+ *   supporting line and icon at [SettingsToggleRowDefaults.DisabledAlpha]; the switch is
+ *   disabled with it.
  * @param switchModifier Modifier applied to the trailing switch (for test tags).
  */
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
@@ -146,24 +153,32 @@ fun SettingsToggleRow(
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
+    enabled: Boolean = true,
     supporting: String? = null,
     icon: ImageVector? = null,
     switchModifier: Modifier = Modifier
 ) {
+    val scheme = MaterialTheme.colorScheme
+    val titleColor = if (enabled) scheme.onSurface else SettingsToggleRowDefaults.disabledTitle(scheme)
+    val supportingColor = if (enabled) scheme.onSurfaceVariant else SettingsToggleRowDefaults.disabledSupporting(scheme)
+    val iconColor = if (enabled) scheme.primary else SettingsToggleRowDefaults.disabledIcon(scheme)
     ListItem(
         checked = checked,
         onCheckedChange = onCheckedChange,
         modifier = modifier.fillMaxWidth(),
+        enabled = enabled,
         shapes = ListItemDefaults.segmentedShapes(index = index, count = count),
         colors = ListItemDefaults.segmentedColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-            leadingContentColor = MaterialTheme.colorScheme.primary
+            containerColor = scheme.surfaceContainerHigh,
+            leadingContentColor = scheme.primary,
+            disabledContainerColor = scheme.surfaceContainerHigh
         ),
         leadingContent = icon?.let { vector ->
             {
                 Icon(
                     imageVector = vector,
                     contentDescription = null,
+                    tint = iconColor,
                     modifier = Modifier.size(ExpressiveSizes.IconLarge)
                 )
             }
@@ -173,7 +188,7 @@ fun SettingsToggleRow(
                 Text(
                     text = text,
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = supportingColor
                 )
             }
         },
@@ -181,6 +196,7 @@ fun SettingsToggleRow(
             ExpressiveSwitch(
                 checked = checked,
                 onCheckedChange = onCheckedChange,
+                enabled = enabled,
                 modifier = switchModifier
             )
         }
@@ -188,9 +204,28 @@ fun SettingsToggleRow(
         Text(
             text = title,
             style = MaterialTheme.typography.titleSmall,
-            color = MaterialTheme.colorScheme.onSurface
+            color = titleColor
         )
     }
+}
+
+/**
+ * The disabled appearance of [SettingsToggleRow]: content at the one disabled alpha every
+ * inactive surface uses, over the row's own fill (surfaceContainerHigh). Pure functions so
+ * `HomeSettingsContrastTest` composites and gates them on every appearance without composing.
+ * WCAG 1.4.3 exempts inactive controls from the 4.5:1 floor; [DISABLED_SEPARATION] is the
+ * narrower gate that keeps a disabled row visibly present rather than invisible.
+ */
+internal object SettingsToggleRowDefaults {
+    /** The shared disabled alpha ([MaterialChatMotion.Alphas.Disabled]). */
+    const val DisabledAlpha: Float = MaterialChatMotion.Alphas.Disabled
+
+    /** Minimum contrast of the composited disabled content against the row fill. */
+    const val DISABLED_SEPARATION: Double = 1.4
+
+    fun disabledTitle(scheme: ColorScheme): Color = scheme.onSurface.copy(alpha = DisabledAlpha)
+    fun disabledSupporting(scheme: ColorScheme): Color = scheme.onSurfaceVariant.copy(alpha = DisabledAlpha)
+    fun disabledIcon(scheme: ColorScheme): Color = scheme.onSurface.copy(alpha = DisabledAlpha)
 }
 
 /**
