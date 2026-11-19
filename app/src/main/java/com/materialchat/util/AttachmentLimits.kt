@@ -8,6 +8,16 @@ object AttachmentLimits {
     /** Maximum number of image attachments per message. */
     const val MAX_PER_MESSAGE = 4
 
+    /** How many more images a message holding [existing] can take; never negative. */
+    fun room(existing: Int): Int = (MAX_PER_MESSAGE - existing).coerceAtLeast(0)
+
+    /**
+     * Whether one more image can be attached to a message holding [existing]. The composer
+     * asks this before launching the picker or the camera, so at the limit the user gets
+     * [limitNotice] at once instead of after a round trip through another app.
+     */
+    fun hasRoom(existing: Int): Boolean = room(existing) > 0
+
     /**
      * The notice shown when a further image would exceed [MAX_PER_MESSAGE]. Sentence form,
      * matching the assistant notice rules (sentence case, ends with a period, the last

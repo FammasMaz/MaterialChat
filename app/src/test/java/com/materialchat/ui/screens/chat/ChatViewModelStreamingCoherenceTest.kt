@@ -23,6 +23,7 @@ import com.materialchat.ui.screens.chat.components.ChatErrorCopy
 import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.awaitCancellation
@@ -38,6 +39,7 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -55,6 +57,11 @@ class ChatViewModelStreamingCoherenceTest {
     )
     private val user = Message(id = "u1", conversationId = conversation.id, role = MessageRole.USER, content = "question")
     private val assistant = Message(id = "a1", conversationId = conversation.id, role = MessageRole.ASSISTANT, content = "answer")
+    /** A reply whose stream delivered thinking tokens and nothing else (W8 chat part 4). */
+    private val thinkingOnly = Message(
+        id = "a2", conversationId = conversation.id, role = MessageRole.ASSISTANT,
+        content = "", thinkingContent = "reasoning so far", isStreaming = true
+    )
     private val conversations = MutableStateFlow<Conversation?>(conversation)
     private val messages = MutableStateFlow(listOf(user, assistant))
     private val repository = mockk<ConversationRepository>(relaxed = true)
@@ -184,6 +191,79 @@ class ChatViewModelStreamingCoherenceTest {
             events.filterIsInstance<ChatEvent.ShowSnackbar>().map { it.message }
         )
         assertTrue(events.none { it is ChatEvent.NavigateToBranch })
+    }
+
+    @Test
+    fun `Stop on a reply that holds only thinking leaves a cancelled reply, not a failed one`() = runTest {
+        every { send(any(), any(), any(), any(), any(), any(), any(), any(), any()) } returns openStream
+        val (viewModel, events) = createViewModel()
+        viewModel.updateInputText("follow-up")
+        viewModel.sendMessage()
+        runCurrent()
+        messages.value = listOf(user, assistant, thinkingOnly)
+        runCurrent()
+        assertTrue(state(viewModel).isStreaming)
+
+        viewModel.cancelStreaming()
+        runCurrent()
+        // The use case's Room write (isStreaming = false) lands after the Stop.
+        messages.value = listOf(user, assistant, thinkingOnly.copy(isStreaming = false))
+        runCurrent()
+
+        val item = state(viewModel).messages.last()
+        assertEquals(thinkingOnly.id, item.message.id)
+        assertFalse(item.message.isStreaming)
+        assertFalse("a Stop is a cancelled reply, never a failed one: $item", item.isErrored)
+        assertEquals(StreamingState.Idle, state(viewModel).streamingState)
+        assertTrue("no snackbar for a user Stop: $events", events.none { it is ChatEvent.ShowSnackbar })
+    }
+
+    @Test
+    fun `a reply that failed after only thinking is errored whichever of the Room write and the error lands last`() = runTest {
+        every { send(any(), any(), any(), any(), any(), any(), any(), any(), any()) } returns flow {
+            emit(StreamingState.Streaming(content = "", thinkingContent = thinkingOnly.thinkingContent, messageId = thinkingOnly.id))
+            throw ProviderHttpException(503, "raw provider body")
+        }
+        val (viewModel, events) = createViewModel()
+
+        // Order A: the error lands while Room still marks the reply streaming, the write follows.
+        messages.value = listOf(user, assistant, thinkingOnly)
+        runCurrent()
+        viewModel.updateInputText("follow-up")
+        viewModel.sendMessage()
+        runCurrent()
+        assertTrue(state(viewModel).streamingState is StreamingState.Error)
+        messages.value = listOf(user, assistant, thinkingOnly.copy(isStreaming = false))
+        runCurrent()
+        val afterWrite = state(viewModel).messages.last()
+        assertEquals(thinkingOnly.id, afterWrite.message.id)
+        assertTrue("errored once the write lands: $afterWrite", afterWrite.isErrored)
+        assertFalse("the older reply never turns red", state(viewModel).messages.first { it.message.id == assistant.id }.isErrored)
+
+        // Order B: Room already holds the stopped reply when the error lands (the use case
+        // writes isStreaming = false before it emits the Error, so this is the production order).
+        val gate = CompletableDeferred<Unit>()
+        val second = thinkingOnly.copy(id = "a3")
+        every { send(any(), any(), any(), any(), any(), any(), any(), any(), any()) } returns flow {
+            emit(StreamingState.Streaming(content = "", thinkingContent = second.thinkingContent, messageId = second.id))
+            gate.await()
+            throw ProviderHttpException(503, "raw provider body")
+        }
+        viewModel.updateInputText("again")
+        viewModel.sendMessage()
+        runCurrent()
+        assertTrue(state(viewModel).isStreaming)
+        messages.value = listOf(user, assistant, thinkingOnly.copy(isStreaming = false), second.copy(isStreaming = false))
+        runCurrent()
+        assertFalse("not errored while the stream is still open", state(viewModel).messages.last().isErrored)
+        gate.complete(Unit)
+        runCurrent()
+        val afterError = state(viewModel).messages.last()
+        assertEquals(second.id, afterError.message.id)
+        assertTrue("errored once the error lands: $afterError", afterError.isErrored)
+
+        val snackbars = events.filterIsInstance<ChatEvent.ShowSnackbar>().map { it.message }
+        assertEquals(listOf(ChatErrorCopy.SERVER_ERROR, ChatErrorCopy.SERVER_ERROR), snackbars)
     }
 
     private fun TestScope.createViewModel(): Pair<ChatViewModel, List<ChatEvent>> {

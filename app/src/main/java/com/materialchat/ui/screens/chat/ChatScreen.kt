@@ -159,7 +159,7 @@ fun ChatScreen(
         if (uris.isEmpty()) return@rememberLauncherForActivityResult
         val currentState = uiState
         val existing = (currentState as? ChatUiState.Success)?.pendingAttachments?.size ?: 0
-        val room = (MAX_ATTACHMENTS - existing).coerceAtLeast(0)
+        val room = AttachmentLimits.room(existing)
         if (room == 0) {
             coroutineScope.launch {
                 snackbarHostState.showSnackbar(AttachmentLimits.limitNotice())
@@ -197,7 +197,7 @@ fun ChatScreen(
         }
         val currentState = uiState
         val existing = (currentState as? ChatUiState.Success)?.pendingAttachments?.size ?: 0
-        if (existing >= MAX_ATTACHMENTS) {
+        if (!AttachmentLimits.hasRoom(existing)) {
             CameraCapture.discard(file)
             coroutineScope.launch {
                 snackbarHostState.showSnackbar(AttachmentLimits.limitNotice())
@@ -453,20 +453,37 @@ fun ChatScreen(
                             viewModel.navigateToSibling(nextId, 1)
                         }
                     },
+                    // At 4/4 the pills refuse before launching: the same limit notice the
+                    // result handlers raise, without a round trip through the picker or the
+                    // camera (W8 chat part 4; AttachmentLimits.hasRoom).
                     onAttachImage = {
-                        imagePickerLauncher.launch(
-                            PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
-                        )
-                    },
-                    onTakePhoto = {
-                        val capture = CameraCapture.prepare(context)
-                        if (capture == null) {
+                        val existing = (uiState as? ChatUiState.Success)?.pendingAttachments?.size ?: 0
+                        if (!AttachmentLimits.hasRoom(existing)) {
                             coroutineScope.launch {
-                                snackbarHostState.showSnackbar("No camera app available")
+                                snackbarHostState.showSnackbar(AttachmentLimits.limitNotice())
                             }
                         } else {
-                            cameraTarget.value = capture.file
-                            takePhotoLauncher.launch(capture.uri)
+                            imagePickerLauncher.launch(
+                                PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                            )
+                        }
+                    },
+                    onTakePhoto = {
+                        val existing = (uiState as? ChatUiState.Success)?.pendingAttachments?.size ?: 0
+                        if (!AttachmentLimits.hasRoom(existing)) {
+                            coroutineScope.launch {
+                                snackbarHostState.showSnackbar(AttachmentLimits.limitNotice())
+                            }
+                        } else {
+                            val capture = CameraCapture.prepare(context)
+                            if (capture == null) {
+                                coroutineScope.launch {
+                                    snackbarHostState.showSnackbar("No camera app available")
+                                }
+                            } else {
+                                cameraTarget.value = capture.file
+                                takePhotoLauncher.launch(capture.uri)
+                            }
                         }
                     },
                     onRemoveAttachment = { attachment ->
