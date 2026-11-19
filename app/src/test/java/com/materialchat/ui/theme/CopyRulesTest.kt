@@ -76,6 +76,21 @@ class CopyRulesTest {
         assertFalse(CopyRules.isNotice("Something went wrong!"))
     }
 
+    @Test fun aDashJoinsNoClausesACommaOrAFullStopDoes() {
+        // W9 part 3 ruling (audit W8 #7): a phrase joins its clauses with a comma, a notice
+        // splits them into sentences; the em dash and the spaced en dash are not copy punctuation.
+        assertEquals("\u2014", CopyRules.EM_DASH)
+        assertEquals(" \u2013 ", CopyRules.SPACED_EN_DASH)
+        assertTrue(CopyRules.isPhrase("No providers configured, add one in Settings"))
+        assertFalse(CopyRules.isPhrase("No providers configured \u2014 add one in Settings"))
+        assertFalse(CopyRules.isPhrase("No providers configured \u2013 add one in Settings"))
+        // An unspaced en dash inside a range is a number, not a joiner.
+        assertTrue(CopyRules.isPhrase("About 2\u20133 MB"))
+        assertTrue(CopyRules.isNotice("Screen context is off. Enable it in Settings."))
+        assertFalse(CopyRules.isNotice("Screen context is off \u2014 enable it in Settings."))
+        assertFalse(CopyRules.isNotice("Screen context is off \u2013 enable it in Settings."))
+    }
+
     @Test fun theSharedNoticesFollowTheNoticeRule() {
         for (line in listOf(ChatErrorCopy.UNAUTHORIZED, ChatErrorCopy.FORBIDDEN, ChatErrorCopy.RATE_LIMITED,
             ChatErrorCopy.SERVER_ERROR, ChatErrorCopy.REJECTED, ChatErrorCopy.NO_CONNECTION, ChatErrorCopy.REQUEST_FAILED)) {

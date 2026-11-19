@@ -52,9 +52,9 @@ object ScreenContextAccess {
      */
     fun notice(state: RequestState?): String = when (state) {
         RequestState.GRANTED ->
-            "Nothing arrived from this screen \u2014 it may be private (a secure app or the lock screen). Try again from the app you were looking at."
+            "Nothing arrived from this screen. It may be private (a secure app or the lock screen). Try again from the app you were looking at."
         RequestState.UNREQUESTABLE ->
-            "Screen context is blocked for MaterialChat by the system \u2014 check Settings \u203a Apps \u203a Default apps \u203a Digital assistant app."
+            "Screen context is blocked for MaterialChat by the system. Check Settings \u203a Apps \u203a Default apps \u203a Digital assistant app."
         null, RequestState.REQUESTABLE -> ScreenContextPrompt.UNAVAILABLE_NOTICE
     }
 

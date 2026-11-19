@@ -934,7 +934,7 @@ private fun SuccessContent(
                     count = 2,
                     title = "Model assignments",
                     icon = Icons.Outlined.AutoAwesome,
-                    supporting = "Titles, memories, images — on-device vs cloud per task",
+                    supporting = "Pick on-device or cloud models for titles, memories and images",
                     onClick = onNavigateToModelAssignments
                 )
             }
