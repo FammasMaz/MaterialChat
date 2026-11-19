@@ -24,10 +24,13 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.ColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.AnnotatedString
@@ -37,6 +40,14 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.materialchat.ui.screens.canvas.components.CanvasTopBar
 import com.materialchat.ui.screens.canvas.components.CanvasWebView
 import com.materialchat.ui.theme.ExpressiveMotion
+
+/** The four roles the canvas templates expose as CSS variables, as opaque ARGB ints. */
+private fun ColorScheme.toCanvasThemeColors(): CanvasThemeColors = CanvasThemeColors(
+    surfaceArgb = surface.toArgb(),
+    onSurfaceArgb = onSurface.toArgb(),
+    primaryArgb = primary.toArgb(),
+    outlineArgb = outline.toArgb()
+)
 
 /**
  * Smart Canvas screen for rendering live artifacts (HTML, Mermaid, SVG, LaTeX).
@@ -59,6 +70,13 @@ fun SmartCanvasScreen(
     val uiState by viewModel.uiState.collectAsState()
     val clipboardManager = LocalClipboardManager.current
     val context = LocalContext.current
+
+    // Hand the live colour scheme to the document so the artifact follows every palette the app
+    // can be in, not just the system light/dark switch the templates fall back to.
+    val themeColors = MaterialTheme.colorScheme.toCanvasThemeColors()
+    LaunchedEffect(themeColors) {
+        viewModel.updateThemeColors(themeColors)
+    }
 
     val onSave = {
         try {

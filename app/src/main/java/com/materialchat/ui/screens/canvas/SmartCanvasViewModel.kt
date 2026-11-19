@@ -35,6 +35,13 @@ class SmartCanvasViewModel @Inject constructor(
     /** Observable UI state for the Smart Canvas screen. */
     val uiState: StateFlow<CanvasUiState>
 
+    /**
+     * The app colour scheme last pushed by the screen, exposed to the rendered document as CSS
+     * variables. Null until the screen reports it, so the first render uses the templates'
+     * fixed-hex fallback and is re-rendered as soon as the colours arrive.
+     */
+    private var themeColors: CanvasThemeColors? = null
+
     init {
         val rawData = savedStateHandle.get<String>(Screen.Canvas.ARG_ARTIFACT_DATA) ?: ""
         val decoded = try {
@@ -44,7 +51,7 @@ class SmartCanvasViewModel @Inject constructor(
         }
 
         val artifact = parseArtifactData(decoded)
-        val renderedHtml = generateHtml(artifact)
+        val renderedHtml = generateHtml(artifact, themeColors)
 
         _uiState = MutableStateFlow(
             CanvasUiState(
@@ -66,6 +73,20 @@ class SmartCanvasViewModel @Inject constructor(
                     CanvasViewMode.CODE -> CanvasViewMode.PREVIEW
                 }
             )
+        }
+    }
+
+    /**
+     * Applies the app colour scheme to the rendered document. Re-renders only when the
+     * colours actually change (palette switch, dark/light flip, dynamic wallpaper change).
+     *
+     * @param colors The current scheme's surface / onSurface / primary / outline roles
+     */
+    fun updateThemeColors(colors: CanvasThemeColors) {
+        if (colors == themeColors) return
+        themeColors = colors
+        _uiState.update { state ->
+            state.copy(renderedHtml = generateHtml(state.artifact, colors))
         }
     }
 
@@ -103,12 +124,12 @@ class SmartCanvasViewModel @Inject constructor(
     /**
      * Generates the full HTML document for the given artifact using [ArtifactHtmlTemplates].
      */
-    private fun generateHtml(artifact: CanvasArtifact): String {
+    private fun generateHtml(artifact: CanvasArtifact, colors: CanvasThemeColors?): String {
         return when (artifact.type) {
-            ArtifactType.HTML -> ArtifactHtmlTemplates.wrapHtml(artifact.code)
-            ArtifactType.MERMAID -> ArtifactHtmlTemplates.wrapMermaid(artifact.code)
-            ArtifactType.SVG -> ArtifactHtmlTemplates.wrapSvg(artifact.code)
-            ArtifactType.LATEX -> ArtifactHtmlTemplates.wrapLatex(artifact.code)
+            ArtifactType.HTML -> ArtifactHtmlTemplates.wrapHtml(artifact.code, colors)
+            ArtifactType.MERMAID -> ArtifactHtmlTemplates.wrapMermaid(artifact.code, colors)
+            ArtifactType.SVG -> ArtifactHtmlTemplates.wrapSvg(artifact.code, colors)
+            ArtifactType.LATEX -> ArtifactHtmlTemplates.wrapLatex(artifact.code, colors)
         }
     }
 }

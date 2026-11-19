@@ -1,14 +1,64 @@
 package com.materialchat.ui.screens.canvas
 
 /**
+ * The four Material colour roles a rendered artifact borrows from the app theme, as ARGB ints.
+ *
+ * Pure data so the templates (and their JVM tests) never touch Compose. Alpha is ignored when
+ * the colours are written to CSS; every role here is an opaque surface or content colour.
+ */
+data class CanvasThemeColors(
+    val surfaceArgb: Int,
+    val onSurfaceArgb: Int,
+    val primaryArgb: Int,
+    val outlineArgb: Int
+)
+
+/**
  * Provides HTML document templates for rendering different artifact types in a WebView.
  *
  * Each template wraps the raw artifact code in a full HTML5 document with:
  * - Responsive viewport meta tag
- * - Dark/light theme support via CSS `prefers-color-scheme` media queries
+ * - A fixed-hex `:root` block with `prefers-color-scheme` fallbacks, used when the caller
+ *   supplies no theme colours (and when the document is opened outside the app)
+ * - An optional second `:root` block, see [themeStyleBlock], that re-points the same variables
+ *   at the app's current colour scheme so the artifact matches the surrounding screen in every
+ *   palette (dynamic, static, pitch-black) rather than only the system light/dark switch
  * - Appropriate CDN libraries (Mermaid.js, KaTeX) where needed
+ *
+ * Artifact code that declares its own `--bg` / `--fg` (or any `--md-*`) wins over both blocks:
+ * it sits later in the document, so the cascade keeps the author's values.
  */
 object ArtifactHtmlTemplates {
+
+    /** Element id of the injected theme block, so tests and tooling can find it. */
+    const val THEME_STYLE_ID = "materialchat-theme"
+
+    /**
+     * The `<style>` element carrying the app colour scheme as CSS variables, or an empty string
+     * when [colors] is null so the fixed-hex fallback in each template stands alone.
+     *
+     * Emits the raw roles (`--md-surface`, `--md-on-surface`, `--md-primary`, `--md-outline`)
+     * and re-points the template aliases (`--bg`, `--fg`, `--border`, `--accent`) at them.
+     * The block is placed after the template's own `<style>` in `<head>`, so it overrides the
+     * fixed hex values and the `prefers-color-scheme` media query, and before `<body>`, so
+     * any variables the artifact itself declares still override it.
+     */
+    fun themeStyleBlock(colors: CanvasThemeColors?): String {
+        if (colors == null) return ""
+        return "<style id=\"$THEME_STYLE_ID\">:root{" +
+            "--md-surface:${cssHex(colors.surfaceArgb)};" +
+            "--md-on-surface:${cssHex(colors.onSurfaceArgb)};" +
+            "--md-primary:${cssHex(colors.primaryArgb)};" +
+            "--md-outline:${cssHex(colors.outlineArgb)};" +
+            "--bg:var(--md-surface);" +
+            "--fg:var(--md-on-surface);" +
+            "--border:var(--md-outline);" +
+            "--accent:var(--md-primary);" +
+            "}</style>"
+    }
+
+    /** `#RRGGBB` from an ARGB int; alpha is dropped. */
+    internal fun cssHex(argb: Int): String = "#%06X".format(argb and 0xFFFFFF)
 
     /**
      * Wraps raw HTML code in a basic HTML5 boilerplate.
@@ -17,9 +67,10 @@ object ArtifactHtmlTemplates {
      * Includes responsive viewport and adaptive dark/light theme styling.
      *
      * @param code The raw HTML content to wrap
+     * @param colors The app colour scheme to expose as CSS variables, or null for the fixed fallback
      * @return A full HTML5 document string
      */
-    fun wrapHtml(code: String): String = """
+    fun wrapHtml(code: String, colors: CanvasThemeColors? = null): String = """
         <!DOCTYPE html>
         <html lang="en">
         <head>
@@ -30,12 +81,16 @@ object ArtifactHtmlTemplates {
                     --bg: #FFFBFE;
                     --fg: #1C1B1F;
                     --surface: #F4EFF4;
+                    --border: #F4EFF4;
+                    --accent: #6750A4;
                 }
                 @media (prefers-color-scheme: dark) {
                     :root {
                         --bg: #1C1B1F;
                         --fg: #E6E1E5;
                         --surface: #2B2930;
+                        --border: #2B2930;
+                        --accent: #D0BCFF;
                     }
                 }
                 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -48,6 +103,7 @@ object ArtifactHtmlTemplates {
                     word-wrap: break-word;
                     overflow-wrap: break-word;
                 }
+                a { color: var(--accent); }
                 img, video, canvas, svg {
                     max-width: 100%;
                     height: auto;
@@ -59,11 +115,12 @@ object ArtifactHtmlTemplates {
                     display: block;
                 }
                 th, td {
-                    border: 1px solid var(--surface);
+                    border: 1px solid var(--border);
                     padding: 8px 12px;
                     text-align: left;
                 }
             </style>
+            ${themeStyleBlock(colors)}
         </head>
         <body>
             $code
@@ -78,9 +135,10 @@ object ArtifactHtmlTemplates {
      * detection based on the system color scheme preference.
      *
      * @param code The raw Mermaid diagram syntax
+     * @param colors The app colour scheme to expose as CSS variables, or null for the fixed fallback
      * @return A full HTML5 document string that renders the diagram
      */
-    fun wrapMermaid(code: String): String = """
+    fun wrapMermaid(code: String, colors: CanvasThemeColors? = null): String = """
         <!DOCTYPE html>
         <html lang="en">
         <head>
@@ -118,6 +176,7 @@ object ArtifactHtmlTemplates {
                     height: auto;
                 }
             </style>
+            ${themeStyleBlock(colors)}
         </head>
         <body>
             <div class="mermaid">
@@ -144,9 +203,10 @@ object ArtifactHtmlTemplates {
      * the available width while maintaining its aspect ratio.
      *
      * @param code The raw SVG markup
+     * @param colors The app colour scheme to expose as CSS variables, or null for the fixed fallback
      * @return A full HTML5 document string that renders the SVG
      */
-    fun wrapSvg(code: String): String = """
+    fun wrapSvg(code: String, colors: CanvasThemeColors? = null): String = """
         <!DOCTYPE html>
         <html lang="en">
         <head>
@@ -186,6 +246,7 @@ object ArtifactHtmlTemplates {
                     margin: 0 auto;
                 }
             </style>
+            ${themeStyleBlock(colors)}
         </head>
         <body>
             <div class="svg-container">
@@ -202,9 +263,10 @@ object ArtifactHtmlTemplates {
      * `katex.render()` with display mode enabled for block-level math.
      *
      * @param code The raw LaTeX/TeX math expression
+     * @param colors The app colour scheme to expose as CSS variables, or null for the fixed fallback
      * @return A full HTML5 document string that renders the math
      */
-    fun wrapLatex(code: String): String {
+    fun wrapLatex(code: String, colors: CanvasThemeColors? = null): String {
         // Escape backslashes and quotes for safe embedding in a JS string literal
         val escapedCode = code
             .replace("\\", "\\\\")
@@ -251,6 +313,7 @@ object ArtifactHtmlTemplates {
                     .katex { color: var(--fg); }
                     .katex-display { overflow-x: auto; overflow-y: hidden; padding: 4px 0; }
                 </style>
+                ${themeStyleBlock(colors)}
             </head>
             <body>
                 <div id="katex-output"></div>
