@@ -104,7 +104,7 @@ object ExpressiveShapes {
     /**
      * Modal bottom sheets: the 32dp squircle on the two top corners only, square where the
      * sheet meets the bottom screen edge. The one bottom-sheet contour; the settings
-     * `SettingsSheetShape` and [CustomShapes.BottomSheet] are this shape.
+     * [CustomShapes.BottomSheet] delegates to this shape (the old settings-private sheet shape was removed).
      */
     val BottomSheet: Shape = TopSquircleShape(32.dp)
 
