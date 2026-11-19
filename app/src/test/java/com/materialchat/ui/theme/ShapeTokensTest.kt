@@ -8,7 +8,6 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.graphics.shapes.Cubic
 import androidx.graphics.shapes.RoundedPolygon
-import com.materialchat.assistant.ui.AssistantShapes
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertSame
@@ -169,16 +168,22 @@ class ShapeTokensTest {
     }
 
     @Test fun assistantSurfaceTokensCarryTheAssistantRadiiExactly() {
-        // The per-corner tokens exist so the assistant can swap the class, not the geometry:
-        // pin both sides so neither drifts before the assistant pass consumes them.
-        assertEquals(RoundedCornerShape(topStart = 36.dp, topEnd = 36.dp, bottomStart = 28.dp, bottomEnd = 28.dp), AssistantShapes.Answer)
-        assertEquals(SquircleShape(topStart = 36.dp, topEnd = 36.dp, bottomEnd = 28.dp, bottomStart = 28.dp), ExpressiveShapes.AnswerSurface)
-        assertEquals(RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp, bottomStart = 18.dp, bottomEnd = 18.dp), AssistantShapes.Notice)
-        assertEquals(SquircleShape(topStart = 24.dp, topEnd = 24.dp, bottomEnd = 18.dp, bottomStart = 18.dp), ExpressiveShapes.NoticeSurface)
-        assertEquals(RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp, bottomStart = 8.dp, bottomEnd = 20.dp), AssistantShapes.Thinking)
-        assertEquals(SquircleShape(topStart = 20.dp, topEnd = 20.dp, bottomEnd = 20.dp, bottomStart = 8.dp), ExpressiveShapes.ThinkingSurface)
+        // W6: the three theme tokens are the record of the assistant's radii. No assistant
+        // composable draws AssistantShapes.Answer/Notice/Thinking any more (W5 assistant
+        // 8208d55), so this pins the token geometry against the recorded values directly, in
+        // the assistant's topStart / topEnd / bottomStart / bottomEnd order, and the assistant
+        // owner can delete those vals without touching this test.
+        assertEquals(SquircleShape(topStart = 36.dp, topEnd = 36.dp, bottomStart = 28.dp, bottomEnd = 28.dp), ExpressiveShapes.AnswerSurface)
+        assertEquals(SquircleShape(topStart = 24.dp, topEnd = 24.dp, bottomStart = 18.dp, bottomEnd = 18.dp), ExpressiveShapes.NoticeSurface)
+        assertEquals(SquircleShape(topStart = 20.dp, topEnd = 20.dp, bottomStart = 8.dp, bottomEnd = 20.dp), ExpressiveShapes.ThinkingSurface)
+        // Positional: the thinking surface's tight corner is bottom-START, nothing else.
+        assertNotEquals(SquircleShape(topStart = 20.dp, topEnd = 20.dp, bottomStart = 20.dp, bottomEnd = 8.dp), ExpressiveShapes.ThinkingSurface)
+        assertNotEquals(SquircleShape(topStart = 28.dp, topEnd = 28.dp, bottomStart = 36.dp, bottomEnd = 36.dp), ExpressiveShapes.AnswerSurface)
+        // All three draw the app's G2 smoothing, not a plain round corner.
+        assertNotEquals(SquircleShape(topStart = 36.dp, topEnd = 36.dp, bottomStart = 28.dp, bottomEnd = 28.dp, smoothing = 0f), ExpressiveShapes.AnswerSurface)
         assertNotEquals(ExpressiveShapes.AnswerSurface, ExpressiveShapes.NoticeSurface)
         assertNotEquals(ExpressiveShapes.NoticeSurface, ExpressiveShapes.ThinkingSurface)
+        assertNotEquals(ExpressiveShapes.AnswerSurface, ExpressiveShapes.ThinkingSurface)
     }
 
     @Test fun noticeIsTheTwentyDpSquircleTheSnackbarDraws() {
