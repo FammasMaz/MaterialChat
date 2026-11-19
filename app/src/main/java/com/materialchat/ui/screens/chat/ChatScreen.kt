@@ -165,7 +165,7 @@ fun ChatScreen(
         val room = (MAX_ATTACHMENTS - existing).coerceAtLeast(0)
         if (room == 0) {
             coroutineScope.launch {
-                snackbarHostState.showSnackbar("Maximum $MAX_ATTACHMENTS images allowed")
+                snackbarHostState.showSnackbar(AttachmentLimits.limitNotice())
             }
             return@rememberLauncherForActivityResult
         }
@@ -181,7 +181,7 @@ fun ChatScreen(
             }
             when {
                 firstFailure != null -> snackbarHostState.showSnackbar(firstFailure!!)
-                dropped > 0 -> snackbarHostState.showSnackbar("Only $MAX_ATTACHMENTS images per message; $dropped skipped")
+                dropped > 0 -> snackbarHostState.showSnackbar(AttachmentLimits.skippedNotice(dropped))
             }
         }
     }
@@ -203,7 +203,7 @@ fun ChatScreen(
         if (existing >= MAX_ATTACHMENTS) {
             CameraCapture.discard(file)
             coroutineScope.launch {
-                snackbarHostState.showSnackbar("Maximum $MAX_ATTACHMENTS images allowed")
+                snackbarHostState.showSnackbar(AttachmentLimits.limitNotice())
             }
             return@rememberLauncherForActivityResult
         }
