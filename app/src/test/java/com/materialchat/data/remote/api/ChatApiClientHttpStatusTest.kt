@@ -84,6 +84,66 @@ class ChatApiClientHttpStatusTest {
     }
 
     @Test
+    fun `an OpenAI 200 whose body is an error envelope surfaces as a typed error, not a silent end`() = runTest {
+        // W4 negative finding: this exact body decoded as a choiceless chunk and was treated as a
+        // keep-alive, so the stream ended with no content and no error. It must now reach the
+        // collector as an Error carrying the status the envelope relays.
+        val sse = "data: {\"error\":{\"message\":\"Rate limit exceeded\",\"type\":\"rate_limit_error\",\"code\":\"429\"}}\n\n"
+        val events = ChatApiClient(okHttpClient = respondingClient(200, sse, "text/event-stream"))
+            .streamChat(
+                provider = provider(ProviderType.OPENAI_COMPATIBLE),
+                messages = listOf(userMessage()),
+                model = "model",
+                apiKey = "key",
+                reasoningEffort = ReasoningEffort.NONE
+            ).toList()
+
+        val error = events.filterIsInstance<StreamingEvent.Error>().singleOrNull()
+            ?: error("expected exactly one error event, got $events")
+        assertEquals("Rate limit exceeded", error.message)
+        assertEquals("429", error.code)
+        assertEquals(429, error.httpStatus)
+        assertEquals(true, error.isRecoverable)
+        assertEquals("no content must be emitted", 0, events.filterIsInstance<StreamingEvent.Content>().size)
+        assertEquals("no Done after an in-band error", 0, events.filterIsInstance<StreamingEvent.Done>().size)
+    }
+
+    @Test
+    fun `an OpenAI 200 error envelope without a status code is an untyped error`() = runTest {
+        val sse = "data: {\"error\":{\"message\":\"context too long\",\"type\":\"invalid_request_error\",\"code\":\"context_length_exceeded\"}}\n\n"
+        val events = ChatApiClient(okHttpClient = respondingClient(200, sse, "text/event-stream"))
+            .streamChat(
+                provider = provider(ProviderType.OPENAI_COMPATIBLE),
+                messages = listOf(userMessage()),
+                model = "model",
+                apiKey = "key",
+                reasoningEffort = ReasoningEffort.NONE
+            ).toList()
+
+        val error = events.filterIsInstance<StreamingEvent.Error>().single()
+        assertEquals("context too long", error.message)
+        assertNull(error.httpStatus)
+    }
+
+    @Test
+    fun `an Ollama 200 whose body is an error object surfaces as an error`() = runTest {
+        val ndjson = "{\"error\":\"model not found\"}\n"
+        val events = ChatApiClient(okHttpClient = respondingClient(200, ndjson, "application/x-ndjson"))
+            .streamChat(
+                provider = provider(ProviderType.OLLAMA_NATIVE),
+                messages = listOf(userMessage()),
+                model = "model",
+                apiKey = null,
+                reasoningEffort = ReasoningEffort.NONE
+            ).toList()
+
+        val error = events.filterIsInstance<StreamingEvent.Error>().single()
+        assertEquals("model not found", error.message)
+        assertNull(error.httpStatus)
+        assertEquals(0, events.filterIsInstance<StreamingEvent.Done>().size)
+    }
+
+    @Test
     fun `a connectivity failure has no HTTP status`() = runTest {
         val client = OkHttpClient.Builder()
             .addInterceptor { throw java.net.ConnectException("refused") }

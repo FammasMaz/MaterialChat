@@ -119,14 +119,66 @@ class SseEventParserTest {
 
     @Test
     fun `parseOpenAiEvent - well-formed error response returns KeepAlive since it parses as valid chunk`() {
-        // Note: Well-formed error JSON parses as OpenAiStreamChunk with empty choices
-        // The error parsing path only triggers on malformed JSON
+        // Name is historical (W5 keeps test names stable); the behaviour it pinned was the W4
+        // negative finding: a well-formed `{"error":{...}}` decoded as a chunk with empty
+        // choices and passed as a keep-alive, so a 200 carrying an error ended the stream
+        // silently. It now surfaces as an Error, typed with the status the envelope carries.
         val line = """data: {"error":{"message":"Rate limit exceeded","type":"rate_limit_error","code":"429"}}"""
 
         val result = parser.parseOpenAiEvent(line)
 
-        // Valid JSON parses successfully with empty choices -> KeepAlive
-        assertEquals(StreamingEvent.KeepAlive, result)
+        assertTrue("expected Error, got $result", result is StreamingEvent.Error)
+        val error = result as StreamingEvent.Error
+        assertEquals("Rate limit exceeded", error.message)
+        assertEquals("429", error.code)
+        assertEquals(429, error.httpStatus)
+        assertTrue(error.isRecoverable)
+    }
+
+    @Test
+    fun `parseOpenAiEvent - error envelope with a non-numeric code has no HTTP status`() {
+        val line = """data: {"error":{"message":"This model's maximum context length is 8192 tokens","type":"invalid_request_error","code":"context_length_exceeded"}}"""
+
+        val result = parser.parseOpenAiEvent(line)
+
+        assertTrue(result is StreamingEvent.Error)
+        val error = result as StreamingEvent.Error
+        assertEquals("context_length_exceeded", error.code)
+        assertNull(error.httpStatus)
+        assertEquals(false, error.isRecoverable)
+    }
+
+    @Test
+    fun `parseOpenAiEvent - error envelope with a numeric status code is typed`() {
+        // OpenRouter / LiteLLM relay the upstream status as a JSON number.
+        val line = """data: {"error":{"message":"upstream unavailable","code":503}}"""
+
+        val result = parser.parseOpenAiEvent(line)
+
+        assertTrue("expected Error, got $result", result is StreamingEvent.Error)
+        val error = result as StreamingEvent.Error
+        assertEquals(503, error.httpStatus)
+        assertTrue(error.isRecoverable)
+    }
+
+    @Test
+    fun `parseOpenAiEvent - error envelope with a 4xx status is not recoverable`() {
+        val line = """data: {"error":{"message":"invalid key","type":"authentication_error","code":"401"}}"""
+
+        val error = parser.parseOpenAiEvent(line) as StreamingEvent.Error
+
+        assertEquals(401, error.httpStatus)
+        assertEquals(false, error.isRecoverable)
+    }
+
+    @Test
+    fun `parseOpenAiEvent - choiceless chunk without an error envelope is still KeepAlive`() {
+        val line = """data: {"id":"chatcmpl-1","object":"chat.completion.chunk","choices":[]}"""
+
+        assertEquals(StreamingEvent.KeepAlive, parser.parseOpenAiEvent(line))
+        assertEquals(StreamingEvent.KeepAlive, parser.parseOpenAiEvent("data: {}"))
+        // A null error member is not an error either.
+        assertEquals(StreamingEvent.KeepAlive, parser.parseOpenAiEvent("data: {\"error\":null}"))
     }
 
     @Test
@@ -261,14 +313,22 @@ class SseEventParserTest {
 
     @Test
     fun `parseOllamaEvent - well-formed error response returns KeepAlive since it parses as valid response`() {
-        // Note: Well-formed error JSON parses as OllamaChatResponse with null message and done=false
-        // The error parsing path only triggers on malformed JSON
+        // Name is historical (W5 keeps test names stable). `{"error":"..."}` decoded as a
+        // response with a null message and done=false and passed as a keep-alive; it now
+        // surfaces as an Error carrying the server's text.
         val line = """{"error":"model not found"}"""
 
         val result = parser.parseOllamaEvent(line)
 
-        // Valid JSON parses successfully with null message -> KeepAlive
-        assertEquals(StreamingEvent.KeepAlive, result)
+        assertTrue("expected Error, got $result", result is StreamingEvent.Error)
+        assertEquals("model not found", (result as StreamingEvent.Error).message)
+        assertNull(result.httpStatus)
+    }
+
+    @Test
+    fun `parseOllamaEvent - messageless response without an error is still KeepAlive`() {
+        assertEquals(StreamingEvent.KeepAlive, parser.parseOllamaEvent("""{"model":"llama3","done":false}"""))
+        assertEquals(StreamingEvent.KeepAlive, parser.parseOllamaEvent("{}"))
     }
 
     @Test

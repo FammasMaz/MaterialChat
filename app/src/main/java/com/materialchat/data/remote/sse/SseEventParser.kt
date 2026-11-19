@@ -63,6 +63,13 @@ class SseEventParser(
         // Parse JSON payload
         return try {
             val chunk = json.decodeFromString<OpenAiStreamChunk>(data)
+            if (chunk.choices.isEmpty()) {
+                // A 200 whose body carries `{"error":{...}}` decodes as a chunk with no choices
+                // (unknown keys are ignored) and would otherwise pass as a keep-alive, so the
+                // stream ended silently with no content and no error. Try the error envelope
+                // before accepting a choiceless chunk as a heartbeat.
+                tryParseOpenAiError(data)?.let { return it }
+            }
             parseOpenAiChunk(chunk)
         } catch (e: Exception) {
             // Try to parse as error response
@@ -96,6 +103,11 @@ class SseEventParser(
         // Parse JSON
         return try {
             val response = json.decodeFromString<OllamaChatResponse>(trimmedLine)
+            if (response.message == null && !response.done) {
+                // Same shape of bug as the OpenAI path: `{"error":"..."}` decodes as a response
+                // with no message and done=false and would pass as a keep-alive.
+                tryParseOllamaError(trimmedLine)?.let { return it }
+            }
             parseOllamaResponse(response)
         } catch (e: Exception) {
             // Try to parse as error response
@@ -199,16 +211,25 @@ class SseEventParser(
 
     /**
      * Attempts to parse an OpenAI error response.
+     *
+     * When the envelope's `code` is an HTTP status (OpenAI-compatible gateways such as
+     * OpenRouter and LiteLLM relay the upstream status in it), it is typed on
+     * [StreamingEvent.Error.httpStatus] with the same recoverability as an HTTP refusal, so
+     * the chat and assistant notices classify it like a real 429/5xx instead of reading the
+     * body text. Any other code (`rate_limit_error`, `context_length_exceeded`) stays a plain
+     * in-stream error with no status.
      */
     private fun tryParseOpenAiError(data: String): StreamingEvent.Error? {
         return try {
             // Try to parse as error object
             val errorWrapper = json.decodeFromString<OpenAiErrorWrapper>(data)
             errorWrapper.error?.let { error ->
+                val status = error.code?.toIntOrNull()?.takeIf { it in 400..599 }
                 StreamingEvent.Error(
                     message = error.message ?: "Unknown OpenAI error",
                     code = error.code ?: error.type,
-                    isRecoverable = false
+                    isRecoverable = status?.let { it == 429 || it >= 500 } ?: false,
+                    httpStatus = status
                 )
             }
         } catch (e: Exception) {
