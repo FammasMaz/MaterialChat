@@ -44,13 +44,12 @@ class AssistantMotionTest {
         assertTrue("container 99 % envelope at $envelope ms", envelope > exitWindowMillis)
     }
 
-    @Test fun smallMorphsAndStateSwitchesDrawTheFastSpatialToken() {
-        // The glyph and state-line switches alias the fast spatial token; the glyph container,
-        // the `+` -> `x` affordance and the notice chip draw Press.Shape / Press.Progress, which
-        // the theme keeps value-identical to it (MotionTokensTest), so the three morphs and the
-        // phase switches share one feel.
+    @Test fun stateSwitchesDrawTheFastSpatialToken() {
+        // The glyph and state-line switches alias the fast spatial token. The glyph container,
+        // the `+` -> `x` affordance and the notice chip draw Press.Shape / Press.Progress
+        // directly; whether those stay value-identical to the fast token is the theme's call
+        // (MotionTokensTest), not pinned here (W7: the W6 audit's cross-owner pin, F15).
         assertEquals(ExpressiveMotion.Spatial.fast<Float>(), AssistantMotion.stateSwitch<Float>())
-        assertEquals(ExpressiveMotion.Press.Progress, AssistantMotion.stateSwitch<Float>())
     }
 
     @Test fun disclosuresFoldOnTheSheetsOwnExitCurve() {

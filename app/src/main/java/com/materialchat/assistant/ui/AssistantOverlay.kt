@@ -138,6 +138,8 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalConfiguration
+import com.materialchat.ui.components.HapticPattern
+import com.materialchat.ui.components.rememberHapticFeedback
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextOverflow
@@ -1418,7 +1420,11 @@ private fun AssistantAnswerToolbar(
     }
 }
 
-/** One item of the answer toolbar's connected group: tonal, per-position shape, press morph. */
+/**
+ * One item of the answer toolbar's connected group: tonal, per-position shape, press morph, and
+ * (W7) the same click haptic as the labelled chips beside it, so the toolbar's icon actions and
+ * its labelled action are one family in the hand as well as on screen.
+ */
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun AssistantToolbarAction(
@@ -1428,8 +1434,12 @@ private fun AssistantToolbarAction(
     content: @Composable () -> Unit
 ) {
     val palette = rememberAssistantSurfacePalette()
+    val haptics = rememberHapticFeedback()
+    val clickWithHaptics = remember(haptics, onClick) {
+        { haptics.perform(HapticPattern.CLICK); onClick() }
+    }
     FilledTonalIconButton(
-        onClick = onClick,
+        onClick = clickWithHaptics,
         shapes = IconButtonShapes(
             shape = AssistantShapes.connectedShape(index, count),
             pressedShape = AssistantShapes.ConnectedPressed
@@ -1530,6 +1540,14 @@ private fun AssistantAttachRevealContent(
  * connected shape), 16dp leading icon, bold label, 12dp press morph, the contrast-resolved chip
  * pair. Open in app, Take photo, Attach photo and Open assistant settings all draw this, so
  * every labelled action on the answer surface and inside the opened pill reads as one family.
+ *
+ * W7: deliberately the raw M3 [FilledTonalButton], not the shared `ExpressiveButton` (W6 audit
+ * F9). `ExpressiveButton` fixes a 56dp minimum height, a 28dp inset, a 28 -> 16dp round press
+ * morph, 20dp icons and the theme's tonal pair, and takes no shape, colour or height; this chip
+ * is the 40dp chip capsule ([AssistantSizes.ChipHeight]), draws the contrast-resolved chip pair,
+ * takes a per-position connected shape for the attach pair, and presses on the M3 Expressive
+ * `ButtonShapes` morph (the library's own, not a hand-rolled corner). What it shares with
+ * `ExpressiveButton` is the click haptic, so a chip tap feels like every other button tap.
  */
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -1541,8 +1559,12 @@ private fun AssistantActionChip(
     shape: Shape = AssistantShapes.Chip
 ) {
     val palette = rememberAssistantSurfacePalette()
+    val haptics = rememberHapticFeedback()
+    val clickWithHaptics = remember(haptics, onClick) {
+        { haptics.perform(HapticPattern.CLICK); onClick() }
+    }
     FilledTonalButton(
-        onClick = onClick,
+        onClick = clickWithHaptics,
         shapes = ButtonShapes(shape = shape, pressedShape = AssistantShapes.ConnectedPressed),
         colors = ButtonDefaults.filledTonalButtonColors(
             containerColor = palette.chip.container,
