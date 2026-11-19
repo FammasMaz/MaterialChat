@@ -42,12 +42,11 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.materialchat.ui.screens.conversations.EmptyStateAccent
-import com.materialchat.ui.screens.conversations.EmptyStateAction
-import com.materialchat.ui.screens.conversations.HomeEmptyState
 import com.materialchat.ui.theme.CustomShapes
 import com.materialchat.ui.theme.ExpressiveMotion
 import com.materialchat.ui.theme.ExpressiveShapes
 import com.materialchat.ui.theme.MaterialChatExpressiveTitleFontFamily
+import com.materialchat.ui.theme.MaterialChatMotion
 
 @Composable
 fun ExpressiveScreenBackdrop(
@@ -189,8 +188,12 @@ fun ExpressiveFilledIconButton(
         colors = IconButtonDefaults.filledIconButtonColors(
             containerColor = containerColor,
             contentColor = contentColor,
+            // Decision (W5 theme, audit F15): disabled content stays at the M3 disabled alpha
+            // (0.38, MaterialChatMotion.Alphas.Disabled), ungated. WCAG 1.4.3 exempts inactive
+            // controls from the contrast minimum, and 0.38 is what every stock M3 disabled
+            // control in the app draws; gating it would mean a disabled icon reading as enabled.
             disabledContainerColor = containerColor.copy(alpha = 0.42f),
-            disabledContentColor = contentColor.copy(alpha = 0.38f)
+            disabledContentColor = contentColor.copy(alpha = MaterialChatMotion.Alphas.Disabled)
         )
     ) {
         Icon(icon, contentDescription = contentDescription)
@@ -268,9 +271,14 @@ fun ExpressiveCardSurface(
 }
 
 /**
- * Empty state for every secondary screen: the same shape cluster, headline, supporting
- * line and single action as the home list's [HomeEmptyState], so an empty bookmarks,
- * memories or images screen reads like an empty chat list.
+ * Empty state for every secondary screen (bookmarks, memories, workflows, generated images,
+ * the leaderboard): a leading tile, `headlineSmall` Bold headline, `bodyMedium` supporting
+ * line and one optional action, on [ExpressiveShapes.Card] with 24dp padding, the same card,
+ * type pair and padding as the chat empty state and [ErrorContent] (W4 audit F11). The home
+ * list keeps its own hero (`HomeEmptyState`) but shares the type pair.
+ *
+ * [accent] picks the tile pair: `primaryContainer` / `onPrimaryContainer` or
+ * `secondaryContainer` / `onSecondaryContainer`, both gated role pairs.
  */
 @Composable
 fun ExpressiveEmptyState(
@@ -282,13 +290,23 @@ fun ExpressiveEmptyState(
     onAction: (() -> Unit)? = null,
     accent: EmptyStateAccent = EmptyStateAccent.Primary
 ) {
-    HomeEmptyState(
-        headline = title,
-        supportingText = message,
+    val scheme = MaterialTheme.colorScheme
+    val (tileColor, tileContentColor) = when (accent) {
+        EmptyStateAccent.Primary -> scheme.primaryContainer to scheme.onPrimaryContainer
+        EmptyStateAccent.Secondary -> scheme.secondaryContainer to scheme.onSecondaryContainer
+    }
+    ExpressiveStateCard(
         icon = icon,
-        accent = accent,
-        action = if (actionText != null && onAction != null) EmptyStateAction(actionText, onAction) else null,
-        modifier = modifier
+        tileColor = tileColor,
+        tileContentColor = tileContentColor,
+        title = title,
+        message = message,
+        modifier = modifier,
+        actions = if (actionText != null && onAction != null) {
+            { ExpressiveButton(onClick = onAction, text = actionText, style = ExpressiveButtonStyle.FilledTonal) }
+        } else {
+            null
+        }
     )
 }
 
