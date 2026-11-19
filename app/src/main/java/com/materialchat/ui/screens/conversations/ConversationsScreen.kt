@@ -1314,7 +1314,7 @@ private fun ErrorContent(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        ExpressiveButton(onClick = { onRetry() }, text = "Retry", style = ExpressiveButtonStyle.Text)
+        ExpressiveButton(onClick = { onRetry() }, text = "Try again", style = ExpressiveButtonStyle.Text)
     }
 }
 

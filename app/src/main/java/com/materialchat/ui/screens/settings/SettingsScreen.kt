@@ -2857,7 +2857,7 @@ private fun ErrorContent(
 
         ExpressiveButton(
             onClick = onRetry,
-            text = "Retry",
+            text = "Try again",
             style = ExpressiveButtonStyle.Text
         )
     }

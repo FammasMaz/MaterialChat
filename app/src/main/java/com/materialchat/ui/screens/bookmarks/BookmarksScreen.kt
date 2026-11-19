@@ -167,7 +167,7 @@ private fun BookmarksErrorContent(
             textAlign = TextAlign.Center
         )
         Spacer(modifier = Modifier.height(16.dp))
-        ExpressiveButton(onClick = { onRetry() }, text = "Retry", style = ExpressiveButtonStyle.Text)
+        ExpressiveButton(onClick = { onRetry() }, text = "Try again", style = ExpressiveButtonStyle.Text)
         ExpressiveButton(onClick = { onNavigateBack() }, text = "Go back", style = ExpressiveButtonStyle.Text)
     }
 }

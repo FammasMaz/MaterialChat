@@ -182,7 +182,7 @@ class NativeAuthManager @Inject constructor(
         val credential = waitForOpenAiCredential(OPENAI_CALLBACK_PORT, OPENAI_CALLBACK_PATH, state, {
             openBrowser(authUrl)
         }) { code ->
-            onStatus("Authorization received. Exchanging OpenAI tokens...")
+            onStatus("Authorization received. Exchanging OpenAI tokens\u2026")
             exchangeOpenAiAuthorizationCode(code, codeVerifier, redirectUri)
         }
 
@@ -478,7 +478,7 @@ class NativeAuthManager @Inject constructor(
                     writeLoopbackHtml(
                         writer = writer,
                         title = "Authentication successful",
-                        message = "MaterialChat has received your OpenAI Codex credentials. Returning you to the app...",
+                        message = "MaterialChat has received your OpenAI Codex credentials. Returning you to the app\u2026",
                         autoReturnToApp = true
                     )
                     return credential
