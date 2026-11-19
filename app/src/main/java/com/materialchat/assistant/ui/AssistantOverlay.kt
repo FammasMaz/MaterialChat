@@ -986,7 +986,11 @@ internal fun AssistantOverlayContent(
                                 Text(
                                     text = current.text,
                                     maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
+                                    // W3: the growing transcript keeps its newest words on the one
+                                    // line (the start is elided, as the system voice typing does);
+                                    // phase lines and the prompt still elide at the end.
+                                    overflow = if (current.emphasised) TextOverflow.StartEllipsis
+                                    else TextOverflow.Ellipsis,
                                     style = if (current.emphasised) AssistantTypography.transcript(MaterialTheme.typography)
                                     else AssistantTypography.prompt(MaterialTheme.typography),
                                     color = if (current.emphasised) palette.pill.body
