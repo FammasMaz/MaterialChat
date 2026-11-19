@@ -108,7 +108,11 @@ internal object AssistantShapes {
     /** Join corner between neighbours inside a connected group. */
     val ConnectedInnerCorner: Dp = 8.dp
 
-    /** Corner every grouped item (and the chrome icon buttons) tightens to while pressed. */
+    /**
+     * Corner every grouped item (and the chrome icon buttons) tightens to while pressed: the
+     * same 12dp as the chip family's `ExpressiveChipDefaults.PressedRadius` (W8 theme row A3;
+     * AssistantMotionTest pins the two equal).
+     */
     val ConnectedPressedCorner: Dp = 12.dp
 
     /** Pressed shape shared by the connected groups and the chrome icon buttons. */

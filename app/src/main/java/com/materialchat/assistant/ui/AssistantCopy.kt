@@ -51,9 +51,11 @@ internal object AssistantCopy {
     const val VOICE_DISABLED = "Voice input is off in settings. Type your question instead."
     const val RECOGNIZER_UNAVAILABLE = VoiceCopy.RECOGNIZER_UNAVAILABLE
     const val NO_PROVIDER = "No AI provider is set up. Add one in the app."
-    const val NO_CONNECTION = "No connection. Check your network and try again."
+    // W8 (theme row A2): the two class lines chat shares are the theme's CopyRules constants;
+    // CopyRulesTest pins the equality on both sides, so neither notice can drift.
+    const val NO_CONNECTION = CopyRules.NO_CONNECTION
     /** HTTP 429 / quota exhaustion (Gemini, OpenAI, OpenRouter): retrying later is the right move. */
-    const val RATE_LIMITED = "The model is busy right now. Wait a moment and try again."
+    const val RATE_LIMITED = CopyRules.RATE_LIMITED
     /**
      * HTTP 401 / 403: the provider refused the key or the account. Retrying changes nothing;
      * the key lives in the app's provider settings, which the notice's action opens.

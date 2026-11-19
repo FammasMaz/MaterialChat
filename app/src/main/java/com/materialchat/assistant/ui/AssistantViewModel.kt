@@ -47,6 +47,8 @@ import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -303,7 +305,8 @@ class AssistantViewModel(
                 isStreaming = false,
                 error = null,
                 notice = null,
-                screenContextUnavailable = false
+                screenContextUnavailable = false,
+                conversationSaved = false
             )
         }
         _voiceState.value = VoiceState.Idle
@@ -447,6 +450,11 @@ class AssistantViewModel(
         // W7: until the question row is saved, the photos exist only in this turn; a failure
         // before that point puts them back in the tray so "Try again" sends them.
         var questionSaved = false
+        // W8: the answer as far as the pill showed it, saved under the turn's conversation when
+        // the turn is cut off (a new question, a new invocation, the hide), so the chat and the
+        // model's history carry what the user saw instead of two user rows in a row.
+        var shownPartial = ""
+        var turnConversationId: String? = null
 
         streamingJob = viewModelScope.launch {
             try {
@@ -544,8 +552,12 @@ class AssistantViewModel(
                         currentCoroutineContext().ensureActive()
                         if (token != turn) return@coroutineScope
                         currentConversationId = created
+                        // W8 ruling: only a model exchange creates a conversation; the toolbar
+                        // offers Open in app once there is a row for it to land on.
+                        _uiState.update { it.copy(conversationSaved = true) }
                     }
                     val conversationId = currentConversationId!!
+                    turnConversationId = conversationId
                     conversationRepository.updateConversationProviderAndModel(conversationId, provider.id, model)
                     val systemPrompt = appPreferences.systemPrompt.first()
                     // Append the action protocol so the model knows which phone actions it can
@@ -637,10 +649,14 @@ class AssistantViewModel(
                                 }
                                 // Update streaming response in message list
                                 updateStreamingResponse(shown)
+                                shownPartial = shown
                                 if (!speechStopped && _uiState.value.isTtsEnabled)
                                     chunker.update(shown).forEach { queue.enqueue(it) }
                             }
                             is StreamingState.Completed -> {
+                                // The answer is saved whole below; a later cancellation of this
+                                // turn has nothing partial left to keep.
+                                shownPartial = ""
                                 // The model's action requests: run them now, keep them out of
                                 // what is shown, spoken and saved, and append the real outcome
                                 // whenever it failed or the model said nothing. A clock request
@@ -734,6 +750,9 @@ class AssistantViewModel(
                             }
                             is StreamingState.Error -> {
                                 queue.cancel()
+                                // The failure notice's "Try again" redraws the exchange without
+                                // the half answer (retryLastQuery), so it is not saved either.
+                                shownPartial = ""
                                 // Never the exception's own text: the copy system names
                                 // connectivity, a typed 401/403/429 when the stream carries
                                 // one, the rate limit from the body, and keeps the rest generic.
@@ -742,6 +761,8 @@ class AssistantViewModel(
                             is StreamingState.Cancelled -> {
                                 queue.cancel()
                                 settleStreamingMessages()
+                                persistPartialAnswer(conversationId, shownPartial)
+                                shownPartial = ""
                                 _uiState.update {
                                     it.copy(
                                         response = state.partialContent ?: "",
@@ -758,6 +779,9 @@ class AssistantViewModel(
                     queue.finish()
                 }
             } catch (cancelled: CancellationException) {
+                // The turn was cut off: keep what the user saw (see persistPartialAnswer).
+                val conversationId = turnConversationId
+                if (questionSaved && conversationId != null) persistPartialAnswer(conversationId, shownPartial)
                 throw cancelled
             } catch (e: Exception) {
                 if (token == turn) {
@@ -788,6 +812,25 @@ class AssistantViewModel(
      */
     private fun settleStreamingMessages() {
         _messages.update { messages -> messages.map { it.copy(isStreaming = false) } }
+    }
+
+    /**
+     * W8 (sequence walk round 5): a turn cut off mid-answer (a new question, a new invocation,
+     * the hide) saves the answer as far as the pill showed it, as chat's Stop does, so the next
+     * question's history follows what the user saw. Before, cancelStreaming settled the partial
+     * on the surface but saved nothing, and the model's history carried two user rows in a row
+     * while the pill showed question, partial answer, question. Runs inside the cancelled turn,
+     * not cancellable, so the next turn (which joins this one) saves its row after it.
+     */
+    private suspend fun persistPartialAnswer(conversationId: String, partial: String) {
+        if (partial.isBlank()) return
+        withContext(NonCancellable) {
+            runCatching {
+                conversationRepository.addMessage(
+                    Message(conversationId = conversationId, role = MessageRole.ASSISTANT, content = partial)
+                )
+            }
+        }
     }
 
     /** Stops speech for the rest of this turn without cancelling generation. */
@@ -1100,7 +1143,18 @@ class AssistantViewModel(
         _pendingAttachments.update { attachments ->
             attachments.filter { keep -> (keep.uri != attachment.uri).also { if (!it) removed = true } }
         }
-        if (removed) discardAttachment(attachment)
+        if (removed) {
+            discardAttachment(attachment)
+            clearLimitNotice()
+        }
+    }
+
+    /**
+     * W8: the limit notice asks the user to remove a photo; it leaves with that removal (or with
+     * a `+` tap that has room again) instead of standing over the opened pill after it was obeyed.
+     */
+    private fun clearLimitNotice() {
+        if (_uiState.value.notice == AttachmentLimits.limitNotice()) _uiState.update { it.copy(notice = null) }
     }
 
     /**
@@ -1115,6 +1169,7 @@ class AssistantViewModel(
             _uiState.update { it.copy(notice = AttachmentLimits.limitNotice()) }
             return
         }
+        clearLimitNotice()
         stopVoiceInput()
         attachInProgress = true
         lastActivityTimestamp = System.currentTimeMillis()
@@ -1181,14 +1236,24 @@ data class AssistantUiState(
     /** The current answer was produced with the screen capture (the "Using screen" marker). */
     val screenContextUsed: Boolean = false,
     /** The question wanted the screen but the platform delivered nothing: show how to enable it. */
-    val screenContextUnavailable: Boolean = false
+    val screenContextUnavailable: Boolean = false,
+    /**
+     * A conversation row exists for this chat. A device-action-only exchange ("Flashlight on.")
+     * never creates one (W8 ruling), so Open in app would land on the chat list, not on the
+     * exchange; the toolbar withholds it until a model turn has saved the conversation.
+     */
+    val conversationSaved: Boolean = false
 ) {
     /**
      * The answer is awaited or still arriving. Leaving the overlay now (Open in app hides the
-     * session) cancels the stream and loses the partial answer, which is only saved on
-     * completion, so the answer toolbar withholds Open in app until this is false (W6).
+     * session) cancels the stream; the answer as far as it got is saved (W8), but the app would
+     * open on an answer cut off mid-sentence, so the toolbar withholds Open in app until this
+     * is false (W6).
      */
     val answerInFlight: Boolean get() = isLoading || isStreaming
+
+    /** Open in app is offered: the chat is saved (W8) and nothing is in flight (W6). */
+    val openInAppAvailable: Boolean get() = conversationSaved && !answerInFlight
 }
 
 /**

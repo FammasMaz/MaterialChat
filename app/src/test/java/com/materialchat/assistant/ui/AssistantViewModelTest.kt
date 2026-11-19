@@ -621,5 +621,99 @@ class AssistantViewModelTest {
         assertTrue(AssistantUiState(isStreaming = true).answerInFlight)
         assertFalse(AssistantUiState(response = "done").answerInFlight)
         assertFalse(AssistantUiState(error = AssistantCopy.REQUEST_FAILED).answerInFlight)
+        assertFalse(AssistantUiState(isLoading = true, conversationSaved = true).openInAppAvailable)
+        assertFalse(AssistantUiState(isStreaming = true, conversationSaved = true).openInAppAvailable)
+        assertTrue(AssistantUiState(response = "done", conversationSaved = true).openInAppAvailable)
+        assertFalse("no conversation row, nothing to open", AssistantUiState(response = "done").openInAppAvailable)
+    }
+
+    @Test fun `a device-action-only exchange creates no conversation and withholds Open in app`() = runTest {
+        val vm = createViewModel()
+        every { deviceActions.perform(DeviceAction.SetTorch(true)) } returns
+            DeviceActionOutcome("Flashlight on.", succeeded = true)
+        vm.onOverlayShown()
+        vm.sendQuery("turn the flashlight on")
+        runCurrent()
+        assertEquals("Flashlight on.", vm.uiState.value.response)
+        assertTrue(vm.messages.value.isNotEmpty())
+        // W8 ruling: the local action never creates a conversation, so the toolbar has nothing
+        // for Open in app to land on and withholds it.
+        coVerify(exactly = 0) { create.withProviderAndModel(any(), any()) }
+        coVerify(exactly = 0) { conversations.addMessage(any()) }
+        assertFalse(vm.uiState.value.conversationSaved)
+        assertFalse(vm.uiState.value.openInAppAvailable)
+        // A model turn in the same chat creates the row; the chip is offered on completion only.
+        vm.sendQuery("what time is the sunset")
+        runCurrent()
+        assertTrue(vm.uiState.value.conversationSaved)
+        assertFalse("withheld while the answer is awaited", vm.uiState.value.openInAppAvailable)
+        states.send(StreamingState.Completed("About seven.", messageId = "a"))
+        runCurrent()
+        assertTrue(vm.uiState.value.openInAppAvailable)
+        // New chat drops the row reference: the next exchange starts unsaved again.
+        vm.startNewChat()
+        assertFalse(vm.uiState.value.conversationSaved)
+        assertFalse(vm.uiState.value.openInAppAvailable)
+    }
+
+    // W8 sequence walk round 5.
+
+    @Test fun `a question typed over an arriving answer saves the answer as far as it got first`() = runTest {
+        val vm = createViewModel()
+        val saved = mutableListOf<Message>()
+        coEvery { conversations.addMessage(any()) } answers { saved += firstArg<Message>(); firstArg<Message>().id }
+        vm.onOverlayShown()
+        vm.sendQuery("first")
+        runCurrent()
+        states.send(StreamingState.Streaming("Partial answer. More", messageId = "a"))
+        runCurrent()
+        assertTrue(vm.uiState.value.isStreaming)
+        // The next question interrupts the answer (submitTyped: onInterrupt, then send).
+        vm.sendQuery("second")
+        runCurrent()
+        assertTrue(cancelled)
+        // The chat and the model's history carry what the pill showed: question, the answer as
+        // far as it got, question. Before W8 the partial was never saved and the history had
+        // two user rows in a row.
+        assertEquals(listOf("first", "Partial answer. More", "second"), saved.map { it.content })
+        assertEquals(listOf(MessageRole.USER, MessageRole.ASSISTANT, MessageRole.USER), saved.map { it.role })
+        assertTrue(saved.all { it.conversationId == "conversation" })
+        assertEquals(
+            listOf("first", "Partial answer. More", "second"),
+            vm.messages.value.map { it.content }
+        )
+        assertTrue(vm.messages.value.none { it.isStreaming })
+        assertEquals(VoiceState.Thinking("second"), vm.voiceState.value)
+    }
+
+    @Test fun `a new invocation over an arriving answer keeps it and an answer that never started saves nothing`() = runTest {
+        val vm = createViewModel()
+        val saved = mutableListOf<Message>()
+        coEvery { conversations.addMessage(any()) } answers { saved += firstArg<Message>(); firstArg<Message>().id }
+        vm.onOverlayShown()
+        vm.sendQuery("first")
+        runCurrent()
+        states.send(StreamingState.Streaming("Half an answer", messageId = "a"))
+        runCurrent()
+        // The session hides for the new invocation: clearConversation -> cancelStreaming.
+        vm.onOverlayHidden()
+        runCurrent()
+        assertTrue(cancelled)
+        assertEquals(listOf("first", "Half an answer"), saved.map { it.content })
+        assertEquals(MessageRole.ASSISTANT, saved.last().role)
+        assertFalse(vm.uiState.value.isStreaming)
+        assertEquals(VoiceState.Idle, vm.voiceState.value)
+        // Nothing shown yet: the cut-off turn leaves only its question behind.
+        cancelled = false
+        vm.onOverlayShown()
+        vm.sendQuery("second")
+        runCurrent()
+        states.send(StreamingState.Starting)
+        runCurrent()
+        vm.cancelStreaming()
+        runCurrent()
+        assertTrue(cancelled)
+        assertEquals(listOf("first", "Half an answer", "second"), saved.map { it.content })
+        assertEquals(MessageRole.USER, saved.last().role)
     }
 }
