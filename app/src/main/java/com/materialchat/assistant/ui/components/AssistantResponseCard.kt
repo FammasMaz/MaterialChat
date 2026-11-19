@@ -249,7 +249,6 @@ private fun AssistantThinkingSurface() {
                     scaleY = entrance.value
                     transformOrigin = TransformOrigin(0f, 1f)
                 },
-            // W5: the theme's per-corner squircle with AssistantShapes.Thinking's radii.
             shape = ExpressiveShapes.ThinkingSurface,
             color = palette.thinking.fill,
             contentColor = palette.thinking.body,

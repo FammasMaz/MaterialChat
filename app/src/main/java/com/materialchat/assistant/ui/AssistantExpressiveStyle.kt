@@ -15,6 +15,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.materialchat.ui.theme.CustomShapes
 import com.materialchat.ui.theme.ExpressiveMotion
 import com.materialchat.ui.theme.ExpressiveShapes
 import com.materialchat.ui.theme.ExpressiveSizes
@@ -85,30 +86,16 @@ internal object AssistantShapes {
     /** The pill: a full capsule at 76dp. Shared with the particle field's capsule geometry. */
     val Pill = RoundedCornerShape(PillCorner)
 
-    // W5: the answer, notice and thinking surfaces are drawn with the theme's per-corner
-    // squircles (ExpressiveShapes.AnswerSurface / NoticeSurface / ThinkingSurface), whose radii
-    // are these three values exactly; the theme's ShapeTokensTest pins both sides equal so the
-    // geometry cannot drift. These RoundedCornerShapes are kept as the radii record only; no
-    // assistant composable draws them any more.
-
-    /** The answer surface's radii: wide, organic top corners that sit against the pill below. Drawn as [ExpressiveShapes.AnswerSurface]. */
-    val Answer = RoundedCornerShape(topStart = 36.dp, topEnd = 36.dp, bottomStart = 28.dp, bottomEnd = 28.dp)
-
-    /** The notice surface's radii. Drawn as [ExpressiveShapes.NoticeSurface]. */
-    val Notice = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp, bottomStart = 18.dp, bottomEnd = 18.dp)
+    // The answer, notice and thinking surfaces draw the theme's per-corner squircles directly
+    // (ExpressiveShapes.AnswerSurface / NoticeSurface / ThinkingSurface); the theme's
+    // ShapeTokensTest pins their radii (36/36/28/28, 24/24/18/18, 20/20/8/20). W6: the
+    // assistant no longer keeps a RoundedCornerShape record of them.
 
     /** Tonal action chips in the answer surface and the opened pill: the app-wide chip capsule. */
     val Chip: Shape get() = ExpressiveShapes.Chip
 
-    /**
-     * The thinking surface's radii: an asymmetric container (M3 variable radii, used for one hero
-     * moment) whose tight bottom-start corner points at the pill it will answer into. Drawn as
-     * [ExpressiveShapes.ThinkingSurface].
-     */
-    val Thinking = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp, bottomStart = 8.dp, bottomEnd = 20.dp)
-
-    /** The action toolbar inside the answer surface: a full capsule, like an M3 floating toolbar. */
-    val Toolbar = RoundedCornerShape(50)
+    /** The action toolbar inside the answer surface: a full capsule, like an M3 floating toolbar (the theme's capsule). */
+    val Toolbar: Shape get() = CustomShapes.Pill
 
     /** Outer corner of a connected action group (answer toolbar icons, attach actions). */
     val ConnectedOuterCorner: Dp = 20.dp

@@ -1239,7 +1239,6 @@ private fun AssistantResponseSurface(
         modifier = Modifier
             .fillMaxWidth()
             .heightIn(max = maxHeight),
-        // W5: the theme's per-corner squircle with AssistantShapes.Answer's radii.
         shape = ExpressiveShapes.AnswerSurface,
         color = palette.answer.fill,
         contentColor = palette.answer.body,
@@ -1656,7 +1655,6 @@ private fun AssistantNoticeSurface(
     val content = if (notice.isError) palette.errorNotice.content else palette.notice.muted
     Surface(
         modifier = modifier.fillMaxWidth(),
-        // W5: the theme's per-corner squircle with AssistantShapes.Notice's radii.
         shape = ExpressiveShapes.NoticeSurface,
         color = container,
         contentColor = content,
