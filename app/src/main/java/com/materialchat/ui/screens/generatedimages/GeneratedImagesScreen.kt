@@ -53,6 +53,7 @@ import coil.request.ImageRequest
 import com.materialchat.domain.model.GeneratedImage
 import com.materialchat.ui.components.ExpressiveContentSurface
 import com.materialchat.ui.components.ExpressiveEmptyState
+import com.materialchat.ui.theme.ExpressiveShapes
 import com.materialchat.ui.components.ExpressiveFilledIconButton
 import com.materialchat.ui.components.ExpressiveTopBarTitle
 import com.materialchat.ui.components.HapticPattern
@@ -149,7 +150,7 @@ private fun GeneratedImageCard(
 
     ElevatedCard(
         onClick = onOpenThread,
-        shape = RoundedCornerShape(28.dp),
+        shape = ExpressiveShapes.Card,
         colors = CardDefaults.elevatedCardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerLow
         ),
@@ -268,7 +269,7 @@ private fun EmptyGeneratedImages(modifier: Modifier = Modifier) {
         ExpressiveEmptyState(
             icon = Icons.Filled.Image,
             title = "No generated images yet",
-            message = "Create an image from any chat and it will appear here automatically."
+            message = "Create an image from any chat and it will appear here automatically"
         )
     }
 }

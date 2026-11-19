@@ -18,7 +18,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.FilledIconButton
@@ -42,6 +41,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.materialchat.ui.screens.conversations.EmptyStateAccent
+import com.materialchat.ui.screens.conversations.EmptyStateAction
+import com.materialchat.ui.screens.conversations.HomeEmptyState
+import com.materialchat.ui.theme.CustomShapes
 import com.materialchat.ui.theme.ExpressiveMotion
 import com.materialchat.ui.theme.ExpressiveShapes
 import com.materialchat.ui.theme.MaterialChatExpressiveTitleFontFamily
@@ -107,7 +110,8 @@ fun ExpressiveContentSurface(
         modifier = modifier
             .fillMaxSize()
             .padding(padding),
-        shape = RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp),
+        // Same 28 dp top contour as the home list and the settings content surface.
+        shape = ExpressiveShapes.ScreenContainer,
         color = MaterialTheme.colorScheme.surfaceContainerLow,
         tonalElevation = 1.dp,
         content = content
@@ -263,6 +267,11 @@ fun ExpressiveCardSurface(
     }
 }
 
+/**
+ * Empty state for every secondary screen: the same shape cluster, headline, supporting
+ * line and single action as the home list's [HomeEmptyState], so an empty bookmarks,
+ * memories or images screen reads like an empty chat list.
+ */
 @Composable
 fun ExpressiveEmptyState(
     icon: ImageVector,
@@ -270,34 +279,17 @@ fun ExpressiveEmptyState(
     message: String,
     modifier: Modifier = Modifier,
     actionText: String? = null,
-    onAction: (() -> Unit)? = null
+    onAction: (() -> Unit)? = null,
+    accent: EmptyStateAccent = EmptyStateAccent.Primary
 ) {
-    Column(
+    HomeEmptyState(
+        headline = title,
+        supportingText = message,
+        icon = icon,
+        accent = accent,
+        action = if (actionText != null && onAction != null) EmptyStateAction(actionText, onAction) else null,
         modifier = modifier
-            .fillMaxWidth()
-            .padding(24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        Surface(
-            shape = RoundedCornerShape(32.dp),
-            color = MaterialTheme.colorScheme.primaryContainer,
-            contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-        ) { Icon(icon, null, Modifier.padding(24.dp).size(44.dp)) }
-        Spacer(Modifier.height(20.dp))
-        Text(title, style = MaterialTheme.typography.headlineSmall, textAlign = TextAlign.Center)
-        Spacer(Modifier.height(8.dp))
-        Text(
-            message,
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center
-        )
-        if (actionText != null && onAction != null) {
-            Spacer(Modifier.height(24.dp))
-            ExpressiveButton(onClick = onAction, text = actionText, style = ExpressiveButtonStyle.FilledTonal)
-        }
-    }
+    )
 }
 
 @Composable
@@ -310,7 +302,8 @@ fun ExpressiveListItemContainer(
         modifier = modifier
             .fillMaxWidth()
             .defaultMinSize(minHeight = 64.dp),
-        shape = RoundedCornerShape(24.dp),
+        // Same 24 dp row shape as the home conversation rows.
+        shape = CustomShapes.ConversationItem,
         color = containerColor,
         tonalElevation = 1.dp,
         content = content

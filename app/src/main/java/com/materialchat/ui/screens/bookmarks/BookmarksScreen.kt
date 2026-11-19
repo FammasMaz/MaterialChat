@@ -1,8 +1,7 @@
 package com.materialchat.ui.screens.bookmarks
 
 import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.spring
+import com.materialchat.ui.theme.ExpressiveMotion
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -188,12 +187,7 @@ private fun BookmarksSuccessContent(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .animateContentSize(
-                animationSpec = spring(
-                    dampingRatio = Spring.DampingRatioMediumBouncy,
-                    stiffness = Spring.StiffnessMediumLow
-                )
-            )
+            .animateContentSize(animationSpec = ExpressiveMotion.Spatial.contentSize())
     ) {
         // Search bar
         BookmarkSearchBar(
@@ -243,14 +237,9 @@ private fun BookmarksSuccessContent(
                         onDelete = { onDeleteBookmark(bookmarkItem.bookmark.id) },
                         onNavigateToConversation = { onNavigateToConversation(bookmarkItem.conversationId) },
                         modifier = Modifier.animateItem(
-                            fadeInSpec = spring(
-                                dampingRatio = Spring.DampingRatioNoBouncy,
-                                stiffness = Spring.StiffnessMediumLow
-                            ),
-                            fadeOutSpec = spring(
-                                dampingRatio = Spring.DampingRatioNoBouncy,
-                                stiffness = Spring.StiffnessMediumLow
-                            )
+                            fadeInSpec = ExpressiveMotion.ListItem.FadeIn,
+                            fadeOutSpec = ExpressiveMotion.ListItem.FadeOut,
+                            placementSpec = ExpressiveMotion.ListItem.Placement
                         )
                     )
                 }
@@ -272,9 +261,9 @@ private fun EmptyBookmarksContent(hasFilters: Boolean) {
             icon = Icons.Outlined.BookmarkBorder,
             title = if (hasFilters) "No matches" else "No bookmarks yet",
             message = if (hasFilters) {
-                "Try a different search, tag, or category."
+                "Try a different search, tag or category"
             } else {
-                "Bookmark messages from any conversation to build your knowledge base."
+                "Bookmark messages from any conversation to build your knowledge base"
             }
         )
     }

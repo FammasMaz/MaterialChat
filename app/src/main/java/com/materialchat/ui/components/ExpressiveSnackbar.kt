@@ -18,6 +18,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.material3.Snackbar
+import com.materialchat.ui.theme.ExpressiveMotion
 import com.materialchat.ui.theme.ShapeMorphing
 import com.materialchat.ui.theme.SquircleShape
 
@@ -52,10 +53,13 @@ fun ExpressiveSnackbar(
                     haptics.perform(HapticPattern.CLICK)
                     snackbarData.performAction()
                 },
+                // Shared press physics (Press.Shape, 0.6/800): settles ~21% sooner than the
+                // old shapeMorph default, matching every other pressable on home/settings.
                 shape = ShapeMorphing.buttonShape(
                     isPressed = pressed,
                     defaultRadius = 20.dp,
-                    pressedRadius = 12.dp
+                    pressedRadius = 12.dp,
+                    animationSpec = ExpressiveMotion.Press.Shape
                 ),
                 interactionSource = interactionSource,
                 colors = ButtonDefaults.textButtonColors(

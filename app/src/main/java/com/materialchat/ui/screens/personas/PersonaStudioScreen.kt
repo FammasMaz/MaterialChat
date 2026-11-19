@@ -1,7 +1,8 @@
 package com.materialchat.ui.screens.personas
 
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.spring
+import com.materialchat.ui.components.ExpressiveSnackbar
+import com.materialchat.ui.theme.ExpressiveMotion
+import com.materialchat.ui.theme.ExpressiveShapes
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -17,7 +18,6 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
@@ -28,7 +28,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Snackbar
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
@@ -124,11 +123,7 @@ fun PersonaStudioScreen(
         },
         snackbarHost = {
             SnackbarHost(hostState = snackbarHostState) { snackbarData ->
-                Snackbar(
-                    snackbarData = snackbarData,
-                    containerColor = MaterialTheme.colorScheme.inverseSurface,
-                    contentColor = MaterialTheme.colorScheme.inverseOnSurface
-                )
+                ExpressiveSnackbar(snackbarData = snackbarData)
             }
         },
         containerColor = MaterialTheme.colorScheme.surfaceContainer
@@ -172,14 +167,9 @@ fun PersonaStudioScreen(
                     ) { persona ->
                         PersonaCard(
                             modifier = Modifier.animateItem(
-                                fadeInSpec = spring(
-                                    dampingRatio = Spring.DampingRatioNoBouncy,
-                                    stiffness = Spring.StiffnessMediumLow
-                                ),
-                                fadeOutSpec = spring(
-                                    dampingRatio = Spring.DampingRatioNoBouncy,
-                                    stiffness = Spring.StiffnessMediumLow
-                                )
+                                fadeInSpec = ExpressiveMotion.ListItem.FadeIn,
+                                fadeOutSpec = ExpressiveMotion.ListItem.FadeOut,
+                                placementSpec = ExpressiveMotion.ListItem.Placement
                             ),
                             persona = persona,
                             onClick = { viewModel.showEditEditor(persona) },
@@ -273,7 +263,7 @@ private fun PersonaStudioErrorContent(
 @Composable
 private fun PersonaOnboardingCard() {
     Surface(
-        shape = RoundedCornerShape(24.dp),
+        shape = ExpressiveShapes.Card,
         color = MaterialTheme.colorScheme.secondaryContainer,
         modifier = Modifier.fillMaxWidth()
     ) {

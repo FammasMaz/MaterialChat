@@ -2,14 +2,9 @@ package com.materialchat.ui.screens.explore
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.background
@@ -32,7 +27,6 @@ import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountTree
 import androidx.compose.material.icons.filled.Bookmark
@@ -73,7 +67,10 @@ import com.materialchat.ui.components.HapticPattern
 import com.materialchat.ui.components.rememberDeviceTilt
 import com.materialchat.ui.components.rememberHapticFeedback
 import com.materialchat.ui.theme.ExpressiveMotion
+import com.materialchat.ui.theme.MaterialChatMotion
+import com.materialchat.ui.theme.particles.rememberParticleMotionGate
 import kotlinx.coroutines.delay
+import com.materialchat.ui.theme.ExpressiveShapes
 
 private data class ExploreFeature(
     val title: String,
@@ -172,7 +169,7 @@ fun ExploreScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(top = paddingValues.calculateTopPadding()),
-            shape = RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp),
+            shape = ExpressiveShapes.ScreenContainer,
             color = MaterialTheme.colorScheme.surfaceContainerLow
         ) {
             LazyVerticalGrid(
@@ -223,17 +220,21 @@ private fun ArenaHeroCard(onClick: () -> Unit) {
     // Physical 3D tilt: the card leans subtly with the hand holding the phone.
     val tilt = rememberDeviceTilt(maxDegrees = 10f)
 
-    // M3E hero art: the backdrop shape slowly rotates — alive even at rest.
-    val heroRotation = rememberInfiniteTransition(label = "heroShapeRotation")
-    val burstRotation by heroRotation.animateFloat(
-        initialValue = 0f,
-        targetValue = 360f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 48_000, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "burstRotation"
-    )
+    // M3E hero art: the backdrop shape slowly rotates — alive even at rest. Same backdrop
+    // spin token and host gate as the home empty-state cluster: no frames while the window
+    // is stopped, the device is in power saver, or animations are switched off.
+    val burstRotation = if (rememberParticleMotionGate().motionAllowed) {
+        val heroRotation = rememberInfiniteTransition(label = "heroShapeRotation")
+        val spin by heroRotation.animateFloat(
+            initialValue = 0f,
+            targetValue = 360f,
+            animationSpec = ExpressiveMotion.Spatial.decorativeSpin(MaterialChatMotion.Durations.BackdropSpin),
+            label = "burstRotation"
+        )
+        spin
+    } else {
+        0f
+    }
 
     val scale by animateFloatAsState(
         targetValue = if (isPressed) 0.98f else 1f,
@@ -247,7 +248,7 @@ private fun ArenaHeroCard(onClick: () -> Unit) {
             onClick()
         },
         interactionSource = interactionSource,
-        shape = RoundedCornerShape(32.dp),
+        shape = ExpressiveShapes.Sheet,
         elevation = CardDefaults.elevatedCardElevation(defaultElevation = 4.dp),
         colors = CardDefaults.elevatedCardColors(
             containerColor = MaterialTheme.colorScheme.primaryContainer
@@ -366,7 +367,7 @@ private fun StaggeredFeatureCard(index: Int, feature: ExploreFeature) {
     }
     LaunchedEffect(Unit) {
         delay(index * 45L)
-        offset.animateTo(0f, animationSpec = spring(stiffness = 420f, dampingRatio = 0.8f))
+        offset.animateTo(0f, animationSpec = ExpressiveMotion.Spatial.listEntrance())
     }
 
     AnimatedVisibility(
@@ -401,7 +402,7 @@ private fun ExploreFeatureCard(feature: ExploreFeature, modifier: Modifier = Mod
             feature.onClick()
         },
         interactionSource = interactionSource,
-        shape = RoundedCornerShape(if (feature.isWide) 28.dp else 24.dp),
+        shape = ExpressiveShapes.Card,
         colors = CardDefaults.elevatedCardColors(containerColor = colors.first),
         elevation = CardDefaults.elevatedCardElevation(defaultElevation = if (feature.isWide) 3.dp else 1.dp),
         modifier = modifier
@@ -424,7 +425,7 @@ private fun ExploreFeatureCard(feature: ExploreFeature, modifier: Modifier = Mod
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Surface(
-                    shape = RoundedCornerShape(18.dp),
+                    shape = ExpressiveShapes.Tile,
                     color = colors.second.copy(alpha = 0.18f),
                     contentColor = colors.second
                 ) {
@@ -437,7 +438,7 @@ private fun ExploreFeatureCard(feature: ExploreFeature, modifier: Modifier = Mod
                 Text(
                     text = feature.eyebrow,
                     style = MaterialTheme.typography.labelSmall,
-                    color = colors.second.copy(alpha = 0.78f),
+                    color = colors.second,
                     maxLines = 1
                 )
             }
@@ -454,7 +455,7 @@ private fun ExploreFeatureCard(feature: ExploreFeature, modifier: Modifier = Mod
                 Text(
                     text = feature.description,
                     style = MaterialTheme.typography.bodySmall,
-                    color = colors.second.copy(alpha = 0.72f),
+                    color = colors.second,
                     maxLines = if (feature.isWide) 2 else 3,
                     overflow = TextOverflow.Ellipsis
                 )

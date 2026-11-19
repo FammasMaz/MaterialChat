@@ -31,6 +31,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.materialchat.ui.components.MarkdownText
 import com.materialchat.ui.theme.ExpressiveMotion
+import com.materialchat.ui.theme.ExpressiveShapes
 
 /**
  * A surface card showing the output of a completed workflow step.
@@ -57,7 +58,7 @@ fun StepResultCard(
         modifier = modifier
             .fillMaxWidth()
             .animateContentSize(animationSpec = ExpressiveMotion.Spatial.container()),
-        shape = RoundedCornerShape(20.dp),
+        shape = ExpressiveShapes.DisclosurePanel,
         color = MaterialTheme.colorScheme.surfaceContainerHigh,
         tonalElevation = 1.dp
     ) {

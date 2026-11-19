@@ -70,6 +70,13 @@ class HomeSettingsContrastTest {
         )) assertTrue("missing slot $expected", expected in names)
     }
 
+    @Test fun newSharedComponentSlotsArePresent() {
+        val names = HomeSettingsPalette.resolve(themes.first().scheme).pairs().map { it.name }.toSet()
+        for (expected in listOf(
+            "StatCardLabel", "StatCardValue"
+        )) assertTrue("missing slot $expected", expected in names)
+    }
+
     @Test fun thePreferredRoleIsKeptWhereverItAlreadyReads() {
         // The resolver must not repaint themes that were fine: row text keeps onSurface /
         // onSurfaceVariant exactly as the theme defines them on every static palette.

@@ -1,7 +1,6 @@
 package com.materialchat.ui.screens.insights
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.spring
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
@@ -18,7 +17,6 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -44,6 +42,7 @@ import com.materialchat.ui.screens.insights.components.ModelComparisonCard
 import com.materialchat.ui.screens.insights.components.ModelUsageChart
 import com.materialchat.ui.screens.insights.components.ResponseTimeChart
 import com.materialchat.ui.screens.insights.components.StatCard
+import com.materialchat.ui.theme.ExpressiveShapes
 
 /**
  * Conversation Intelligence Dashboard screen.
@@ -80,12 +79,7 @@ fun InsightsScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(top = innerPadding.calculateTopPadding()),
-            shape = RoundedCornerShape(
-                topStart = 28.dp,
-                topEnd = 28.dp,
-                bottomStart = 0.dp,
-                bottomEnd = 0.dp
-            ),
+            shape = ExpressiveShapes.ScreenContainer,
             color = MaterialTheme.colorScheme.surfaceContainerLow
         ) {
             Column(

@@ -11,6 +11,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import com.materialchat.ui.theme.CustomShapes
+import com.materialchat.ui.theme.ExpressiveShapes
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -49,7 +51,8 @@ fun WorkflowCard(
                 onClick = onClick,
                 onLongClick = onLongClick
             ),
-        shape = RoundedCornerShape(24.dp),
+        // Same 24 dp row shape and 18 dp squircle tile as the home conversation rows.
+        shape = CustomShapes.ConversationItem,
         color = MaterialTheme.colorScheme.surfaceContainerHigh,
         tonalElevation = 1.dp
     ) {
@@ -59,7 +62,7 @@ fun WorkflowCard(
         ) {
             // Workflow icon (emoji)
             Surface(
-                shape = RoundedCornerShape(18.dp),
+                shape = ExpressiveShapes.Tile,
                 color = MaterialTheme.colorScheme.primaryContainer,
                 modifier = Modifier.size(48.dp)
             ) {

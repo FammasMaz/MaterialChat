@@ -4,12 +4,8 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationVector1D
 import androidx.compose.animation.core.spring
@@ -271,7 +267,12 @@ fun ConversationsScreen(
             }
         },
         snackbarHost = {
-            SnackbarHost(hostState = snackbarHostState) { snackbarData ->
+            // The floating toolbar is overlaid by MainActivity, so the host must clear it
+            // itself: toolbar height + its margin + the navigation-bar inset, not a constant.
+            SnackbarHost(
+                hostState = snackbarHostState,
+                modifier = Modifier.padding(bottom = snackbarBottomClearance())
+            ) { snackbarData ->
                 ExpressiveSnackbar(snackbarData = snackbarData)
             }
         }
@@ -513,7 +514,7 @@ private fun ConversationsTopBar(
                     gears.animateFloat(
                         initialValue = 0f,
                         targetValue = 360f,
-                        animationSpec = infiniteRepeatable(tween(16_000, easing = LinearEasing)),
+                        animationSpec = ExpressiveMotion.Spatial.decorativeSpin(),
                         label = "gearLarge"
                     ).value
                 } else 0f

@@ -37,4 +37,24 @@ class HomeListInsetsTest {
     fun `clearance exceeds the old fixed 88dp once the inset is applied`() {
         assertTrue(HomeListInsets.bottomClearance(navigationBarInset = 0.dp) > 88.dp)
     }
+
+    @Test
+    fun `snackbar clearance covers inset, margin and toolbar but not the row gap`() {
+        assertEquals(
+            24.dp + HomeListInsets.ToolbarBottomMargin + HomeListInsets.ToolbarHeight,
+            HomeListInsets.snackbarClearance(navigationBarInset = 24.dp)
+        )
+        assertEquals(
+            HomeListInsets.bottomClearance(navigationBarInset = 24.dp) - HomeListInsets.RowGap,
+            HomeListInsets.snackbarClearance(navigationBarInset = 24.dp)
+        )
+    }
+
+    @Test
+    fun `snackbar clearance treats a negative inset as zero`() {
+        assertEquals(
+            HomeListInsets.snackbarClearance(navigationBarInset = 0.dp),
+            HomeListInsets.snackbarClearance(navigationBarInset = (-8).dp)
+        )
+    }
 }

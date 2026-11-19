@@ -54,6 +54,8 @@ import com.materialchat.domain.model.MemoryKind
 import com.materialchat.ui.components.ExpressiveButton
 import com.materialchat.ui.components.ExpressiveButtonStyle
 import com.materialchat.ui.components.ExpressiveContentSurface
+import com.materialchat.ui.components.ExpressiveEmptyState
+import com.materialchat.ui.screens.conversations.EmptyStateAccent
 import com.materialchat.ui.components.ExpressiveFilledIconButton
 import com.materialchat.ui.components.ExpressiveTopBarTitle
 import com.materialchat.ui.components.dialogEntrance
@@ -255,7 +257,7 @@ private fun MemoryCard(
 
     Surface(
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(28.dp),
+        shape = ExpressiveShapes.Card,
         color = colors.container,
         contentColor = colors.content,
         tonalElevation = 2.dp
@@ -267,7 +269,7 @@ private fun MemoryCard(
         ) {
             Surface(
                 modifier = Modifier.size(48.dp),
-                shape = RoundedCornerShape(18.dp),
+                shape = ExpressiveShapes.Tile,
                 color = colors.content.copy(alpha = 0.12f),
                 contentColor = colors.content
             ) {
@@ -313,53 +315,25 @@ private fun MemoryCard(
     }
 }
 
+/** Same empty-state family as the home list (shape cluster, headline, one supporting line). */
 @Composable
 private fun EmptyMemoriesContent() {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(32.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        Surface(
-            modifier = Modifier.size(96.dp),
-            shape = RoundedCornerShape(28.dp),
-            color = MaterialTheme.colorScheme.primaryContainer,
-            contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-        ) {
-            Box(contentAlignment = Alignment.Center) {
-                Icon(Icons.Outlined.AutoAwesome, contentDescription = null, modifier = Modifier.size(42.dp))
-            }
-        }
-        Spacer(modifier = Modifier.height(20.dp))
-        Text("No memories yet", style = MaterialTheme.typography.titleLarge)
-        Spacer(modifier = Modifier.height(8.dp))
-        Text(
-            text = "Say “remember that…” in a normal chat, or keep chatting until MaterialChat finds durable preferences and facts.",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-    }
+    ExpressiveEmptyState(
+        icon = Icons.Outlined.AutoAwesome,
+        title = "No memories yet",
+        message = "Say “remember that…” in a chat and MaterialChat keeps durable preferences and facts here",
+        accent = EmptyStateAccent.Primary
+    )
 }
 
 @Composable
 private fun EmptyFilteredMemoriesContent() {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(32.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        Text("No matching memories", style = MaterialTheme.typography.titleMedium)
-        Spacer(modifier = Modifier.height(8.dp))
-        Text(
-            text = "Try another search term.",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-    }
+    ExpressiveEmptyState(
+        icon = Icons.Outlined.Search,
+        title = "No matching memories",
+        message = "Try another search term",
+        accent = EmptyStateAccent.Secondary
+    )
 }
 
 @Composable

@@ -63,7 +63,7 @@ import com.materialchat.ui.components.ExpressiveScreenBackdrop
 import com.materialchat.ui.components.ExpressiveSwitch
 import androidx.compose.material3.LoadingIndicator
 import com.materialchat.ui.components.ExpressiveTopBarTitle
-import com.materialchat.ui.theme.CustomShapes
+import com.materialchat.ui.theme.ExpressiveShapes
 
 /**
  * Pre-computed display tiers for the constant image-generation model list so the
@@ -203,7 +203,7 @@ fun ModelAssignmentsScreen(
 private fun AssignmentHeroCard(recommendation: String) {
     ElevatedCard(
         modifier = Modifier.fillMaxWidth(),
-        shape = CustomShapes.ProviderCard,
+        shape = ExpressiveShapes.Card,
         colors = CardDefaults.elevatedCardColors(
             containerColor = MaterialTheme.colorScheme.primaryContainer
         ),
@@ -243,7 +243,7 @@ private fun AssignmentSectionCard(
 ) {
     ElevatedCard(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(24.dp),
+        shape = ExpressiveShapes.Card,
         colors = CardDefaults.elevatedCardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerLow
         ),

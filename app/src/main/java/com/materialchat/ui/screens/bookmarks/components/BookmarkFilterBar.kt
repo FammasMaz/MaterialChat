@@ -1,8 +1,7 @@
 package com.materialchat.ui.screens.bookmarks.components
 
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.spring
+import com.materialchat.ui.theme.ExpressiveMotion
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -74,10 +73,7 @@ fun BookmarkFilterBar(
                     } else {
                         MaterialTheme.colorScheme.surfaceContainerHigh
                     },
-                    animationSpec = spring(
-                        dampingRatio = Spring.DampingRatioNoBouncy,
-                        stiffness = Spring.StiffnessMedium
-                    ),
+                    animationSpec = ExpressiveMotion.Effects.color(),
                     label = "category_chip_color"
                 )
 
@@ -131,10 +127,7 @@ fun BookmarkFilterBar(
                         } else {
                             MaterialTheme.colorScheme.surfaceContainerHigh
                         },
-                        animationSpec = spring(
-                            dampingRatio = Spring.DampingRatioNoBouncy,
-                            stiffness = Spring.StiffnessMedium
-                        ),
+                        animationSpec = ExpressiveMotion.Effects.color(),
                         label = "tag_chip_color"
                     )
 

@@ -117,7 +117,13 @@ internal enum class HomeSettingsSlot(
     AssistantDefaultCardText(ThemeContrast.BODY_TEXT, { over(it.primaryContainer, 0.5f, it.surfaceContainerLow) }, { it.onSurface }),
     SearchNativeNote(ThemeContrast.BODY_TEXT, { over(it.secondaryContainer, 0.58f, it.surfaceContainerHigh) }, { it.onSecondaryContainer }, { listOf(it.onSurface) }),
     UpdateBannerMuted(ThemeContrast.BODY_TEXT, { it.primaryContainer }, { it.onPrimaryContainer }),
-    MemoryMuted(ThemeContrast.BODY_TEXT, { it.secondaryContainer }, { it.onSecondaryContainer });
+    MemoryMuted(ThemeContrast.BODY_TEXT, { it.secondaryContainer }, { it.onSecondaryContainer }),
+
+    // --- Shared components -------------------------------------------------------------
+    // (ImageViewerDialog is owned by the chat pass and gated in ChatContrastTest.)
+    // Insights stat cards: label and value text on the surfaceContainerHigh card.
+    StatCardLabel(ThemeContrast.BODY_TEXT, { it.surfaceContainerHigh }, { it.onSurfaceVariant }, { listOf(it.onSurface) }),
+    StatCardValue(ThemeContrast.BODY_TEXT, { it.surfaceContainerHigh }, { it.onSurface });
 
     companion object {
         private fun over(top: Color, alpha: Float, under: Color): Color =

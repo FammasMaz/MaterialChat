@@ -5,7 +5,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -19,6 +18,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
 import com.materialchat.domain.model.ConversationTreeNode
+import com.materialchat.ui.theme.ExpressiveShapes
 
 /**
  * Tooltip popup shown on long-press of a mind map node.
@@ -43,7 +43,7 @@ fun NodePreviewTooltip(
         properties = PopupProperties(focusable = true)
     ) {
         Surface(
-            shape = RoundedCornerShape(20.dp),
+            shape = ExpressiveShapes.DisclosurePanel,
             color = MaterialTheme.colorScheme.surfaceContainerHighest,
             tonalElevation = 6.dp,
             shadowElevation = 8.dp
