@@ -27,7 +27,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
@@ -37,6 +36,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import com.materialchat.ui.screens.chat.components.rememberChatSurfacePalette
 import com.materialchat.util.GeneratedImageActions
 import kotlinx.coroutines.launch
 
@@ -54,6 +54,11 @@ fun ImageViewerDialog(
     val scope = rememberCoroutineScope()
     var scale by remember { mutableFloatStateOf(1f) }
     var offset by remember { mutableStateOf(Offset.Zero) }
+    // Theme roles instead of hard-coded black/white: the scrim role for the backdrop, and the
+    // control colour resolved against it (inverseOnSurface where it reads, onSurface otherwise)
+    // so the share/save/close glyphs pass 3:1 on every palette; ChatContrastTest asserts the pair.
+    val scheme = MaterialTheme.colorScheme
+    val viewer = rememberChatSurfacePalette()
 
     Dialog(
         onDismissRequest = onDismiss,
@@ -65,7 +70,7 @@ fun ImageViewerDialog(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.96f))
+                .background(scheme.scrim.copy(alpha = 0.96f))
                 .pointerInput(Unit) {
                     detectTapGestures(
                         onTap = { if (scale <= 1.01f) onDismiss() },
@@ -113,8 +118,8 @@ fun ImageViewerDialog(
                     .padding(8.dp)
             ) {
                 val colors = IconButtonDefaults.filledTonalIconButtonColors(
-                    containerColor = Color.White.copy(alpha = 0.14f),
-                    contentColor = Color.White
+                    containerColor = viewer.imageViewerScrim.content.copy(alpha = 0.14f),
+                    contentColor = viewer.imageViewerChip.content
                 )
                 IconButton(
                     colors = colors,

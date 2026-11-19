@@ -175,7 +175,13 @@ internal data class ChatSurfacePalette(
     val attachmentRemove: ChatTonal,
     val plusMenuCamera: ChatTonal,
     val plusMenuAttach: ChatTonal,
-    val plusMenuCreate: ChatTonal
+    val plusMenuCreate: ChatTonal,
+    /**
+     * The full-screen image viewer: the scrim (0.96 over the screen surface) and the control
+     * colour that reads on it, and the translucent control chip (content at 0.14 over the scrim).
+     */
+    val imageViewerScrim: ChatTonal,
+    val imageViewerChip: ChatTonal
 ) {
     /** Every container/content pair with its required ratio, one per fill the container can present. */
     fun pairs(): List<AssistantContrastPair> = buildList {
@@ -253,6 +259,8 @@ internal data class ChatSurfacePalette(
         text("plus menu camera", plusMenuCamera)
         text("plus menu attach", plusMenuAttach)
         text("plus menu create", plusMenuCreate)
+        icon("image viewer scrim", imageViewerScrim)
+        icon("image viewer chip", imageViewerChip)
     }
 
     companion object {
@@ -298,6 +306,14 @@ internal data class ChatSurfacePalette(
             val composerFills = listOf(scheme.surfaceContainerHigh, scheme.surfaceContainerHighest)
             val imageLoadingFill = ChatContrast.over(scheme.primaryContainer.copy(alpha = 0.55f), assistantFill)
             val inlineCodeFill = ChatContrast.over(assistant.content.copy(alpha = 0.15f), assistantFill)
+            // ImageViewerDialog: the scrim role at 0.96 over whatever screen is underneath (taken as
+            // `surface`); inverseOnSurface is the M3 role for content on an inverse fill, but on a
+            // dark theme it is itself dark, so the resolver steps to onSurface there.
+            val scrimFill = ChatContrast.over(scheme.scrim.copy(alpha = 0.96f), scheme.surface)
+            val imageViewerContent = ChatContrast.pick(
+                scrimFill, listOf(scheme.inverseOnSurface, scheme.onSurface, scheme.inverseSurface), icon
+            )
+            val imageViewerChipFill = ChatContrast.over(imageViewerContent.copy(alpha = 0.14f), scrimFill)
 
             val chips = ChatHeaderBadge.values().associateWith { badge ->
                 when (badge) {
@@ -384,7 +400,9 @@ internal data class ChatSurfacePalette(
                 attachmentRemove = tonal(scheme.errorContainer, scheme.onErrorContainer, icon),
                 plusMenuCamera = tonal(scheme.secondaryContainer, scheme.onSecondaryContainer, body),
                 plusMenuAttach = tonal(scheme.tertiaryContainer, scheme.onTertiaryContainer, body),
-                plusMenuCreate = tonal(scheme.primaryContainer, scheme.onPrimaryContainer, body)
+                plusMenuCreate = tonal(scheme.primaryContainer, scheme.onPrimaryContainer, body),
+                imageViewerScrim = ChatTonal(scrimFill, imageViewerContent),
+                imageViewerChip = ChatTonal(imageViewerChipFill, imageViewerContent)
             )
         }
     }

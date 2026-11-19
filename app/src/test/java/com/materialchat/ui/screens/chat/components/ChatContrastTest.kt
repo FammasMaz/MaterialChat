@@ -84,7 +84,8 @@ class ChatContrastTest {
             "composer attach", "send idle", "send ready", "send streaming", "scroll fab", "scroll fab badge",
             "code block", "code keyword", "code string", "code comment", "code number", "code chip", "inline code",
             "table header", "table body", "table alternate", "working badge", "empty card", "empty tile",
-            "image action chip", "image loading card", "attachment remove", "plus menu create"
+            "image action chip", "image loading card", "attachment remove", "plus menu create",
+            "image viewer scrim", "image viewer chip"
         )) assertTrue("missing pair $expected in $names", expected in names)
     }
 
