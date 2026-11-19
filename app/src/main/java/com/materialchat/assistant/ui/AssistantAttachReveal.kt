@@ -22,8 +22,15 @@ internal data class AssistantAttachRevealState(val open: Boolean = false) {
     fun affordanceVisibilityChanged(visible: Boolean): AssistantAttachRevealState =
         if (visible) this else copy(open = false)
 
-    /** Keyboard mode ended (the user tapped the mic, hide keyboard, or sent): the pill loses focus. */
+    /** Keyboard mode ended (the user tapped the mic or hide keyboard): the pill loses focus. */
     fun keyboardHidden(): AssistantAttachRevealState = copy(open = false)
+
+    /**
+     * The typed question was sent. Keyboard mode stays (the follow-up is typed too), so the
+     * affordance stays and nothing else would close the reveal: without this the two attach
+     * actions sat open above the answer that was streaming in (W6).
+     */
+    fun questionSent(): AssistantAttachRevealState = copy(open = false)
 
     /** The pill is leaving the screen. */
     fun pillHidden(): AssistantAttachRevealState = copy(open = false)

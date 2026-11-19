@@ -32,6 +32,12 @@ class AssistantAttachRevealTest {
         assertFalse(AssistantAttachRevealState(open = true).keyboardHidden().open)
     }
 
+    @Test fun sendingTheTypedQuestionCollapses() {
+        // Keyboard mode survives the send, so nothing else would close the reveal over the answer.
+        assertFalse(AssistantAttachRevealState(open = true).questionSent().open)
+        assertFalse(AssistantAttachRevealState(open = false).questionSent().open)
+    }
+
     @Test fun hidingThePillCollapses() {
         assertFalse(AssistantAttachRevealState(open = true).pillHidden().open)
     }

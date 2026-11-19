@@ -158,6 +158,9 @@ class AssistantViewModel(
     /** The persistent conversation ID - created on first query */
     private var currentConversationId: String? = null
 
+    /** The user message the last turn saved; a retry reuses it when it is still the conversation's last row. */
+    private var savedQuestion: Message? = null
+
     /** Timestamp of last assistant activity; decides whether an invocation resumes the chat. */
     private var lastActivityTimestamp: Long = System.currentTimeMillis()
 
@@ -280,6 +283,7 @@ class AssistantViewModel(
         cancelStreaming()
         stopSpeaking()
         currentConversationId = null
+        savedQuestion = null
         // Photos that were never sent are not kept on disk.
         _pendingAttachments.value.forEach(discardAttachment)
         _pendingAttachments.value = emptyList()
@@ -315,6 +319,11 @@ class AssistantViewModel(
     fun startVoiceInput() {
         val previousTurn = streamingJob
         cancelStreaming()
+        // W6: a new listening attempt supersedes what the last turn left behind. AssistantNotices
+        // ranks `error` above the recognizer's own failure, so a speech-output error (or a voice
+        // fallback notice) left standing here would mask a timeout's "No speech heard. Try
+        // again." with a stale notice that offers no action.
+        _uiState.update { it.copy(error = null, notice = null) }
         val token = ++recognition
         if (!speechRecognitionManager.isAvailable()) {
             _voiceState.value = VoiceState.Error(
@@ -384,6 +393,14 @@ class AssistantViewModel(
      * Send a text query to the AI.
      */
     fun sendQuery(query: String = _uiState.value.textInput) {
+        send(query, reuseSavedQuestion = false)
+    }
+
+    /**
+     * One turn. [reuseSavedQuestion] is the notice's "Try again": the row the failed attempt
+     * saved is reused when it is still the conversation's last message (see [retryLastQuery]).
+     */
+    private fun send(query: String, reuseSavedQuestion: Boolean) {
         if (query.isBlank()) return
 
         val previousTurn = streamingJob
@@ -540,14 +557,25 @@ class AssistantViewModel(
                     currentCoroutineContext().ensureActive()
                     if (token != turn) return@coroutineScope
 
-                    // Create and save user message
-                    val userMessage = Message(
+                    // The saved question. W6: a retry of a plain failed question (no photos, no
+                    // screen use this time) reuses the row the first attempt saved, as long as
+                    // it is still the conversation's last message, so neither the chat nor the
+                    // model's history carries the question twice. A retry that attaches the
+                    // screen saves a new row (the capture is consumed per attempt).
+                    val reused = if (reuseSavedQuestion && attachments.isEmpty() && screenUse == null) {
+                        savedQuestion?.takeIf {
+                            it.conversationId == conversationId && it.content == trimmedQuery &&
+                                conversationRepository.getMessages(conversationId).lastOrNull()?.id == it.id
+                        }
+                    } else null
+                    val userMessage = reused ?: Message(
                         conversationId = conversationId,
                         role = MessageRole.USER,
                         content = trimmedQuery,
                         attachments = attachments + listOfNotNull(screenUse?.attachment)
                     )
-                    conversationRepository.addMessage(userMessage)
+                    if (reused == null) conversationRepository.addMessage(userMessage)
+                    savedQuestion = userMessage
 
                     var resend = true
                     while (resend) {
@@ -702,6 +730,7 @@ class AssistantViewModel(
                             }
                             is StreamingState.Cancelled -> {
                                 queue.cancel()
+                                settleStreamingMessages()
                                 _uiState.update {
                                     it.copy(
                                         response = state.partialContent ?: "",
@@ -733,9 +762,18 @@ class AssistantViewModel(
         stopVoiceInput()
         streamingJob?.cancel()
         stopSpeaking()
-        _messages.update { messages -> messages.map { it.copy(isStreaming = false) } }
+        settleStreamingMessages()
         _uiState.update { it.copy(isLoading = false, isStreaming = false) }
         _voiceState.value = VoiceState.Idle
+    }
+
+    /**
+     * The streaming marker leaves every message: a failed, cancelled or interrupted turn keeps
+     * its partial text on the surface without the typing dots under it (W6: handleError left
+     * them running beside the failure notice).
+     */
+    private fun settleStreamingMessages() {
+        _messages.update { messages -> messages.map { it.copy(isStreaming = false) } }
     }
 
     /** Stops speech for the rest of this turn without cancelling generation. */
@@ -849,10 +887,19 @@ class AssistantViewModel(
         val question = _uiState.value.userQuery
         if (question.isBlank()) return
         _messages.update { list ->
-            val last = list.lastOrNull()
-            if (last != null && last.role == MessageRole.USER && last.content == question) list.dropLast(1) else list
+            // W6: the interrupted answer (partial text, settled by handleError) leaves together
+            // with the question's bubble, so the retry redraws the exchange once instead of
+            // stacking a second question under the half answer.
+            var kept = list
+            val partial = kept.lastOrNull()
+            val question1 = kept.getOrNull(kept.size - 2)
+            if (partial != null && partial.role == MessageRole.ASSISTANT &&
+                question1 != null && question1.role == MessageRole.USER && question1.content == question
+            ) kept = kept.dropLast(1)
+            val last = kept.lastOrNull()
+            if (last != null && last.role == MessageRole.USER && last.content == question) kept.dropLast(1) else kept
         }
-        sendQuery(question)
+        send(question, reuseSavedQuestion = true)
     }
 
     /**
@@ -860,6 +907,7 @@ class AssistantViewModel(
      */
     private fun handleError(message: String) {
         _voiceState.value = VoiceState.Error(message)
+        settleStreamingMessages()
         _uiState.update {
             it.copy(
                 isLoading = false,
@@ -1112,7 +1160,14 @@ data class AssistantUiState(
     val screenContextUsed: Boolean = false,
     /** The question wanted the screen but the platform delivered nothing: show how to enable it. */
     val screenContextUnavailable: Boolean = false
-)
+) {
+    /**
+     * The answer is awaited or still arriving. Leaving the overlay now (Open in app hides the
+     * session) cancels the stream and loses the partial answer, which is only saved on
+     * completion, so the answer toolbar withholds Open in app until this is false (W6).
+     */
+    val answerInFlight: Boolean get() = isLoading || isStreaming
+}
 
 /**
  * Events emitted by the assistant ViewModel.

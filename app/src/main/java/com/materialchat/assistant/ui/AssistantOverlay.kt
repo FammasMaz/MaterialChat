@@ -548,7 +548,11 @@ internal fun AssistantOverlayContent(
     modifier: Modifier = Modifier
 ) {
     var isVisible by remember { mutableStateOf(false) }
-    var keyboardMode by remember { mutableStateOf(false) }
+    // W6: the overlay is recomposed fresh under key(showTrigger) on every show, including the
+    // resume after the picker or camera. The ViewModel keeps the typed question across that
+    // hide (attachInProgress); starting in keyboard mode when it is there keeps the text, the
+    // `+` and the Send button on screen instead of hiding the draft behind the resting prompt.
+    var keyboardMode by remember { mutableStateOf(uiState.textInput.isNotBlank()) }
     val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
     val keyboard = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
     val context = LocalContext.current
@@ -614,6 +618,7 @@ internal fun AssistantOverlayContent(
     val submitTyped: () -> Unit = {
         if (hasText) {
             onInterrupt()
+            attachReveal = attachReveal.questionSent()
             onSendClick()
         }
     }
@@ -743,7 +748,9 @@ internal fun AssistantOverlayContent(
                     notice = notice,
                     onNoticeAction = onNoticeAction,
                     screenContextUsed = uiState.screenContextUsed,
-                    showOpenInApp = hasContent,
+                    // W6: never while the answer is in flight; opening the app hides the session
+                    // and cancels the stream, and the partial answer is only saved on completion.
+                    showOpenInApp = hasContent && !uiState.answerInFlight,
                     onOpenInApp = onOpenInApp,
                     onNewChat = onNewChat,
                     onCopy = {
@@ -1239,7 +1246,6 @@ private fun AssistantResponseSurface(
         modifier = Modifier
             .fillMaxWidth()
             .heightIn(max = maxHeight),
-        // W5: the theme's per-corner squircle with AssistantShapes.Answer's radii.
         shape = ExpressiveShapes.AnswerSurface,
         color = palette.answer.fill,
         contentColor = palette.answer.body,
@@ -1656,7 +1662,6 @@ private fun AssistantNoticeSurface(
     val content = if (notice.isError) palette.errorNotice.content else palette.notice.muted
     Surface(
         modifier = modifier.fillMaxWidth(),
-        // W5: the theme's per-corner squircle with AssistantShapes.Notice's radii.
         shape = ExpressiveShapes.NoticeSurface,
         color = container,
         contentColor = content,

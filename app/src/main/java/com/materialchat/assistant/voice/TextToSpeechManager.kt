@@ -180,7 +180,8 @@ class TextToSpeechManager internal constructor(
     private fun submit(text: String, id: String, replace: Boolean, sink: Pending) {
         if (replace) stopMain()
         if (!ready) {
-            sink.emit(TtsEvent.Error("Text-to-speech not initialized")); sink.close(); return
+            // W6: these events reach the pill as the notice; the copy table, not engine wording.
+            sink.emit(TtsEvent.Error(VoiceCopy.SPEECH_NOT_READY)); sink.close(); return
         }
         if (text.isBlank()) {
             sink.emit(TtsEvent.Completed); sink.close(); return
@@ -188,9 +189,10 @@ class TextToSpeechManager internal constructor(
         pending[id] = sink
         speaking.value = true
         try {
-            check(engine!!.speak(text, id)) { "Speech queue rejected text" }
-        } catch (error: RuntimeException) {
-            finish(id, TtsEvent.Error(error.message ?: "Speech synthesis failed"))
+            check(engine!!.speak(text, id)) { VoiceCopy.SPEECH_FAILED }
+        } catch (_: RuntimeException) {
+            // The engine's own message never reaches the user.
+            finish(id, TtsEvent.Error(VoiceCopy.SPEECH_FAILED))
         }
     }
 
@@ -249,9 +251,9 @@ private class AndroidTtsEngine(
             override fun onStart(utteranceId: String) = callbacks.started(utteranceId)
             override fun onDone(utteranceId: String) = callbacks.finished(utteranceId)
             @Deprecated("Deprecated in Java")
-            override fun onError(utteranceId: String) = callbacks.finished(utteranceId, "Speech synthesis failed")
+            override fun onError(utteranceId: String) = callbacks.finished(utteranceId, VoiceCopy.SPEECH_FAILED)
             override fun onError(utteranceId: String, errorCode: Int) =
-                callbacks.finished(utteranceId, "Speech synthesis failed (code: $errorCode)")
+                callbacks.finished(utteranceId, VoiceCopy.SPEECH_FAILED)
             override fun onStop(utteranceId: String, interrupted: Boolean) =
                 callbacks.finished(utteranceId, stopped = true)
         })

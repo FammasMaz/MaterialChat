@@ -416,4 +416,117 @@ class AssistantViewModelTest {
         assertEquals("recognized", vm.uiState.value.userQuery)
         assertEquals(VoiceState.Idle, vm.voiceState.value)
     }
+
+    // W6 sequence walk: the sequences, not the states.
+
+    @Test fun `a failed stream settles the partial answer and the retry reuses the saved question`() = runTest {
+        val vm = createViewModel()
+        val saved = mutableListOf<Message>()
+        coEvery { conversations.addMessage(any()) } answers { saved += firstArg<Message>(); firstArg<Message>().id }
+        coEvery { conversations.getMessages(any()) } answers { saved.toList() }
+        vm.sendQuery("question")
+        runCurrent()
+        states.send(StreamingState.Streaming("partial", messageId = "m"))
+        runCurrent()
+        assertTrue(vm.messages.value.last().isStreaming)
+        states.send(StreamingState.Error(java.io.IOException("down")))
+        runCurrent()
+        assertEquals(AssistantCopy.NO_CONNECTION, vm.uiState.value.error)
+        assertEquals(VoiceState.Error(AssistantCopy.NO_CONNECTION), vm.voiceState.value)
+        assertFalse(vm.uiState.value.isStreaming)
+        assertFalse(vm.uiState.value.answerInFlight)
+        // The partial answer stays on the surface, without the typing dots beside the notice.
+        assertEquals("partial", vm.messages.value.last().content)
+        assertTrue(vm.messages.value.none { it.isStreaming })
+        assertEquals(1, saved.size)
+        vm.retryLastQuery()
+        runCurrent()
+        // The question's bubble and the half answer leave together; the exchange is redrawn once.
+        assertEquals(listOf(MessageRole.USER), vm.messages.value.map { it.role })
+        assertNull(vm.uiState.value.error)
+        assertEquals(VoiceState.Thinking("question"), vm.voiceState.value)
+        assertEquals("the retry reuses the saved question row", 1, saved.size)
+        verify(exactly = 2) { chat.sendMessage(any(), any(), any(), any(), any(), any(), any(), any()) }
+        states.send(StreamingState.Completed("answer", messageId = "m2"))
+        runCurrent()
+        assertEquals(listOf(MessageRole.USER, MessageRole.ASSISTANT), vm.messages.value.map { it.role })
+        assertEquals(listOf(MessageRole.USER, MessageRole.ASSISTANT), saved.map { it.role })
+    }
+
+    @Test fun `a new listening attempt clears the stale speech-output error so a timeout is reported`() = runTest {
+        val vm = createViewModel()
+        coEvery { runtime.speak(any(), any(), any()) } coAnswers {
+            thirdArg<(TtsEvent) -> Unit>()(TtsEvent.Error("Audio playback failed."))
+        }
+        vm.sendQuery("question")
+        runCurrent()
+        states.send(StreamingState.Completed("Answer.", messageId = "m"))
+        runCurrent()
+        assertEquals("Audio playback failed.", vm.uiState.value.error)
+        val results = Channel<SpeechRecognitionResult>(Channel.UNLIMITED)
+        every { recognition.startListening() } returns results.receiveAsFlow()
+        vm.startVoiceInput()
+        runCurrent()
+        assertNull(vm.uiState.value.error)
+        results.send(SpeechRecognitionResult.Ready)
+        results.send(SpeechRecognitionResult.Error("No speech", SpeechRecognitionErrors.ERROR_SPEECH_TIMEOUT))
+        runCurrent()
+        // The recognizer's failure is the one notice: nothing stale outranks it.
+        assertEquals(
+            VoiceState.Error("No speech heard. Try again.", SpeechRecognitionErrors.ERROR_SPEECH_TIMEOUT),
+            vm.voiceState.value
+        )
+        assertNull(vm.uiState.value.error)
+        assertNull(vm.uiState.value.notice)
+    }
+
+    @Test fun `a rate limit names the wait and the retry resends the question once`() = runTest {
+        val vm = createViewModel()
+        vm.sendQuery("question")
+        runCurrent()
+        states.send(StreamingState.Error(IllegalStateException("{}"), httpStatus = 429))
+        runCurrent()
+        assertEquals(AssistantCopy.RATE_LIMITED, vm.uiState.value.error)
+        assertEquals(VoiceState.Error(AssistantCopy.RATE_LIMITED), vm.voiceState.value)
+        assertFalse(vm.uiState.value.answerInFlight)
+        assertTrue(vm.messages.value.none { it.isStreaming })
+        vm.retryLastQuery()
+        runCurrent()
+        assertNull(vm.uiState.value.error)
+        assertEquals(VoiceState.Thinking("question"), vm.voiceState.value)
+        verify(exactly = 2) { chat.sendMessage(any(), any(), any(), any(), any(), any(), any(), any()) }
+        assertEquals(1, vm.messages.value.count { it.role == MessageRole.USER })
+    }
+
+    @Test fun `a rejected key opens settings and the hide clears the failure`() = runTest {
+        val vm = createViewModel()
+        val events = mutableListOf<AssistantEvent>()
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.events.collect { events += it } }
+        vm.onOverlayShown()
+        vm.sendQuery("question")
+        runCurrent()
+        states.send(StreamingState.Error(IllegalStateException("{}"), httpStatus = 401))
+        runCurrent()
+        assertEquals(AssistantCopy.PROVIDER_REJECTED, vm.uiState.value.error)
+        assertFalse(vm.uiState.value.answerInFlight)
+        vm.openSettings()
+        runCurrent()
+        assertEquals(listOf<AssistantEvent>(AssistantEvent.OpenSettings), events)
+        // The session hides to open the app; nothing of the failure survives it.
+        vm.onOverlayHidden()
+        assertNull(vm.uiState.value.error)
+        assertEquals(VoiceState.Idle, vm.voiceState.value)
+        assertEquals("", vm.uiState.value.userQuery)
+        // Back from settings: a fresh invocation starts clean (continue window is 0).
+        vm.onOverlayShown()
+        assertTrue(vm.messages.value.isEmpty())
+        assertNull(vm.uiState.value.error)
+    }
+
+    @Test fun `open in app is withheld while the answer is awaited or arriving`() {
+        assertTrue(AssistantUiState(isLoading = true).answerInFlight)
+        assertTrue(AssistantUiState(isStreaming = true).answerInFlight)
+        assertFalse(AssistantUiState(response = "done").answerInFlight)
+        assertFalse(AssistantUiState(error = AssistantCopy.REQUEST_FAILED).answerInFlight)
+    }
 }

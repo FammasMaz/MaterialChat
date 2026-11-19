@@ -67,7 +67,7 @@ class AssistantSpeechRuntime(
                 AssistantSpeechBackend.GEMINI -> {
                     val key = credentials.getAssistantGeminiTtsApiKey()
                     if (key.isNullOrBlank()) {
-                        event(TtsEvent.Error("Configure a Gemini speech key in voice settings."))
+                        event(TtsEvent.Error(VoiceCopy.GEMINI_KEY_MISSING))
                         return
                     }
                     gemini.speak(text, settings, key).collect(event)
@@ -78,14 +78,14 @@ class AssistantSpeechRuntime(
             throw cancelled
         } catch (_: Exception) {
             // Credentials and engine exceptions must not cancel sibling generation or leak details.
-            event(TtsEvent.Error("Speech unavailable. Check voice settings and try again."))
+            event(TtsEvent.Error(VoiceCopy.SPEECH_UNAVAILABLE))
         }
     }
 
     private suspend fun speakAndroid(text: String, settings: AssistantVoiceSettings, event: (TtsEvent) -> Unit) {
         if (android.initialize().first() !is TtsInitResult.Success ||
             android.configure(settings).first() !is TtsInitResult.Success) {
-            event(TtsEvent.Error("Android voice unavailable. Check voice settings."))
+            event(TtsEvent.Error(VoiceCopy.ANDROID_VOICE_UNAVAILABLE))
             return
         }
         android.enqueue(text).collect(event)
@@ -100,7 +100,7 @@ class AssistantSpeechRuntime(
         val model = SherpaTtsModel.fromId(settings.sherpaModel)
         val backend = sherpa
         if (backend == null) {
-            event(TtsEvent.Notice("Neural voice is not available in this build. Using the Android voice."))
+            event(TtsEvent.Notice(VoiceCopy.NEURAL_UNAVAILABLE_BUILD))
             speakAndroid(text, settings, event)
             return
         }
@@ -122,7 +122,7 @@ class AssistantSpeechRuntime(
             }
         }
         fallbackReason?.let {
-            event(TtsEvent.Notice("$it Using the Android voice."))
+            event(TtsEvent.Notice(VoiceCopy.fallingBack(it)))
             speakAndroid(text, settings, event)
         }
     }

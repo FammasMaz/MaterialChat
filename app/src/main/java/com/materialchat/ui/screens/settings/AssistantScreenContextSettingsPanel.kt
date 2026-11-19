@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.AllInclusive
 import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material.icons.outlined.Notes
 import androidx.compose.material.icons.outlined.Screenshot
@@ -18,7 +19,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.unit.dp
+import com.materialchat.ui.theme.ExpressiveSpacing
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -67,8 +68,8 @@ fun AssistantScreenContextSettingsPanel(viewModel: AssistantScreenContextSetting
     val enabled = current.mode != ScreenContextMode.NEVER
     val rowCount = if (enabled) 4 else 1
     Column(
-        modifier = Modifier.padding(top = 12.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+        modifier = Modifier.padding(top = ExpressiveSpacing.Inset),
+        verticalArrangement = Arrangement.spacedBy(ExpressiveSpacing.Inset)
     ) {
         Text(
             text = "Screen context",
@@ -93,6 +94,9 @@ fun AssistantScreenContextSettingsPanel(viewModel: AssistantScreenContextSetting
                     count = rowCount,
                     title = "Always include the screen",
                     supporting = "Off: only when the question refers to the screen, or when the model asks for it",
+                    // W6: the one row of the group without a leading icon left its title
+                    // misaligned against the other three.
+                    icon = Icons.Outlined.AllInclusive,
                     checked = current.mode == ScreenContextMode.ALWAYS,
                     onCheckedChange = { on ->
                         viewModel.update { it.copy(mode = if (on) ScreenContextMode.ALWAYS else ScreenContextMode.AUTOMATIC) }

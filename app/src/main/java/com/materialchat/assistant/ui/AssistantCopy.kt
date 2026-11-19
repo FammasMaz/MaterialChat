@@ -1,6 +1,8 @@
 package com.materialchat.assistant.ui
 
+import com.materialchat.assistant.voice.GeminiTtsFailure
 import com.materialchat.assistant.voice.SpeechRecognitionErrors
+import com.materialchat.assistant.voice.VoiceCopy
 import java.io.IOException
 
 /**
@@ -18,6 +20,9 @@ import java.io.IOException
  *   user, with no "please", no exception text and no engine or API names. The last sentence
  *   names what the user can do; the notice's action chip offers the same thing.
  * - Action labels are sentence-case verbs without a trailing period ("Try again", "Type instead").
+ * - The voice layer's own sentences (recognizer codes, speech output, voice fallbacks, neural
+ *   model installs) live in [VoiceCopy] under the same rules; the recognizer sentences are
+ *   aliased here and every voice sentence is listed in [VOICE_NOTICES] for the rule test (W6).
  *
  * Pure Kotlin so the JVM tests can check the mapping without a device.
  */
@@ -39,9 +44,9 @@ internal object AssistantCopy {
     /** The answer was produced with the screen capture (the small marker on the answer surface). */
     const val USING_SCREEN = "Using screen"
 
-    const val MIC_PERMISSION = "Microphone access is off. Allow it in system settings, or type your question."
+    const val MIC_PERMISSION = VoiceCopy.MIC_PERMISSION
     const val VOICE_DISABLED = "Voice input is off in settings. Type your question instead."
-    const val RECOGNIZER_UNAVAILABLE = "Speech recognition is not available on this device. Type your question instead."
+    const val RECOGNIZER_UNAVAILABLE = VoiceCopy.RECOGNIZER_UNAVAILABLE
     const val NO_PROVIDER = "No AI provider is set up. Add one in the app."
     const val NO_CONNECTION = "No connection. Check your network and try again."
     /** HTTP 429 / quota exhaustion (Gemini, OpenAI, OpenRouter): retrying later is the right move. */
@@ -59,7 +64,7 @@ internal object AssistantCopy {
     const val TAKE_PHOTO = "Take photo"
     const val ATTACH_PHOTO = "Attach photo"
     const val SCREEN_CHIP = "Screen"
-    const val RECOGNITION_FAILED = "Speech recognition stopped early. Try again."
+    const val RECOGNITION_FAILED = VoiceCopy.RECOGNITION_FAILED
 
     /** Every fixed notice (sentences: full stops), for the copy-rule test. */
     val NOTICES: List<String> = listOf(
@@ -74,25 +79,23 @@ internal object AssistantCopy {
     )
 
     /**
-     * The notice for a recognizer failure, by the platform's error code. The recognizer's own
-     * message (which names engines and says "please") never reaches the pill except for a code
-     * this table does not know.
+     * Every voice-layer sentence ([VoiceCopy.samples]) plus the Gemini diagnostics, for the
+     * copy-rule test: full stops, sentence case, no "please", never "retry".
+     */
+    val VOICE_NOTICES: List<String> = VoiceCopy.samples() + GeminiTtsFailure.entries.map { it.diagnostic }
+
+    /**
+     * The notice for a recognizer failure, by the platform's error code: the voice layer's one
+     * table ([VoiceCopy.recognition]). The recognizer's own message (which names engines and
+     * says "please") never reaches the pill except for a code the table does not know.
      */
     fun recognitionError(code: Int?, engineMessage: String): String = when (code) {
-        SpeechRecognitionErrors.ERROR_NO_MATCH -> "Didn't catch that. Try again."
-        SpeechRecognitionErrors.ERROR_SPEECH_TIMEOUT -> "No speech heard. Try again."
-        SpeechRecognitionErrors.ERROR_NETWORK, SpeechRecognitionErrors.ERROR_NETWORK_TIMEOUT ->
-            "Speech recognition needs a connection. Check your network and try again."
-        SpeechRecognitionErrors.ERROR_AUDIO -> "The microphone could not be used. Try again."
-        SpeechRecognitionErrors.ERROR_SERVER -> "The speech service did not respond. Try again."
-        SpeechRecognitionErrors.ERROR_RECOGNIZER_BUSY -> "The speech service is busy. Try again in a moment."
-        SpeechRecognitionErrors.ERROR_INSUFFICIENT_PERMISSIONS -> MIC_PERMISSION
         // The manager reports a missing engine, a startup that never happened and a stop that
         // never finished under the same client code; only the first is not worth retrying.
         SpeechRecognitionErrors.ERROR_CLIENT ->
             if (engineMessage.contains("not available", ignoreCase = true)) RECOGNIZER_UNAVAILABLE
             else RECOGNITION_FAILED
-        else -> engineMessage.ifBlank { RECOGNITION_FAILED }
+        else -> code?.let(VoiceCopy::recognition) ?: engineMessage.ifBlank { RECOGNITION_FAILED }
     }
 
     /**

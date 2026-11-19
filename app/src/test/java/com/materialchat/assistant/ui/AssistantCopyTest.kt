@@ -1,6 +1,8 @@
 package com.materialchat.assistant.ui
 
+import com.materialchat.assistant.voice.GeminiTtsFailure
 import com.materialchat.assistant.voice.SpeechRecognitionErrors
+import com.materialchat.assistant.voice.VoiceCopy
 import com.materialchat.assistant.voice.VoiceState
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -171,6 +173,57 @@ class AssistantCopyTest {
             assertFalse(label, label.endsWith("."))
             assertTrue(label, label.drop(1).none { it.isUpperCase() })
         }
+    }
+
+    @Test fun everyVoiceLayerSentenceFollowsTheCopyRules() {
+        // W6: recognizer codes, speech output, voice fallbacks, neural installs and the Gemini
+        // diagnostics all come from VoiceCopy, under the same rules as the pill's own notices.
+        val notices = AssistantCopy.VOICE_NOTICES
+        assertTrue(notices.size >= 40)
+        for (notice in notices) {
+            assertTrue(notice, notice.endsWith("."))
+            assertTrue(notice, notice.first().isUpperCase())
+            for (sentence in notice.split(". ")) assertTrue("$notice -> $sentence", sentence.first().isUpperCase())
+            assertFalse(notice, notice.contains(".."))
+            assertFalse(notice, notice.contains(" ."))
+            assertFalse(notice, notice.contains("please", ignoreCase = true))
+            assertFalse(notice, notice.contains("retry", ignoreCase = true))
+            assertFalse(notice, notice.contains("exception", ignoreCase = true))
+        }
+        for (failure in GeminiTtsFailure.entries) assertTrue(failure.name, failure.diagnostic in notices)
+        // The recognizer's own table is the pill's table: one sentence per code, never "please",
+        // and an unknown code falls back to the generic sentence rather than engine wording.
+        for (code in 1..9) {
+            val text = SpeechRecognitionErrors.getErrorMessage(code)
+            assertTrue(text, text.endsWith("."))
+            assertFalse(text, text.contains("please", ignoreCase = true))
+            assertEquals(text, AssistantCopy.recognitionError(code, "engine wording"), text.takeIf { code != SpeechRecognitionErrors.ERROR_CLIENT } ?: AssistantCopy.RECOGNITION_FAILED)
+        }
+        assertEquals(VoiceCopy.RECOGNITION_FAILED, SpeechRecognitionErrors.getErrorMessage(99))
+        assertEquals(AssistantCopy.MIC_PERMISSION, VoiceCopy.MIC_PERMISSION)
+        assertEquals(AssistantCopy.RECOGNIZER_UNAVAILABLE, VoiceCopy.RECOGNIZER_UNAVAILABLE)
+        assertEquals(AssistantCopy.RECOGNITION_FAILED, VoiceCopy.RECOGNITION_FAILED)
+        // A fallback notice names the reason first and the Android voice last.
+        val fallback = VoiceCopy.fallingBack(VoiceCopy.neuralLoadFailed("Supertonic (fast)"))
+        assertTrue(fallback, fallback.startsWith("Supertonic (fast) could not be loaded."))
+        assertTrue(fallback, fallback.endsWith(VoiceCopy.USING_ANDROID_VOICE))
+    }
+
+    @Test fun theManagersInternalClientDiagnosticsNeverReachThePill() {
+        // SpeechRecognitionManager reports a startup that never happened, a stop that never
+        // finished and a stop that threw under ERROR_CLIENT with its own diagnostics (pinned by
+        // SpeechRecognitionManagerTest for the log). The pill maps the code, not the text, so
+        // none of them is shown; only the missing-engine diagnostic selects its own notice.
+        for (diagnostic in listOf(
+            "Speech recognizer did not start. Please try again.",
+            "Speech recognition did not finish. Please try again.",
+            "Could not finish speech recognition. Please try again."
+        )) {
+            assertEquals(diagnostic, AssistantCopy.RECOGNITION_FAILED,
+                AssistantCopy.recognitionError(SpeechRecognitionErrors.ERROR_CLIENT, diagnostic))
+        }
+        assertEquals(AssistantCopy.RECOGNIZER_UNAVAILABLE,
+            AssistantCopy.recognitionError(SpeechRecognitionErrors.ERROR_CLIENT, "Speech recognition not available"))
     }
 
     private fun resolve(error: String, voiceError: VoiceState.Error?) = AssistantNotices.resolve(
