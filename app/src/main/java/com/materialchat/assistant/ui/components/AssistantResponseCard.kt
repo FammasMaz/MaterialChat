@@ -302,7 +302,7 @@ private fun ContinueInAppButton(onClick: () -> Unit) {
                     tint = palette.continueChip.content
                 )
                 Text(
-                    text = "Continue in app",
+                    text = AssistantCopy.CONTINUE_IN_APP,
                     style = AssistantTypography.action(MaterialTheme.typography),
                     color = palette.continueChip.content
                 )

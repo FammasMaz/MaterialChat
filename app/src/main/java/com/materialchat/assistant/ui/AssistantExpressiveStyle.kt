@@ -156,6 +156,22 @@ internal object AssistantSpacing {
     val SurfaceInset: Dp = 20.dp
 }
 
+/**
+ * Fixed sizes of the assistant's controls (not spacing): the layout maths that decides whether a
+ * labelled chip and the connected icon group fit one toolbar row reads the same values the
+ * composables draw, so a size change cannot silently break the fit.
+ */
+internal object AssistantSizes {
+    /** Every labelled chip and the notice's action: a 40dp capsule. */
+    val ChipHeight: Dp = 40.dp
+
+    /** The 16dp leading icon of a chip, the Screen chip and the Using-screen marker. */
+    val ChipIcon: Dp = 16.dp
+
+    /** A Material icon button's laid-out touch target (40dp control inside its 48dp minimum). */
+    val Target: Dp = 48.dp
+}
+
 internal object AssistantTypography {
     /** The live transcript while capturing: large and heavy so the recognised words lead. */
     fun transcript(typography: Typography): TextStyle =
