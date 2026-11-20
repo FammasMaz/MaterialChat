@@ -15,7 +15,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.OpenInNew
+import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -299,7 +299,7 @@ private fun ContinueInAppButton(onClick: () -> Unit) {
                 horizontalArrangement = Arrangement.spacedBy(AssistantSpacing.Gap)
             ) {
                 Icon(
-                    imageVector = Icons.AutoMirrored.Outlined.OpenInNew,
+                    imageVector = Icons.AutoMirrored.Filled.OpenInNew,
                     contentDescription = null,
                     modifier = Modifier.size(AssistantSizes.ChipIcon),
                     tint = palette.continueChip.content
